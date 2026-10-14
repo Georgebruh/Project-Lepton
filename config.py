@@ -1,10 +1,3 @@
-"""Project LEPTON settings (task A2).
-
-Every date, path and assumption value lives here; no magic numbers elsewhere.
-Values marked "assumption" are choices, not sourced facts: each one goes in the
-paper's assumptions table with the test written beside it.
-Values set to None are not known yet; the task named beside them fills them in.
-"""
 
 from datetime import date
 from pathlib import Path
@@ -60,6 +53,20 @@ ERA5_YEARS = (2000, 2025)                  # assumption: same years as IMERG, A1
 OPEN_METEO_HOUR_SHIFT = -1                 # shift hourly totals back 1 h before summing UTC days
 FORECAST_MODEL = "ecmwf_ifs025"            # assumption: ECMWF IFS 0.25 deg, A15
 FORECAST_LEADS_DAYS = (1, 2, 3)
+
+# Catchments (A7). The Philippines is in HydroSHEDS' Australasia region ("au"), not Asia.
+HYDROBASINS_SHP = DATA_RAW / "hydrobasins" / "hybas_au_lev12_v1c.shp"
+# One point on each river; the sub-basin holding it is the start of the upstream trace.
+CATCHMENT_OUTLETS = {
+    "marikina": {"lon": 121.093, "lat": 14.636, "trace_upstream": True},   # Sto. Nino gauge, Marikina City
+    "san_juan": {"lon": 121.017, "lat": 14.589, "trace_upstream": False},  # mouth at the Pasig; see note below
+    "tullahan": {"lon": 121.030, "lat": 14.690, "trace_upstream": True},   # Novaliches, QC
+}
+# San Juan: its sub-basin is the Pasig's last one, which also receives Laguna de Bay
+# (4,034 km2 upstream). Tracing upstream would add the whole lake basin, which does not
+# drain into the San Juan River, so it keeps its own sub-basin only.
+IMERG_CELL_DEG = 0.1
+IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max); printed by src/catchments.py
 
 CRS_OVERLAY = "EPSG:32651"                 # overlays
 CRS_EXACTEXTRACT = "EPSG:4326"             # convert to this before exactextract
