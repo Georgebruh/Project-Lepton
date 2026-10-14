@@ -1,0 +1,12 @@
+# Specific ignored files
+CLAUDE.md
+lepton-plan.md
+Lepton-Plan.md
+
+# OS & Environment
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.env
+.env.local
