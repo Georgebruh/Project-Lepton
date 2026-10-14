@@ -1,0 +1,31 @@
+# A2: pinned versions. Python 3.13.
+# Sanity-check pass values were confirmed with scipy 1.18 and statsmodels 0.15.
+
+# Tables and statistics
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+statsmodels==0.15.0
+
+# Calendar (A3)
+epiweeks==2.4.0
+
+# M3 benchmark (B3, B9) and stretch M5 (B12)
+prophet==1.5.0
+xgboost==3.4.1
+
+# Rain grids (A4, A14)
+xarray==2026.9.0
+netCDF4==1.7.4
+requests==2.34.2
+
+# Maps and overlay (A5-A8, C1-C2)
+geopandas==1.2.0
+shapely==2.2.0
+pyproj==3.8.0
+rasterio==1.5.2
+exactextract==0.3.0
+
+# Figures (D8) and spreadsheets from PSA / DOH
+matplotlib==3.11.2
+openpyxl==3.1.5

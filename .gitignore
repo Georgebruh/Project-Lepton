@@ -3,6 +3,21 @@ CLAUDE.md
 lepton-plan.md
 Lepton-Plan.md
 
+# Data (A2): share files through the team drive; commit only the per-file notes.
+# Never commit case-level records (rule 11).
+data/raw/*
+data/clean/*
+!data/raw/*.md
+!data/clean/*.md
+!data/**/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
 # OS & Environment
 .DS_Store
 Thumbs.db
