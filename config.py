@@ -30,6 +30,10 @@ BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with bo
 CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
 AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
 
+# NOAH flood hazard maps (A8)
+NOAH_RAW = DATA_RAW / "noah"                          # A8: the zips as downloaded, plus NOAH's metadata
+NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # A8: 9 rows (3 maps x Var 1-3), EPSG:32651
+
 # ---------------------------------------------------------------------------
 # Calendar and periods
 # ---------------------------------------------------------------------------
@@ -95,6 +99,20 @@ QC_PSGC_PREFIX = "13813"                   # QC in the official 10-digit PSGC: 1
 QC_SHEET_2024 = "Quezon City"              # QC's sheet in the PSA 2024 workbook (A5)
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
+# A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
+# (https://noah.up.edu.ph, "Downloads") links the public folder
+# https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o
+# -> Flood -> 5yr / 25yr / 100yr -> MetroManila.zip ("Metro Manila.zip" for 100yr).
+NOAH_FLOOD_FILES = {
+    5: "1IC5LnscUt7D_5c1BvlwcngR3cFKgDshV",
+    25: "1VAcWkVeY2uXWhZVvDYh5viedhihwBBci",
+    100: "1n-IrwfWqLRDyDg-wmt68luk_DU5Xzg9S",
+}
+NOAH_METADATA_FILES = {                    # A8: NOAH's own notes, kept beside the maps
+    "metadata_flood.txt": "1qbOoN_CZ6AUIk22owtJxRFENALIWCszq",
+    "01ReadMe_Flood.pdf": "1Z6gT7FDUCMps-qHT5Jiy7nwCdaH0rhwR",
+    "NOAH_License.pdf": "1z6MH_QI6gU_e2gNnhIMsKkENugHscNl9",
+}
 
 # Census reference dates as decimal years for pop_at (B1)
 CENSUS_T = {2015: 2015.58, 2020: 2020.33, 2024: 2024.50}  # 2015 = 1 Aug 2015; confirm with PSA
