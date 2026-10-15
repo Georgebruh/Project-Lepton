@@ -27,11 +27,16 @@ A few days’ warning before a storm lets health offices send doxycycline to the
 
 ## Rebuilding the data (Workstream A)
 
-Run from the repository root, in this order (A4's box comes from A7's catchments):
+Run from the repository root, in this order (A4's box comes from A7's catchments; A10
+checks its facilities against A5's barangays):
 
 | Task | Command | Writes |
 | --- | --- | --- |
+| A3 | `python -m src.weeks` | `data/clean/calendar_weeks.csv` |
 | A7 | `python -m src.catchments` | `data/clean/catchments_qc.gpkg`, `results/catchments_qc.png` |
 | A4 | `python -m src.imerg` | `data/raw/imerg_daily.nc`; needs a NASA Earthdata login (steps at the top of `src/imerg.py`) |
 | A5 | `python -m src.census` | `data/clean/barangays_qc.gpkg`, `census_qc.csv`, `age_sex_2020_qc.csv` |
+| A6 | `python -m src.worldpop` | `data/raw/phl_pop_2024_CN_100m_R2025A_v1.tif`, `data/clean/worldpop_2024_box.tif` |
+| A8 | `python -m src.noah` | `data/raw/noah/` (the three maps and NOAH's notes), `data/clean/noah_flood_mm.gpkg`; can take over an hour |
+| A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
 
