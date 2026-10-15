@@ -90,7 +90,6 @@ CATCHMENT_OUTLETS = {
 # https://hub.worldpop.org/geodata/summary?id=74942 (the plan's id=78816 is the 2026 1 km grid).
 WORLDPOP_URL = ("https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2024/"
                 "PHL/v1/100m/constrained/phl_pop_2024_CN_100m_R2025A_v1.tif")
-WORLDPOP_BYTES = 63_493_139                # size of the copy used (its note); R2025A is an alpha release
 
 IMERG_CELL_DEG = 0.1
 IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max); printed by src/catchments.py

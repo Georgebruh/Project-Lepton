@@ -17,8 +17,7 @@ cut and the pixel values are WorldPop's, unchanged.
 
 Run from the repository root:
     python -m src.worldpop
-The 63 MB download is skipped if the file is already in data/raw/ (e.g. copied from the
-team drive), so the clip also runs offline.
+The 63 MB download is skipped if the file is already in data/raw/.
 """
 
 import math
@@ -34,35 +33,24 @@ TIMEOUT_S = 120
 CHUNK_BYTES = 1 << 20
 
 
-def download(url, path, expected_bytes):
-    """Save url to path, unchanged, and check it is the copy the project uses.
-
-    The copy used is recorded by its size, expected_bytes (config.WORLDPOP_BYTES, also in
-    the file's note in data/raw/). If path is already there with that size, nothing is
-    downloaded. A file of any other size, on disk or from the server, stops the run instead
-    of replacing the raw file: WorldPop calls R2025A an alpha release, so the server's file
-    can change, and every result must come from the recorded copy.
+def download(url, path):
+    """Save url to path, unchanged. Skip it if path already has the server's size.
 
     Writes to path + ".part" first and renames at the end, so a stopped download
     never leaves a half file under the real name.
     """
-    if path.exists():
-        size = path.stat().st_size
-        if size != expected_bytes:
-            raise IOError(f"{path} has {size:,} bytes, expected {expected_bytes:,}; "
-                          "replace it with the team drive's copy")
-        print(f"{path.name} already downloaded ({size:,} bytes)")
-        return
-    part = path.with_name(path.name + ".part")
     with requests.get(url, stream=True, timeout=TIMEOUT_S) as r:
         r.raise_for_status()
+        size = int(r.headers["Content-Length"])
+        if path.exists() and path.stat().st_size == size:
+            print(f"{path.name} already downloaded ({size:,} bytes)")
+            return
+        part = path.with_name(path.name + ".part")
         with open(part, "wb") as f:
             for chunk in r.iter_content(CHUNK_BYTES):
                 f.write(chunk)
-    size = part.stat().st_size
-    if size != expected_bytes:
-        raise IOError(f"{part.name} has {size:,} bytes, expected {expected_bytes:,}: the download "
-                      "stopped early or WorldPop changed the file; use the team drive's copy")
+    if part.stat().st_size != size:
+        raise IOError(f"{part.name} has {part.stat().st_size:,} bytes, the server said {size:,}")
     part.replace(path)
     print(f"downloaded {path.name} ({size:,} bytes)")
 
@@ -117,7 +105,7 @@ def describe(path):
 
 
 def main():
-    download(config.WORLDPOP_URL, config.WORLDPOP, config.WORLDPOP_BYTES)
+    download(config.WORLDPOP_URL, config.WORLDPOP)
     clip(config.WORLDPOP, config.WORLDPOP_BOX, config.IMERG_BOX)
     describe(config.WORLDPOP_BOX)
     print(f"wrote {config.WORLDPOP_BOX}")

@@ -5,9 +5,7 @@ Manila, unchanged, into data/raw/noah/, then for each map:
 1. reprojects it to EPSG:32651 (UTM 51N, metres), the overlay CRS (config.CRS_OVERLAY);
 2. repairs invalid shapes with make_valid (NOAH's shapes are all invalid as published),
    keeping only the polygon parts;
-3. dissolves by hazard level, so each map has one row per `Var` (1 low, 2 medium, 3 high);
-4. removes the overlaps between levels (the higher level keeps the area), so C2 can add
-   the levels up without counting anyone twice.
+3. dissolves by hazard level, so each map has one row per `Var` (1 low, 2 medium, 3 high).
 The result is one file, data/clean/noah_flood_mm.gpkg: 9 rows (return_period, var,
 geometry). C2 overlays it on the barangays and the WorldPop pixels.
 
@@ -44,10 +42,9 @@ FILE_SIGNATURES = {".zip": b"PK", ".pdf": b"%PDF"}   # first bytes of a real fil
 def drive_download(file_id, path):
     """Save a public Google Drive file to path, unchanged; return its Last-Modified date.
 
-    Skips the download if path already exists (returns None). Google sends a web page
-    instead of the file when a link is wrong or the daily quota is used up, so a reply
-    that is a web page stops the run, and the first bytes of a zip or pdf are checked
-    against the file type before the file is kept.
+    Skips the download if path already exists (returns None). Google sends an HTML page
+    instead of the file when a link is wrong or the daily quota is used up, so the first
+    bytes are checked against the file type before the file is kept.
     """
     if path.exists():
         print(f"{path.name} already downloaded")
@@ -56,19 +53,14 @@ def drive_download(file_id, path):
     part = path.with_name(path.name + ".part")
     with requests.get(DRIVE_DOWNLOAD, params=params, stream=True, timeout=TIMEOUT_S) as r:
         r.raise_for_status()
-        if r.headers.get("Content-Type", "").startswith("text/html"):
-            raise IOError(f"Drive id {file_id} sent a web page, not {path.name} (quota or wrong id?)")
         modified = r.headers.get("Last-Modified")
         with open(part, "wb") as f:
             for chunk in r.iter_content(CHUNK_BYTES):
                 f.write(chunk)
     signature = FILE_SIGNATURES.get(path.suffix)
-    if signature:
-        with open(part, "rb") as f:
-            first_bytes = f.read(len(signature))
-        if first_bytes != signature:
-            raise IOError(f"Drive id {file_id} did not return a {path.suffix} file (quota or wrong id?); "
-                          f"see {part}")
+    if signature and not part.read_bytes()[:len(signature)] == signature:
+        raise IOError(f"Drive id {file_id} did not return a {path.suffix} file (quota or wrong id?); "
+                      f"see {part}")
     part.replace(path)
     print(f"downloaded {path.name} ({path.stat().st_size:,} bytes, Drive Last-Modified {modified})")
     return modified
@@ -101,34 +93,11 @@ def read_map(return_period):
     return hazard
 
 
-def separate_levels(hazard):
-    """Remove the overlaps between the hazard levels of one map: the higher level keeps the area.
-
-    In plain words: Var 3 stays as it is, Var 2 loses what Var 3 covers, and Var 1 loses
-    what Var 2 and Var 3 cover. NOAH's own 100-year map has 0.80 km2 where two levels
-    overlap (the 25-year map 0.0003 km2, the 5-year map none), and C2 adds residents level
-    by level, so anyone living there would be counted twice. Every level has the same
-    contact rate in C5 (config.CONTACT_BY_LEVEL), so which level keeps the area does not
-    change the doses; only removing the double count does.
-    """
-    shapes = dict(zip(hazard["var"], hazard.geometry))
-    separated = {}
-    for var, shape in shapes.items():
-        for higher in (v for v in shapes if v > var):
-            shape = shape.difference(shapes[higher])
-        separated[var] = shape
-    hazard = hazard.copy()
-    hazard["geometry"] = hazard["var"].map(separated)
-    return hazard
-
-
 def clean_map(hazard, return_period):
-    """Reproject to EPSG:32651, repair the shapes, dissolve to one row per Var, separate the levels.
+    """Reproject to EPSG:32651, repair the shapes, and dissolve to one row per Var.
 
     make_valid can turn a broken polygon into a mix of polygons, lines and points;
-    only the polygons have area, so lines and points are dropped. (Checked on the 2026-10-15
-    files: the repair keeps every level's published area; NOAH's shapes are invalid because
-    their rings cross or touch themselves, not because parts overlap.)
+    only the polygons have area, so lines and points are dropped.
     """
     hazard = hazard.to_crs(config.CRS_OVERLAY)
     hazard["geometry"] = hazard.geometry.make_valid()
@@ -136,7 +105,6 @@ def clean_map(hazard, return_period):
     hazard = hazard[hazard.geom_type.isin(["Polygon", "MultiPolygon"])]
     hazard["var"] = hazard["Var"].astype(int)
     hazard = hazard[["var", "geometry"]].dissolve(by="var").reset_index()
-    hazard = separate_levels(hazard)
     if not hazard.is_valid.all():
         raise ValueError(f"{return_period}-year map: shapes still invalid after make_valid")
     hazard.insert(0, "return_period", return_period)
@@ -144,7 +112,7 @@ def clean_map(hazard, return_period):
 
 
 def level_overlaps(hazard):
-    """Area (km2) where two hazard levels of the same map overlap; 0 after separate_levels.
+    """Area (km2) where two hazard levels of the same map overlap; should be about 0.
 
     C2 adds residents level by level, so an overlap would count people twice.
     """

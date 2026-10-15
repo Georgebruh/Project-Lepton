@@ -14,18 +14,14 @@ Notes: Made by `python -m src.noah` (task A8). Saved in data/raw/noah/, contents
 only the zip names differ, because all three are called MetroManila.zip on Drive.
 Each map: EPSG:4326, 3 MultiPolygon rows, one per Var (1 low 0-0.5 m, 2 medium >0.5-1.5 m,
 3 high >1.5 m, per metadata_flood.txt), and all 3 rows invalid as published.
-The script reprojects to EPSG:32651, runs make_valid (keeping polygon parts), dissolves
-by Var and removes the overlaps between levels (the higher level keeps the area) into
-data/clean/noah_flood_mm.gpkg (config.NOAH_FLOOD), 9 rows: return_period, var,
-area_km2, geometry. Areas as published (km2), Var 1 / 2 / 3, all:
+The script reprojects to EPSG:32651, runs make_valid (keeping polygon parts) and dissolves
+by Var into data/clean/noah_flood_mm.gpkg (config.NOAH_FLOOD), 9 rows: return_period, var,
+area_km2, geometry. Areas (km2), Var 1 / 2 / 3, all:
 5-year 83.37 / 71.66 / 27.20, 182.22; 25-year 82.36 / 105.96 / 46.93, 235.26;
 100-year 71.60 / 112.72 / 63.76, 248.08.
-make_valid keeps these areas (checked 2026-10-15 against shapely's "structure" repair:
-same areas to 0.01 km2; the shapes are invalid because rings cross or touch themselves).
-Hazard levels of the same map overlap in NOAH's own shapes: 5-year 0, 25-year 0.0003 km2,
-100-year 0.80 km2 in all (Var 1/2 0.41, 1/3 0.08, 2/3 0.30). C2 adds the levels up, so
-the higher level keeps that area. In the clean file the 100-year map is then
-71.10 / 112.42 / 63.76, 247.28 km2; the other two are unchanged at 2 decimals.
+Hazard levels of the same map overlap slightly after repair: 5-year 0, 25-year 0.0003 km2,
+100-year 0.80 km2 in all (Var 1/2 0.41, 1/3 0.08, 2/3 0.30). C2 must decide how to
+count residents there (otherwise they are counted twice).
 The maps reach lon 121.135, lat 14.785, which covers QC (OSM outline to 121.134, 14.776),
 so the Rizal and Bulacan maps are not needed for QC.
 Licence: ODC-ODbL (metadata_flood.txt); anything built from the maps is shared under ODbL.
