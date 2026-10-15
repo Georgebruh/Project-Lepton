@@ -10,6 +10,7 @@ DATA_RAW = ROOT / "data" / "raw"        # downloads, never edited
 DATA_CLEAN = ROOT / "data" / "clean"    # processed files
 RESULTS = ROOT / "results"
 
+CALENDAR = DATA_CLEAN / "calendar_weeks.csv"          # A3
 IMERG_DAILY = DATA_RAW / "imerg_daily.nc"             # A4
 ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"            # A14
 FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"  # A15
