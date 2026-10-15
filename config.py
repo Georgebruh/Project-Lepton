@@ -20,6 +20,7 @@ WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX
 OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
+POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
 
 # Boundaries and census (A5)
@@ -124,8 +125,9 @@ NOAH_METADATA_FILES = {                    # A8: NOAH's own notes, kept beside t
     "NOAH_License.pdf": "1z6MH_QI6gU_e2gNnhIMsKkENugHscNl9",
 }
 
-# Census reference dates as decimal years for pop_at (B1)
-CENSUS_T = {2015: 2015.58, 2020: 2020.33, 2024: 2024.50}  # 2015 = 1 Aug 2015; confirm with PSA
+# Census reference days for pop_at (B1). src/population.py turns them into decimal
+# years (1 Aug 2015 = 2015.58, 1 May 2020 = 2020.33, 1 Jul 2024 = 2024.50).
+CENSUS_DAYS = {2015: date(2015, 8, 1), 2020: date(2020, 5, 1), 2024: date(2024, 7, 1)}
 # A5: PSA official totals, from Table B of the PSA 2024 NCR workbook (census days
 # 1 Aug 2015, 1 May 2020, 1 Jul 2024). src/census.py stops if the workbook disagrees.
 CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
