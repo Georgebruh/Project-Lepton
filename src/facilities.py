@@ -12,6 +12,9 @@ Every page is saved unchanged in data/raw/nhfr/; a page already there is not fet
 again (delete the folder to refresh). The table is written to
 data/clean/health_facilities_qc.csv.
 
+Each facility's barangay code is checked against A5's 142 barangays, so run A5
+(python -m src.census) first.
+
 The registry's list and CSV export have no coordinates, which is why step 2 exists.
 Facility heads' names and e-mail addresses are on the detail pages; they are not
 needed and are left out of the table.
@@ -27,6 +30,7 @@ import html
 import re
 import time
 
+import geopandas as gpd
 import pandas as pd
 import requests
 
@@ -158,6 +162,36 @@ def check_table(table):
         print(far[["facility_code", "name", "lat", "lon"]].to_string(index=False))
 
 
+def check_barangays(table):
+    """Stop if a facility's barangay is not one of A5's; list facilities outside their barangay.
+
+    C7 joins facilities to barangays on psgc, so a code that A5's barangays_qc.gpkg does not
+    have would leave that barangay without its health center. A facility whose point lies
+    outside its own barangay's polygon is only listed, with the distance in metres: registry
+    coordinates can be a little off near a boundary, but a far one points to a wrong
+    location, which matters when C7 sends a barangay to its nearest center.
+    """
+    if not config.BARANGAYS_QC.exists():
+        raise FileNotFoundError(f"{config.BARANGAYS_QC} not found: run task A5 first (python -m src.census)")
+    barangays = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc"])
+    unknown = table[~table["psgc"].isin(barangays["psgc"])]
+    if len(unknown):
+        raise ValueError(f"barangay PSGC not among A5's {len(barangays)} barangays:\n"
+                         f"{unknown[['facility_code', 'name', 'barangay_name', 'psgc']]}")
+
+    located = table.dropna(subset=["lat", "lon"])
+    points = gpd.GeoSeries(gpd.points_from_xy(located["lon"], located["lat"]), index=located.index,
+                           crs="EPSG:4326").to_crs(config.CRS_OVERLAY)
+    shapes = barangays.set_index("psgc").geometry.to_crs(config.CRS_OVERLAY)
+    own = gpd.GeoSeries(located["psgc"].map(shapes), crs=config.CRS_OVERLAY)
+    metres = points.distance(own).round()          # 0 when inside its own barangay
+    outside = located.assign(metres=metres)[metres > 0]
+    if len(outside):
+        print(f"NOTE: {len(outside)} facilities lie outside their own barangay (inspect the far ones):")
+        print(outside.sort_values("metres", ascending=False)
+              [["facility_code", "name", "barangay_name", "metres"]].to_string(index=False))
+
+
 def main():
     config.NHFR_RAW.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
@@ -170,6 +204,7 @@ def main():
         records.append(detail_fields(page))
     table = clean_table(records)
     check_table(table)
+    check_barangays(table)
 
     table.to_csv(config.FACILITIES_QC, index=False)
     print(table["facility_type"].value_counts().to_string())
