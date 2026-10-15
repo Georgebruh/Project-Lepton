@@ -1,13 +1,17 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
 Run from the repository root:  python -m src.checks
-A check that is not built yet is reported as SKIP. Any FAIL stops work:
-the script exits with code 1.
+A check that is not built yet, or whose data file is not on this computer, is
+reported as SKIP. Any FAIL stops work: the script exits with code 1.
+A check may return a short text, printed after PASS.
 """
 
 import sys
 from datetime import date
 
+import numpy as np
+import pandas as pd
+import xarray as xr
 from epiweeks import Week, Year
 
 import config
@@ -15,6 +19,12 @@ import config
 
 class NotBuilt(Exception):
     """Raised by a check whose task has not been done yet."""
+
+
+def need_file(path, task):
+    """Raise NotBuilt if a task's output file is not on this computer."""
+    if not path.exists():
+        raise NotBuilt(f"{path.name} not found: run task {task} or copy the file from the team drive")
 
 
 def s1_calendar():
@@ -60,6 +70,61 @@ def s3_census():
     assert len(age) == config.QC_BARANGAYS * 2 * 81, f"age table has {len(age)} rows, expected 142 x 2 sexes x 81 ages"
     by_brgy = age.groupby("psgc")["pop"].sum()
     assert (by_brgy == brgy.set_index("psgc")["pop_2020"]).all(), "single ages do not add up to pop_2020"
+def s2_rain_file():
+    """S2 (A4): scan imerg_daily.nc in the A4 box.
+
+    Passes when: the cells are exactly the A4 box; there is one value per UTC day from
+    IMERG_START with no day missing; no value is a fill value (stored as missing) or
+    negative; and big storms show up as wet days, which proves the dates and the place
+    are right. Days are ranked by the plain average over the box's cells (1 = wettest):
+    Carina's wettest day (23-25 July 2024) must be in 2024's wettest 5% of days, and
+    each of S2_KNOWN_STORMS must have a day in the whole record's wettest 1%.
+    (IMERG ranks Carina only #10 of 2024: satellites under-read long monsoon rain.)
+    """
+    need_file(config.IMERG_DAILY, "A4 (python -m src.imerg)")
+    with xr.open_dataset(config.IMERG_DAILY) as ds:
+        rain = ds["precipitation"].load()
+
+    # The box: cell centres run from half a cell inside one edge to half a cell inside the other.
+    # Rule 8: lon and lat are always picked by name.
+    lon_min, lat_min, lon_max, lat_max = config.IMERG_BOX
+    half = config.IMERG_CELL_DEG / 2
+    for name, low, high in (("lon", lon_min, lon_max), ("lat", lat_min, lat_max)):
+        centres = rain[name].values
+        expected = round((high - low) / config.IMERG_CELL_DEG)
+        assert len(centres) == expected, f"{len(centres)} {name} cells, expected {expected}"
+        assert np.isclose(centres.min(), low + half, atol=1e-3), f"{name} starts at {centres.min()}"
+        assert np.isclose(centres.max(), high - half, atol=1e-3), f"{name} ends at {centres.max()}"
+
+    days = pd.DatetimeIndex(rain["time"].values)
+    assert days.is_unique, "a day appears twice"
+    assert days[0] == pd.Timestamp(config.IMERG_START), f"first day is {days[0]:%Y-%m-%d}"
+    missing = pd.date_range(days[0], days[-1], freq="D").difference(days)
+    assert len(missing) == 0, f"{len(missing)} days missing, first {missing[0]:%Y-%m-%d}"
+
+    fill_days = days[rain.isnull().any(dim=["lon", "lat"]).values]  # fill values are read in as missing
+    assert len(fill_days) == 0, f"fill values on {len(fill_days)} days, first {fill_days[0]:%Y-%m-%d}"
+    assert float(rain.min()) >= 0, f"negative rain: {float(rain.min())} mm"
+
+    box_mean = rain.mean(dim=["lon", "lat"]).to_series()
+
+    carina = config.STORMS["carina_2024"]
+    first, last = carina["wettest_days"]
+    year = box_mean[box_mean.index.year == carina["year"]]
+    year_rank = year.rank(ascending=False, method="min").astype(int)
+    carina_best = year_rank[pd.Timestamp(first):pd.Timestamp(last)].min()
+    carina_text = f"Carina #{carina_best} of {len(year)} days in {carina['year']}"
+    assert carina_best <= config.S2_CARINA_TOP_SHARE * len(year), carina_text
+
+    record_rank = box_mean.rank(ascending=False, method="min").astype(int)
+    storm_text = []
+    for name, (first, last) in config.S2_KNOWN_STORMS.items():
+        best = record_rank[pd.Timestamp(first):pd.Timestamp(last)].min()
+        storm_text.append(f"{name} #{best}")
+        assert best <= config.S2_KNOWN_STORMS_TOP_SHARE * len(box_mean), (
+            f"{name}'s wettest day is #{best} of {len(box_mean)} days")
+    return (f"{len(days)} days {days[0]:%Y-%m-%d} to {days[-1]:%Y-%m-%d}; {carina_text}; "
+            f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
 def not_built(task):
@@ -73,6 +138,8 @@ CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": not_built("A4"),
     "S3 census join": s3_census,
+    "S2 rain file": s2_rain_file,
+    "S3 census join": not_built("A5"),
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
@@ -89,8 +156,8 @@ def main():
     failed = 0
     for name, check in CHECKS.items():
         try:
-            check()
-            print(f"PASS  {name}")
+            detail = check()
+            print(f"PASS  {name}" + (f" ({detail})" if detail else ""))
         except NotBuilt as e:
             print(f"SKIP  {name} ({e})")
         except Exception as e:

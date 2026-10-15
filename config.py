@@ -55,7 +55,11 @@ SUBMIT = date(2026, 10, 23)
 # ---------------------------------------------------------------------------
 IMERG_PRODUCT = "GPM_3IMERGDL"
 IMERG_VERSION = "07"
-IMERG_START = date(2000, 6, 1)
+IMERG_START = date(2000, 6, 1)             # NASA's catalogue lists Late daily files from 1998-01-01; the plan starts here
+IMERG_SUBSETS = DATA_RAW / "imerg_daily"   # A4: one small file per UTC day, stacked into IMERG_DAILY
+IMERG_VARIABLES = ("precipitation", "precipitation_cnt")  # rain in mm/day; valid half-hours (of 48) behind it
+IMERG_DOWNLOAD_WORKERS = 4                 # downloads at once; keep it small, NASA's server is shared
+EARTHDATA_TOKEN_FILE = Path.home() / "earthdata_token.txt"  # A4: your NASA login token; outside the repo, never share it
 IMERG_KEEP_2000 = True                     # assumption: keep Jun-Dec 2000; refit once without it
 ERA5_YEARS = (2000, 2025)                  # assumption: same years as IMERG, A14
 OPEN_METEO_HOUR_SHIFT = -1                 # shift hourly totals back 1 h before summing UTC days
@@ -167,6 +171,20 @@ STORMS = {
     "carina_2024": {"year": 2024, "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)), "D": None},
     "floods_2025": {"year": 2025, "wettest_days": None, "D": None},
     "habagat_2026": {"year": 2026, "wettest_days": None, "D": None},
+}
+
+# ---------------------------------------------------------------------------
+# Sanity checks (src/checks.py)
+# ---------------------------------------------------------------------------
+S2_CARINA_TOP_SHARE = 0.05                 # S2: Carina's wettest day must be in 2024's wettest 5% of days
+S2_KNOWN_STORMS_TOP_SHARE = 0.01           # S2: each storm below must have a day in the record's wettest 1%
+# Metro Manila's worst rain events as UTC days: from the day before the Philippine dates
+# (00:00-08:00 PHT falls in the previous UTC day) to the last Philippine date.
+S2_KNOWN_STORMS = {
+    "ondoy_2009": (date(2009, 9, 25), date(2009, 9, 26)),      # PHT 26 Sep 2009 (Ketsana)
+    "habagat_2012": (date(2012, 8, 5), date(2012, 8, 8)),      # PHT 6-8 Aug 2012 (with Saola/Gener)
+    "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
+    "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
 
 # ---------------------------------------------------------------------------
