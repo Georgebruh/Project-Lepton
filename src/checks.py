@@ -15,6 +15,7 @@ import xarray as xr
 from epiweeks import Week, Year
 
 import config
+from src import weeks
 
 
 class NotBuilt(Exception):
@@ -31,7 +32,8 @@ def s1_calendar():
     """S1 (A3): CDC/MMWR weeks.
 
     9 Aug 2026 is 2026 week 32 (9-15 Aug); 2020 and 2025 have 53 weeks;
-    2015 week 1 starts 4 Jan 2015.
+    2015 week 1 starts 4 Jan 2015. Then the same on the A3 calendar table,
+    plus: every week index covers 7 days with no gaps, and week 53 maps to 52.
     """
     wk = Week.fromdate(date(2026, 8, 9))
     assert (wk.year, wk.week) == (2026, 32), f"got {wk}"
@@ -40,6 +42,22 @@ def s1_calendar():
     for year in (2020, 2025):
         assert Year(year).totalweeks() == 53, f"{year} has {Year(year).totalweeks()} weeks"
     assert Week(2015, 1).startdate() == config.FIRST_WEEK_START
+
+    # The A3 table: the same answers, plus a gap-free week index.
+    table = weeks.build_calendar()
+    row = table.set_index("date").loc[date(2026, 8, 9)]
+    assert (row["year"], row["week"]) == (2026, 32), f"got {row['year']} week {row['week']}"
+    assert table["date"].iloc[0] == config.FIRST_WEEK_START
+    assert table["week_index"].iloc[0] == 0
+    per_week = table.groupby("week_index").size()
+    assert (per_week == 7).all(), "every week index must cover exactly 7 days"
+    assert (per_week.index == range(len(per_week))).all(), "week index has a gap"
+    for year in (2020, 2025):
+        n = table.loc[table["year"] == year, "week"].nunique()
+        assert n == 53, f"{year} has {n} weeks in the table"
+        wk53 = table[(table["year"] == year) & (table["week"] == 53)]
+        assert (wk53["week_of_year"] == 52).all(), f"{year} week 53 not mapped to 52"
+    assert table["week_of_year"].max() == config.MAX_WEEK
 
 
 def s3_census():
@@ -50,7 +68,6 @@ def s3_census():
     census totals; the 2020 single ages add up to each barangay's 2020 total.
     """
     import geopandas as gpd
-    import pandas as pd
 
     if not config.BARANGAYS_QC.exists():
         raise NotBuilt("needs task A5 (run python -m src.census)")
@@ -70,6 +87,8 @@ def s3_census():
     assert len(age) == config.QC_BARANGAYS * 2 * 81, f"age table has {len(age)} rows, expected 142 x 2 sexes x 81 ages"
     by_brgy = age.groupby("psgc")["pop"].sum()
     assert (by_brgy == brgy.set_index("psgc")["pop_2020"]).all(), "single ages do not add up to pop_2020"
+
+
 def s2_rain_file():
     """S2 (A4): scan imerg_daily.nc in the A4 box.
 
@@ -136,10 +155,8 @@ def not_built(task):
 
 CHECKS = {
     "S1 calendar": s1_calendar,
-    "S2 rain file": not_built("A4"),
-    "S3 census join": s3_census,
     "S2 rain file": s2_rain_file,
-    "S3 census join": not_built("A5"),
+    "S3 census join": s3_census,
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),

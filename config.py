@@ -10,11 +10,13 @@ DATA_RAW = ROOT / "data" / "raw"        # downloads, never edited
 DATA_CLEAN = ROOT / "data" / "clean"    # processed files
 RESULTS = ROOT / "results"
 
+CALENDAR = DATA_CLEAN / "calendar_weeks.csv"          # A3
 IMERG_DAILY = DATA_RAW / "imerg_daily.nc"             # A4
 ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"            # A14
 FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"  # A15
 CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"        # A7
-WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6
+WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6: whole country, unchanged
+WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX; C1 starts here
 OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
@@ -31,6 +33,9 @@ AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop 
 # Health facilities (A10)
 NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
 FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # A10: one row per QC facility, with coordinates
+# NOAH flood hazard maps (A8)
+NOAH_RAW = DATA_RAW / "noah"                          # A8: the zips as downloaded, plus NOAH's metadata
+NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # A8: 9 rows (3 maps x Var 1-3), EPSG:32651
 
 # ---------------------------------------------------------------------------
 # Calendar and periods
@@ -81,6 +86,11 @@ CATCHMENT_OUTLETS = {
 # San Juan: its sub-basin is the Pasig's last one, which also receives Laguna de Bay
 # (4,034 km2 upstream). Tracing upstream would add the whole lake basin, which does not
 # drain into the San Juan River, so it keeps its own sub-basin only.
+# WorldPop (A6): constrained 2024 counts, 100 m, R2025A v1. Catalogue page
+# https://hub.worldpop.org/geodata/summary?id=74942 (the plan's id=78816 is the 2026 1 km grid).
+WORLDPOP_URL = ("https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2024/"
+                "PHL/v1/100m/constrained/phl_pop_2024_CN_100m_R2025A_v1.tif")
+
 IMERG_CELL_DEG = 0.1
 IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max); printed by src/catchments.py
 
@@ -99,6 +109,20 @@ NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station
 NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
+# A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
+# (https://noah.up.edu.ph, "Downloads") links the public folder
+# https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o
+# -> Flood -> 5yr / 25yr / 100yr -> MetroManila.zip ("Metro Manila.zip" for 100yr).
+NOAH_FLOOD_FILES = {
+    5: "1IC5LnscUt7D_5c1BvlwcngR3cFKgDshV",
+    25: "1VAcWkVeY2uXWhZVvDYh5viedhihwBBci",
+    100: "1n-IrwfWqLRDyDg-wmt68luk_DU5Xzg9S",
+}
+NOAH_METADATA_FILES = {                    # A8: NOAH's own notes, kept beside the maps
+    "metadata_flood.txt": "1qbOoN_CZ6AUIk22owtJxRFENALIWCszq",
+    "01ReadMe_Flood.pdf": "1Z6gT7FDUCMps-qHT5Jiy7nwCdaH0rhwR",
+    "NOAH_License.pdf": "1z6MH_QI6gU_e2gNnhIMsKkENugHscNl9",
+}
 
 # Census reference dates as decimal years for pop_at (B1)
 CENSUS_T = {2015: 2015.58, 2020: 2020.33, 2024: 2024.50}  # 2015 = 1 Aug 2015; confirm with PSA
