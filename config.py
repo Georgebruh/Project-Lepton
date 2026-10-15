@@ -15,7 +15,8 @@ IMERG_DAILY = DATA_RAW / "imerg_daily.nc"             # A4
 ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"            # A14
 FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"  # A15
 CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"        # A7
-WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6
+WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6: whole country, unchanged
+WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX; C1 starts here
 OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
@@ -78,6 +79,11 @@ CATCHMENT_OUTLETS = {
 # San Juan: its sub-basin is the Pasig's last one, which also receives Laguna de Bay
 # (4,034 km2 upstream). Tracing upstream would add the whole lake basin, which does not
 # drain into the San Juan River, so it keeps its own sub-basin only.
+# WorldPop (A6): constrained 2024 counts, 100 m, R2025A v1. Catalogue page
+# https://hub.worldpop.org/geodata/summary?id=74942 (the plan's id=78816 is the 2026 1 km grid).
+WORLDPOP_URL = ("https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2024/"
+                "PHL/v1/100m/constrained/phl_pop_2024_CN_100m_R2025A_v1.tif")
+
 IMERG_CELL_DEG = 0.1
 IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max); printed by src/catchments.py
 
