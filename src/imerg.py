@@ -34,6 +34,9 @@ Run from the repository root:
     python -m src.imerg --start 2024-07-23 --end 2024-07-25   # Carina only: tests your login
     python -m src.imerg                                       # every day (an hour or more)
 then run the sanity checks (S2):  python -m src.checks
+Only a run without --start and --end writes imerg_daily.nc. A test run with either
+option writes imerg_daily_<first day>_<last day>.nc beside it, so a 3-day test never
+replaces the full record.
 """
 
 import argparse
@@ -324,12 +327,26 @@ def save(ds, path):
     part.replace(path)
 
 
+def output_path(full_run, granules):
+    """Where the stacked file is saved.
+
+    A full run (no --start, no --end) writes config.IMERG_DAILY, the file check S2 and
+    task C3 read. A test run writes imerg_daily_<first day>_<last day>.nc beside it.
+    """
+    if full_run:
+        return config.IMERG_DAILY
+    first, last = granules["date"].iloc[0], granules["date"].iloc[-1]
+    return config.IMERG_DAILY.with_name(f"imerg_daily_{first:%Y%m%d}_{last:%Y%m%d}.nc")
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Download IMERG Late daily rain over the A4 box (task A4).")
-    p.add_argument("--start", type=date.fromisoformat, default=config.IMERG_START,
-                   help=f"first UTC day, YYYY-MM-DD (default {config.IMERG_START})")
-    p.add_argument("--end", type=date.fromisoformat, default=date.today(),
-                   help="last UTC day, YYYY-MM-DD (default: the latest NASA has)")
+    p.add_argument("--start", type=date.fromisoformat,
+                   help=f"first UTC day, YYYY-MM-DD (default {config.IMERG_START}); "
+                        "a test run, saved under its own name")
+    p.add_argument("--end", type=date.fromisoformat,
+                   help="last UTC day, YYYY-MM-DD (default: the latest NASA has); "
+                        "a test run, saved under its own name")
     p.add_argument("--workers", type=int, default=config.IMERG_DOWNLOAD_WORKERS,
                    help=f"downloads at once (default {config.IMERG_DOWNLOAD_WORKERS})")
     return p.parse_args()
@@ -337,7 +354,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    granules = find_granules(args.start, args.end)
+    full_run = args.start is None and args.end is None
+    granules = find_granules(args.start or config.IMERG_START, args.end or date.today())
     print(f"CMR lists {len(granules)} days, {granules['date'].iloc[0]:%Y-%m-%d} "
           f"to {granules['date'].iloc[-1]:%Y-%m-%d}")
 
@@ -352,13 +370,17 @@ def main():
 
     download_all(session, granules, constraint, folder, args.workers)
     ds = combine(granules, folder)
-    save(ds, config.IMERG_DAILY)
+    out = output_path(full_run, granules)
+    save(ds, out)
 
     box_mean = ds["precipitation"].mean(dim=["lon", "lat"])
     wettest = box_mean.idxmax(dim="time").values
     print(f"\n{ds.sizes['time']} days x {ds.sizes['lon']} lon x {ds.sizes['lat']} lat cells")
     print(f"wettest day (box average): {pd.Timestamp(wettest):%Y-%m-%d}, {float(box_mean.max()):.1f} mm")
-    print(f"wrote {config.IMERG_DAILY}; now run: python -m src.checks")
+    if full_run:
+        print(f"wrote {out}; now run: python -m src.checks")
+    else:
+        print(f"wrote {out} (test run; {config.IMERG_DAILY.name} was not changed)")
 
 
 if __name__ == "__main__":

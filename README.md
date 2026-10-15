@@ -3,3 +3,35 @@ Leptospirosis Exposure Prediction &amp; Targeting Operational Network
 
 A few days’ warning before a storm lets health offices send doxycycline to the barangays most likely to flood, and a week’s warning lets hospitals prepare for the cases that follow. Project LEPTON will give Local Government Units both warnings. Standard forecasting models smooth over the sharp post-typhoon spikes that define leptospirosis outbreaks, so health offices cannot position prophylaxis where needed. Project LEPTON will run on one shared flood computation combining NASA IMERG rainfall, Project NOAH flood hazard maps and WorldPop population data to estimate how many residents of each barangay a storm exposes. Layer 1, a negative binomial regression on season, recent cases, two weeks of rainfall and a flood exposure index, will forecast next week’s city-level cases with a 90% range and the probability of crossing the epidemic threshold. Layer 2 will convert 1- to 3-day rain forecasts into barangay-level prophylaxis stock under DOH Memorandum 2023-0309, serving the high-risk tier first when supplies run short. Layer 1 will be tested in a weekly rolling-origin backtest (2018 to 2026) against two seasonal baselines and the published Prophet-XGBoost hybrid, with mean absolute error as the primary endpoint. Layer 2 will be tested on Typhoon Carina (2024) and the 2025 and 2026 floods against flood reports.
 
+## Setup
+
+1. Install Python 3.13, the version `requirements.txt` is pinned for.
+2. From the repository root, make a virtual environment and install the packages:
+
+   ```
+   python -m venv .venv
+   .venv\Scripts\activate            (Windows; on macOS or Linux: source .venv/bin/activate)
+   pip install -r requirements.txt
+   ```
+
+3. Copy the data files from the team drive into `data/raw/` and `data/clean/`. They are not in
+   git. Each file in `data/raw/` has a note, `<file>.md`, saying where it was downloaded from.
+4. Run the sanity checks:
+
+   ```
+   python -m src.checks
+   ```
+
+   Each check prints PASS, SKIP (its task is not built yet, or its data file is not on this
+   computer) or FAIL. A FAIL stops work until it is fixed. Rerun the checks after any change.
+
+## Rebuilding the data (Workstream A)
+
+Run from the repository root, in this order (A4's box comes from A7's catchments):
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| A7 | `python -m src.catchments` | `data/clean/catchments_qc.gpkg`, `results/catchments_qc.png` |
+| A4 | `python -m src.imerg` | `data/raw/imerg_daily.nc`; needs a NASA Earthdata login (steps at the top of `src/imerg.py`) |
+| A5 | `python -m src.census` | `data/clean/barangays_qc.gpkg`, `census_qc.csv`, `age_sex_2020_qc.csv` |
+

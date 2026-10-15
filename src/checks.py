@@ -50,7 +50,6 @@ def s3_census():
     census totals; the 2020 single ages add up to each barangay's 2020 total.
     """
     import geopandas as gpd
-    import pandas as pd
 
     if not config.BARANGAYS_QC.exists():
         raise NotBuilt("needs task A5 (run python -m src.census)")
@@ -70,6 +69,8 @@ def s3_census():
     assert len(age) == config.QC_BARANGAYS * 2 * 81, f"age table has {len(age)} rows, expected 142 x 2 sexes x 81 ages"
     by_brgy = age.groupby("psgc")["pop"].sum()
     assert (by_brgy == brgy.set_index("psgc")["pop_2020"]).all(), "single ages do not add up to pop_2020"
+
+
 def s2_rain_file():
     """S2 (A4): scan imerg_daily.nc in the A4 box.
 
@@ -136,10 +137,8 @@ def not_built(task):
 
 CHECKS = {
     "S1 calendar": s1_calendar,
-    "S2 rain file": not_built("A4"),
-    "S3 census join": s3_census,
     "S2 rain file": s2_rain_file,
-    "S3 census join": not_built("A5"),
+    "S3 census join": s3_census,
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
