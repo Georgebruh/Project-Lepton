@@ -20,6 +20,14 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
 
+# Boundaries and census (A5)
+BOUNDARIES_ZIP = DATA_RAW / "phl_admin_boundaries.gdb.zip"           # HDX COD-AB v03
+CENSUS_2024_XLSX = DATA_RAW / "NCR - Table C - Population by Barangay.xlsx"  # PSA 2024 POPCEN
+CENSUS_2020_AGE_XLSX = DATA_RAW / "2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx"  # HDX
+BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with both census totals
+CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
+AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
+
 # ---------------------------------------------------------------------------
 # Calendar and periods
 # ---------------------------------------------------------------------------
@@ -75,12 +83,17 @@ IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max
 CRS_OVERLAY = "EPSG:32651"                 # overlays
 CRS_EXACTEXTRACT = "EPSG:4326"             # convert to this before exactextract
 QC_BARANGAYS = 142                         # check S3
+QC_HDX_ADM3_PCODE = "PH1307404"            # QC in the HDX boundaries (A5)
+QC_PSGC_PREFIX = "13813"                   # QC in the official 10-digit PSGC: 13813xxxxx (A5)
+QC_SHEET_2024 = "Quezon City"              # QC's sheet in the PSA 2024 workbook (A5)
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
 
 # Census reference dates as decimal years for pop_at (B1)
 CENSUS_T = {2015: 2015.58, 2020: 2020.33, 2024: 2024.50}  # 2015 = 1 Aug 2015; confirm with PSA
-CENSUS_POP_QC = {2015: None, 2020: None, 2024: None}      # A5 fills these in
+# A5: PSA official totals, from Table B of the PSA 2024 NCR workbook (census days
+# 1 Aug 2015, 1 May 2020, 1 Jul 2024). src/census.py stops if the workbook disagrees.
+CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 
 # ---------------------------------------------------------------------------
 # Layer 1: case data view (B2)
