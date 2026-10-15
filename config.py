@@ -28,6 +28,10 @@ BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with bo
 CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
 AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
 
+# Health facilities (A10)
+NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
+FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # A10: one row per QC facility, with coordinates
+
 # ---------------------------------------------------------------------------
 # Calendar and periods
 # ---------------------------------------------------------------------------
@@ -86,6 +90,13 @@ QC_BARANGAYS = 142                         # check S3
 QC_HDX_ADM3_PCODE = "PH1307404"            # QC in the HDX boundaries (A5)
 QC_PSGC_PREFIX = "13813"                   # QC in the official 10-digit PSGC: 13813xxxxx (A5)
 QC_SHEET_2024 = "Quezon City"              # QC's sheet in the PSA 2024 workbook (A5)
+# A10: DOH National Health Facility Registry (https://nhfr.doh.gov.ph), list "Active facilities".
+NHFR_REGION_NCR = "13"
+NHFR_QC_NAME = "QUEZON CITY (HUC)"         # QC in the registry's Province Name column
+# Registry facility types kept. QC's health centers are registered as "Rural Health Unit"
+# (2026-10-15: 67 of them, 1 Barangay Health Station, 1 City Health Office).
+NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station", "21": "City Health Office"}
+NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
 
