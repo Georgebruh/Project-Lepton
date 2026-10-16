@@ -1,4 +1,3 @@
-
 from datetime import date
 from pathlib import Path
 
@@ -22,6 +21,10 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
+
+# Benchmark data (A9)
+PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
+PARRENO_WEEKLY = DATA_CLEAN / "parreno_national_weekly.csv"      # A9: national leptospirosis by ISO week, for B3
 
 # Boundaries and census (A5)
 BOUNDARIES_ZIP = DATA_RAW / "phl_admin_boundaries.gdb.zip"           # HDX COD-AB v03
@@ -163,6 +166,13 @@ M3_XGB_PARAMS = {}                         # assumption: xgboost defaults
 M3_XGB_PARAMS_TEST = {"max_depth": 2}
 M3_TARGET_MAE = {"hybrid": 16.72, "prophet": 23.68}
 M3_TOLERANCE = 0.10
+
+# A9: layout of the Mendeley file. One row per week number; one column per disease and year,
+# named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").
+PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # confirm the DOI against Latigay & Gonzaga's references
+PARRENO_SHEET = 0                          # sheet name or position
+PARRENO_WEEK_COL = "Week"                  # the column holding the week number
+PARRENO_DISEASE_KEY = "Leptospirosis"      # columns whose name contains this (any case) and ends in a year
 
 # Forecast range (B6)
 THETA_WINDOW = 104                         # last 104 non-COVID past forecasts
