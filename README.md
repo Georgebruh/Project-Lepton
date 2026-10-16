@@ -40,3 +40,11 @@ checks its facilities against A5's barangays):
 | A8 | `python -m src.noah` | `data/raw/noah/` (the three maps and NOAH's notes), `data/clean/noah_flood_mm.gpkg`; can take over an hour |
 | A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
 
+## Layer 2: barangay doses (Workstream C)
+
+Run after Workstream A, in this order:
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| C1 | `python -m src.rescale` | `data/clean/worldpop_scale_qc.csv`; needs A5 and A6 |
+

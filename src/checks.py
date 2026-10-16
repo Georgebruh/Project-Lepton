@@ -146,6 +146,40 @@ def s2_rain_file():
             f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
+def s8_census_fit():
+    """S8, first part (C1): each barangay's rescaled pixels add up to its 2024 census total.
+
+    Counts every barangay's census-fitted residents again, from the WorldPop grid and the
+    barangay shapes, with rescale.rescaled_residents (the function C2 uses for the hazard
+    levels), and passes when each is within 0.1% (config.S8_CENSUS_TOLERANCE) of its
+    pop_2024. That also catches a scale file left over from an older grid or older shapes.
+    The scale file must hold one positive factor for each of A5's 142 barangays.
+    The second and third parts (exposed residents) need C2: see "S8 overlay".
+    """
+    import geopandas as gpd
+
+    from src import rescale
+
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
+    brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "pop_2024"])
+    scale = pd.read_csv(config.WORLDPOP_SCALE_QC, dtype={"psgc": str})
+
+    assert len(scale) == config.QC_BARANGAYS and scale["psgc"].is_unique, (
+        f"scale file has {len(scale)} rows, {scale['psgc'].nunique()} barangays")
+    assert set(scale["psgc"]) == set(brgy["psgc"]), "scale file and A5's barangays hold different barangays"
+    assert np.isfinite(scale["scale"]).all() and (scale["scale"] > 0).all(), "a scale factor is missing, 0 or negative"
+
+    fitted = rescale.rescaled_residents(brgy)
+    gap = (fitted / brgy["pop_2024"] - 1).abs()
+    worst = gap.idxmax()
+    assert gap[worst] <= config.S8_CENSUS_TOLERANCE, (
+        f"{brgy.loc[worst, 'psgc']}: rescaled pixels add up to {fitted[worst]:,.1f}, "
+        f"census {brgy.loc[worst, 'pop_2024']:,}")
+    return (f"{len(brgy)} barangays, largest gap {gap[worst]:.1e}; "
+            f"QC {fitted.sum():,.0f} vs census {brgy['pop_2024'].sum():,}")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -161,7 +195,8 @@ CHECKS = {
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
     "S7 breach and scores": not_built("B7"),
-    "S8 overlay": not_built("C1, C2"),
+    "S8 census fit": s8_census_fit,
+    "S8 overlay": not_built("C2"),
     "S9 return levels": not_built("C3"),
     "S10 shares and doses": not_built("C4, C6"),
     "S11 leakage": not_built("B10"),
