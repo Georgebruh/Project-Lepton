@@ -43,7 +43,7 @@ import pandas as pd
 import requests
 
 import config
-from src import catchments
+from src import catchments, flood_exposure
 from src.ecmwf import SAME_POINT_DEG, utc_day_totals
 
 HISTORICAL_API = "https://archive-api.open-meteo.com/v1/archive"
@@ -210,13 +210,16 @@ def main():
     part.replace(config.ERA5_DAILY)
     print(f"\nwrote {config.ERA5_DAILY} ({len(out)} rows)")
 
-    # A quick look for the person running it: each year's wettest catchment day, as C3 and C9 will use it.
+    # A quick look for the person running it: each year's wettest catchment n-day total
+    # (config.RAIN_ACCUM_DAYS), the rain measure C3 and C9 use.
+    days = config.RAIN_ACCUM_DAYS
     rain = catchment_rain(out)
     rain.index = pd.to_datetime(rain.index)
-    wettest = rain.groupby(rain.index.year).agg(["idxmax", "max"])
-    wettest.columns = ["wettest UTC day", "catchment mm"]
-    wettest["wettest UTC day"] = wettest["wettest UTC day"].dt.strftime("%Y-%m-%d")
-    print("\nEach year's wettest UTC day over the catchments (ERA5):")
+    totals = flood_exposure.n_day_totals(rain, days)
+    wettest = totals.groupby(totals.index.year).agg(["idxmax", "max"])
+    wettest.columns = ["last UTC day", "catchment mm"]
+    wettest["last UTC day"] = wettest["last UTC day"].dt.strftime("%Y-%m-%d")
+    print(f"\nEach year's wettest {days}-day total over the catchments (ERA5), by its last UTC day:")
     print(wettest.round(1).to_string())
 
 
