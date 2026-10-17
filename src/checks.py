@@ -466,6 +466,8 @@ def s9_exposure_index():
     return (f"{config.RAIN_ACCUM_DAYS}-day totals; {len(fit_years)} fit years x {len(last)} weeks; "
             f"EI above 0 in {(last['ei'] > 0).mean():.1%} "
             f"of weeks, highest {last['ei'].max():.1f}% ({config.BACKTEST_LAST_YEAR} fit)")
+
+
 def s10_shares():
     """S10, first part (C4): child, pregnant and adult shares.
 
@@ -750,7 +752,6 @@ CHECKS = {
     "S9 return levels": s9_return_levels,
     "S9 exposure index": s9_exposure_index,
     "S10 shares and doses": not_built("C4, C6"),
-    "S9 return levels": not_built("C3"),
     "S10 shares": s10_shares,
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,
