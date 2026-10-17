@@ -43,7 +43,8 @@ rows cover every week 2015 onward, all scored with the levels fitted on years be
 Output: data/clean/ei_weekly.csv (config.EI_WEEKLY), one row per fit year and MMWR week:
     fit_year, rain_days, week_index, year, week, rmax_mm, ei
 rain_days is the n the file was made with. Weeks run 2015 week 1 to the last week IMERG has
-all 7 days of. The comparison run (--days 1) writes ei_weekly_1day.csv beside it instead.
+all 7 days of. The comparison runs write their own files beside it: --days 1 writes
+ei_weekly_1day.csv, --without-2000 writes ei_weekly_no2000.csv.
 
 C8 and C9 call n_day_totals, annual_maxima, return_levels and graded_exposure for each
 storm, with the same config.RAIN_ACCUM_DAYS (C9 on ERA5 and the ECMWF forecasts);
@@ -51,8 +52,10 @@ graded_exposure returns the psgc, var, residents table C5's exposed_with_tiers t
 
 Run from the repository root (needs A4's imerg_daily.nc, A7's catchments, A5's census and
 C2's overlay_qc.csv):
-    python -m src.flood_exposure            # 3-day totals (config.RAIN_ACCUM_DAYS): ei_weekly.csv
-    python -m src.flood_exposure --days 1   # single-day comparison run: ei_weekly_1day.csv
+    python -m src.flood_exposure                  # 3-day totals (config.RAIN_ACCUM_DAYS): ei_weekly.csv
+    python -m src.flood_exposure --days 1         # single-day comparison run: ei_weekly_1day.csv
+    python -m src.flood_exposure --without-2000   # refit without June-December 2000 (plan
+                                                  # correction 7): ei_weekly_no2000.csv
 Then run the checks (S9):  python -m src.checks
 """
 
@@ -143,19 +146,20 @@ def n_day_totals(daily, days=config.RAIN_ACCUM_DAYS):
     return daily.rolling(days).sum().dropna()
 
 
-def annual_maxima(totals):
+def annual_maxima(totals, keep_2000=config.IMERG_KEEP_2000):
     """Each year's wettest n-day total (mm), for every complete calendar year in the record.
 
     totals: n_day_totals. Each total belongs to the year of its last day. A year counts
     only if every one of its days has a total. The exception is 2000, whose record starts
     on config.IMERG_START (1 June; ERA5 starts there too, config.ERA5_START): it is kept
-    when config.IMERG_KEEP_2000 (June to December is the rainy season; refit once without it).
+    when keep_2000 (config.IMERG_KEEP_2000; June to December is the rainy season). The plan
+    refits once without it (correction 7): python -m src.flood_exposure --without-2000.
     """
     days_per_year = totals.groupby(totals.index.year).size()
     maxima = totals.groupby(totals.index.year).max()
     full = [y for y in maxima.index
             if days_per_year[y] == pd.Timestamp(year=y, month=12, day=31).dayofyear]  # 365 or 366
-    if config.IMERG_KEEP_2000 and config.IMERG_START.year in maxima.index:
+    if keep_2000 and config.IMERG_START.year in maxima.index:
         full = sorted(set(full) | {config.IMERG_START.year})
     return maxima.loc[full]
 
@@ -297,12 +301,17 @@ def storm_report(totals, maxima, overlay, qc_total_2024, days):
     return pd.DataFrame(rows).set_index("storm")
 
 
-def output_path(days):
-    """ei_weekly.csv for config.RAIN_ACCUM_DAYS; another n (the comparison run) gets its own
-    file, e.g. ei_weekly_1day.csv, so it never replaces the main one."""
-    if days == config.RAIN_ACCUM_DAYS:
+def output_path(days, keep_2000=config.IMERG_KEEP_2000):
+    """ei_weekly.csv for config's settings; a comparison run gets its own file, so it never
+    replaces the main one: ei_weekly_1day.csv for another n, ei_weekly_no2000.csv without 2000."""
+    parts = []
+    if days != config.RAIN_ACCUM_DAYS:
+        parts.append(f"{days}day")
+    if keep_2000 != config.IMERG_KEEP_2000:
+        parts.append("with2000" if keep_2000 else "no2000")
+    if not parts:
         return config.EI_WEEKLY
-    return config.EI_WEEKLY.with_name(f"{config.EI_WEEKLY.stem}_{days}day.csv")
+    return config.EI_WEEKLY.with_name(f"{config.EI_WEEKLY.stem}_{'_'.join(parts)}.csv")
 
 
 def parse_args():
@@ -310,21 +319,25 @@ def parse_args():
     parser.add_argument("--days", type=int, default=config.RAIN_ACCUM_DAYS,
                         help=f"days in the trigger rain total (default {config.RAIN_ACCUM_DAYS}; "
                              f"{config.RAIN_ACCUM_DAYS_TEST} = the single-day comparison run)")
+    parser.add_argument("--without-2000", action="store_true",
+                        help="refit without the partial year 2000 (June-December), the plan's comparison run")
     return parser.parse_args()
 
 
 def main():
-    days = parse_args().days
+    args = parse_args()
+    days = args.days
+    keep_2000 = config.IMERG_KEEP_2000 and not args.without_2000
     if days < 1:
         raise SystemExit("--days must be 1 or more")
     r24 = catchment_rain()
     totals = n_day_totals(r24, days)
-    maxima = annual_maxima(totals)
+    maxima = annual_maxima(totals, keep_2000)
     overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
     census = pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})
     qc_total_2024 = float(census["pop_2024"].sum())  # C1 fitted the map to these totals (S8)
     print(f"Trigger rain: {days}-day totals (config.RAIN_ACCUM_DAYS = {config.RAIN_ACCUM_DAYS}; "
-          f"1 = the single wettest day)")
+          f"1 = the single wettest day); June-December 2000 {'kept' if keep_2000 else 'left out'}")
     print(f"R24 for {len(r24)} UTC days, {r24.index[0]:%Y-%m-%d} to {r24.index[-1]:%Y-%m-%d}; "
           f"annual maxima for {len(maxima)} years ({maxima.index[0]}-{maxima.index[-1]})")
     print(f"QC 2024 total (EI denominator): {qc_total_2024:,.0f}")
@@ -342,7 +355,7 @@ def main():
 
     out = pd.concat(tables, ignore_index=True).assign(rain_days=days)
     out = out[COLUMNS].round({"rmax_mm": 2, "ei": 4})
-    path = output_path(days)
+    path = output_path(days, keep_2000)
     part = path.with_suffix(".part")
     out.to_csv(part, index=False)
     part.replace(path)
