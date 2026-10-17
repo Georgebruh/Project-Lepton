@@ -1,6 +1,6 @@
 Source URL: https://previous-runs-api.open-meteo.com/v1/forecast (Open-Meteo Previous Runs API;
   docs https://open-meteo.com/en/docs/previous-runs-api)
-Downloaded on (YYYY-MM-DD): 2026-10-16 (Carina, previous days 1-3); 2026-10-18 (all three
+Downloaded on (YYYY-MM-DD): 2026-10-16 (Carina, previous days 1-3); 2026-10-18 (all four
   storms, previous days 1-5)
 Downloaded by: George
 Version / release: the live archive, no version number. Model ECMWF IFS 0.25 degree
@@ -31,13 +31,18 @@ Notes: Made by `python -m src.ecmwf` (task A15). Saved in data/raw/ecmwf_previou
     carina_2024_ecmwf_ifs025_20240721_20240725.json (2026-10-18; 21-25 July 2024, days 1-5;
       covered). Its days 1-3 for 23-25 July match the 2026-10-16 file in every hour.
     floods_2025_ecmwf_ifs025_20250719_20250723.json (2026-10-18; 19-23 July 2025, days 1-5;
+      covered). Fetched for the first 2025 wettest days (21-23 July); A11 moved them to
+      17-19 July (commit f62bbb7), so it is no longer read by the code; kept as downloaded.
+    floods_2025_ecmwf_ifs025_20250715_20250719.json (2026-10-18; 15-19 July 2025, days 1-5;
       covered).
     habagat_2026_ecmwf_ifs025_20260806_20260810.json (2026-10-18; 6-10 August 2026, days 1-5;
       covered).
+    kristine_2024_ecmwf_ifs025_20241020_20241024.json (2026-10-18; 20-24 October 2024, days
+      1-5; covered). Severe Tropical Storm Kristine (Trami), added by A11 in f62bbb7.
   Check on 2026-10-18: every hour of every day at all 4 points for previous days 1-5, all
-  three storms. Carina, 23 July 2024, previous day 1: 91.7 mm over the catchments
+  four storms. Carina, 23 July 2024, previous day 1: 91.7 mm over the catchments
   (recomputed by hand from the reply: 55.2, 62.1, 63.6 and 119.4 mm at the 4 points).
-  Table: data/clean/forecasts_storms.csv (config.FORECASTS_STORMS), 300 rows: 3 storms x
+  Table: data/clean/forecasts_storms.csv (config.FORECASTS_STORMS), 400 rows: 4 storms x
   5 previous days x 5 UTC days x 4 cells.
 Cite: Zippenfenig, P. (2023). Open-Meteo.com Weather API [Computer software]. Zenodo.
   https://doi.org/10.5281/zenodo.7970649. Forecast data: ECMWF IFS open data, CC BY 4.0;
