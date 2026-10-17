@@ -173,8 +173,38 @@ M3_COVID_GAP_FACTOR = 0.5                  # missing lockdown weeks get 0.5 x se
 M3_RAINY_GAP_FACTOR = 1.0                  # missing Jun-Nov weeks get 1.0 x seasonal mean
 M3_XGB_PARAMS = {}                         # assumption: xgboost defaults
 M3_XGB_PARAMS_TEST = {"max_depth": 2}
+M3_XGB_ROUNDS = 100                        # assumption: XGBRegressor's default n_estimators (xgb.train alone uses 10)
 M3_TARGET_MAE = {"hybrid": 16.72, "prophet": 23.68}
 M3_TOLERANCE = 0.10
+# B3: the paper's Table I, all 18 forecast weeks (SARIMA not reproduced: R auto.arima)
+M3_TABLE_I = {
+    "hybrid": {"mae": 16.7237, "rmse": 21.9313, "smape": 38.7985, "bias": -0.7196},
+    "prophet": {"mae": 23.6831, "rmse": 28.1622, "smape": 50.6627, "bias": 1.0455},
+    "snaive": {"mae": 64.1782, "rmse": 97.5642, "smape": 93.6468, "bias": -34.4746},
+}
+M3_PEAK_CASES = 186                        # Table II: weeks with more than 186 cases (90th percentile)
+M3_TABLE_II = {
+    "hybrid": {"mae": 7.7409, "rmse": 7.8965, "smape": 2.8187, "bias": -1.5596},
+    "prophet": {"mae": 51.6640, "rmse": 52.5004, "smape": 19.1135, "bias": -9.3342},
+    "snaive": {"mae": 180.5000, "rmse": 218.1433, "smape": 103.8144, "bias": -122.5000},
+}
+M3_TABLE_III_DM = {"stat": -1.8242, "p": 0.04287}   # Hybrid vs Prophet
+# B3 diagnostics (python -m src.m3 --diagnose): XGBoost settings tried when the hybrid misses
+M3_DIAG_MAX_DEPTH = (1, 2, 3, 4, 6)
+M3_DIAG_ROUNDS = (10, 25, 50, 100, 200)
+M3_DIAG_ETA = (0.05, 0.1, 0.3)
+M3_DIAGNOSTICS = RESULTS / "m3_diagnostics.csv"       # B3: hybrid scores for every setting tried
+M3_SEASONAL_PERIOD = 52                    # seasonal naive: the value 52 rows earlier
+M3_RAINY_MONTHS = (6, 11)                  # "monsoon season (June-November)"
+# Assumption: the paper cites a news timeline but gives no dates. "Lockdown" read as
+# ECQ and MECQ in Metro Manila / Luzon; a week counts if its Thursday falls inside.
+M3_LOCKDOWNS = ((date(2020, 3, 15), date(2020, 5, 31)), (date(2020, 8, 4), date(2020, 8, 18)))
+M3_LOCKDOWNS_TEST = ((date(2020, 3, 15), date(2020, 12, 31)),)   # any community quarantine in 2020
+# Assumption: the paper counts 260 weeks = 5 x 52, so its series has no ISO 2020 week 53
+# row. True drops that (empty) row; False keeps A9's full ISO grid. Both are run.
+M3_DROP_WEEK_53 = True
+M3_RESULTS = RESULTS / "m3_reproduction.csv"          # B3: scores of every run beside Table I
+M3_FORECASTS = RESULTS / "m3_forecasts.csv"           # B3: the 18 forecast weeks of every run
 
 # A9: layout of the Mendeley file. One row per week number; one column per disease and year,
 # named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").

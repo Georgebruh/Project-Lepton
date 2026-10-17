@@ -41,6 +41,12 @@ catchments; A10 checks its facilities against A5's barangays):
 | A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
 | A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv`; storms without A11's dates in `config.STORMS` are skipped |
 
+## Layer 1: city forecast (Workstream B)
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
+
 ## Layer 2: barangay doses (Workstream C)
 
 Run after Workstream A, in this order:
