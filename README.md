@@ -48,6 +48,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | Task | Command | Writes |
 | --- | --- | --- |
 | B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
+| B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
 
 ## Layer 2: barangay doses (Workstream C)
 
