@@ -48,4 +48,5 @@ Run after Workstream A, in this order:
 | Task | Command | Writes |
 | --- | --- | --- |
 | C1 | `python -m src.rescale` | `data/clean/worldpop_scale_qc.csv`; needs A5 and A6 |
+| C2 | `python -m src.overlay` | `data/clean/overlay_qc.csv`; needs A5, A8 and C1's file (team drive, or run C1 first); about a minute |
 
