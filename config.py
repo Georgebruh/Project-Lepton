@@ -410,6 +410,8 @@ S2_KNOWN_STORMS = {
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
+S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
+S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 S9_SAMPLES = 500                           # S9: fit this many samples...
 S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
