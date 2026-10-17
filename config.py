@@ -123,6 +123,7 @@ NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station
 NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
+NOAH_OVERLAP_TOLERANCE_KM2 = 1e-6          # C2: levels of one map may share at most 1 m2 in a barangay (rounding)
 # A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
 # (https://noah.up.edu.ph, "Downloads") links the public folder
 # https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o

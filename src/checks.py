@@ -192,12 +192,14 @@ def s8_overlay():
     or 100-year map, to inspect: NOAH modelled each map separately, so this is not a
     failure (python -m src.overlay prints their numbers).
     """
+    # Files first: without them the check is a SKIP, even where exactextract is not installed.
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+
     import geopandas as gpd
 
     from src import overlay
 
-    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
-    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
     brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "adm4_name", "pop_2024"])
     table = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
 
