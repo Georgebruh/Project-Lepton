@@ -17,6 +17,7 @@ import math
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from shapely.geometry import Point, box
 
@@ -85,6 +86,41 @@ def imerg_box(bounds, cell=config.IMERG_CELL_DEG):
         return round(math.ceil(v / cell) * cell + cell, 1)
 
     return (edge_below(lon_min), edge_below(lat_min), edge_above(lon_max), edge_above(lat_max))
+
+
+def grid_cells(catchments, step):
+    """The cells of a step-degree grid that overlap the catchments, with their weights.
+
+    ERA5 and ECMWF IFS 0.25 (A14, A15) give one value per grid point, on multiples of
+    0.25 degrees; each value stands for the square cell around its point (point +/- step/2).
+    A cell's weight is the share of the catchment area inside it, so the weights add up
+    to 1 and the catchment average is sum(weight x value): the same area weighting C3
+    gives IMERG's cells. Areas are measured in EPSG:32651.
+
+    catchments: GeoDataFrame in EPSG:4326, the "catchments" layer of catchments_qc.gpkg.
+    Returns a table with lat, lon, km2 (catchment area inside the cell) and weight.
+    """
+    lon_min, lat_min, lon_max, lat_max = catchments.total_bounds
+    lons = np.arange(math.floor(lon_min / step), math.ceil(lon_max / step) + 1) * step
+    lats = np.arange(math.floor(lat_min / step), math.ceil(lat_max / step) + 1) * step
+    half = step / 2
+    cells = gpd.GeoDataFrame(
+        {"lat": [round(lat, 4) for lat in lats for lon in lons],
+         "lon": [round(lon, 4) for lat in lats for lon in lons]},
+        geometry=[box(lon - half, lat - half, lon + half, lat + half) for lat in lats for lon in lons],
+        crs=catchments.crs,
+    )
+    # Points every step/25 along the edges keep them on their latitude and longitude lines after reprojecting.
+    cells = cells.set_geometry(cells.segmentize(step / 25)).to_crs(config.CRS_OVERLAY)
+    shape = catchments.to_crs(config.CRS_OVERLAY).union_all()
+    cells["km2"] = cells.intersection(shape).area / 1e6
+    cells = cells[cells["km2"] > 0]
+
+    total_km2 = shape.area / 1e6
+    if not math.isclose(cells["km2"].sum(), total_km2, rel_tol=1e-3):
+        raise ValueError(f"the cells hold {cells['km2'].sum():.1f} km2 of the {total_km2:.1f} km2 catchments")
+    cells["weight"] = cells["km2"] / cells["km2"].sum()
+    return pd.DataFrame(cells.drop(columns="geometry")).reset_index(drop=True)
 
 
 def save_map(subbasins, outlets, imerg_bbox, path):
