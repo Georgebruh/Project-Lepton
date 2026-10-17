@@ -1,6 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs B8's hand check of M0 and M1, which has no S number.
+Also runs two checks with no S number: A11's storm facts and B8's hand check of
+M0 and M1.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -146,6 +147,40 @@ def s2_rain_file():
             f"{name}'s wettest day is #{best} of {len(box_mean)} days")
     return (f"{len(days)} days {days[0]:%Y-%m-%d} to {days[-1]:%Y-%m-%d}; {carina_text}; "
             f"{', '.join(storm_text)} of {len(box_mean)} days")
+
+
+def a11_storms():
+    """A11 (no S number): the storm facts in config.STORMS that C8 and C9 read.
+
+    For each storm: flooding starts on or before the day it ends, and D (days flooded) is
+    the days from start_date to end_date, both counted. The wettest UTC days lie in the
+    storm's year, in order, and hold at least config.RAIN_ACCUM_DAYS days, so C3 and C9
+    have a whole n-day total there (A15 fetches the forecasts for those days). The flooded
+    barangays are 10-digit QC PSGC codes, none listed twice. Then, with A5's census table:
+    every code is one of QC's 142 barangays. A wrong code would quietly lower C8's share of
+    flooded barangays that were flagged.
+    """
+    for storm, facts in config.STORMS.items():
+        start, end = facts["start_date"], facts["end_date"]
+        assert start <= end, f"{storm}: flooding ends ({end}) before it starts ({start})"
+        days = (end - start).days + 1
+        assert facts["D"] == days, f"{storm}: D = {facts['D']}, but {start} to {end} is {days} days"
+        first, last = facts["wettest_days"]
+        assert first.year == last.year == facts["year"], f"{storm}: wettest days {first} to {last} not in {facts['year']}"
+        assert (last - first).days + 1 >= config.RAIN_ACCUM_DAYS, (
+            f"{storm}: wettest days {first} to {last} are fewer than {config.RAIN_ACCUM_DAYS} (config.RAIN_ACCUM_DAYS)")
+        codes = facts["flooded_psgc"]
+        assert len(codes) == len(set(codes)), f"{storm}: a flooded barangay is listed twice"
+        bad = [c for c in codes if not (len(c) == 10 and c.isdigit() and c.startswith(config.QC_PSGC_PREFIX))]
+        assert not bad, f"{storm}: not 10-digit QC PSGC codes: {bad}"
+
+    need_file(config.CENSUS_QC, "A5 (python -m src.census)")
+    known = set(pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})["psgc"])
+    for storm, facts in config.STORMS.items():
+        unknown = sorted(set(facts["flooded_psgc"]) - known)
+        assert not unknown, f"{storm}: flooded barangays not among A5's {len(known)}: {unknown}"
+    return "; ".join(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays"
+                     for storm, facts in config.STORMS.items())
 
 
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
@@ -744,6 +779,7 @@ CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": s2_rain_file,
     "S3 census join": s3_census,
+    "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
