@@ -35,6 +35,8 @@ CENSUS_2020_AGE_XLSX = DATA_RAW / "2020 Census Total Popn_Single Age_MaleFemale_
 BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with both census totals
 CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
 AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
+BIRTHS_2024 = DATA_RAW / "psa_births_2024.csv"        # A12: PSA OpenSTAT table 1A1ABIB8, unchanged
+SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # C4: child, pregnant and adult shares per barangay
 
 # Health facilities (A10)
 NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
@@ -245,6 +247,15 @@ R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 # ---------------------------------------------------------------------------
 PREG_BIRTHS_FACTOR = 0.75                  # assumption: pregnant = births x 0.75
 PREG_UPPER_SHARE = 0.035                   # test: 3.5% of population as upper bound
+# C4 groups from the 2020 census by single-year age (first and last age both included)
+CHILD_AGES = (0, 17)                       # children under 18
+WOMEN_AGES = (15, 49)                      # women 15-49; the city's pregnant count is split by them (assumption)
+GIRLS_AGES = (15, 17)                      # women 15-17: their pregnant share moves out of the child group
+# A12's births file: OpenSTAT's CSV is Windows-1252 and has no codes. Seven other rows
+# contain "Quezon" (Quezon province, towns named Quezon), so the whole name must match.
+BIRTHS_ENCODING = "cp1252"
+BIRTHS_QC_ROW = "Quezon City"
+BIRTHS_COLUMN = "Usual Residence Both Sexes"  # mothers who live in QC, not births in QC's hospitals
 CONTACT_SHARE_Q = 1.0                      # assumption: reported at full coverage
 UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
@@ -392,6 +403,7 @@ S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels
 S9_SAMPLES = 500                           # S9: fit this many samples...
 S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
 S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
+S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
