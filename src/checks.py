@@ -474,9 +474,10 @@ def s10_shares():
     First a made-up city whose answers are worked out by hand, which tests the formulas
     themselves. Then shares_qc.csv: one row for each of A5's 142 barangays; no share
     missing or negative; the three shares add to 1 in every barangay; the pregnant counts
-    add up to QC's (A12's births x 0.75); and the file matches a fresh run of src.shares,
-    which catches a file left over from older inputs. The upper-bound test (3.5% of QC
-    pregnant) must give shares that add to 1, none negative, too.
+    add up to QC's (A12's births x 0.75), which stay below the 3.5% upper bound; and the
+    file matches a fresh run of src.shares, which catches a file left over from older
+    inputs. The upper-bound test (3.5% of QC pregnant) must give shares that add to 1,
+    none negative, too.
     The second part (doses and allocate) is C6 and C7.
     """
     from src import shares
@@ -503,7 +504,9 @@ def s10_shares():
         f"shares file has {len(table)} rows, {table.index.nunique()} barangays")
     assert set(table.index) == set(counts.index), "shares file and A5's barangays hold different barangays"
     preg_qc = shares.pregnant_from_births(shares.qc_births())
-    upper = shares.group_shares(counts, shares.upper_bound_pregnant(counts))
+    upper_qc = shares.upper_bound_pregnant(counts)
+    assert preg_qc < upper_qc, f"{preg_qc:,.0f} pregnant women is above the 3.5% upper bound ({upper_qc:,.0f})"
+    upper = shares.group_shares(counts, upper_qc)
     for label, t in (("shares file", table), ("upper bound", upper)):
         s = t[shares.SHARES]
         assert s.notna().all().all(), f"{label}: a share is missing"
@@ -751,7 +754,6 @@ CHECKS = {
     "S8 overlay": s8_overlay,
     "S9 return levels": s9_return_levels,
     "S9 exposure index": s9_exposure_index,
-    "S10 shares and doses": not_built("C4, C6"),
     "S10 shares": s10_shares,
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,
