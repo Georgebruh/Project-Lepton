@@ -36,6 +36,8 @@ CENSUS_2020_AGE_XLSX = DATA_RAW / "2020 Census Total Popn_Single Age_MaleFemale_
 BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with both census totals
 CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
 AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
+BIRTHS_2024 = DATA_RAW / "psa_births_2024.csv"        # A12: PSA OpenSTAT table 1A1ABIB8, unchanged
+SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # C4: child, pregnant and adult shares per barangay
 
 # Health facilities (A10)
 NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
@@ -126,6 +128,7 @@ NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station
 NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
+NOAH_OVERLAP_TOLERANCE_KM2 = 1e-6          # C2: levels of one map may share at most 1 m2 in a barangay (rounding)
 # A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
 # (https://noah.up.edu.ph, "Downloads") links the public folder
 # https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o
@@ -160,6 +163,7 @@ REPORTED_SHARE_CUTOFF_TEST = 0.80
 # ---------------------------------------------------------------------------
 # Layer 1: models
 # ---------------------------------------------------------------------------
+M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the target week (B8)
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
@@ -176,12 +180,42 @@ M3_COVID_GAP_FACTOR = 0.5                  # missing lockdown weeks get 0.5 x se
 M3_RAINY_GAP_FACTOR = 1.0                  # missing Jun-Nov weeks get 1.0 x seasonal mean
 M3_XGB_PARAMS = {}                         # assumption: xgboost defaults
 M3_XGB_PARAMS_TEST = {"max_depth": 2}
+M3_XGB_ROUNDS = 100                        # assumption: XGBRegressor's default n_estimators (xgb.train alone uses 10)
 M3_TARGET_MAE = {"hybrid": 16.72, "prophet": 23.68}
 M3_TOLERANCE = 0.10
+# B3: the paper's Table I, all 18 forecast weeks (SARIMA not reproduced: R auto.arima)
+M3_TABLE_I = {
+    "hybrid": {"mae": 16.7237, "rmse": 21.9313, "smape": 38.7985, "bias": -0.7196},
+    "prophet": {"mae": 23.6831, "rmse": 28.1622, "smape": 50.6627, "bias": 1.0455},
+    "snaive": {"mae": 64.1782, "rmse": 97.5642, "smape": 93.6468, "bias": -34.4746},
+}
+M3_PEAK_CASES = 186                        # Table II: weeks with more than 186 cases (90th percentile)
+M3_TABLE_II = {
+    "hybrid": {"mae": 7.7409, "rmse": 7.8965, "smape": 2.8187, "bias": -1.5596},
+    "prophet": {"mae": 51.6640, "rmse": 52.5004, "smape": 19.1135, "bias": -9.3342},
+    "snaive": {"mae": 180.5000, "rmse": 218.1433, "smape": 103.8144, "bias": -122.5000},
+}
+M3_TABLE_III_DM = {"stat": -1.8242, "p": 0.04287}   # Hybrid vs Prophet
+# B3 diagnostics (python -m src.m3 --diagnose): XGBoost settings tried when the hybrid misses
+M3_DIAG_MAX_DEPTH = (1, 2, 3, 4, 6)
+M3_DIAG_ROUNDS = (10, 25, 50, 100, 200)
+M3_DIAG_ETA = (0.05, 0.1, 0.3)
+M3_DIAGNOSTICS = RESULTS / "m3_diagnostics.csv"       # B3: hybrid scores for every setting tried
+M3_SEASONAL_PERIOD = 52                    # seasonal naive: the value 52 rows earlier
+M3_RAINY_MONTHS = (6, 11)                  # "monsoon season (June-November)"
+# Assumption: the paper cites a news timeline but gives no dates. "Lockdown" read as
+# ECQ and MECQ in Metro Manila / Luzon; a week counts if its Thursday falls inside.
+M3_LOCKDOWNS = ((date(2020, 3, 15), date(2020, 5, 31)), (date(2020, 8, 4), date(2020, 8, 18)))
+M3_LOCKDOWNS_TEST = ((date(2020, 3, 15), date(2020, 12, 31)),)   # any community quarantine in 2020
+# Assumption: the paper counts 260 weeks = 5 x 52, so its series has no ISO 2020 week 53
+# row. True drops that (empty) row; False keeps A9's full ISO grid. Both are run.
+M3_DROP_WEEK_53 = True
+M3_RESULTS = RESULTS / "m3_reproduction.csv"          # B3: scores of every run beside Table I
+M3_FORECASTS = RESULTS / "m3_forecasts.csv"           # B3: the 18 forecast weeks of every run
 
 # A9: layout of the Mendeley file. One row per week number; one column per disease and year,
 # named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").
-PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # confirm the DOI against Latigay & Gonzaga's references
+PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # DOI matches Latigay & Gonzaga's ref. 9 (data/raw/parreno.md)
 PARRENO_SHEET = 0                          # sheet name or position
 PARRENO_WEEK_COL = "Week"                  # the column holding the week number
 PARRENO_DISEASE_KEY = "Leptospirosis"      # columns whose name contains this (any case) and ends in a year
@@ -202,6 +236,13 @@ THRESHOLD_MIN_YEARS = 3
 # Layer 2: rain and exposure (C3)
 # ---------------------------------------------------------------------------
 GUMBEL_MIN_YEARS = 10                      # assumption: fit on >= 10 years before the forecast year
+# Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days), for the
+# return levels, the storms and the weekly EI alike; C9 uses the same on ERA5 and the ECMWF
+# forecasts. 1 = the plan's single wettest day, kept as the comparison run. The single day
+# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18). C9 needs at
+# least this many forecast days per storm: A15 fetches the 3 days in STORMS' wettest_days.
+RAIN_ACCUM_DAYS = 3
+RAIN_ACCUM_DAYS_TEST = 1
 R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 
 # ---------------------------------------------------------------------------
@@ -209,6 +250,15 @@ R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 # ---------------------------------------------------------------------------
 PREG_BIRTHS_FACTOR = 0.75                  # assumption: pregnant = births x 0.75
 PREG_UPPER_SHARE = 0.035                   # test: 3.5% of population as upper bound
+# C4 groups from the 2020 census by single-year age (first and last age both included)
+CHILD_AGES = (0, 17)                       # children under 18
+WOMEN_AGES = (15, 49)                      # women 15-49; the city's pregnant count is split by them (assumption)
+GIRLS_AGES = (15, 17)                      # women 15-17: their pregnant share moves out of the child group
+# A12's births file: OpenSTAT's CSV is Windows-1252 and has no codes. Seven other rows
+# contain "Quezon" (Quezon province, towns named Quezon), so the whole name must match.
+BIRTHS_ENCODING = "cp1252"
+BIRTHS_QC_ROW = "Quezon City"
+BIRTHS_COLUMN = "Usual Residence Both Sexes"  # mothers who live in QC, not births in QC's hospitals
 CONTACT_SHARE_Q = 1.0                      # assumption: reported at full coverage
 UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
@@ -222,6 +272,7 @@ DOXY_CAPS_LOW = 2                          # 200 mg once = 2 x 100 mg
 DOXY_CAPS_MOD = 2 * MODERATE_COURSE_DAYS   # 200 mg daily for 5 days = 10
 DOXY_CAPS_HIGH_PER_WEEK = 2                # 200 mg once a week
 AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
+DOSE_WEEK_DAYS = 7                         # ceil(D / 7) weeks: high-risk adults' weekly dose; children's course repeats after 1 week
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
@@ -353,6 +404,11 @@ S2_KNOWN_STORMS = {
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
+S9_SAMPLES = 500                           # S9: fit this many samples...
+S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
+S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
+S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
+S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
 # Evaluation (D5, D6)

@@ -20,7 +20,9 @@ How:
 
 A8 removed the overlaps between the levels of one map, so each resident is counted at
 most once per map, and a map's three levels never hold more than the barangay's census
-total (check S8). The three maps are three separate floods: never add them together.
+total (check S8). levels_overlap() stops the run if they still overlap, which happens
+with a noah_flood_mm.gpkg made before that fix. The three maps are three separate
+floods: never add them together.
 
 Output: data/clean/overlay_qc.csv (config.OVERLAY), one row per barangay, map and level:
     psgc, adm4_name
@@ -64,6 +66,19 @@ def zones_by_barangay(barangays, flood):
     return pieces.dissolve(by=KEYS).reset_index()
 
 
+def levels_overlap(zones):
+    """Largest area (km2) that two hazard levels of one map share inside one barangay.
+
+    In plain words: add up the levels' areas, then measure all levels joined together;
+    any extra is area held by two levels, whose residents would be counted twice.
+    0 (up to rounding) when A8 has separated the levels.
+    """
+    by_map = ["psgc", "return_period"]
+    levels_km2 = zones.assign(km2=zones.area / 1e6).groupby(by_map)["km2"].sum()
+    joined_km2 = zones.dissolve(by=by_map).area / 1e6
+    return float((levels_km2 - joined_km2).max())
+
+
 def full_table(zones, residents, barangays):
     """Every barangay x map x level, with 0 km2 and 0 residents where the map does not flood it."""
     found = pd.DataFrame({
@@ -104,7 +119,9 @@ def report(table, barangays):
     per_level["all levels"] = per_level.sum(axis=1)
     per_level["% of QC"] = 100 * per_level["all levels"] / qc_total
     print(f"QC residents in each map's flood zones (2024 census total {qc_total:,}):")
-    print(per_level.round({"% of QC": 1}).round(0).to_string(float_format="{:,.1f}".format))
+    shown = per_level.round(0)                              # whole residents
+    shown["% of QC"] = per_level["% of QC"].round(1)        # but keep the share's decimal
+    print(shown.to_string(float_format="{:,.1f}".format))
     area = table.pivot_table(index="return_period", columns="var", values="area_km2", aggfunc="sum")
     area["all levels"] = area.sum(axis=1)
     print("\nflooded area in QC, km2:")
@@ -124,6 +141,10 @@ def main():
     flood = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard")
 
     zones = zones_by_barangay(barangays, flood)
+    overlap = levels_overlap(zones)
+    if overlap > config.NOAH_OVERLAP_TOLERANCE_KM2:
+        raise ValueError(f"two hazard levels of one map share {overlap:.4f} km2 in a barangay; "
+                         f"{config.NOAH_FLOOD.name} predates A8's fix: run python -m src.noah again")
     residents = rescale.rescaled_residents(zones)
     table = full_table(zones, residents, barangays)
     if table["residents"].isna().any() or (table["residents"] < 0).any():

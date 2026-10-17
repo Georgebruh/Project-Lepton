@@ -40,7 +40,18 @@ catchments; A10 checks its facilities against A5's barangays):
 | A8 | `python -m src.noah` | `data/raw/noah/` (the three maps and NOAH's notes), `data/clean/noah_flood_mm.gpkg`; can take over an hour |
 | A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
 | A14 | `python -m src.era5` | `data/raw/era5_open_meteo/` (one reply per year), `data/clean/era5_daily.csv`; about 5 minutes |
+| A9 | `python -m src.benchmark` | `data/clean/parreno_national_weekly.csv`; needs the Mendeley file in `data/raw/parreno/`, downloaded by hand (link in `data/raw/parreno.md`) |
+| A12 | by hand: the `curl` command in `data/raw/psa_births_2024.csv.md` | `data/raw/psa_births_2024.csv` |
 | A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv`; storms without A11's dates in `config.STORMS` are skipped |
+
+## Layer 1: city forecast (Workstream B)
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
+| B7 | none: functions in `src/thresholds.py` (and `forecast_dist` in `src/forecast_range.py`), used by B8 and B10 | nothing; check S7 in `python -m src.checks` |
+| B8 | none: functions in `src/baselines.py`, used by B10 | nothing; check "B8 M0 and M1" in `python -m src.checks` |
+| B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
 
 ## Layer 2: barangay doses (Workstream C)
 
@@ -50,4 +61,8 @@ Run after Workstream A, in this order:
 | --- | --- | --- |
 | C1 | `python -m src.rescale` | `data/clean/worldpop_scale_qc.csv`; needs A5 and A6 |
 | C2 | `python -m src.overlay` | `data/clean/overlay_qc.csv`; needs A5, A8 and C1's file (team drive, or run C1 first); about a minute |
+| C3 | `python -m src.flood_exposure` | `data/clean/ei_weekly.csv` (one EI series per forecast year, 2018–2026, on 3-day rain totals, `config.RAIN_ACCUM_DAYS`); needs A3, A4, A7, A5 and C2's file; seconds. Prints each year's return levels and where the three storms fall. Single-day comparison run: `python -m src.flood_exposure --days 1` writes `ei_weekly_1day.csv` |
+| C4 | `python -m src.shares` | `data/clean/shares_qc.csv`; needs A5 and A12's `data/raw/psa_births_2024.csv` |
+| C5 | `python -m src.exposed` | no file: prints QC's exposed people and adult risk tiers at each map's own rain; needs C2 and C4. C8 and C9 call its `exposed_with_tiers` |
+| C6 | `python -m src.doses` | no file: prints QC's stock (doxycycline, children's courses, amoxicillin) at each map's own rain; needs C2 and C4. C7, C8 and C9 call its `barangay_doses`. Stock planning, not prescriptions |
 
