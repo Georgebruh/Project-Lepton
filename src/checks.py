@@ -356,6 +356,118 @@ def s8_overlay():
             f"{len(falls)} barangays fall in a rarer map, inspect: {names}")
 
 
+def toy_overlay():
+    """Made-up C2 table for S9: 2 barangays x 3 maps x 3 levels, residents worked by hand.
+
+    Barangay "B" has fewer residents in the 25-year map than in the 5-year one (S8 lists
+    real barangays like it), so the interpolation must also work going down.
+    """
+    pops = {  # (psgc, var): (Pop_5, Pop_25, Pop_100)
+        ("A", 1): (100, 200, 400), ("A", 2): (10, 50, 90), ("A", 3): (0, 0, 30),
+        ("B", 1): (80, 60, 70), ("B", 2): (0, 20, 20), ("B", 3): (0, 0, 0),
+    }
+    rows = [{"psgc": b, "var": k, "return_period": t, "residents": float(n)}
+            for (b, k), values in pops.items() for t, n in zip(config.NOAH_RETURN_PERIODS, values)]
+    return pd.DataFrame(rows)
+
+
+def s9_return_levels():
+    """S9 (C3): Gumbel return levels, the fit, and graded exposure.
+
+    From the plan: a Gumbel curve with mu = 100, beta = 30 has R(5), R(25), R(100) =
+    145.0, 196.0, 238.0. Fitting 500 samples of 25 maxima gives a median R(25) of about
+    191, with 90% of fits between 164 and 224 (within S9_FIT_TOLERANCE_MM here; the
+    random seed moves them a little). Graded exposure on toy_overlay: 0 at or below R0,
+    exactly Pop_5 at R(5), Pop_100 above R(100), halfway between Pop_5 and Pop_25 at the
+    rain halfway between. Rule 2: the fit for a year uses only years before it, so
+    changing that year's maxima or later ones changes nothing; under 10 years stops.
+    n-day totals (config.RAIN_ACCUM_DAYS): daily rain 10, 20, 30, 0, 5 gives 3-day totals
+    60, 50, 35 on days 3-5; 1 day returns the rain unchanged; a missing day stops.
+    """
+    from scipy import stats
+
+    from src import flood_exposure as fe
+
+    true = [round(fe.gumbel_level(100, 30, t), 1) for t in config.NOAH_RETURN_PERIODS]
+    assert true == [145.0, 196.0, 238.0], f"true R(5), R(25), R(100) = {true}"
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    fitted = []
+    for _ in range(config.S9_SAMPLES):
+        sample = stats.gumbel_r.rvs(loc=100, scale=30, size=config.S9_SAMPLE_YEARS, random_state=rng)
+        mu, beta = fe.fit_gumbel(sample)
+        fitted.append(fe.gumbel_level(mu, beta, 25))
+    median, low, high = np.median(fitted), *np.percentile(fitted, [5, 95])
+    tol = config.S9_FIT_TOLERANCE_MM
+    assert abs(median - 191) <= tol, f"median fitted R(25) = {median:.1f}, expected about 191"
+    assert abs(low - 164) <= tol and abs(high - 224) <= tol, f"90% of fits in {low:.0f}-{high:.0f}, expected 164-224"
+
+    levels = {"r0": 50.0, 5: 100.0, 25: 150.0, 100: 200.0}
+    overlay = toy_overlay()
+    pops = fe.map_table(overlay)
+
+    def exposure(rain):
+        table = fe.graded_exposure(rain, levels, overlay)
+        assert list(table.columns) == ["psgc", "var", "residents"], f"columns {list(table.columns)} (C5 takes psgc, var, residents)"
+        return table.set_index(["psgc", "var"])["residents"]
+
+    assert (exposure(50.0) == 0).all() and (exposure(10.0) == 0).all(), "exposure at or below R0 must be 0"
+    assert np.allclose(exposure(75.0), pops[5] / 2), "halfway between R0 and R(5) must be half of Pop_5"
+    assert np.allclose(exposure(100.0), pops[5]), "exposure at R(5) must be Pop_5 exactly"
+    assert np.allclose(exposure(125.0), (pops[5] + pops[25]) / 2), "halfway between R(5) and R(25) must be halfway"
+    assert np.allclose(exposure(200.0), pops[100]) and np.allclose(exposure(500.0), pops[100]), (
+        "exposure at and above R(100) must be Pop_100")
+    totals = fe.map_totals(overlay)
+    assert np.isclose(fe.exposed_total(125.0, levels, totals), exposure(125.0).sum()), "city total != sum of barangays"
+
+    maxima = pd.Series(stats.gumbel_r.rvs(loc=100, scale=30, size=20, random_state=rng), index=range(2000, 2020))
+    before = fe.return_levels(maxima, 2015)
+    changed = maxima.copy()
+    changed[changed.index >= 2015] = 999.0
+    assert fe.return_levels(changed, 2015) == before, "the 2015 fit used 2015 or a later year (rule 2)"
+    assert before["n_years"] == 15, f"the 2015 fit used {before['n_years']} years, expected 2000-2014"
+    assert stops_with("at least", fe.return_levels, maxima, 2009), "a fit on 9 years must stop"
+
+    daily = pd.Series([10.0, 20.0, 30.0, 0.0, 5.0], index=pd.date_range("2024-07-21", periods=5, freq="D"))
+    three = fe.n_day_totals(daily, 3)
+    assert three.tolist() == [60.0, 50.0, 35.0], f"3-day totals {three.tolist()}, by hand 60, 50, 35"
+    assert three.index[0] == pd.Timestamp("2024-07-23"), "a total must be labelled with its last day"
+    assert fe.n_day_totals(daily, 1).equals(daily), "1-day totals must be the daily rain unchanged"
+    assert stops_with("every day", fe.n_day_totals, daily.drop(daily.index[2]), 3), "a missing day must stop"
+    return (f"median fitted R(25) {median:.1f}, 90% of fits {low:.0f}-{high:.0f}; toy exposure and "
+            f"n-day totals match by hand")
+
+
+def s9_exposure_index():
+    """S9, real data (C3): ei_weekly.csv.
+
+    Made with config.RAIN_ACCUM_DAYS (the rain_days column), so a file from an older run
+    or another n is caught. One row per fit year and week, every fit year from
+    BACKTEST_FIRST_YEAR to BACKTEST_LAST_YEAR, weeks from 2015 week 1 with no gap; EI
+    between 0 and 100, never missing; the wettest week of each fit year has the highest
+    EI or ties it (EI only grows with rain).
+    """
+    need_file(config.EI_WEEKLY, "C3 (python -m src.flood_exposure)")
+    ei = pd.read_csv(config.EI_WEEKLY)
+    assert "rain_days" in ei.columns, "ei_weekly.csv has no rain_days column: rerun python -m src.flood_exposure"
+    made_with = sorted(ei["rain_days"].unique())
+    assert made_with == [config.RAIN_ACCUM_DAYS], (
+        f"ei_weekly.csv was made with {made_with}-day totals, config says {config.RAIN_ACCUM_DAYS}: rerun C3")
+    fit_years = list(range(config.BACKTEST_FIRST_YEAR, config.BACKTEST_LAST_YEAR + 1))
+    assert sorted(ei["fit_year"].unique()) == fit_years, f"fit years {sorted(ei['fit_year'].unique())}"
+    assert not ei.duplicated(["fit_year", "week_index"]).any(), "a fit year and week appear twice"
+    assert ei[["rmax_mm", "ei"]].notna().all().all(), "missing rain or EI"
+    assert ei["ei"].between(0, 100).all(), f"EI outside 0-100: {ei['ei'].min()} to {ei['ei'].max()}"
+    for year, rows in ei.groupby("fit_year"):
+        index = rows["week_index"].to_numpy()
+        assert index[0] == 0 and (np.diff(index) == 1).all(), f"fit {year}: weeks do not run from 0 without a gap"
+        assert rows.loc[rows["rmax_mm"].idxmax(), "ei"] == rows["ei"].max(), f"fit {year}: EI does not grow with rain"
+    last = ei[ei["fit_year"] == config.BACKTEST_LAST_YEAR]
+    return (f"{config.RAIN_ACCUM_DAYS}-day totals; {len(fit_years)} fit years x {len(last)} weeks; "
+            f"EI above 0 in {(last['ei'] > 0).mean():.1%} "
+            f"of weeks, highest {last['ei'].max():.1f}% ({config.BACKTEST_LAST_YEAR} fit)")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -375,7 +487,8 @@ CHECKS = {
     "B8 M0 and M1": b8_baselines,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
-    "S9 return levels": not_built("C3"),
+    "S9 return levels": s9_return_levels,
+    "S9 exposure index": s9_exposure_index,
     "S10 shares and doses": not_built("C4, C6"),
     "S11 leakage": not_built("B10"),
 }
