@@ -37,6 +37,15 @@ def week_index(day):
     return (start - config.FIRST_WEEK_START).days // 7
 
 
+def week_index_of(year, week):
+    """Continuous week index of MMWR `year` week `week`.
+
+    Stops (ValueError) on a week the year does not have, such as 2026 week 53.
+    Takes whole-number floats too (2025.0), as pandas rows give them.
+    """
+    return week_index(Week(int(year), int(week)).startdate())
+
+
 def week_of_year(week):
     """Week number with week 53 mapped to 52 (config.MAX_WEEK)."""
     return min(week, config.MAX_WEEK)
