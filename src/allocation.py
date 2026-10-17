@@ -51,7 +51,8 @@ C8 and C9 call center_needs(residents, shares, center_table, D, w), then allocat
 Run from the repository root:  python -m src.allocation   (a few seconds)
 Needs A5, A10 and C1 (WorldPop grid and scale factors) for the shares file, and C2 and C4
 for the preview. It writes the shares file, then previews C7 at the 25-year map's own rain,
-R24 = R(25): the need per health center in a week-long flood, and allocate with stock
+Rn = R(25) (n-day totals, config.RAIN_ACCUM_DAYS): the need per health center in a
+week-long flood, and allocate with stock
 covering half of each pool's need (illustrative, config.ALLOCATE_PREVIEW_STOCK_SHARE) in a
 1-day flood at w = 0.5. Then run the checks (S10, C7 part):  python -m src.checks
 """
