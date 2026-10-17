@@ -230,6 +230,7 @@ DOXY_CAPS_LOW = 2                          # 200 mg once = 2 x 100 mg
 DOXY_CAPS_MOD = 2 * MODERATE_COURSE_DAYS   # 200 mg daily for 5 days = 10
 DOXY_CAPS_HIGH_PER_WEEK = 2                # 200 mg once a week
 AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
+DOSE_WEEK_DAYS = 7                         # ceil(D / 7) weeks: high-risk adults' weekly dose; children's course repeats after 1 week
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day

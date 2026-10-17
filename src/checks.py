@@ -343,6 +343,67 @@ def s10_exposed():
     return f"QC exposed at {', '.join(parts)}; groups and tiers add up"
 
 
+def s10_doses():
+    """S10, C6 part: drug units per barangay.
+
+    S10's input, 100 exposed adults with w = 0.5 and u = 1, split into tiers by C5 and
+    turned into capsules: 600 at D = 1 (50 moderate x 10 + 50 low x 2), 200 at D = 3
+    (100 high x 2 x 1 week) and 400 at D = 10 (2 weeks). Then made-up children and
+    pregnant women worked by hand: 10 children need 10 courses at D = 1 and at D = 7, 20 at
+    D = 8 (a part week counts whole) and 30 at D = 15; 5 pregnant women need 30 tablets;
+    u = 0.5 halves every figure. Input that would give wrong stock without an error must
+    stop the run (rule 5): u above 1, a missing count. Then the real tables at each map's
+    own rain, in every preview flood: one row per barangay, no unit missing or negative,
+    and the doxycycline tiers add up to the total.
+    The allocation part (allocate) is C7.
+    """
+    from src import doses, exposed
+
+    def made_up(adults=0, children=0, pregnant=0, days=1):
+        """One made-up barangay's C5 table, with S10's w = 0.5 and the plan's 2-day cut-off."""
+        tiers = exposed.adult_tiers(pd.Series([float(adults)]), days, w=0.5, cutoff=2)
+        return tiers.assign(e_child=float(children), e_preg=float(pregnant))
+
+    for days, expected in ((1, 600), (3, 200), (10, 400)):
+        got = doses.doses(made_up(adults=100, days=days), days, u=1.0)["doxy100"].iloc[0]
+        assert np.isclose(got, expected), f"100 adults, D = {days}: {got} capsules, expected {expected}"
+    for days, expected in ((1, 10), (7, 10), (8, 20), (15, 30)):
+        got = doses.doses(made_up(children=10, days=days), days, u=1.0)["courses"].iloc[0]
+        assert np.isclose(got, expected), f"10 children, D = {days}: {got} courses, expected {expected}"
+    got = doses.doses(made_up(pregnant=5), 1, u=1.0)["amox500"].iloc[0]
+    assert np.isclose(got, 30), f"5 pregnant women: {got} tablets, expected 30"
+    half = doses.doses(made_up(adults=100, children=10, pregnant=5), 1, u=0.5).iloc[0]
+    for col, expected in (("doxy100", 300), ("courses", 5), ("amox500", 15)):
+        assert np.isclose(half[col], expected), f"u = 0.5: {col} = {half[col]}, expected {expected}"
+
+    for label, call in (("u = 1.5", lambda: doses.doses(made_up(adults=100), 1, u=1.5)),
+                        ("a missing count", lambda: doses.doses(made_up(adults=100).assign(e_child=np.nan), 1))):
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: doses did not stop")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+    table = exposed.load_shares()
+    shown = []
+    for period in config.NOAH_RETURN_PERIODS:
+        residents = exposed.map_residents(overlay, period)
+        for label, days, w in exposed.scenarios():
+            stock = doses.barangay_doses(residents, table, days, w)
+            units = stock[[*doses.DOXY_BY_TIER, *doses.UNITS]]
+            assert len(stock) == config.QC_BARANGAYS, f"R({period}), {label}: {len(stock)} barangays"
+            assert units.notna().all().all() and (units >= 0).all().all(), f"R({period}), {label}: missing or negative units"
+            assert np.allclose(stock[doses.DOXY_BY_TIER].sum(axis=1), stock["doxy100"]), (
+                f"R({period}), {label}: the doxycycline tiers do not add up to the total")
+            if period == exposed.PREVIEW_MAP:
+                shown.append(f"{label}: {stock['doxy100'].sum():,.0f}")
+    return (f"QC doxycycline capsules at R({exposed.PREVIEW_MAP}), {'; '.join(shown)} "
+            f"(stock planning, not prescriptions)")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -363,7 +424,8 @@ CHECKS = {
     "S9 return levels": not_built("C3"),
     "S10 shares": s10_shares,
     "S10 exposed": s10_exposed,
-    "S10 doses": not_built("C6, C7"),
+    "S10 doses": s10_doses,
+    "S10 allocate": not_built("C7"),
     "S11 leakage": not_built("B10"),
 }
 
