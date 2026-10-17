@@ -274,10 +274,12 @@ def weekly_ei(rmax, levels, map_tot, qc_total_2024):
 
 
 def storm_peak(totals, first, last):
-    """A storm's wettest n-day total whose last day falls on one of its wettest days, first..last.
+    """A storm's wettest n-day total whose last day falls between first and last.
 
-    Returns (rain in mm, last day of that window). With n = 3 and a 3-day first..last
-    (config.STORMS), the window can start up to 2 days before `first`.
+    Returns (rain in mm, last day of that window). storm_report passes the flood period,
+    config.STORMS' start_date to end_date: the rain that flooded QC, which can have
+    started up to n - 1 days before the flooding. Check "A11 storm facts" makes sure
+    that window ends on one of the storm's wettest days, which A15 fetches forecasts for.
     """
     window = totals[pd.Timestamp(first):pd.Timestamp(last)]
     return float(window.max()), window.idxmax()
@@ -291,7 +293,7 @@ def storm_report(totals, maxima, overlay, qc_total_2024, days):
     map_tot = map_totals(overlay)
     rows = []
     for storm, facts in config.STORMS.items():
-        peak, end = storm_peak(totals, *facts["wettest_days"])
+        peak, end = storm_peak(totals, facts["start_date"], facts["end_date"])
         levels = return_levels(maxima, facts["year"])
         start = end - pd.Timedelta(days=days - 1)
         rows.append({"storm": storm, "UTC days": f"{start:%Y-%m-%d} to {end:%Y-%m-%d}",

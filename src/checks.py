@@ -188,14 +188,13 @@ def a11_storms():
     totals = fe.n_day_totals(fe.catchment_rain(), config.RAIN_ACCUM_DAYS)
     peaks = []
     for storm, facts in config.STORMS.items():
-        during = totals[pd.Timestamp(facts["start_date"]):pd.Timestamp(facts["end_date"])]
-        peak_end = during.idxmax().date()
+        peak_mm, peak_end = fe.storm_peak(totals, facts["start_date"], facts["end_date"])
         first, last = facts["wettest_days"]
-        assert first <= peak_end <= last, (
+        assert first <= peak_end.date() <= last, (
             f"{storm}: IMERG's wettest {config.RAIN_ACCUM_DAYS}-day window during the flood ends on "
-            f"{peak_end}, outside the wettest days {first} to {last}")
+            f"{peak_end:%Y-%m-%d}, outside the wettest days {first} to {last}")
         peaks.append(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays, "
-                     f"peak {during.max():.0f} mm ending {peak_end:%d %b}")
+                     f"peak {peak_mm:.0f} mm ending {peak_end:%d %b}")
     return "; ".join(peaks)
 
 
