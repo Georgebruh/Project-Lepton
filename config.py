@@ -179,7 +179,7 @@ M3_TOLERANCE = 0.10
 
 # A9: layout of the Mendeley file. One row per week number; one column per disease and year,
 # named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").
-PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # confirm the DOI against Latigay & Gonzaga's references
+PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # DOI matches Latigay & Gonzaga's ref. 9 (data/raw/parreno.md)
 PARRENO_SHEET = 0                          # sheet name or position
 PARRENO_WEEK_COL = "Week"                  # the column holding the week number
 PARRENO_DISEASE_KEY = "Leptospirosis"      # columns whose name contains this (any case) and ends in a year
