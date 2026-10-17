@@ -27,7 +27,7 @@ A few days’ warning before a storm lets health offices send doxycycline to the
 
 ## Rebuilding the data (Workstream A)
 
-Run from the repository root, in this order (A4's box and A15's grid cells come from A7's
+Run from the repository root, in this order (A4's box and the A14 and A15 grid cells come from A7's
 catchments; A10 checks its facilities against A5's barangays):
 
 | Task | Command | Writes |
@@ -39,6 +39,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | A6 | `python -m src.worldpop` | `data/raw/phl_pop_2024_CN_100m_R2025A_v1.tif`, `data/clean/worldpop_2024_box.tif` |
 | A8 | `python -m src.noah` | `data/raw/noah/` (the three maps and NOAH's notes), `data/clean/noah_flood_mm.gpkg`; can take over an hour |
 | A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
+| A14 | `python -m src.era5` | `data/raw/era5_open_meteo/` (one reply per year), `data/clean/era5_daily.csv`; about 5 minutes |
 | A9 | `python -m src.benchmark` | `data/clean/parreno_national_weekly.csv`; needs the Mendeley file in `data/raw/parreno/`, downloaded by hand (link in `data/raw/parreno.md`) |
 | A12 | by hand: the `curl` command in `data/raw/psa_births_2024.csv.md` | `data/raw/psa_births_2024.csv` |
 | A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv`; storms without A11's dates in `config.STORMS` are skipped |
