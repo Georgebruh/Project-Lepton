@@ -213,11 +213,117 @@ AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
 
-# Storms (A11 fills in dates and D)
+# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC)
 STORMS = {
-    "carina_2024": {"year": 2024, "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)), "D": None},
-    "floods_2025": {"year": 2025, "wettest_days": None, "D": None},
-    "habagat_2026": {"year": 2026, "wettest_days": None, "D": None},
+    "carina_2024": {
+        "year": 2024,
+        "start_date": date(2024, 7, 23),
+        "end_date": date(2024, 7, 25),
+        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),
+        "D": 3,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300013",  # Balingasa
+            "1381300028",  # Damayang Lagi
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300033",  # Don Manuel
+            "1381300035",  # E. Rodriguez
+            "1381300041",  # Fairview
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300047",  # Kalusugan
+            "1381300048",  # Kamuning
+            "1381300060",  # Mariana
+            "1381300061",  # Mariblo
+            "1381300064",  # Masambong
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300068",  # Nagkaisang Nayon
+            "1381300070",  # Novaliches Proper
+            "1381300076",  # Paltok
+            "1381300081",  # Phil-Am
+            "1381300085",  # Quirino 2-A
+            "1381300090",  # Roxas
+            "1381300097",  # San Bartolome
+            "1381300116",  # South Triangle
+            "1381300118",  # Talayan
+            "1381300121",  # Tatalon
+        ),
+    },
+    "floods_2025": {
+        "year": 2025,
+        "start_date": date(2025, 7, 19),
+        "end_date": date(2025, 7, 24),
+        "wettest_days": (date(2025, 7, 21), date(2025, 7, 23)),
+        "D": 6,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300022",  # Commonwealth
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300041",  # Fairview
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300043",  # Gulod
+            "1381300055",  # Loyola Heights
+            "1381300059",  # Mangga
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300080",  # Pasong Tamo
+            "1381300090",  # Roxas
+            "1381300104",  # Santa Cruz
+            "1381300105",  # Santa Lucia
+            "1381300112",  # Sienna
+            "1381300120",  # Tandang Sora
+            "1381300121",  # Tatalon
+        ),
+    },
+    "habagat_2026": {
+        "year": 2026,
+        "start_date": date(2026, 8, 8),
+        "end_date": date(2026, 8, 11),
+        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),
+        "D": 4,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300011",  # Bagumbayan
+            "1381300012",  # Bahay Toro
+            "1381300025",  # Culiat
+            "1381300027",  # Damayan
+            "1381300028",  # Damayang Lagi
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300033",  # Don Manuel
+            "1381300035",  # E. Rodriguez
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300043",  # Gulod
+            "1381300048",  # Kamuning
+            "1381300049",  # Katipunan
+            "1381300054",  # Lourdes
+            "1381300060",  # Mariana
+            "1381300062",  # Marilag
+            "1381300063",  # Masagana
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300071",  # Obrero
+            "1381300073",  # Paang Bundok
+            "1381300080",  # Pasong Tamo
+            "1381300082",  # Pinyahan
+            "1381300084",  # Project 6
+            "1381300089",  # Ramon Magsaysay
+            "1381300090",  # Roxas
+            "1381300102",  # San Roque
+            "1381300104",  # Santa Cruz
+            "1381300105",  # Santa Lucia
+            "1381300112",  # Sienna
+            "1381300115",  # Socorro
+            "1381300118",  # Talayan
+            "1381300119",  # Talipapa
+            "1381300120",  # Tandang Sora
+            "1381300121",  # Tatalon
+            "1381300129",  # Vasra
+            "1381300142",  # North Fairview
+        ),
+    },
 }
 
 # ---------------------------------------------------------------------------
