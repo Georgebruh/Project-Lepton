@@ -15,7 +15,7 @@ import xarray as xr
 from epiweeks import Week, Year
 
 import config
-from src import weeks
+from src import forecast_range, thresholds, weeks
 
 
 class NotBuilt(Exception):
@@ -146,6 +146,72 @@ def s2_rain_file():
             f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
+def toy_cases(last_year):
+    """Made-up weekly counts from 2015 to `last_year` for S7: 10 x (year - 2014) + week.
+
+    COVID years get 10,000 in every week, so a threshold that wrongly used them
+    would be far off.
+    """
+    rows = []
+    for year in range(config.FIRST_WEEK_START.year, last_year + 1):
+        for wk in Year(year).iterweeks():
+            count = 10_000 if year in config.COVID_YEARS else 10 * (year - 2014) + wk.week
+            rows.append({"week_index": weeks.week_index(wk.startdate()), "year": year,
+                         "week": wk.week, "cases": count})
+    return pd.DataFrame(rows)
+
+
+def s7_breach():
+    """S7, first part (B6's forecast_dist, B7): breach probability and thresholds.
+
+    From the plan: forecast_dist(20, 5) with threshold 12.4 gives sf(12) = 0.758
+    = P(Y >= 13); threshold 200 gives about 0. A count equal to the threshold is
+    not a breach, in the forecast and in the scored outcome alike.
+    Then thresholds on made-up counts (toy_cases), worked by hand:
+      - 2019 week 1, cutoff 2018 week 50: 2018 is not complete yet, so the years
+        are 2015-2017, with week-1 counts 11, 21, 31: mean 21, SD 10, T = 41.
+      - every count after the cutoff overwritten with -999 (as S11 does): still 41.
+      - 2025: the 5 most recent non-COVID years are 2018, 2019, 2022-2024, and
+        week 53 gets week 52's threshold. With 2023 missing a week, 2017 replaces it.
+      - 2017 has only 2 years before it, so it stops.
+    The second part, "S7 scores" (wis, episodes and the exact interval), waits for D1 and D3.
+    """
+    dist = forecast_range.forecast_dist(20, 5)
+    p = thresholds.breach_probability(dist, 12.4)
+    assert round(p, 3) == 0.758, f"Pr(breach) at 12.4 = {p}"
+    assert np.isclose(p, 1 - dist.cdf(12)), "Pr(breach) at 12.4 must be P(Y >= 13)"
+    assert thresholds.breach_probability(dist, 200) < 1e-9, "Pr(breach) at 200 must be about 0"
+    assert thresholds.breach_probability(dist, 12.0) == p, "at 12.0 a breach is also Y >= 13"
+    assert thresholds.breached(13, 12.4) and not thresholds.breached(12, 12.4)
+    assert not thresholds.breached(12, 12.0), "a count equal to the threshold is not a breach"
+
+    cases = toy_cases(2024)
+    cutoff = weeks.week_index(Week(2018, 50).startdate())
+    t = thresholds.epidemic_threshold(2019, 1, cases, cutoff)
+    assert np.isclose(t, 41), f"2019 week 1 threshold is {t}, expected 41"
+    hidden = cases.copy()
+    hidden.loc[hidden["week_index"] > cutoff, "cases"] = -999
+    assert thresholds.epidemic_threshold(2019, 1, hidden, cutoff) == t, "the threshold used a count after the cutoff"
+
+    end_2024 = weeks.week_index(Year(2024).enddate())
+    years = thresholds.reference_years(2025, cases, end_2024)
+    assert years == [2018, 2019, 2022, 2023, 2024], f"2025 reference years {years}"
+    t_52 = thresholds.epidemic_threshold(2025, 52, cases, end_2024)
+    assert thresholds.epidemic_threshold(2025, 53, cases, end_2024) == t_52, "week 53 must use week 52"
+    gap = cases.copy()
+    gap.loc[(gap["year"] == 2023) & (gap["week"] == 20), "cases"] = np.nan
+    years = thresholds.reference_years(2025, gap, end_2024)
+    assert years == [2017, 2018, 2019, 2022, 2024], f"with 2023 incomplete: {years}"
+
+    try:
+        thresholds.epidemic_threshold(2017, 1, cases, end_2024)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("2017 has only 2 reference years and must stop")
+    return f"Pr(Y > 12.4) = {p:.3f}; toy 2019 week 1 threshold {t:g}"
+
+
 def s8_census_fit():
     """S8, first part (C1): each barangay's rescaled pixels add up to its 2024 census total.
 
@@ -237,7 +303,8 @@ CHECKS = {
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
-    "S7 breach and scores": not_built("B7"),
+    "S7 breach": s7_breach,
+    "S7 scores": not_built("D1, D3"),
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
     "S9 return levels": not_built("C3"),
