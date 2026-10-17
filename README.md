@@ -70,4 +70,5 @@ Run after Workstream A, in this order:
 | C5 | `python -m src.exposed` | no file: prints QC's exposed people and adult risk tiers at each map's own rain; needs C2 and C4. C8 and C9 call its `exposed_with_tiers` |
 | C6 | `python -m src.doses` | no file: prints QC's stock (doxycycline, children's courses, amoxicillin) at each map's own rain; needs C2 and C4. C7, C8 and C9 call its `barangay_doses`. Stock planning, not prescriptions |
 | C7 | `python -m src.allocation` | `data/clean/center_shares_qc.csv` (each barangay's need to its health centers); needs A5, A10 and C1, and C2 and C4 for its preview of stock per health center and `allocate`; a few seconds |
+| C9 | `python -m src.forecast_run` | `results/c9_forecast_runs.csv` (per storm, run, D and w: rain against the return levels, EI, flagged-versus-flooded shares, QC's units), `c9_forecast_barangays.csv`, `c9_forecast_centers.csv`; ECMWF 3-day forecasts at leads 1-3 on ERA5's return levels, beside the observed IMERG run; needs A4, A7, A14, A15, A5, C2, C4 and C7's files; a few seconds. Stock planning, not prescriptions |
 

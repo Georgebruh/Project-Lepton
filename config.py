@@ -24,6 +24,9 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
+C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
+C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
+C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
@@ -287,6 +290,11 @@ ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocat
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
+# Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
+# residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
+# has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
+# rain passes R0. Reported at both values; the team confirms the rule (Notes.md 1.2).
+FLAG_EXPOSED_SHARES = (0.25, 0.50)
 
 # Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC).
 # Sources and the rules below: data/raw/storm-facts.md.
