@@ -1,5 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
+Also runs B8's hand check of M0 and M1, which has no S number.
+
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
 reported as SKIP. Any FAIL stops work: the script exits with code 1.
@@ -15,7 +17,7 @@ import xarray as xr
 from epiweeks import Week, Year
 
 import config
-from src import forecast_range, thresholds, weeks
+from src import baselines, forecast_range, thresholds, weeks
 
 
 class NotBuilt(Exception):
@@ -146,19 +148,38 @@ def s2_rain_file():
             f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
-def toy_cases(last_year):
-    """Made-up weekly counts from 2015 to `last_year` for S7: 10 x (year - 2014) + week.
+def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
+    """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
 
-    COVID years get 10,000 in every week, so a threshold that wrongly used them
-    would be far off.
+    COVID years get 10,000 in every week, so a threshold or M1 that wrongly
+    used them would be far off.
     """
     rows = []
-    for year in range(config.FIRST_WEEK_START.year, last_year + 1):
+    for year in range(first_year, last_year + 1):
         for wk in Year(year).iterweeks():
             count = 10_000 if year in config.COVID_YEARS else 10 * (year - 2014) + wk.week
             rows.append({"week_index": weeks.week_index(wk.startdate()), "year": year,
                          "week": wk.week, "cases": count})
     return pd.DataFrame(rows)
+
+
+def hide_after(cases, cutoff):
+    """Copy of `cases` with every count after week index `cutoff` overwritten, as S11 does (rule 1)."""
+    hidden = cases.copy()
+    hidden.loc[hidden["week_index"] > cutoff, "cases"] = config.S11_HIDDEN_COUNT
+    return hidden
+
+
+def stops_with(text, func, *args):
+    """True when func(*args) stops with a ValueError whose message holds `text`.
+
+    Matching the message makes sure the guard under test fired, not some other error.
+    """
+    try:
+        func(*args)
+    except ValueError as e:
+        return text in str(e)
+    return False
 
 
 def s7_breach():
@@ -186,11 +207,10 @@ def s7_breach():
     assert not thresholds.breached(12, 12.0), "a count equal to the threshold is not a breach"
 
     cases = toy_cases(2024)
-    cutoff = weeks.week_index(Week(2018, 50).startdate())
+    cutoff = weeks.week_index_of(2018, 50)
     t = thresholds.epidemic_threshold(2019, 1, cases, cutoff)
     assert np.isclose(t, 41), f"2019 week 1 threshold is {t}, expected 41"
-    hidden = cases.copy()
-    hidden.loc[hidden["week_index"] > cutoff, "cases"] = -999
+    hidden = hide_after(cases, cutoff)
     assert thresholds.epidemic_threshold(2019, 1, hidden, cutoff) == t, "the threshold used a count after the cutoff"
 
     end_2024 = weeks.week_index(Year(2024).enddate())
@@ -203,13 +223,60 @@ def s7_breach():
     years = thresholds.reference_years(2025, gap, end_2024)
     assert years == [2017, 2018, 2019, 2022, 2024], f"with 2023 incomplete: {years}"
 
-    try:
-        thresholds.epidemic_threshold(2017, 1, cases, end_2024)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("2017 has only 2 reference years and must stop")
+    assert stops_with("reference years", thresholds.epidemic_threshold, 2017, 1, cases, end_2024), (
+        "2017 has only 2 reference years and must stop")
     return f"Pr(Y > 12.4) = {p:.3f}; toy 2019 week 1 threshold {t:g}"
+
+
+def b8_baselines():
+    """B8 (no S number): M0 and M1 on made-up counts, worked by hand.
+
+    toy_cases from 2021 to 2026: 10 x (year - 2014) + week, so 2022 week 10 = 90
+    and 2025 week 53 = 163; COVID year 2021 is 10,000 in every week. Each
+    forecast is rerun with every count after its cutoff hidden (hide_after, as
+    S11 does) and must not change; every cutoff hides some counts. Option B
+    cutoffs are the week before the target; the last M1 row is option C, g = 2.
+    """
+    cases = toy_cases(2026, first_year=2021)
+    models = {"M0": baselines.m0_forecast, "M1": baselines.m1_forecast}
+    worked = [
+        # model, target (year, week), cutoff (year, week), answer by hand
+        ("M0", (2022, 10), (2022, 9), 10_000),  # 2021 week 10: COVID years are not skipped
+        ("M0", (2025, 10), (2025, 9), 110),     # 2024 week 10 = 100 + 10
+        ("M0", (2025, 53), (2025, 52), 111),    # 52 weeks back stays in 2025: week 1
+        ("M0", (2026, 1), (2025, 53), 112),     # after a 53-week year: 2025 week 2
+        ("M1", (2025, 10), (2025, 9), 100),     # 2022-2024, COVID 2021 skipped: (90 + 100 + 110) / 3
+        ("M1", (2025, 53), (2025, 52), 142),    # week 52's counts: (132 + 142 + 152) / 3
+        ("M1", (2026, 1), (2025, 53), 96),      # 2022-2025: (81 + 91 + 101 + 111) / 4
+        ("M1", (2026, 2), (2025, 52), 92),      # 2025 week 53 hidden, so 2022-2024: (82 + 92 + 102) / 3
+    ]
+    for name, (year, week), (cut_year, cut_week), answer in worked:
+        model = models[name]
+        cutoff = weeks.week_index_of(cut_year, cut_week)
+        label = f"{name} {year} week {week}, cutoff {cut_year} week {cut_week}"
+        got = model(year, week, cases, cutoff)
+        assert np.isclose(got, answer), f"{label}: {got}, by hand {answer}"
+        assert model(year, week, hide_after(cases, cutoff), cutoff) == got, f"{label}: used a count after the cutoff"
+        assert model(float(year), float(week), cases, cutoff) == got, f"{label}: fails on float year and week"
+
+    m0, m1 = baselines.m0_forecast, baselines.m1_forecast
+    missing = cases.copy()
+    missing.loc[(missing["year"] == 2024) & (missing["week"] == 10), "cases"] = np.nan
+    twice = pd.concat([cases, cases[(cases["year"] == 2023) & (cases["week"] == 10)]])
+    assert stops_with("after the cutoff", m0, 2025, 10, cases, weeks.week_index_of(2024, 9)), (
+        "M0 must stop when 52 weeks back is after the cutoff")
+    assert stops_with("missing count", m0, 2025, 10, missing, weeks.week_index_of(2025, 9)), (
+        "M0 must stop when the count 52 weeks back is missing")
+    assert stops_with("0 rows", m0, 2021, 10, cases, weeks.week_index_of(2021, 9)), (
+        "M0 must stop when 52 weeks back is before the data")
+    assert stops_with("reference years", m1, 2024, 10, cases, weeks.week_index_of(2024, 9)), (
+        "M1 must stop with 2 reference years (2022, 2023; 2021 is COVID)")
+    assert stops_with("expected one week-10 count", m1, 2025, 10, twice, weeks.week_index_of(2025, 9)), (
+        "M1 must stop when a reference year has two week-10 rows")
+    for model in (m0, m1):
+        assert stops_with("Week must be in", model, 2026, 53, cases, weeks.week_index_of(2026, 52)), (
+            "M0 and M1 must stop on 2026 week 53, which does not exist")
+    return f"{len(worked)} forecasts match the hand answers; leaks, gaps, duplicates and bad weeks stop"
 
 
 def s8_census_fit():
@@ -305,6 +372,7 @@ CHECKS = {
     "S6 theta": not_built("B6"),
     "S7 breach": s7_breach,
     "S7 scores": not_built("D1, D3"),
+    "B8 M0 and M1": b8_baselines,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
     "S9 return levels": not_built("C3"),

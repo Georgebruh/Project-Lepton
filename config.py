@@ -158,6 +158,7 @@ REPORTED_SHARE_CUTOFF_TEST = 0.80
 # ---------------------------------------------------------------------------
 # Layer 1: models
 # ---------------------------------------------------------------------------
+M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the target week (B8)
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
@@ -381,6 +382,7 @@ S2_KNOWN_STORMS = {
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
+S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
 # Evaluation (D5, D6)

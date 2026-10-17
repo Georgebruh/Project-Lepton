@@ -62,7 +62,8 @@ def reference_counts(target_year, target_week, cases, cutoff):
     """Week w's count in each reference year, where w is the target week with 53 mapped to 52.
 
     Returns one count per reference year, indexed by year. Stops when fewer than
-    3 years (config.THRESHOLD_MIN_YEARS) are complete before the target year.
+    3 years (config.THRESHOLD_MIN_YEARS) are complete before the target year, or
+    when a year has more than one week-w row (a duplicate would count twice).
     M1 (B8) is the mean of these counts.
     """
     years = reference_years(target_year, cases, cutoff)
@@ -72,7 +73,8 @@ def reference_counts(target_year, target_week, cases, cutoff):
     w = weeks.week_of_year(target_week)
     rows = cases[cases["year"].isin(years) & (cases["week"] == w)]
     counts = rows.set_index("year")["cases"].sort_index()
-    assert list(counts.index) == years, f"expected one week-{w} count for each of {years}, got {list(counts.index)}"
+    if list(counts.index) != years:
+        raise ValueError(f"expected one week-{w} count for each of {years}, got {list(counts.index)}")
     return counts
 
 
