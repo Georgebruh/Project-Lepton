@@ -1,5 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
+Also runs B8's hand check of M0 and M1, which has no S number.
+
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
 reported as SKIP. Any FAIL stops work: the script exits with code 1.
@@ -15,7 +17,7 @@ import xarray as xr
 from epiweeks import Week, Year
 
 import config
-from src import weeks
+from src import baselines, forecast_range, thresholds, weeks
 
 
 class NotBuilt(Exception):
@@ -146,6 +148,137 @@ def s2_rain_file():
             f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
+def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
+    """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
+
+    COVID years get 10,000 in every week, so a threshold or M1 that wrongly
+    used them would be far off.
+    """
+    rows = []
+    for year in range(first_year, last_year + 1):
+        for wk in Year(year).iterweeks():
+            count = 10_000 if year in config.COVID_YEARS else 10 * (year - 2014) + wk.week
+            rows.append({"week_index": weeks.week_index(wk.startdate()), "year": year,
+                         "week": wk.week, "cases": count})
+    return pd.DataFrame(rows)
+
+
+def hide_after(cases, cutoff):
+    """Copy of `cases` with every count after week index `cutoff` overwritten, as S11 does (rule 1)."""
+    hidden = cases.copy()
+    hidden.loc[hidden["week_index"] > cutoff, "cases"] = config.S11_HIDDEN_COUNT
+    return hidden
+
+
+def stops_with(text, func, *args):
+    """True when func(*args) stops with a ValueError whose message holds `text`.
+
+    Matching the message makes sure the guard under test fired, not some other error.
+    """
+    try:
+        func(*args)
+    except ValueError as e:
+        return text in str(e)
+    return False
+
+
+def s7_breach():
+    """S7, first part (B6's forecast_dist, B7): breach probability and thresholds.
+
+    From the plan: forecast_dist(20, 5) with threshold 12.4 gives sf(12) = 0.758
+    = P(Y >= 13); threshold 200 gives about 0. A count equal to the threshold is
+    not a breach, in the forecast and in the scored outcome alike.
+    Then thresholds on made-up counts (toy_cases), worked by hand:
+      - 2019 week 1, cutoff 2018 week 50: 2018 is not complete yet, so the years
+        are 2015-2017, with week-1 counts 11, 21, 31: mean 21, SD 10, T = 41.
+      - every count after the cutoff overwritten with -999 (as S11 does): still 41.
+      - 2025: the 5 most recent non-COVID years are 2018, 2019, 2022-2024, and
+        week 53 gets week 52's threshold. With 2023 missing a week, 2017 replaces it.
+      - 2017 has only 2 years before it, so it stops.
+    The second part, "S7 scores" (wis, episodes and the exact interval), waits for D1 and D3.
+    """
+    dist = forecast_range.forecast_dist(20, 5)
+    p = thresholds.breach_probability(dist, 12.4)
+    assert round(p, 3) == 0.758, f"Pr(breach) at 12.4 = {p}"
+    assert np.isclose(p, 1 - dist.cdf(12)), "Pr(breach) at 12.4 must be P(Y >= 13)"
+    assert thresholds.breach_probability(dist, 200) < 1e-9, "Pr(breach) at 200 must be about 0"
+    assert thresholds.breach_probability(dist, 12.0) == p, "at 12.0 a breach is also Y >= 13"
+    assert thresholds.breached(13, 12.4) and not thresholds.breached(12, 12.4)
+    assert not thresholds.breached(12, 12.0), "a count equal to the threshold is not a breach"
+
+    cases = toy_cases(2024)
+    cutoff = weeks.week_index_of(2018, 50)
+    t = thresholds.epidemic_threshold(2019, 1, cases, cutoff)
+    assert np.isclose(t, 41), f"2019 week 1 threshold is {t}, expected 41"
+    hidden = hide_after(cases, cutoff)
+    assert thresholds.epidemic_threshold(2019, 1, hidden, cutoff) == t, "the threshold used a count after the cutoff"
+
+    end_2024 = weeks.week_index(Year(2024).enddate())
+    years = thresholds.reference_years(2025, cases, end_2024)
+    assert years == [2018, 2019, 2022, 2023, 2024], f"2025 reference years {years}"
+    t_52 = thresholds.epidemic_threshold(2025, 52, cases, end_2024)
+    assert thresholds.epidemic_threshold(2025, 53, cases, end_2024) == t_52, "week 53 must use week 52"
+    gap = cases.copy()
+    gap.loc[(gap["year"] == 2023) & (gap["week"] == 20), "cases"] = np.nan
+    years = thresholds.reference_years(2025, gap, end_2024)
+    assert years == [2017, 2018, 2019, 2022, 2024], f"with 2023 incomplete: {years}"
+
+    assert stops_with("reference years", thresholds.epidemic_threshold, 2017, 1, cases, end_2024), (
+        "2017 has only 2 reference years and must stop")
+    return f"Pr(Y > 12.4) = {p:.3f}; toy 2019 week 1 threshold {t:g}"
+
+
+def b8_baselines():
+    """B8 (no S number): M0 and M1 on made-up counts, worked by hand.
+
+    toy_cases from 2021 to 2026: 10 x (year - 2014) + week, so 2022 week 10 = 90
+    and 2025 week 53 = 163; COVID year 2021 is 10,000 in every week. Each
+    forecast is rerun with every count after its cutoff hidden (hide_after, as
+    S11 does) and must not change; every cutoff hides some counts. Option B
+    cutoffs are the week before the target; the last M1 row is option C, g = 2.
+    """
+    cases = toy_cases(2026, first_year=2021)
+    models = {"M0": baselines.m0_forecast, "M1": baselines.m1_forecast}
+    worked = [
+        # model, target (year, week), cutoff (year, week), answer by hand
+        ("M0", (2022, 10), (2022, 9), 10_000),  # 2021 week 10: COVID years are not skipped
+        ("M0", (2025, 10), (2025, 9), 110),     # 2024 week 10 = 100 + 10
+        ("M0", (2025, 53), (2025, 52), 111),    # 52 weeks back stays in 2025: week 1
+        ("M0", (2026, 1), (2025, 53), 112),     # after a 53-week year: 2025 week 2
+        ("M1", (2025, 10), (2025, 9), 100),     # 2022-2024, COVID 2021 skipped: (90 + 100 + 110) / 3
+        ("M1", (2025, 53), (2025, 52), 142),    # week 52's counts: (132 + 142 + 152) / 3
+        ("M1", (2026, 1), (2025, 53), 96),      # 2022-2025: (81 + 91 + 101 + 111) / 4
+        ("M1", (2026, 2), (2025, 52), 92),      # 2025 week 53 hidden, so 2022-2024: (82 + 92 + 102) / 3
+    ]
+    for name, (year, week), (cut_year, cut_week), answer in worked:
+        model = models[name]
+        cutoff = weeks.week_index_of(cut_year, cut_week)
+        label = f"{name} {year} week {week}, cutoff {cut_year} week {cut_week}"
+        got = model(year, week, cases, cutoff)
+        assert np.isclose(got, answer), f"{label}: {got}, by hand {answer}"
+        assert model(year, week, hide_after(cases, cutoff), cutoff) == got, f"{label}: used a count after the cutoff"
+        assert model(float(year), float(week), cases, cutoff) == got, f"{label}: fails on float year and week"
+
+    m0, m1 = baselines.m0_forecast, baselines.m1_forecast
+    missing = cases.copy()
+    missing.loc[(missing["year"] == 2024) & (missing["week"] == 10), "cases"] = np.nan
+    twice = pd.concat([cases, cases[(cases["year"] == 2023) & (cases["week"] == 10)]])
+    assert stops_with("after the cutoff", m0, 2025, 10, cases, weeks.week_index_of(2024, 9)), (
+        "M0 must stop when 52 weeks back is after the cutoff")
+    assert stops_with("missing count", m0, 2025, 10, missing, weeks.week_index_of(2025, 9)), (
+        "M0 must stop when the count 52 weeks back is missing")
+    assert stops_with("0 rows", m0, 2021, 10, cases, weeks.week_index_of(2021, 9)), (
+        "M0 must stop when 52 weeks back is before the data")
+    assert stops_with("reference years", m1, 2024, 10, cases, weeks.week_index_of(2024, 9)), (
+        "M1 must stop with 2 reference years (2022, 2023; 2021 is COVID)")
+    assert stops_with("expected one week-10 count", m1, 2025, 10, twice, weeks.week_index_of(2025, 9)), (
+        "M1 must stop when a reference year has two week-10 rows")
+    for model in (m0, m1):
+        assert stops_with("Week must be in", model, 2026, 53, cases, weeks.week_index_of(2026, 52)), (
+            "M0 and M1 must stop on 2026 week 53, which does not exist")
+    return f"{len(worked)} forecasts match the hand answers; leaks, gaps, duplicates and bad weeks stop"
+
+
 def s8_census_fit():
     """S8, first part (C1): each barangay's rescaled pixels add up to its 2024 census total.
 
@@ -156,12 +289,14 @@ def s8_census_fit():
     The scale file must hold one positive factor for each of A5's 142 barangays.
     The second and third parts (exposed residents, C2) are s8_overlay.
     """
+    # Files first: without them the check is a SKIP, even where exactextract is not installed.
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
+
     import geopandas as gpd
 
     from src import rescale
 
-    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
-    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
     brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "pop_2024"])
     scale = pd.read_csv(config.WORLDPOP_SCALE_QC, dtype={"psgc": str})
 
@@ -190,12 +325,14 @@ def s8_overlay():
     or 100-year map, to inspect: NOAH modelled each map separately, so this is not a
     failure (python -m src.overlay prints their numbers).
     """
+    # Files first: without them the check is a SKIP, even where exactextract is not installed.
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+
     import geopandas as gpd
 
     from src import overlay
 
-    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
-    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
     brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "adm4_name", "pop_2024"])
     table = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
 
@@ -285,7 +422,9 @@ CHECKS = {
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
-    "S7 breach and scores": not_built("B7"),
+    "S7 breach": s7_breach,
+    "S7 scores": not_built("D1, D3"),
+    "B8 M0 and M1": b8_baselines,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
     "S9 return levels": not_built("C3"),

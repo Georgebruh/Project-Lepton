@@ -125,6 +125,7 @@ NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station
 NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
+NOAH_OVERLAP_TOLERANCE_KM2 = 1e-6          # C2: levels of one map may share at most 1 m2 in a barangay (rounding)
 # A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
 # (https://noah.up.edu.ph, "Downloads") links the public folder
 # https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o
@@ -159,6 +160,7 @@ REPORTED_SHARE_CUTOFF_TEST = 0.80
 # ---------------------------------------------------------------------------
 # Layer 1: models
 # ---------------------------------------------------------------------------
+M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the target week (B8)
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
@@ -175,12 +177,42 @@ M3_COVID_GAP_FACTOR = 0.5                  # missing lockdown weeks get 0.5 x se
 M3_RAINY_GAP_FACTOR = 1.0                  # missing Jun-Nov weeks get 1.0 x seasonal mean
 M3_XGB_PARAMS = {}                         # assumption: xgboost defaults
 M3_XGB_PARAMS_TEST = {"max_depth": 2}
+M3_XGB_ROUNDS = 100                        # assumption: XGBRegressor's default n_estimators (xgb.train alone uses 10)
 M3_TARGET_MAE = {"hybrid": 16.72, "prophet": 23.68}
 M3_TOLERANCE = 0.10
+# B3: the paper's Table I, all 18 forecast weeks (SARIMA not reproduced: R auto.arima)
+M3_TABLE_I = {
+    "hybrid": {"mae": 16.7237, "rmse": 21.9313, "smape": 38.7985, "bias": -0.7196},
+    "prophet": {"mae": 23.6831, "rmse": 28.1622, "smape": 50.6627, "bias": 1.0455},
+    "snaive": {"mae": 64.1782, "rmse": 97.5642, "smape": 93.6468, "bias": -34.4746},
+}
+M3_PEAK_CASES = 186                        # Table II: weeks with more than 186 cases (90th percentile)
+M3_TABLE_II = {
+    "hybrid": {"mae": 7.7409, "rmse": 7.8965, "smape": 2.8187, "bias": -1.5596},
+    "prophet": {"mae": 51.6640, "rmse": 52.5004, "smape": 19.1135, "bias": -9.3342},
+    "snaive": {"mae": 180.5000, "rmse": 218.1433, "smape": 103.8144, "bias": -122.5000},
+}
+M3_TABLE_III_DM = {"stat": -1.8242, "p": 0.04287}   # Hybrid vs Prophet
+# B3 diagnostics (python -m src.m3 --diagnose): XGBoost settings tried when the hybrid misses
+M3_DIAG_MAX_DEPTH = (1, 2, 3, 4, 6)
+M3_DIAG_ROUNDS = (10, 25, 50, 100, 200)
+M3_DIAG_ETA = (0.05, 0.1, 0.3)
+M3_DIAGNOSTICS = RESULTS / "m3_diagnostics.csv"       # B3: hybrid scores for every setting tried
+M3_SEASONAL_PERIOD = 52                    # seasonal naive: the value 52 rows earlier
+M3_RAINY_MONTHS = (6, 11)                  # "monsoon season (June-November)"
+# Assumption: the paper cites a news timeline but gives no dates. "Lockdown" read as
+# ECQ and MECQ in Metro Manila / Luzon; a week counts if its Thursday falls inside.
+M3_LOCKDOWNS = ((date(2020, 3, 15), date(2020, 5, 31)), (date(2020, 8, 4), date(2020, 8, 18)))
+M3_LOCKDOWNS_TEST = ((date(2020, 3, 15), date(2020, 12, 31)),)   # any community quarantine in 2020
+# Assumption: the paper counts 260 weeks = 5 x 52, so its series has no ISO 2020 week 53
+# row. True drops that (empty) row; False keeps A9's full ISO grid. Both are run.
+M3_DROP_WEEK_53 = True
+M3_RESULTS = RESULTS / "m3_reproduction.csv"          # B3: scores of every run beside Table I
+M3_FORECASTS = RESULTS / "m3_forecasts.csv"           # B3: the 18 forecast weeks of every run
 
 # A9: layout of the Mendeley file. One row per week number; one column per disease and year,
 # named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").
-PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # confirm the DOI against Latigay & Gonzaga's references
+PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # DOI matches Latigay & Gonzaga's ref. 9 (data/raw/parreno.md)
 PARRENO_SHEET = 0                          # sheet name or position
 PARRENO_WEEK_COL = "Week"                  # the column holding the week number
 PARRENO_DISEASE_KEY = "Leptospirosis"      # columns whose name contains this (any case) and ends in a year
@@ -234,11 +266,117 @@ AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
 
-# Storms (A11 fills in dates and D)
+# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC)
 STORMS = {
-    "carina_2024": {"year": 2024, "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)), "D": None},
-    "floods_2025": {"year": 2025, "wettest_days": None, "D": None},
-    "habagat_2026": {"year": 2026, "wettest_days": None, "D": None},
+    "carina_2024": {
+        "year": 2024,
+        "start_date": date(2024, 7, 23),
+        "end_date": date(2024, 7, 25),
+        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),
+        "D": 3,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300013",  # Balingasa
+            "1381300028",  # Damayang Lagi
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300033",  # Don Manuel
+            "1381300035",  # E. Rodriguez
+            "1381300041",  # Fairview
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300047",  # Kalusugan
+            "1381300048",  # Kamuning
+            "1381300060",  # Mariana
+            "1381300061",  # Mariblo
+            "1381300064",  # Masambong
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300068",  # Nagkaisang Nayon
+            "1381300070",  # Novaliches Proper
+            "1381300076",  # Paltok
+            "1381300081",  # Phil-Am
+            "1381300085",  # Quirino 2-A
+            "1381300090",  # Roxas
+            "1381300097",  # San Bartolome
+            "1381300116",  # South Triangle
+            "1381300118",  # Talayan
+            "1381300121",  # Tatalon
+        ),
+    },
+    "floods_2025": {
+        "year": 2025,
+        "start_date": date(2025, 7, 19),
+        "end_date": date(2025, 7, 24),
+        "wettest_days": (date(2025, 7, 21), date(2025, 7, 23)),
+        "D": 6,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300022",  # Commonwealth
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300041",  # Fairview
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300043",  # Gulod
+            "1381300055",  # Loyola Heights
+            "1381300059",  # Mangga
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300080",  # Pasong Tamo
+            "1381300090",  # Roxas
+            "1381300104",  # Santa Cruz
+            "1381300105",  # Santa Lucia
+            "1381300112",  # Sienna
+            "1381300120",  # Tandang Sora
+            "1381300121",  # Tatalon
+        ),
+    },
+    "habagat_2026": {
+        "year": 2026,
+        "start_date": date(2026, 8, 8),
+        "end_date": date(2026, 8, 11),
+        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),
+        "D": 4,
+        "flooded_psgc": (
+            "1381300003",  # Apolonio Samson
+            "1381300010",  # Bagong Silangan
+            "1381300011",  # Bagumbayan
+            "1381300012",  # Bahay Toro
+            "1381300025",  # Culiat
+            "1381300027",  # Damayan
+            "1381300028",  # Damayang Lagi
+            "1381300029",  # Del Monte
+            "1381300031",  # Doña Imelda
+            "1381300033",  # Don Manuel
+            "1381300035",  # E. Rodriguez
+            "1381300042",  # N.S. Amoranto (Gintong Silahis)
+            "1381300043",  # Gulod
+            "1381300048",  # Kamuning
+            "1381300049",  # Katipunan
+            "1381300054",  # Lourdes
+            "1381300060",  # Mariana
+            "1381300062",  # Marilag
+            "1381300063",  # Masagana
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300071",  # Obrero
+            "1381300073",  # Paang Bundok
+            "1381300080",  # Pasong Tamo
+            "1381300082",  # Pinyahan
+            "1381300084",  # Project 6
+            "1381300089",  # Ramon Magsaysay
+            "1381300090",  # Roxas
+            "1381300102",  # San Roque
+            "1381300104",  # Santa Cruz
+            "1381300105",  # Santa Lucia
+            "1381300112",  # Sienna
+            "1381300115",  # Socorro
+            "1381300118",  # Talayan
+            "1381300119",  # Talipapa
+            "1381300120",  # Tandang Sora
+            "1381300121",  # Tatalon
+            "1381300129",  # Vasra
+            "1381300142",  # North Fairview
+        ),
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -256,6 +394,7 @@ S2_KNOWN_STORMS = {
 }
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
+S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
 # Evaluation (D5, D6)

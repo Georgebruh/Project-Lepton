@@ -12,6 +12,13 @@ file's week numbers are used as given. Do not use src.weeks here.
 
 Weeks with no count stay as rows with empty cases (not zero). B3 does the gap filling.
 
+One empty row is not a missing report: ISO 2020 has 53 weeks, but the file has 52 rows a
+year, so 2020 week 53 has no row in the file at all. B3's seasonal baseline cannot fill it
+(no other year has a week 53); interpolating between 2020 week 52 and 2021 week 1 can.
+The paper counts 260 weeks (5 x 52), so its series may have had no week 53. With the row,
+every rolling-origin fold (all after 2020) ends one calendar week earlier than without
+it; if B3 misses the paper's MAE, try dropping the row.
+
 Run from the repository root:
     python -m src.benchmark --inspect    # look at the file's columns
     python -m src.benchmark              # build the clean series
@@ -114,7 +121,11 @@ def full_week_range(table):
     grid = pd.DataFrame({"iso_year": iso["year"].astype(int).to_numpy(),
                          "iso_week": iso["week"].astype(int).to_numpy(),
                          "week_start": mondays.date})
-    return grid.merge(table, on=["iso_year", "iso_week"], how="left", validate="one_to_one")
+    full = grid.merge(table, on=["iso_year", "iso_week"], how="left", validate="one_to_one")
+    # A count the grid has no week for (week 53 of a 52-week ISO year) would vanish in the merge.
+    if full["cases"].notna().sum() != len(counted):
+        raise ValueError("a week with a count is not an ISO week of its year (week 53 in a 52-week year?)")
+    return full
 
 
 def check_series(table):
