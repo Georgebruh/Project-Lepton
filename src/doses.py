@@ -43,7 +43,8 @@ C7, C8 and C9 call barangay_doses(residents, shares, D, w), which runs C5 and C6
 same D, with residents from C3's graded exposure at the storm's rain.
 
 Run from the repository root:  python -m src.doses
-Like C5's script, it previews C6 at each map's own rain, R24 = R(5), R(25) and R(100),
+Like C5's script, it previews C6 at each map's own rain, Rn = R(5), R(25) and R(100)
+(Rn: the storm's wettest n-day total, n = config.RAIN_ACCUM_DAYS),
 for C9's two flood durations, so it needs only C2's overlay_qc.csv and C4's
 shares_qc.csv. It prints QC's totals and writes no file; the storm runs are C8 and C9.
 Then run the checks (S10, C6 part):  python -m src.checks
@@ -122,7 +123,8 @@ def report(overlay, shares):
             stock[(period, label)] = barangay_doses(residents, shares, days, w)
     totals = pd.DataFrame({key: table[[*DOXY_BY_TIER, *UNITS]].sum() for key, table in stock.items()}).T
     totals.index.names = ["map", "flood"]
-    print(f"QC stock if a storm's wettest day equals each map's rain, R24 = R(T), at full coverage "
+    print(f"QC stock if a storm's wettest {config.RAIN_ACCUM_DAYS}-day total equals each map's rain, "
+          f"Rn = R(T), at full coverage "
           f"(q = {config.CONTACT_SHARE_Q:g}, u = {config.UPTAKE_U:g}):")
     print(totals.to_string(float_format="{:,.0f}".format))
     print("\n" + "\n".join(f"  {col}: {what}" for col, what in UNITS.items()))
