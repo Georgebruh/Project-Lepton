@@ -518,6 +518,139 @@ def s10_shares():
             f"({upper['s_adult'].min():.3f} at the 3.5% upper bound)")
 
 
+def s10_exposed():
+    """S10, C5 part: exposed people per group, and the adult risk tiers.
+
+    First a made-up city whose answers are worked out by hand, with q and r_k away from 1
+    so both are tested. Then S10's dose input, 100 exposed adults with w = 0.5, split into
+    tiers at D = 1, 3 and 10 (C6 turns them into 600, 200 and 400 capsules), plus the
+    bounds of w and the 1- and 3-day cut-off tests. Input that would give wrong counts
+    without an error must stop the run (rule 5): a barangay missing, or two maps' rows
+    passed together. Then the real tables, at each map's own rain (C2's map x C4's
+    shares): one row per barangay, nothing missing or negative; with q = r_k = 1 everyone
+    exposed equals the map's residents; the groups add up to everyone exposed; and the
+    tiers add up to the exposed adults in every preview scenario.
+    """
+    from src import exposed
+
+    # Made-up city of two barangays, q = 0.5, r_k = 0.5 at level 1 and 1 at levels 2 and 3.
+    # a: N = 100, 200, 300 -> 0.5 x (0.5 x 100 + 200 + 300) = 275; shares 0.30 / 0.02 / 0.68 -> 82.5, 5.5, 187
+    # b: N =   0,  50,   0 -> 0.5 x 50 = 25;                       shares 0.25 / 0.03 / 0.72 -> 6.25, 0.75, 18
+    toy_shares = pd.DataFrame({"s_child": [0.30, 0.25], "s_preg": [0.02, 0.03], "s_adult": [0.68, 0.72]},
+                              index=pd.Index(["a", "b"], name="psgc"))
+    toy = pd.DataFrame({"psgc": ["a"] * 3 + ["b"] * 3, "var": [1, 2, 3] * 2,
+                        "residents": [100, 200, 300, 0, 50, 0]})
+    got = exposed.exposed_people(toy, toy_shares, q=0.5, contact={1: 0.5, 2: 1.0, 3: 1.0})
+    for col, expected in (("exposed", [275, 25]), ("e_child", [82.5, 6.25]),
+                          ("e_preg", [5.5, 0.75]), ("e_adult", [187, 18])):
+        assert np.allclose(got[col], expected), f"made-up city: {col} = {list(got[col])}, expected {expected}"
+
+    # S10's input: 100 exposed adults. (D, cut-off, w) -> (high, moderate, low)
+    adults = pd.Series([100.0])
+    for days, cutoff, w, expected in (
+        (1, 2, 0.5, (0, 50, 50)),     # short flood, split by w; C6: 2 x 50 + 10 x 50 = 600 capsules
+        (3, 2, 0.5, (100, 0, 0)),     # 2 days or more, all high; C6: 2 x ceil(3/7) x 100 = 200
+        (10, 2, 0.5, (100, 0, 0)),    # C6: 2 x ceil(10/7) x 100 = 400
+        (1, 2, 0.0, (0, 0, 100)),     # the bounds of w
+        (1, 2, 1.0, (0, 100, 0)),
+        (2, 3, 0.5, (0, 50, 50)),     # cut-off tests (C8): 2 days is short under a 3-day cut-off
+        (1, 1, 0.5, (100, 0, 0)),     # and every flood is long under a 1-day cut-off
+    ):
+        tiers = tuple(exposed.adult_tiers(adults, days, w, cutoff).iloc[0][exposed.TIERS])
+        assert np.allclose(tiers, expected), (
+            f"D = {days}, cut-off {cutoff}, w = {w}: (high, moderate, low) = {tiers}, expected {expected}")
+
+    for label, bad in (("barangay b missing", toy[toy["psgc"] == "a"]), ("two maps mixed", pd.concat([toy, toy]))):
+        try:
+            exposed.exposed_people(bad, toy_shares)
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: exposed_people did not stop")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+    table = exposed.load_shares()
+    full_contact = {k: 1.0 for k in config.NOAH_HAZARD_LEVELS}
+    parts = []
+    for period in config.NOAH_RETURN_PERIODS:
+        residents = exposed.map_residents(overlay, period)
+        people = exposed.exposed_people(residents, table)
+        assert len(people) == config.QC_BARANGAYS, f"{period}-year map: {len(people)} barangays"
+        assert people.notna().all().all() and (people >= 0).all().all(), f"{period}-year map: missing or negative counts"
+        flooded = residents.groupby("psgc")["residents"].sum().loc[people.index]
+        everyone = exposed.exposed_people(residents, table, q=1.0, contact=full_contact)["exposed"]
+        assert np.allclose(everyone, flooded), f"{period}-year map: with q = r_k = 1, exposed differs from the map's residents"
+        assert np.allclose(people[list(exposed.GROUPS)].sum(axis=1), people["exposed"]), (
+            f"{period}-year map: the groups do not add up to everyone exposed")
+        for label, days, w in exposed.scenarios():
+            tiers = exposed.adult_tiers(people["e_adult"], days, w)
+            assert np.allclose(tiers.sum(axis=1), people["e_adult"]), f"{period}-year map, {label}: tiers do not add up"
+        parts.append(f"R({period}) {people['exposed'].sum():,.0f}")
+    return f"QC exposed at {', '.join(parts)}; groups and tiers add up"
+
+
+def s10_doses():
+    """S10, C6 part: drug units per barangay.
+
+    S10's input, 100 exposed adults with w = 0.5 and u = 1, split into tiers by C5 and
+    turned into capsules: 600 at D = 1 (50 moderate x 10 + 50 low x 2), 200 at D = 3
+    (100 high x 2 x 1 week) and 400 at D = 10 (2 weeks). Then made-up children and
+    pregnant women worked by hand: 10 children need 10 courses at D = 1 and at D = 7, 20 at
+    D = 8 (a part week counts whole) and 30 at D = 15; 5 pregnant women need 30 tablets;
+    u = 0.5 halves every figure. Input that would give wrong stock without an error must
+    stop the run (rule 5): u above 1, a missing count. Then the real tables at each map's
+    own rain, in every preview flood: one row per barangay, no unit missing or negative,
+    and the doxycycline tiers add up to the total.
+    The allocation part (allocate) is C7.
+    """
+    from src import doses, exposed
+
+    def made_up(adults=0, children=0, pregnant=0, days=1):
+        """One made-up barangay's C5 table, with S10's w = 0.5 and the plan's 2-day cut-off."""
+        tiers = exposed.adult_tiers(pd.Series([float(adults)]), days, w=0.5, cutoff=2)
+        return tiers.assign(e_child=float(children), e_preg=float(pregnant))
+
+    for days, expected in ((1, 600), (3, 200), (10, 400)):
+        got = doses.doses(made_up(adults=100, days=days), days, u=1.0)["doxy100"].iloc[0]
+        assert np.isclose(got, expected), f"100 adults, D = {days}: {got} capsules, expected {expected}"
+    for days, expected in ((1, 10), (7, 10), (8, 20), (15, 30)):
+        got = doses.doses(made_up(children=10, days=days), days, u=1.0)["courses"].iloc[0]
+        assert np.isclose(got, expected), f"10 children, D = {days}: {got} courses, expected {expected}"
+    got = doses.doses(made_up(pregnant=5), 1, u=1.0)["amox500"].iloc[0]
+    assert np.isclose(got, 30), f"5 pregnant women: {got} tablets, expected 30"
+    half = doses.doses(made_up(adults=100, children=10, pregnant=5), 1, u=0.5).iloc[0]
+    for col, expected in (("doxy100", 300), ("courses", 5), ("amox500", 15)):
+        assert np.isclose(half[col], expected), f"u = 0.5: {col} = {half[col]}, expected {expected}"
+
+    for label, call in (("u = 1.5", lambda: doses.doses(made_up(adults=100), 1, u=1.5)),
+                        ("a missing count", lambda: doses.doses(made_up(adults=100).assign(e_child=np.nan), 1))):
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: doses did not stop")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+    table = exposed.load_shares()
+    shown = []
+    for period in config.NOAH_RETURN_PERIODS:
+        residents = exposed.map_residents(overlay, period)
+        for label, days, w in exposed.scenarios():
+            stock = doses.barangay_doses(residents, table, days, w)
+            units = stock[[*doses.DOXY_BY_TIER, *doses.UNITS]]
+            assert len(stock) == config.QC_BARANGAYS, f"R({period}), {label}: {len(stock)} barangays"
+            assert units.notna().all().all() and (units >= 0).all().all(), f"R({period}), {label}: missing or negative units"
+            assert np.allclose(stock[doses.DOXY_BY_TIER].sum(axis=1), stock["doxy100"]), (
+                f"R({period}), {label}: the doxycycline tiers do not add up to the total")
+            if period == exposed.PREVIEW_MAP:
+                shown.append(f"{label}: {stock['doxy100'].sum():,.0f}")
+    return (f"QC doxycycline capsules at R({exposed.PREVIEW_MAP}), {'; '.join(shown)} "
+            f"(stock planning, not prescriptions)")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -542,7 +675,9 @@ CHECKS = {
     "S10 shares and doses": not_built("C4, C6"),
     "S9 return levels": not_built("C3"),
     "S10 shares": s10_shares,
-    "S10 doses": not_built("C6, C7"),
+    "S10 exposed": s10_exposed,
+    "S10 doses": s10_doses,
+    "S10 allocate": not_built("C7"),
     "S11 leakage": not_built("B10"),
 }
 
