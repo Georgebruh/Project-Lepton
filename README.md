@@ -41,3 +41,11 @@ catchments; A10 checks its facilities against A5's barangays):
 | A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
 | A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv`; storms without A11's dates in `config.STORMS` are skipped |
 
+## Layer 2: barangay doses (Workstream C)
+
+Run after Workstream A, in this order:
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| C1 | `python -m src.rescale` | `data/clean/worldpop_scale_qc.csv`; needs A5 and A6 |
+

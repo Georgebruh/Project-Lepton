@@ -18,6 +18,7 @@ ECMWF_RAW = DATA_RAW / "ecmwf_previous_runs"          # A15: Open-Meteo's replie
 CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"        # A7
 WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6: whole country, unchanged
 WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX; C1 starts here
+WORLDPOP_SCALE_QC = DATA_CLEAN / "worldpop_scale_qc.csv"  # C1: census scale factor per barangay
 OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
@@ -232,6 +233,7 @@ S2_KNOWN_STORMS = {
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
+S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 
 # ---------------------------------------------------------------------------
 # Evaluation (D5, D6)
