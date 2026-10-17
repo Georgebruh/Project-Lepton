@@ -156,12 +156,14 @@ def s8_census_fit():
     The scale file must hold one positive factor for each of A5's 142 barangays.
     The second and third parts (exposed residents, C2) are s8_overlay.
     """
+    # Files first: without them the check is a SKIP, even where exactextract is not installed.
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
+
     import geopandas as gpd
 
     from src import rescale
 
-    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
-    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
     brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "pop_2024"])
     scale = pd.read_csv(config.WORLDPOP_SCALE_QC, dtype={"psgc": str})
 
