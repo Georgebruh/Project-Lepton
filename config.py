@@ -100,7 +100,10 @@ IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max
 # Both use every cell that overlaps the catchments, weighted by area (catchments.grid_cells):
 # 4 cells; only one grid point, (14.75, 121.25), lies inside the catchments.
 GRID_025_DEG = 0.25
+GRID_EDGE_POINTS = 25                      # points per cell edge before reprojecting (catchments.grid_cells)
+GRID_AREA_TOLERANCE = 1e-3                 # the cells must hold the catchment area to within 0.1%
 
+CRS_LONLAT = "EPSG:4326"                   # longitude/latitude degrees: catchments_qc.gpkg and the rain grids
 CRS_OVERLAY = "EPSG:32651"                 # overlays
 CRS_EXACTEXTRACT = "EPSG:4326"             # convert to this before exactextract
 QC_BARANGAYS = 142                         # check S3

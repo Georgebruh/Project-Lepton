@@ -26,19 +26,24 @@ IMERG (8 AM-8 AM Philippine time). This is why each request runs to the day afte
 storm's last day: that day's 00:00 value is the last hour of the storm's last day.
 
 Each storm's reply is saved unchanged in data/raw/ecmwf_previous_runs/, one JSON file
-per storm named with its dates. A file already there is not fetched again (delete it
-to refresh).
+per storm named with the model and its dates. A file already there is not fetched
+again (delete it to refresh).
 
 Output: data/clean/forecasts_storms.csv, one row per storm, lead time, UTC day and cell:
     storm, lead_days, date, lat, lon, weight, rain_mm
 A storm and lead time are written only if the archive has every hour of every day at
 every cell. The catchment rain for one storm, lead time and day is sum(weight x rain_mm).
+The table is rewritten on every run, with only its header if no storm is covered, so a
+table from an earlier run is never left behind. A storm Open-Meteo refuses (HTTP 400,
+e.g. dates outside its archive) is reported as not covered; a download that still fails
+after RETRIES tries is reported as not checked, and the run then exits with an error.
 
 Run from the repository root (needs A7's catchments_qc.gpkg):
     python -m src.ecmwf
 """
 
 import json
+import time
 from datetime import date, timedelta
 
 import geopandas as gpd
@@ -50,7 +55,14 @@ from src import catchments
 
 PREVIOUS_RUNS_API = "https://previous-runs-api.open-meteo.com/v1/forecast"
 TIMEOUT_S = 120
+RETRIES = 3
+RETRY_WAIT_S = 10
 SAME_POINT_DEG = 0.001  # a reply's grid point must be the requested one to within this
+COLUMNS = ["storm", "lead_days", "date", "lat", "lon", "weight", "rain_mm"]
+
+
+class RequestRefused(Exception):
+    """Open-Meteo answered HTTP 400 (dates outside its archive, or a bad parameter). Retrying will not help."""
 
 
 def lead_variable(lead_days):
@@ -59,8 +71,12 @@ def lead_variable(lead_days):
 
 
 def raw_path(storm, first, last):
-    """Where one storm's reply is saved, e.g. data/raw/ecmwf_previous_runs/carina_2024_20240723_20240725.json."""
-    return config.ECMWF_RAW / f"{storm}_{first:%Y%m%d}_{last:%Y%m%d}.json"
+    """Where one storm's reply is saved, e.g. data/raw/ecmwf_previous_runs/carina_2024_ecmwf_ifs025_20240723_20240725.json.
+
+    The model is in the name, so changing config.FORECAST_MODEL fetches new replies
+    instead of reading another model's.
+    """
+    return config.ECMWF_RAW / f"{storm}_{config.FORECAST_MODEL}_{first:%Y%m%d}_{last:%Y%m%d}.json"
 
 
 def request_params(cells, first, last):
@@ -82,23 +98,42 @@ def request_params(cells, first, last):
     }
 
 
+def fetch(cells, first, last, path):
+    """Request one storm from Open-Meteo and save the reply at path, byte for byte as received.
+
+    The file is written under a temporary name first, so a stopped run never leaves half
+    a file that a rerun would read.
+    """
+    r = requests.get(PREVIOUS_RUNS_API, params=request_params(cells, first, last), timeout=TIMEOUT_S)
+    if r.status_code == 400:
+        raise RequestRefused(r.text[:300])  # Open-Meteo's reply names the reason
+    r.raise_for_status()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_suffix(".part")
+    part.write_bytes(r.content)
+    part.replace(path)
+
+
 def download(storm, cells, first, last):
     """One storm's reply from Open-Meteo, as a list with one entry per cell.
 
     The reply is saved unchanged before it is read, and a saved reply is reused.
+    fetch() gets up to RETRIES tries, waiting a little longer after each failure;
+    RequestRefused is raised at once.
     """
     path = raw_path(storm, first, last)
     if path.exists():
         print(f"{storm}: reading {path.name} (already on disk)")
     else:
         print(f"{storm}: requesting {first} to {last} from Open-Meteo Previous Runs")
-        r = requests.get(PREVIOUS_RUNS_API, params=request_params(cells, first, last), timeout=TIMEOUT_S)
-        if r.status_code != 200:
-            raise SystemExit(f"Open-Meteo answered HTTP {r.status_code}: {r.text[:300]}")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        part = path.with_suffix(".part")
-        part.write_text(r.text, encoding="utf-8")
-        part.replace(path)
+        for attempt in range(1, RETRIES + 1):
+            try:
+                fetch(cells, first, last, path)
+                break
+            except requests.RequestException:
+                if attempt == RETRIES:
+                    raise
+                time.sleep(RETRY_WAIT_S * attempt)
 
     replies = json.loads(path.read_text(encoding="utf-8"))
     return replies if isinstance(replies, list) else [replies]  # one cell comes back without a list
@@ -116,9 +151,10 @@ def check_reply(replies, cells, path):
         if reply["utc_offset_seconds"] != 0:
             raise ValueError(f"{path.name}: times are not UTC")
         for n in config.FORECAST_LEADS_DAYS:
-            unit = reply["hourly_units"][lead_variable(n)]
+            unit = reply["hourly_units"].get(lead_variable(n), "missing")
             if unit != "mm":
-                raise ValueError(f"{path.name}: {lead_variable(n)} is in {unit}, expected mm")
+                raise ValueError(f"{path.name}: unit of {lead_variable(n)} is {unit}, expected mm "
+                                 f"(delete it to refresh)")
 
 
 def utc_day_totals(hourly):
@@ -151,7 +187,7 @@ def storm_table(storm, replies, cells, first, last):
                 rows.append({"storm": storm, "lead_days": n, "date": f"{day:%Y-%m-%d}",
                              "lat": cell.lat, "lon": cell.lon, "weight": round(cell.weight, 6),
                              "rain_mm": round(rain, 2)})  # hourly values have 2 decimals; drops float noise
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=COLUMNS)
 
 
 def coverage(table):
@@ -179,14 +215,24 @@ def main():
     print(cells.round({"km2": 1, "weight": 3}).to_string(index=False))
     print()
 
-    tables, status = [], {}
+    tables, status, failed = [], {}, []
     for storm, facts in config.STORMS.items():  # Carina first
         if facts["wettest_days"] is None:
             status[storm] = "not checked: no dates yet (A11)"
             print(f"{storm}: skipped, no wettest days in config.STORMS yet (A11)")
             continue
         first, last = facts["wettest_days"]
-        replies = download(storm, cells, first, last)
+        try:
+            replies = download(storm, cells, first, last)
+        except RequestRefused as e:
+            status[storm] = f"not covered ({first} to {last}): Open-Meteo refused the request: {e}"
+            print(f"  {status[storm]}")
+            continue
+        except requests.RequestException as e:
+            status[storm] = f"not checked ({first} to {last}): download failed after {RETRIES} tries"
+            print(f"  {status[storm]}: {e}")
+            failed.append(storm)
+            continue
         check_reply(replies, cells, raw_path(storm, first, last))
         table = storm_table(storm, replies, cells, first, last)
 
@@ -200,21 +246,25 @@ def main():
             status[storm] = f"not covered ({first} to {last})"
         print(f"  {status[storm]}")
 
-        table = table[table["lead_days"].isin(leads_in)]
         if leads_in:
+            table = table[table["lead_days"].isin(leads_in)]
             print("  catchment rain, mm per UTC day (columns: lead in days):")
             print("  " + catchment_rain(table).to_string().replace("\n", "\n  "))
-        tables.append(table)
+            tables.append(table)
 
-    out = pd.concat(tables, ignore_index=True) if tables else pd.DataFrame()
-    if out.empty:
-        raise SystemExit("no storm has archived forecasts; forecasts_storms.csv not written")
+    # Always rewritten, header only if nothing is covered, so C9 never reads an earlier run's table.
+    out = pd.concat(tables, ignore_index=True) if tables else pd.DataFrame(columns=COLUMNS)
     part = config.FORECASTS_STORMS.with_suffix(".part")
     out.to_csv(part, index=False)
     part.replace(config.FORECASTS_STORMS)
-    print(f"\nwrote {config.FORECASTS_STORMS} ({len(out)} rows)")
+    if out.empty:
+        print(f"\nno storm has archived forecasts: wrote {config.FORECASTS_STORMS} with no rows")
+    else:
+        print(f"\nwrote {config.FORECASTS_STORMS} ({len(out)} rows)")
     print("\nFor the Request Tracker:")
     print(tracker_line(status))
+    if failed:
+        raise SystemExit(f"\ndownload failed for {', '.join(failed)}; run again to retry (saved replies are reused)")
 
 
 if __name__ == "__main__":

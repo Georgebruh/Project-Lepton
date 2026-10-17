@@ -100,6 +100,9 @@ def grid_cells(catchments, step):
     catchments: GeoDataFrame in EPSG:4326, the "catchments" layer of catchments_qc.gpkg.
     Returns a table with lat, lon, km2 (catchment area inside the cell) and weight.
     """
+    # The grid is built in the layer's own units, so a layer in metres would give 0.25 m cells.
+    if catchments.crs != config.CRS_LONLAT:
+        raise ValueError(f"grid_cells needs the catchments in {config.CRS_LONLAT} (degrees), got {catchments.crs}")
     lon_min, lat_min, lon_max, lat_max = catchments.total_bounds
     lons = np.arange(math.floor(lon_min / step), math.ceil(lon_max / step) + 1) * step
     lats = np.arange(math.floor(lat_min / step), math.ceil(lat_max / step) + 1) * step
@@ -110,14 +113,14 @@ def grid_cells(catchments, step):
         geometry=[box(lon - half, lat - half, lon + half, lat + half) for lat in lats for lon in lons],
         crs=catchments.crs,
     )
-    # Points every step/25 along the edges keep them on their latitude and longitude lines after reprojecting.
-    cells = cells.set_geometry(cells.segmentize(step / 25)).to_crs(config.CRS_OVERLAY)
+    # Extra points along each edge keep it on its latitude or longitude line after reprojecting.
+    cells = cells.set_geometry(cells.segmentize(step / config.GRID_EDGE_POINTS)).to_crs(config.CRS_OVERLAY)
     shape = catchments.to_crs(config.CRS_OVERLAY).union_all()
     cells["km2"] = cells.intersection(shape).area / 1e6
     cells = cells[cells["km2"] > 0]
 
     total_km2 = shape.area / 1e6
-    if not math.isclose(cells["km2"].sum(), total_km2, rel_tol=1e-3):
+    if not math.isclose(cells["km2"].sum(), total_km2, rel_tol=config.GRID_AREA_TOLERANCE):
         raise ValueError(f"the cells hold {cells['km2'].sum():.1f} km2 of the {total_km2:.1f} km2 catchments")
     cells["weight"] = cells["km2"] / cells["km2"].sum()
     return pd.DataFrame(cells.drop(columns="geometry")).reset_index(drop=True)
