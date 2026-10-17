@@ -233,6 +233,13 @@ THRESHOLD_MIN_YEARS = 3
 # Layer 2: rain and exposure (C3)
 # ---------------------------------------------------------------------------
 GUMBEL_MIN_YEARS = 10                      # assumption: fit on >= 10 years before the forecast year
+# Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days), for the
+# return levels, the storms and the weekly EI alike; C9 uses the same on ERA5 and the ECMWF
+# forecasts. 1 = the plan's single wettest day, kept as the comparison run. The single day
+# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18). C9 needs at
+# least this many forecast days per storm: A15 fetches the 3 days in STORMS' wettest_days.
+RAIN_ACCUM_DAYS = 3
+RAIN_ACCUM_DAYS_TEST = 1
 R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 
 # ---------------------------------------------------------------------------
@@ -393,6 +400,9 @@ S2_KNOWN_STORMS = {
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
+S9_SAMPLES = 500                           # S9: fit this many samples...
+S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
+S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
 S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
