@@ -356,6 +356,58 @@ def s8_overlay():
             f"{len(falls)} barangays fall in a rarer map, inspect: {names}")
 
 
+def s10_shares():
+    """S10, first part (C4): child, pregnant and adult shares.
+
+    First a made-up city whose answers are worked out by hand, which tests the formulas
+    themselves. Then shares_qc.csv: one row for each of A5's 142 barangays; no share
+    missing or negative; the three shares add to 1 in every barangay; the pregnant counts
+    add up to QC's (A12's births x 0.75); and the file matches a fresh run of src.shares,
+    which catches a file left over from older inputs. The upper-bound test (3.5% of QC
+    pregnant) must give shares that add to 1, none negative, too.
+    The second part (doses and allocate) is C6 and C7.
+    """
+    from src import shares
+
+    # Made-up city of two barangays, worked by hand, with 100 pregnant women in all.
+    # a: 1,000 people in 2020, 300 under 18, 250 women 15-49 of whom 25 are 15-17; 1,250 in 2024.
+    # b: 2,000 people in 2020, 500 under 18, 750 women 15-49 of whom 50 are 15-17; 2,500 in 2024.
+    #   a: preg = 100 x 250/1000 = 25, s_preg = 25/1250 = 0.02, s_child = 300/1000 - 0.02 x 25/250 = 0.298
+    #   b: preg = 100 x 750/1000 = 75, s_preg = 75/2500 = 0.03, s_child = 500/2000 - 0.03 x 50/750 = 0.248
+    toy = pd.DataFrame({"pop_2020": [1000, 2000], "pop_2024": [1250, 2500], "children": [300, 500],
+                        "women_15_49": [250, 750], "women_15_17": [25, 50]}, index=["a", "b"])
+    got = shares.group_shares(toy, 100)
+    for col, expected in (("preg", [25, 75]), ("s_preg", [0.02, 0.03]),
+                          ("s_child", [0.298, 0.248]), ("s_adult", [0.682, 0.722])):
+        assert np.allclose(got[col], expected), f"made-up city: {col} = {list(got[col])}, expected {expected}"
+
+    need_file(config.CENSUS_QC, "A5 (python -m src.census)")
+    need_file(config.BIRTHS_2024, "A12 (copy psa_births_2024.csv from the team drive)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    table = pd.read_csv(config.SHARES_QC, dtype={"psgc": str}).set_index("psgc")
+    counts = shares.barangay_counts()
+
+    assert len(table) == config.QC_BARANGAYS and table.index.is_unique, (
+        f"shares file has {len(table)} rows, {table.index.nunique()} barangays")
+    assert set(table.index) == set(counts.index), "shares file and A5's barangays hold different barangays"
+    preg_qc = shares.pregnant_from_births(shares.qc_births())
+    upper = shares.group_shares(counts, shares.upper_bound_pregnant(counts))
+    for label, t in (("shares file", table), ("upper bound", upper)):
+        s = t[shares.SHARES]
+        assert s.notna().all().all(), f"{label}: a share is missing"
+        assert (s >= 0).all().all(), f"{label}: negative share in {list(s.index[(s < 0).any(axis=1)])}"
+        off = (s.sum(axis=1) - 1).abs()
+        assert off.max() <= config.S10_SHARE_TOLERANCE, f"{label}: shares add to {s.sum(axis=1)[off.idxmax()]} in {off.idxmax()}"
+    assert np.isclose(table["preg"].sum(), preg_qc), f"pregnant counts add up to {table['preg'].sum():,.1f}, QC has {preg_qc:,.1f}"
+
+    fresh = shares.group_shares(counts, preg_qc).loc[table.index]
+    cols = ["pop_2020", "pop_2024", "children", "women_15_49", "women_15_17", "preg", *shares.SHARES]
+    assert np.allclose(table[cols], fresh[cols]), "shares file differs from a fresh run: rerun python -m src.shares"
+    return (f"QC child {(table['s_child'] * table['pop_2024']).sum() / table['pop_2024'].sum():.1%}, "
+            f"pregnant {preg_qc:,.0f}, smallest adult share {table['s_adult'].min():.3f} "
+            f"({upper['s_adult'].min():.3f} at the 3.5% upper bound)")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -376,7 +428,8 @@ CHECKS = {
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
     "S9 return levels": not_built("C3"),
-    "S10 shares and doses": not_built("C4, C6"),
+    "S10 shares": s10_shares,
+    "S10 doses": not_built("C6, C7"),
     "S11 leakage": not_built("B10"),
 }
 
