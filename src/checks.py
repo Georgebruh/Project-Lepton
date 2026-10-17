@@ -154,7 +154,7 @@ def s8_census_fit():
     levels), and passes when each is within 0.1% (config.S8_CENSUS_TOLERANCE) of its
     pop_2024. That also catches a scale file left over from an older grid or older shapes.
     The scale file must hold one positive factor for each of A5's 142 barangays.
-    The second and third parts (exposed residents) need C2: see "S8 overlay".
+    The second and third parts (exposed residents, C2) are s8_overlay.
     """
     import geopandas as gpd
 
@@ -180,6 +180,45 @@ def s8_census_fit():
             f"QC {fitted.sum():,.0f} vs census {brgy['pop_2024'].sum():,}")
 
 
+def s8_overlay():
+    """S8, second and third parts (C2): the overlay table, and the barangays to inspect.
+
+    overlay_qc.csv holds one row for each of the 142 barangays x 3 maps x 3 hazard levels,
+    with no missing or negative area or residents. In each map, the residents of the three
+    levels never exceed the barangay's 2024 census total (with the first part's 0.1%).
+    Then lists the barangays whose exposed residents fall from the 5-year map to the 25-
+    or 100-year map, to inspect: NOAH modelled each map separately, so this is not a
+    failure (python -m src.overlay prints their numbers).
+    """
+    import geopandas as gpd
+
+    from src import overlay
+
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    brgy = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "adm4_name", "pop_2024"])
+    table = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+
+    expected = config.QC_BARANGAYS * len(config.NOAH_RETURN_PERIODS) * len(config.NOAH_HAZARD_LEVELS)
+    assert len(table) == expected, f"{len(table)} rows, expected {expected} (barangays x maps x levels)"
+    assert not table.duplicated(overlay.KEYS).any(), "a barangay, map and level appears twice"
+    assert set(table["psgc"]) == set(brgy["psgc"]), "overlay and A5's barangays hold different barangays"
+    assert set(table["return_period"]) == set(config.NOAH_RETURN_PERIODS), "unexpected maps"
+    assert set(table["var"]) == set(config.NOAH_HAZARD_LEVELS), "unexpected hazard levels"
+    for col in ("area_km2", "residents"):
+        assert table[col].notna().all() and (table[col] >= 0).all(), f"missing or negative {col}"
+
+    exposed = overlay.exposed_by_map(table)
+    pop = brgy.set_index("psgc")["pop_2024"]
+    over = exposed.gt(pop * (1 + config.S8_CENSUS_TOLERANCE), axis=0).any(axis=1)
+    assert not over.any(), f"exposed residents exceed the census total in {list(exposed.index[over])}"
+
+    falls = overlay.falls_with_rarer_map(table)
+    names = ", ".join(brgy.set_index("psgc").loc[falls.index, "adm4_name"])
+    return (f"at most {exposed.div(pop, axis=0).max().max():.1%} of a barangay exposed; "
+            f"{len(falls)} barangays fall in a rarer map, inspect: {names}")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -196,7 +235,7 @@ CHECKS = {
     "S6 theta": not_built("B6"),
     "S7 breach and scores": not_built("B7"),
     "S8 census fit": s8_census_fit,
-    "S8 overlay": not_built("C2"),
+    "S8 overlay": s8_overlay,
     "S9 return levels": not_built("C3"),
     "S10 shares and doses": not_built("C4, C6"),
     "S11 leakage": not_built("B10"),
