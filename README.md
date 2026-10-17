@@ -48,6 +48,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | Task | Command | Writes |
 | --- | --- | --- |
 | B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
+| B7 | none: functions in `src/thresholds.py` (and `forecast_dist` in `src/forecast_range.py`), used by B8 and B10 | nothing; check S7 in `python -m src.checks` |
 
 ## Layer 2: barangay doses (Workstream C)
 
