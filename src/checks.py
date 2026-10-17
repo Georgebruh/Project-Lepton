@@ -404,6 +404,83 @@ def s10_doses():
             f"(stock planning, not prescriptions)")
 
 
+def s10_allocate():
+    """S10, C7 part: allocate, and how the barangays' need reaches the health centers.
+
+    S10's input: need high [100, 50], moderate [40, 60], low [20, 0] with stock 180 must
+    give high 100 and 50 (in full), moderate 12 and 18 (the 30 left, shared 40 : 60), low
+    0, total 180. Also: with stock for everyone, each center gets exactly its need; with
+    none, nobody gets anything; negative stock or a missing need stops the run (rule 5).
+    Then center_shares_qc.csv: every barangay sends need, its shares add to 1; every center
+    named can be placed; a barangay with its own centers sends need only to them, one
+    without to a single nearest center; and the file matches a fresh run (which catches
+    a file left over from older inputs). Last, at R(25) in every preview flood, the
+    health centers' need adds up to the barangays' need, pool by pool and tier by tier.
+    """
+    from src import allocation, doses, exposed
+
+    need = pd.DataFrame({"high": [100, 50], "moderate": [40, 60], "low": [20, 0]}, index=["a", "b"])
+    for stock, expected in ((180, [[100, 12, 0], [50, 18, 0]]),   # S10
+                            (1000, need.to_numpy()),               # enough for everyone: exactly the need
+                            (0, [[0, 0, 0], [0, 0, 0]]),
+                            (120, [[80, 0, 0], [40, 0, 0]])):      # short in the high tier: shared 100 : 50
+        got = allocation.allocate(need, stock)
+        assert np.allclose(got.to_numpy(), expected), f"stock {stock}: got {got.to_numpy().tolist()}, expected {np.asarray(expected).tolist()}"
+    for label, call in (("negative stock", lambda: allocation.allocate(need, -1)),
+                        ("a missing need", lambda: allocation.allocate(need.astype(float).where(need > 0), 10))):
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: allocate did not stop")
+
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.FACILITIES_QC, "A10 (python -m src.facilities)")
+    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
+    need_file(config.CENTER_SHARES, "C7 (python -m src.allocation)")
+    table = allocation.load_center_shares()
+    barangays = allocation.load_barangays()
+    centers, _ = allocation.load_centers(barangays)
+
+    assert set(table["psgc"]) == set(barangays["psgc"]), "the shares file and A5's barangays hold different barangays"
+    assert not table.duplicated(["psgc", "facility_code"]).any(), "a barangay and health center appear twice"
+    total = table.groupby("psgc")["share"].sum()
+    assert np.allclose(total, 1), f"shares do not add to 1 in {list(total.index[~np.isclose(total, 1)])}"
+    assert (table["share"] > 0).all(), "a share is 0 or negative"
+    assert set(table["facility_code"]) <= set(centers["facility_code"]), "a health center in the file cannot be placed"
+    home = centers.groupby("psgc")["facility_code"].apply(set)
+    centroid = barangays.set_index("psgc").geometry.centroid
+    for psgc, rows in table.groupby("psgc"):
+        if psgc in home.index:
+            assert set(rows["facility_code"]) == home[psgc], f"{psgc} does not send its need to its own health centers"
+        else:
+            assert len(rows) == 1 and (rows["rule"] == "nearest").all(), f"{psgc} has no center but is not sent to one nearest"
+            distance = centers.set_index("facility_code").distance(centroid[psgc])
+            assert np.isclose(distance[rows["facility_code"].iloc[0]], distance.min()), f"{psgc} is not sent to its nearest center"
+    fresh = allocation.center_shares(barangays, centers)
+    keys = ["psgc", "facility_code"]
+    merged = table.merge(fresh, on=keys, how="outer", suffixes=("", "_fresh"), indicator=True)
+    assert (merged["_merge"] == "both").all() and np.allclose(merged["share"], merged["share_fresh"]), (
+        "shares file differs from a fresh run: rerun python -m src.allocation")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    residents = exposed.map_residents(pd.read_csv(config.OVERLAY, dtype={"psgc": str}), exposed.PREVIEW_MAP)
+    group_shares = exposed.load_shares()
+    for label, days, w in exposed.scenarios():
+        stock = doses.barangay_doses(residents, group_shares, days, w)
+        by_barangay = allocation.pool_needs(stock, days, w)
+        by_center = allocation.center_needs(residents, group_shares, table, days, w)
+        for pool in allocation.POOLS:
+            assert np.allclose(by_center[pool].sum(), by_barangay[pool].sum()), (
+                f"R({exposed.PREVIEW_MAP}), {label}, {pool}: the health centers' need does not add up to the barangays'")
+            assert np.isclose(by_barangay[pool].to_numpy().sum(), stock[pool].sum()), f"{label}, {pool}: tiers do not add up"
+    rules = table.drop_duplicates("psgc")["rule"].value_counts()
+    return (f"{table['facility_code'].nunique()} health centers; barangays own {rules.get('own', 0)}, "
+            f"split {rules.get('split', 0)}, nearest {rules.get('nearest', 0)} "
+            f"(farthest {table['distance_km'].max():.2f} km); need adds up")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -425,7 +502,7 @@ CHECKS = {
     "S10 shares": s10_shares,
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,
-    "S10 allocate": not_built("C7"),
+    "S10 allocate": s10_allocate,
     "S11 leakage": not_built("B10"),
 }
 

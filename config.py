@@ -41,6 +41,7 @@ SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # C4: child, pregnant and 
 # Health facilities (A10)
 NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
 FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # A10: one row per QC facility, with coordinates
+CENTER_SHARES = DATA_CLEAN / "center_shares_qc.csv"   # C7: the share of each barangay's need each health center gets
 # NOAH flood hazard maps (A8)
 NOAH_RAW = DATA_RAW / "noah"                          # A8: the zips as downloaded, plus NOAH's metadata
 NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # A8: 9 rows (3 maps x Var 1-3), EPSG:32651
@@ -231,6 +232,12 @@ DOXY_CAPS_MOD = 2 * MODERATE_COURSE_DAYS   # 200 mg daily for 5 days = 10
 DOXY_CAPS_HIGH_PER_WEEK = 2                # 200 mg once a week
 AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
 DOSE_WEEK_DAYS = 7                         # ceil(D / 7) weeks: high-risk adults' weekly dose; children's course repeats after 1 week
+
+# Stock per health center (C7)
+# Assumption: stock goes to health centers ("Rural Health Unit" in the registry) and barangay
+# health stations; the City Health Office runs the city's stock rather than handing it out.
+CENTER_FACILITY_TYPES = ("Rural Health Unit", "Barangay Health Station")
+ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocation): stock covering half of each pool's need
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
