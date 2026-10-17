@@ -158,7 +158,9 @@ def a11_storms():
     have a whole n-day total there (A15 fetches the forecasts for those days). The flooded
     barangays are 10-digit QC PSGC codes, none listed twice. Then, with A5's census table:
     every code is one of QC's 142 barangays. A wrong code would quietly lower C8's share of
-    flooded barangays that were flagged.
+    flooded barangays that were flagged. Last, with A4's IMERG file: IMERG's wettest n-day
+    window ending during the flood (start_date to end_date) ends on one of the wettest days,
+    so C8 takes the storm's real peak and A15 fetches the forecasts for it.
     """
     for storm, facts in config.STORMS.items():
         start, end = facts["start_date"], facts["end_date"]
@@ -179,8 +181,22 @@ def a11_storms():
     for storm, facts in config.STORMS.items():
         unknown = sorted(set(facts["flooded_psgc"]) - known)
         assert not unknown, f"{storm}: flooded barangays not among A5's {len(known)}: {unknown}"
-    return "; ".join(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays"
-                     for storm, facts in config.STORMS.items())
+
+    need_file(config.IMERG_DAILY, "A4 (python -m src.imerg)")
+    from src import flood_exposure as fe
+
+    totals = fe.n_day_totals(fe.catchment_rain(), config.RAIN_ACCUM_DAYS)
+    peaks = []
+    for storm, facts in config.STORMS.items():
+        during = totals[pd.Timestamp(facts["start_date"]):pd.Timestamp(facts["end_date"])]
+        peak_end = during.idxmax().date()
+        first, last = facts["wettest_days"]
+        assert first <= peak_end <= last, (
+            f"{storm}: IMERG's wettest {config.RAIN_ACCUM_DAYS}-day window during the flood ends on "
+            f"{peak_end}, outside the wettest days {first} to {last}")
+        peaks.append(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays, "
+                     f"peak {during.max():.0f} mm ending {peak_end:%d %b}")
+    return "; ".join(peaks)
 
 
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):

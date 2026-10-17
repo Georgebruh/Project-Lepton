@@ -288,39 +288,35 @@ ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocat
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
 STORM_D_TEST_DAYS = 1                      # D +/- 1 day
 
-# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC)
+# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC).
+# Sources and the rules below: data/raw/storm-facts.md.
+# - wettest_days: 3 consecutive UTC days. C3 and C8 take the storm's wettest n-day total among
+#   the windows ending on these days, and A15 fetches the forecasts for them and the n - 1
+#   days before. So they must hold the last day of IMERG's wettest n-day window during the
+#   flood (catchment rain, checked 2026-10-18; the peak is noted on each storm).
+# - flooded_psgc: a barangay is listed only if a source from the storm names it as flooded,
+#   affected, or with its residents evacuated, rescued or made homeless. Not counted: a road
+#   that shares a barangay's name (E. Rodriguez, Don Manuel, N.S. Amoranto are also streets),
+#   a barangay that only hosts an evacuation center, and reports from other surges.
+#   C8 compares the barangays its run flags with these lists.
 STORMS = {
     "carina_2024": {
         "year": 2024,
         "start_date": date(2024, 7, 23),
         "end_date": date(2024, 7, 25),
-        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),
+        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),  # IMERG peak: 22-24 Jul, 120.0 mm
         "D": 3,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
             "1381300010",  # Bagong Silangan
-            "1381300013",  # Balingasa
             "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300033",  # Don Manuel
-            "1381300035",  # E. Rodriguez
-            "1381300041",  # Fairview
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
-            "1381300047",  # Kalusugan
-            "1381300048",  # Kamuning
-            "1381300060",  # Mariana
-            "1381300061",  # Mariblo
             "1381300064",  # Masambong
             "1381300065",  # Santo Domingo (Matalahib)
             "1381300068",  # Nagkaisang Nayon
-            "1381300070",  # Novaliches Proper
-            "1381300076",  # Paltok
-            "1381300081",  # Phil-Am
-            "1381300085",  # Quirino 2-A
             "1381300090",  # Roxas
             "1381300097",  # San Bartolome
-            "1381300116",  # South Triangle
             "1381300118",  # Talayan
             "1381300121",  # Tatalon
         ),
@@ -329,74 +325,69 @@ STORMS = {
         "year": 2025,
         "start_date": date(2025, 7, 19),
         "end_date": date(2025, 7, 24),
-        "wettest_days": (date(2025, 7, 21), date(2025, 7, 23)),
+        "wettest_days": (date(2025, 7, 17), date(2025, 7, 19)),  # IMERG peak: 17-19 Jul, 191.0 mm
         "D": 6,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
-            "1381300010",  # Bagong Silangan
-            "1381300022",  # Commonwealth
+            "1381300027",  # Damayan
+            "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300041",  # Fairview
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
-            "1381300043",  # Gulod
-            "1381300055",  # Loyola Heights
-            "1381300059",  # Mangga
+            "1381300049",  # Katipunan
+            "1381300060",  # Mariana
             "1381300065",  # Santo Domingo (Matalahib)
-            "1381300080",  # Pasong Tamo
+            "1381300067",  # Milagrosa
             "1381300090",  # Roxas
-            "1381300104",  # Santa Cruz
-            "1381300105",  # Santa Lucia
             "1381300112",  # Sienna
-            "1381300120",  # Tandang Sora
             "1381300121",  # Tatalon
+            "1381300138",  # Payatas
+            "1381300142",  # North Fairview
         ),
     },
     "habagat_2026": {
         "year": 2026,
         "start_date": date(2026, 8, 8),
         "end_date": date(2026, 8, 11),
-        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),
+        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),  # IMERG peak: 7-9 Aug, 140.9 mm
         "D": 4,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
             "1381300010",  # Bagong Silangan
             "1381300011",  # Bagumbayan
-            "1381300012",  # Bahay Toro
-            "1381300025",  # Culiat
             "1381300027",  # Damayan
             "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300033",  # Don Manuel
-            "1381300035",  # E. Rodriguez
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
             "1381300043",  # Gulod
-            "1381300048",  # Kamuning
-            "1381300049",  # Katipunan
             "1381300054",  # Lourdes
-            "1381300060",  # Mariana
-            "1381300062",  # Marilag
-            "1381300063",  # Masagana
             "1381300065",  # Santo Domingo (Matalahib)
-            "1381300071",  # Obrero
-            "1381300073",  # Paang Bundok
-            "1381300080",  # Pasong Tamo
-            "1381300082",  # Pinyahan
-            "1381300084",  # Project 6
-            "1381300089",  # Ramon Magsaysay
             "1381300090",  # Roxas
-            "1381300102",  # San Roque
             "1381300104",  # Santa Cruz
             "1381300105",  # Santa Lucia
             "1381300112",  # Sienna
-            "1381300115",  # Socorro
-            "1381300118",  # Talayan
-            "1381300119",  # Talipapa
             "1381300120",  # Tandang Sora
             "1381300121",  # Tatalon
             "1381300129",  # Vasra
-            "1381300142",  # North Fairview
+        ),
+    },
+    # Added 2026-10-18 (not in the proposal): a storm IMERG registers, beside Carina, which
+    # IMERG reads near R0. STS Kristine (Trami); QC declared a state of calamity on 25 Oct.
+    # The reports found show QC flooding on 24 Oct only, so D = 1 (the +/- 1 day test gives 2).
+    "kristine_2024": {
+        "year": 2024,
+        "start_date": date(2024, 10, 24),
+        "end_date": date(2024, 10, 24),
+        "wettest_days": (date(2024, 10, 22), date(2024, 10, 24)),  # IMERG peak: 22-24 Oct, 195.1 mm
+        "D": 1,
+        "flooded_psgc": (
+            "1381300010",  # Bagong Silangan
+            "1381300022",  # Commonwealth
+            "1381300064",  # Masambong
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300112",  # Sienna
+            "1381300121",  # Tatalon
+            "1381300138",  # Payatas
+            "1381300139",  # Batasan Hills
         ),
     },
 }
