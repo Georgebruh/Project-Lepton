@@ -85,7 +85,7 @@ ERA5_START = IMERG_START                   # A14: start on IMERG's first day, so
 ERA5_MODEL = "era5"                        # A14: Open-Meteo Historical Weather, plain ERA5 reanalysis at 0.25 deg
 OPEN_METEO_HOUR_SHIFT = -1                 # shift hourly totals back 1 h before summing UTC days
 FORECAST_MODEL = "ecmwf_ifs025"            # assumption: ECMWF IFS 0.25 deg, A15
-FORECAST_LEADS_DAYS = (1, 2, 3)
+FORECAST_LEADS_DAYS = (1, 2, 3)            # C9: the n-day total forecast 1, 2 and 3 days before its first day
 
 # Catchments (A7). The Philippines is in HydroSHEDS' Australasia region ("au"), not Asia.
 HYDROBASINS_SHP = DATA_RAW / "hydrobasins" / "hybas_au_lev12_v1c.shp"
@@ -240,10 +240,14 @@ GUMBEL_MIN_YEARS = 10                      # assumption: fit on >= 10 years befo
 # Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days), for the
 # return levels, the storms and the weekly EI alike; C9 uses the same on ERA5 and the ECMWF
 # forecasts. 1 = the plan's single wettest day, kept as the comparison run. The single day
-# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18). C9 needs at
-# least this many forecast days per storm: A15 fetches the 3 days in STORMS' wettest_days.
+# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18).
 RAIN_ACCUM_DAYS = 3
 RAIN_ACCUM_DAYS_TEST = 1
+# A15: a lead-L forecast of an n-day total takes day i of the window (i = 0 .. n-1) from
+# Open-Meteo's precipitation_previous_day(L + i), so every hour comes from runs started L
+# days before the window. Leads 1-3 with n = 3 need previous days 1-5. A15 also fetches the
+# n - 1 days before each storm's first wettest day, for windows that start there.
+FORECAST_PREVIOUS_DAYS = tuple(range(1, max(FORECAST_LEADS_DAYS) + RAIN_ACCUM_DAYS))
 R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 
 # ---------------------------------------------------------------------------

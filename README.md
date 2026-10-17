@@ -43,7 +43,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | A9 | `python -m src.benchmark` | `data/clean/parreno_national_weekly.csv`; needs the Mendeley file in `data/raw/parreno/`, downloaded by hand (link in `data/raw/parreno.md`) |
 | A11 | by hand: dates, D and flooded barangays in `config.STORMS`, with sources in `data/raw/storm-facts.md` | nothing; check "A11 storm facts" in `python -m src.checks` |
 | A12 | by hand: the `curl` command in `data/raw/psa_births_2024.csv.md` | `data/raw/psa_births_2024.csv` |
-| A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv`; storms without A11's dates in `config.STORMS` are skipped |
+| A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv` (previous days 1-5 for C9's 3-day totals at leads 1-3, from 2 days before each storm's wettest days); storms without A11's dates in `config.STORMS` are skipped |
 
 ## Layer 1: city forecast (Workstream B)
 
