@@ -1,6 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
 Also runs three checks with no S number: A11's storm facts, B8's hand check of
+M0 and M1, and B9's hand check of M3.
 M0 and M1, and B2's hand check of what a model may see.
 
 Run from the repository root:  python -m src.checks
@@ -535,6 +536,100 @@ def b8_baselines():
     return f"{len(worked)} forecasts match the hand answers; leaks, gaps, duplicates and bad weeks stop"
 
 
+def b9_m3():
+    """B9 (no S number): M3's gap filling worked by hand, then its forecast on made-up counts.
+
+    toy_cases from 2015 to 2021: 10 x (year - 2014) + week; COVID years 2020 and 2021
+    are 10,000 in every week. Six counts are removed. 2015 weeks 1-2 come before the
+    first count, so training starts at 2015 week 3. With cutoff 2020 week 20:
+      2017 week 30 (July: monsoon)    mu_30 over 2015, 2016, 2018, 2019 = (40 + 50 + 70 + 80) / 4 = 60
+      2018 week 3 (January)           straight line between 42 and 44 = 43
+      2019 week 3 (January)           straight line between 52 and 54 = 53
+      2020 week 14 (2 April: lockdown) 0.5 x mu_14 = 0.5 x 44 = 22
+    B3's whole-series filling would also have used 2021's 10,000s. With cutoff 2019
+    week 3, 2019 week 30 is not seen yet, so mu_30 = (40 + 50 + 70) / 3 = 53.33, and
+    2019 week 3 has no later neighbour: 52, the last count. A table without the
+    (empty) 2015 week 1 row still trains from 2015 week 3.
+    Then M3 forecasts 2019 week 10 (true count 60, week starting 3 March 2019) with an
+    option B cutoff (week 9) and an option C cutoff (g = 2, week 7). Each forecast
+    must be within 10% of 60, and must not change when the counts after the cutoff are
+    hidden (S11) or when year and week come as floats. Last, on simulated counts
+    (negative binomial, theta 5, season peaking in August), fit_theta must be finite
+    and near 5 (config.B9_FIT_THETA_RANGE): the hybrid's own in-sample theta would be
+    infinite. Takes a few seconds: Prophet is fitted 7 times.
+    """
+    from src import m3_port   # imports Prophet and xgboost; only this check needs them
+
+    cases = toy_cases(2021)
+    for year, week in [(2015, 1), (2015, 2), (2017, 30), (2018, 3), (2019, 3), (2020, 14)]:
+        cases.loc[(cases["year"] == year) & (cases["week"] == week), "cases"] = np.nan
+    fills = {
+        (2020, 20): {(2017, 30): (60, "monsoon"), (2018, 3): (43, "interpolated"),
+                     (2019, 3): (53, "interpolated"), (2020, 14): (22, "lockdown")},
+        (2019, 3): {(2017, 30): (160 / 3, "monsoon"), (2018, 3): (43, "interpolated"),
+                    (2019, 3): (52, "interpolated")},
+    }
+    for (cut_year, cut_week), worked in fills.items():
+        cutoff = weeks.week_index_of(cut_year, cut_week)
+        filled = m3_port.fill_gaps(m3_port.seen_weeks(cases, cutoff))
+        assert (filled["year"].iloc[0], filled["week"].iloc[0]) == (2015, 3), "training must start at the first count"
+        gaps = filled[filled["fill_rule"] != "observed"].set_index(["year", "week"])
+        got = {key: (round(row["y"], 4), row["fill_rule"]) for key, row in gaps.iterrows()}
+        assert got == {key: (round(v, 4), rule) for key, (v, rule) in worked.items()}, (
+            f"cutoff {cut_year} week {cut_week}: fills {got}, by hand {worked}")
+        hidden = m3_port.fill_gaps(m3_port.seen_weeks(hide_after(cases, cutoff), cutoff))
+        assert hidden.equals(filled), f"cutoff {cut_year} week {cut_week}: gap filling used a count after the cutoff"
+    no_first_row = cases[~((cases["year"] == 2015) & (cases["week"] == 1))]
+    seen = m3_port.seen_weeks(no_first_row, weeks.week_index_of(2019, 3))
+    assert (seen["year"].iloc[0], seen["week"].iloc[0]) == (2015, 3), "rows before the first count must not matter"
+
+    assert weeks.week_start(weeks.week_index_of(2026, 32)) == date(2026, 8, 9), "2026 week 32 starts 9 August"
+    assert weeks.week_start(weeks.week_index_of(2026, 1)) == date(2026, 1, 4), "2026 week 1 starts 4 January"
+    assert list(m3_port.iso_weeks([date(2026, 8, 9), date(2019, 3, 3)])) == [33, 10], (
+        "ISO week: 33 for MMWR 2026 week 32 (2026 starts on a Thursday), 10 for 2019 week 10")
+
+    forecasts = []
+    for cut_week in (9, 7):
+        cutoff = weeks.week_index_of(2019, cut_week)
+        label = f"M3 2019 week 10, cutoff 2019 week {cut_week}"
+        got = m3_port.m3_forecast(2019, 10, cases, cutoff)
+        assert got["target_date"] == date(2019, 3, 3), f"{label}: target dated {got['target_date']}, not 3 March"
+        assert abs(got["mu"] - 60) <= 6, f"{label}: {got['mu']:.2f}, true count 60"
+        assert m3_port.m3_forecast(2019, 10, hide_after(cases, cutoff), cutoff) == got, (
+            f"{label}: used a count after the cutoff")
+        assert m3_port.m3_forecast(2019.0, 10.0, cases, cutoff) == got, f"{label}: fails on float year and week"
+        forecasts.append(f"{got['mu']:.1f}")
+
+    m3 = m3_port.m3_forecast
+    cutoff = weeks.week_index_of(2019, 9)
+    skipped = cases[~((cases["year"] == 2018) & (cases["week"] == 5))]
+    twice = pd.concat([cases, cases[(cases["year"] == 2018) & (cases["week"] == 5)]])
+    negative = cases.copy()
+    negative.loc[(negative["year"] == 2018) & (negative["week"] == 5), "cases"] = -5
+    mislabelled = cases.copy()
+    mislabelled.loc[(mislabelled["year"] == 2018) & (mislabelled["week"] == 5), "week"] = 6
+    assert stops_with("not after the cutoff", m3, 2019, 9, cases, cutoff), "M3 must stop when the target is seen"
+    assert stops_with("Week must be in", m3, 2026, 53, cases, cutoff), "M3 must stop on 2026 week 53"
+    assert stops_with("skips a week", m3, 2019, 10, skipped, cutoff), "M3 must stop when a week has no row"
+    assert stops_with("two rows", m3, 2019, 10, twice, cutoff), "M3 must stop when a week has two rows"
+    assert stops_with("negative", m3, 2019, 10, negative, cutoff), "M3 must stop on a negative seen count"
+    assert stops_with("not the MMWR week", m3, 2019, 10, mislabelled, cutoff), (
+        "M3 must stop when a row's year and week disagree with its week index")
+    assert stops_with("no row for the cutoff", m3, 2022, 2, cases, weeks.week_index_of(2022, 1)), (
+        "M3 must stop when the table ends before the cutoff")
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    simulated = []
+    for year in range(2015, 2020):
+        for wk in Year(year).iterweeks():
+            mu = 15 * np.exp(0.9 * np.cos(2 * np.pi * (wk.week - 32) / config.WEEKS_PER_YEAR))
+            simulated.append({"week_index": weeks.week_index(wk.startdate()), "year": year, "week": wk.week,
+                              "cases": float(rng.negative_binomial(5, 5 / (5 + mu)))})
+    fit_theta = m3(2019, 10, pd.DataFrame(simulated), cutoff)["fit_theta"]
+    low, high = config.B9_FIT_THETA_RANGE
+    assert low <= fit_theta <= high, f"M3's fit_theta on counts with theta 5 is {fit_theta:.2f}, expected {low}-{high}"
+    return (f"gap fills match the hand answers at 2 cutoffs; forecasts {' and '.join(forecasts)} (true 60) "
+            f"unchanged with later counts hidden; fit_theta {fit_theta:.2f} (true 5); bad tables stop")
 def b2_view():
     """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
 
@@ -1077,6 +1172,7 @@ CHECKS = {
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
     "B8 M0 and M1": b8_baselines,
+    "B9 M3": b9_m3,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
     "S9 return levels": s9_return_levels,

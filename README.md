@@ -58,6 +58,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | B8 | none: functions in `src/baselines.py`, used by B10 | nothing; check "B8 M0 and M1" in `python -m src.checks` |
 | B6 | none: `estimate_theta` and `theta_for` in `src/forecast_range.py`, used by B10 for every model's 90% range and breach probability | nothing; check S6 in `python -m src.checks` |
 | B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
+| B9 | none: `m3_forecast` in `src/m3_port.py`, used by B10 (M3 refitted on the weeks it may see, about 0.5 s a forecast day) | nothing; check "B9 M3" in `python -m src.checks` |
 | B5 | none: `model_rows`, `fit_m4` (M4, and M4 without EI2 with `with_ei=False`) and `predict_m4` in `src/m4.py`, used by B10 at every forecast day; `plot_residual_acf` draws v2's residual check once case data exist (`results/m4_residual_acf.png`). Inputs: B2's rows, B4's weekly `rcum2` and `ei2`, B1's population | nothing; check S5 in `python -m src.checks` (50 made-up datasets, a few seconds) |
 
 ## Layer 2: barangay doses (Workstream C)

@@ -448,6 +448,7 @@ S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range (th
 S5_PREDICTION_TOLERANCE = 0.10             # median |forecast / true mean - 1| below this
 S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
 S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
+B9_FIT_THETA_RANGE = (4.0, 6.5)            # B9 check: M3's fit_theta on simulated NB counts with theta 5 (run: 5.26)
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 S9_SAMPLES = 500                           # S9: fit this many samples...
 S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each

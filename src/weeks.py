@@ -48,6 +48,9 @@ def week_index_of(year, week):
     return week_index(Week(int(year), int(week)).startdate())
 
 
+def week_start(index):
+    """The Sunday that starts the week with continuous index `index` (the reverse of week_index)."""
+    return config.FIRST_WEEK_START + timedelta(weeks=int(index))
 def year_week(index):
     """MMWR (year, week) of continuous week index `index`: the reverse of week_index_of.
 
