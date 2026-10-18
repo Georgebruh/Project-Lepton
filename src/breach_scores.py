@@ -1,4 +1,4 @@
-"""Breach scores: Brier, Brier skill, reliability, alarms and outbreak episodes (task D3).
+"""Breach scores: Brier, Brier skill, reliability, alarms and outbreak episodes (task D3), lead time (D4).
 
 B7 gives each forecast a breach probability p = Pr(Y > T_w). The scored outcome is o = 1
 when the final count is strictly above the same T_w, else 0 (rule 6; thresholds.breached).
@@ -25,7 +25,27 @@ config.EPISODE_GAP_WEEKS after the previous one joins its episode (S7: weeks 3, 
 11 give [3, 4, 6] and [10, 11]). "k of n episodes caught" gets an exact 95% interval
 (Clopper-Pearson: proportion_confint(k, n, method="beta")).
 
-Check: python -m src.checks ("S7 scores").
+Lead time (D4), per outbreak episode:
+
+    lead time = the week surveillance shows the breach - the forecast day of the first alarm
+
+The breach shows when the episode's first breach week has ended (option B), or g weeks
+later in option C, when its count clears the delay guard (view.guard_weeks; an
+assumption, matching the guard). The first alarm is the earliest forecast with p >= p*
+whose target is one of the episode's breach weeks; its forecast day is the target week
+minus config.FORECAST_HORIZON_WEEKS. An alarm for a week that did not breach (before the
+episode, or a quiet week inside it) was wrong about its own week and does not count
+(assumption). An episode is caught in advance if its lead time is at least 1 week
+(config.LEAD_TIME_IN_ADVANCE_WEEKS). In plain words: did the model raise the alarm before
+surveillance could have shown the outbreak, and by how many weeks?
+
+With 1-week forecasts the earliest alarm for a breach week comes 1 week before that week
+ends, so in option B a lead time is at most 1 week, and in option C at most 1 + g. Lead
+times of 0 or less (the alarm came no earlier than surveillance) are kept and reported.
+Episodes are scored over config.PROB_SCORE_YEARS (2022-2026), as the breach scores are;
+pass the forecast days not used to choose p* (alarm_test's second half).
+
+Checks: python -m src.checks ("S7 scores"; "D4 lead time": worked by hand).
 """
 
 import numpy as np
@@ -33,6 +53,7 @@ import pandas as pd
 from statsmodels.stats.proportion import proportion_confint
 
 import config
+from src import view
 
 
 def check_probabilities(p, o):
@@ -155,3 +176,53 @@ def caught_share(k, n):
         raise ValueError(f"need 0 <= k <= n and n > 0, got k = {k}, n = {n}")
     low, high = proportion_confint(k, n, method=config.EPISODE_CI_METHOD)
     return {"k": k, "n": n, "share": k / n, "low": low, "high": high}
+
+
+def lead_times(forecasts, p_star, option=config.DATA_OPTION, g=config.DELAY_GUARD_G,
+               horizon=config.FORECAST_HORIZON_WEEKS, years=config.PROB_SCORE_YEARS):
+    """Lead time of each outbreak episode, for one model's forecasts (D4).
+
+    forecasts: one row per target week with week_index, year, p (the breach probability)
+    and breached (the outcome, 0 or 1); only target weeks in `years` are scored. p_star:
+    the alarm cut-off (alarm_test's p*). horizon: weeks from forecast day to target week
+    (2 for the B11 stretch).
+    Returns one row per episode: first_week and last_week (its breach weeks), shown_week
+    (when surveillance shows the breach), first_alarm_day (the forecast day of the first
+    alarm for one of its breach weeks; NaN if none), lead_weeks (shown_week -
+    first_alarm_day; NaN if no alarm) and in_advance (lead time of at least 1 week).
+    Stops on a p* outside 0-1, two forecasts for one target week, and missing or
+    impossible p or outcomes.
+    """
+    if not 0 <= p_star <= 1:   # also stops on NaN
+        raise ValueError(f"the alarm cut-off p* is {p_star}: it must lie in 0-1")
+    forecasts = forecasts[forecasts["year"].isin(years)]
+    if forecasts["week_index"].duplicated().any():
+        raise ValueError("two forecasts for the same target week")
+    p, o = check_probabilities(forecasts["p"], forecasts["breached"])
+    target = forecasts["week_index"].to_numpy()
+    delay = view.guard_weeks(option, g)   # 0 in option B, g in option C
+    rows = []
+    for episode in episodes(list(target[o == 1])):
+        first, last = episode[0], episode[-1]
+        alarms = target[(p >= p_star) & np.isin(target, episode)]   # alarms for its breach weeks only
+        alarm_day = alarms.min() - horizon if alarms.size else np.nan
+        lead = first + delay - alarm_day
+        rows.append({"first_week": first, "last_week": last, "shown_week": first + delay,
+                     "first_alarm_day": alarm_day, "lead_weeks": lead,
+                     "in_advance": bool(lead >= config.LEAD_TIME_IN_ADVANCE_WEEKS)})
+    return pd.DataFrame(rows, columns=["first_week", "last_week", "shown_week", "first_alarm_day",
+                                       "lead_weeks", "in_advance"])
+
+
+def caught_in_advance(lead_table):
+    """k of n episodes caught in advance (caught_share, exact 95% interval) and the median lead time (D4).
+
+    lead_table: lead_times' result. alarmed: episodes with any alarm for their breach weeks;
+    the median lead time is over those, early or late (NaN if none). Stops when there is
+    no episode to score.
+    """
+    if lead_table.empty:
+        raise ValueError("no outbreak episode in these forecasts: lead time cannot be scored")
+    alarmed = lead_table["lead_weeks"].dropna()
+    return {**caught_share(int(lead_table["in_advance"].sum()), len(lead_table)),
+            "alarmed": len(alarmed), "median_lead_weeks": alarmed.median()}
