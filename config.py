@@ -12,6 +12,7 @@ RESULTS = ROOT / "results"
 CALENDAR = DATA_CLEAN / "calendar_weeks.csv"          # A3
 IMERG_DAILY = DATA_RAW / "imerg_daily.nc"             # A4
 ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"            # A14
+ERA5_RAW = DATA_RAW / "era5_open_meteo"               # A14: Open-Meteo's replies, one JSON file per year
 FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"  # A15
 ECMWF_RAW = DATA_RAW / "ecmwf_previous_runs"          # A15: Open-Meteo's replies, one JSON file per storm
 CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"        # A7
@@ -26,6 +27,17 @@ FORECASTS = RESULTS / "forecasts.csv"                 # B10
 IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
 RAIN_WEEKLY = DATA_CLEAN / "rain_weekly.csv"            # B4: weekly QC rain R(t) and Rcum2(t)
 FEATURES_WEEKLY = DATA_CLEAN / "features_weekly.csv"    # B4: weekly rain and exposure (R, Rcum2, EI, EI2)
+C8_RUNS = RESULTS / "c8_observed_runs.csv"            # C8: one row per storm, test, D, cut-off and w
+C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # C8: the main run, one row per barangay
+C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need per health center and pool
+C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
+C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
+C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
+D7_FORECAST_VS_OBSERVED = RESULTS / "d7_forecast_vs_observed.csv"  # D7: C9's doses at each lead beside C8's observed doses
+D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flooded, per storm, run and flag share
+D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
+D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
+D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
@@ -38,10 +50,13 @@ CENSUS_2020_AGE_XLSX = DATA_RAW / "2020 Census Total Popn_Single Age_MaleFemale_
 BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with both census totals
 CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
 AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
+BIRTHS_2024 = DATA_RAW / "psa_births_2024.csv"        # A12: PSA OpenSTAT table 1A1ABIB8, unchanged
+SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # C4: child, pregnant and adult shares per barangay
 
 # Health facilities (A10)
 NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
 FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # A10: one row per QC facility, with coordinates
+CENTER_SHARES = DATA_CLEAN / "center_shares_qc.csv"   # C7: the share of each barangay's need each health center gets
 # NOAH flood hazard maps (A8)
 NOAH_RAW = DATA_RAW / "noah"                          # A8: the zips as downloaded, plus NOAH's metadata
 NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # A8: 9 rows (3 maps x Var 1-3), EPSG:32651
@@ -81,9 +96,11 @@ IMERG_DOWNLOAD_WORKERS = 4                 # downloads at once; keep it small, N
 EARTHDATA_TOKEN_FILE = Path.home() / "earthdata_token.txt"  # A4: your NASA login token; outside the repo, never share it
 IMERG_KEEP_2000 = True                     # assumption: keep Jun-Dec 2000; refit once without it
 ERA5_YEARS = (2000, 2025)                  # assumption: same years as IMERG, A14
+ERA5_START = IMERG_START                   # A14: start on IMERG's first day, so both fits use the same years
+ERA5_MODEL = "era5"                        # A14: Open-Meteo Historical Weather, plain ERA5 reanalysis at 0.25 deg
 OPEN_METEO_HOUR_SHIFT = -1                 # shift hourly totals back 1 h before summing UTC days
 FORECAST_MODEL = "ecmwf_ifs025"            # assumption: ECMWF IFS 0.25 deg, A15
-FORECAST_LEADS_DAYS = (1, 2, 3)
+FORECAST_LEADS_DAYS = (1, 2, 3)            # C9: the n-day total forecast 1, 2 and 3 days before its first day
 
 # Catchments (A7). The Philippines is in HydroSHEDS' Australasia region ("au"), not Asia.
 HYDROBASINS_SHP = DATA_RAW / "hydrobasins" / "hybas_au_lev12_v1c.shp"
@@ -156,6 +173,7 @@ CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 DATA_OPTION = None                         # "A", "B" or "C"; set by the A13 decision
 DELAY_GUARD_G = 2                          # assumption, option C only
 DELAY_GUARD_G_TESTS = (1, 3)
+FORECAST_HORIZON_WEEKS = 1                 # B2, B10: forecast day T forecasts week T + 1 (the B11 stretch: 2)
 REPORTED_SHARE_CUTOFF = 0.50               # assumption, option A only
 REPORTED_SHARE_CUTOFF_TEST = 0.80
 
@@ -166,6 +184,13 @@ M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the t
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
+# B5: statsmodels' optimizers for the negative binomial fit, in order. Newton is fast and
+# exact, but can break down to NaN coefficients still flagged "converged" (seen on made-up
+# data, 2026-10-18); BFGS then reaches the same maximum. Both failing stops the run.
+M4_FIT_METHODS = ("newton", "bfgs")
+M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
+M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
+M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
 
 # M3 benchmark (B3), read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)
@@ -224,7 +249,7 @@ THETA_WINDOW = 104                         # last 104 non-COVID past forecasts
 THETA_MIN_FORECASTS = 26                   # fewer -> training fit's theta
 RANGE_LOW_Q = 0.05                         # 90% range
 RANGE_HIGH_Q = 0.95
-WIS_ALPHAS = (0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)  # 11 central ranges; confirm against v2's ALPHAS
+WIS_ALPHAS = (0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)  # 11 central ranges; S7's WIS values (2.12, 32.0) need all 11
 
 # Threshold (B7)
 THRESHOLD_SD = 2                           # assumption: mean + 2 SD
@@ -235,6 +260,17 @@ THRESHOLD_MIN_YEARS = 3
 # Layer 2: rain and exposure (C3)
 # ---------------------------------------------------------------------------
 GUMBEL_MIN_YEARS = 10                      # assumption: fit on >= 10 years before the forecast year
+# Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days), for the
+# return levels, the storms and the weekly EI alike; C9 uses the same on ERA5 and the ECMWF
+# forecasts. 1 = the plan's single wettest day, kept as the comparison run. The single day
+# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18).
+RAIN_ACCUM_DAYS = 3
+RAIN_ACCUM_DAYS_TEST = 1
+# A15: a lead-L forecast of an n-day total takes day i of the window (i = 0 .. n-1) from
+# Open-Meteo's precipitation_previous_day(L + i), so every hour comes from runs started L
+# days before the window. Leads 1-3 with n = 3 need previous days 1-5. A15 also fetches the
+# n - 1 days before each storm's first wettest day, for windows that start there.
+FORECAST_PREVIOUS_DAYS = tuple(range(1, max(FORECAST_LEADS_DAYS) + RAIN_ACCUM_DAYS))
 R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 
 # ---------------------------------------------------------------------------
@@ -242,12 +278,21 @@ R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 # ---------------------------------------------------------------------------
 PREG_BIRTHS_FACTOR = 0.75                  # assumption: pregnant = births x 0.75
 PREG_UPPER_SHARE = 0.035                   # test: 3.5% of population as upper bound
+# C4 groups from the 2020 census by single-year age (first and last age both included)
+CHILD_AGES = (0, 17)                       # children under 18
+WOMEN_AGES = (15, 49)                      # women 15-49; the city's pregnant count is split by them (assumption)
+GIRLS_AGES = (15, 17)                      # women 15-17: their pregnant share moves out of the child group
+# A12's births file: OpenSTAT's CSV is Windows-1252 and has no codes. Seven other rows
+# contain "Quezon" (Quezon province, towns named Quezon), so the whole name must match.
+BIRTHS_ENCODING = "cp1252"
+BIRTHS_QC_ROW = "Quezon City"
+BIRTHS_COLUMN = "Usual Residence Both Sexes"  # mothers who live in QC, not births in QC's hospitals
 CONTACT_SHARE_Q = 1.0                      # assumption: reported at full coverage
 UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
 WOUND_SHARE_W = (0.0, 0.5, 1.0)            # assumption: illustrative grid; 0 and 1 are bounds
 CONTINUOUS_EXPOSURE_DAYS = 2               # assumption: D >= 2 -> every exposed adult high risk
-CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)
+CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)    # C8 reruns each storm with these cut-offs
 MODERATE_COURSE_DAYS = 5                   # assumption: upper end of 3-5 days
 
 # Units (DOH DM 2023-0309; stock planning, not prescriptions)
@@ -255,43 +300,51 @@ DOXY_CAPS_LOW = 2                          # 200 mg once = 2 x 100 mg
 DOXY_CAPS_MOD = 2 * MODERATE_COURSE_DAYS   # 200 mg daily for 5 days = 10
 DOXY_CAPS_HIGH_PER_WEEK = 2                # 200 mg once a week
 AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
+DOSE_WEEK_DAYS = 7                         # ceil(D / 7) weeks: high-risk adults' weekly dose; children's course repeats after 1 week
+
+# Stock per health center (C7)
+# Assumption: stock goes to health centers ("Rural Health Unit" in the registry) and barangay
+# health stations; the City Health Office runs the city's stock rather than handing it out.
+CENTER_FACILITY_TYPES = ("Rural Health Unit", "Barangay Health Station")
+ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocation): stock covering half of each pool's need
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
-STORM_D_TEST_DAYS = 1                      # D +/- 1 day
+STORM_D_TEST_DAYS = 1                      # assumption test: C8 reruns each storm with A11's D +/- 1 day
+# Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
+# residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
+# has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
+# rain passes R0. Reported at both values; the team confirms the rule (Notes.md 1.2).
+FLAG_EXPOSED_SHARES = (0.25, 0.50)
 
-# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC)
+# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC).
+# Sources and the rules below: data/raw/storm-facts.md.
+# - wettest_days: 3 consecutive UTC days. C3 and C8 take the storm's wettest n-day total among
+#   the windows ending on these days, and A15 fetches the forecasts for them and the n - 1
+#   days before. So they must hold the last day of IMERG's wettest n-day window during the
+#   flood (catchment rain, checked 2026-10-18; the peak is noted on each storm).
+# - flooded_psgc: a barangay is listed only if a source from the storm names it as flooded,
+#   affected, or with its residents evacuated, rescued or made homeless. Not counted: a road
+#   that shares a barangay's name (E. Rodriguez, Don Manuel, N.S. Amoranto are also streets),
+#   a barangay that only hosts an evacuation center, and reports from other surges.
+#   C8 compares the barangays its run flags with these lists.
 STORMS = {
     "carina_2024": {
         "year": 2024,
         "start_date": date(2024, 7, 23),
         "end_date": date(2024, 7, 25),
-        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),
+        "wettest_days": (date(2024, 7, 23), date(2024, 7, 25)),  # IMERG peak: 22-24 Jul, 120.0 mm
         "D": 3,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
             "1381300010",  # Bagong Silangan
-            "1381300013",  # Balingasa
             "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300033",  # Don Manuel
-            "1381300035",  # E. Rodriguez
-            "1381300041",  # Fairview
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
-            "1381300047",  # Kalusugan
-            "1381300048",  # Kamuning
-            "1381300060",  # Mariana
-            "1381300061",  # Mariblo
             "1381300064",  # Masambong
             "1381300065",  # Santo Domingo (Matalahib)
             "1381300068",  # Nagkaisang Nayon
-            "1381300070",  # Novaliches Proper
-            "1381300076",  # Paltok
-            "1381300081",  # Phil-Am
-            "1381300085",  # Quirino 2-A
             "1381300090",  # Roxas
             "1381300097",  # San Bartolome
-            "1381300116",  # South Triangle
             "1381300118",  # Talayan
             "1381300121",  # Tatalon
         ),
@@ -300,74 +353,69 @@ STORMS = {
         "year": 2025,
         "start_date": date(2025, 7, 19),
         "end_date": date(2025, 7, 24),
-        "wettest_days": (date(2025, 7, 21), date(2025, 7, 23)),
+        "wettest_days": (date(2025, 7, 17), date(2025, 7, 19)),  # IMERG peak: 17-19 Jul, 191.0 mm
         "D": 6,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
-            "1381300010",  # Bagong Silangan
-            "1381300022",  # Commonwealth
+            "1381300027",  # Damayan
+            "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300041",  # Fairview
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
-            "1381300043",  # Gulod
-            "1381300055",  # Loyola Heights
-            "1381300059",  # Mangga
+            "1381300049",  # Katipunan
+            "1381300060",  # Mariana
             "1381300065",  # Santo Domingo (Matalahib)
-            "1381300080",  # Pasong Tamo
+            "1381300067",  # Milagrosa
             "1381300090",  # Roxas
-            "1381300104",  # Santa Cruz
-            "1381300105",  # Santa Lucia
             "1381300112",  # Sienna
-            "1381300120",  # Tandang Sora
             "1381300121",  # Tatalon
+            "1381300138",  # Payatas
+            "1381300142",  # North Fairview
         ),
     },
     "habagat_2026": {
         "year": 2026,
         "start_date": date(2026, 8, 8),
         "end_date": date(2026, 8, 11),
-        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),
+        "wettest_days": (date(2026, 8, 8), date(2026, 8, 10)),  # IMERG peak: 7-9 Aug, 140.9 mm
         "D": 4,
         "flooded_psgc": (
             "1381300003",  # Apolonio Samson
             "1381300010",  # Bagong Silangan
             "1381300011",  # Bagumbayan
-            "1381300012",  # Bahay Toro
-            "1381300025",  # Culiat
             "1381300027",  # Damayan
             "1381300028",  # Damayang Lagi
             "1381300029",  # Del Monte
             "1381300031",  # Doña Imelda
-            "1381300033",  # Don Manuel
-            "1381300035",  # E. Rodriguez
-            "1381300042",  # N.S. Amoranto (Gintong Silahis)
             "1381300043",  # Gulod
-            "1381300048",  # Kamuning
-            "1381300049",  # Katipunan
             "1381300054",  # Lourdes
-            "1381300060",  # Mariana
-            "1381300062",  # Marilag
-            "1381300063",  # Masagana
             "1381300065",  # Santo Domingo (Matalahib)
-            "1381300071",  # Obrero
-            "1381300073",  # Paang Bundok
-            "1381300080",  # Pasong Tamo
-            "1381300082",  # Pinyahan
-            "1381300084",  # Project 6
-            "1381300089",  # Ramon Magsaysay
             "1381300090",  # Roxas
-            "1381300102",  # San Roque
             "1381300104",  # Santa Cruz
             "1381300105",  # Santa Lucia
             "1381300112",  # Sienna
-            "1381300115",  # Socorro
-            "1381300118",  # Talayan
-            "1381300119",  # Talipapa
             "1381300120",  # Tandang Sora
             "1381300121",  # Tatalon
             "1381300129",  # Vasra
-            "1381300142",  # North Fairview
+        ),
+    },
+    # Added 2026-10-18 (not in the proposal): a storm IMERG registers, beside Carina, which
+    # IMERG reads near R0. STS Kristine (Trami); QC declared a state of calamity on 25 Oct.
+    # The reports found show QC flooding on 24 Oct only, so D = 1 (the +/- 1 day test gives 2).
+    "kristine_2024": {
+        "year": 2024,
+        "start_date": date(2024, 10, 24),
+        "end_date": date(2024, 10, 24),
+        "wettest_days": (date(2024, 10, 22), date(2024, 10, 24)),  # IMERG peak: 22-24 Oct, 195.1 mm
+        "D": 1,
+        "flooded_psgc": (
+            "1381300010",  # Bagong Silangan
+            "1381300022",  # Commonwealth
+            "1381300064",  # Masambong
+            "1381300065",  # Santo Domingo (Matalahib)
+            "1381300112",  # Sienna
+            "1381300121",  # Tatalon
+            "1381300138",  # Payatas
+            "1381300139",  # Batasan Hills
         ),
     },
 }
@@ -385,13 +433,54 @@ S2_KNOWN_STORMS = {
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
+# S5 (B5): made-up datasets that follow M4, fitted to see if M4 gets the true values back.
+S5_DATASETS = 50                           # the plan: 50 datasets...
+S5_WEEKS = 400                             # ...of 400 target weeks each
+S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the plan's true values
+S5_THETA = 5                               # the plan's true theta
+# Our choice (the plan gives none): about 20-60 cases a week, a June-November wet season.
+S5_BASE = {"Intercept": -13.0, "sin1": 0.4, "cos1": -0.3, "sin2": 0.1, "cos2": 0.05, "sin3": 0.0, "cos3": 0.0}
+S5_SIM = {
+    "start_cases": 20,                     # mean count of the 2 weeks before the first target (y~ needs them)
+    "rain_shape": 2.0,                     # weekly rain ~ gamma with this shape...
+    "rain_mean_dry_mm": 30,                # ...and this mean outside the wet season...
+    "rain_mean_wet_mm": 120,               # ...and this mean in it
+    "wet_weeks": (23, 48),                 # MMWR weeks of the wet season (about June to November)
+    "flood_chance": 0.15,                  # chance a wet-season week has a flood (EI above 0)
+    "ei_range": (1.0, 20.0),               # a flood week's EI, % of residents, drawn evenly in this range
+}
+# Mean of 50 fits within this of the truth. rho leans about 0.02 low at 400 weeks: a model fed
+# its own past counts is biased in short series (0.273 at 400 weeks, 0.298 at 1,600, 0.299 at
+# 3,000 in a 30-dataset test on 2026-10-18), so 0.03 leaves room for that lean, not for a bug.
+S5_TOLERANCE = {"rho": 0.03, "beta1": 0.03, "beta2": 0.01, "delta": 0.06}
+S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range (the plan's run: 5.25)
+S5_PREDICTION_TOLERANCE = 0.10             # median |forecast / true mean - 1| below this
+S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
+S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
+B9_FIT_THETA_RANGE = (4.0, 6.5)            # B9 check: M3's fit_theta on simulated NB counts with theta 5 (run: 5.26)
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
+S9_SAMPLES = 500                           # S9: fit this many samples...
+S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
+S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
+S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
-# Evaluation (D5, D6)
+# Evaluation (D1, D3, D5, D6)
 # ---------------------------------------------------------------------------
+COVERAGE_LEVELS = (0.5, 0.9)               # D1: how often the central 50% and 90% ranges hold the truth
+EPISODE_GAP_WEEKS = 2                      # D3, assumption: a breach week at most 2 weeks after the last one joins its episode (S7: [3, 4, 6] is one)
+EPISODE_CI_METHOD = "beta"                 # D3: exact (Clopper-Pearson) 95% interval for "k of n episodes caught"
 BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000
 RANDOM_SEED = 2026
+
+# Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
+# Map classes, the same for every storm so the maps compare. A value on a break goes to
+# the class above it, so the classes from FLAG_EXPOSED_SHARES up are exactly the
+# barangays C8 flags.
+D7_MAP_SHARE_BREAKS = (0.01, 0.05, 0.10, *FLAG_EXPOSED_SHARES)    # share of a barangay's residents in flood zones
+D7_MAP_DOXY_BREAKS = (100, 1_000, 5_000, 10_000, 25_000, 50_000)  # doxycycline 100 mg capsules per barangay
+D7_MAP_W = 0.5                             # a short flood's dose map shows w = 0.5, the middle of WOUND_SHARE_W; the tables give every w
+D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run must agree to 0.01 people or units (both files keep 4 decimals)

@@ -1,6 +1,8 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs B8's hand check of M0 and M1, which has no S number.
+Also runs three checks with no S number: A11's storm facts, B8's hand check of
+M0 and M1, and B9's hand check of M3.
+M0 and M1, and B2's hand check of what a model may see.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -15,9 +17,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from epiweeks import Week, Year
+from scipy import stats
 
 import config
-from src import baselines, forecast_range, thresholds, weeks
+from src import baselines, breach_scores, forecast_range, scores, thresholds, view, weeks
 
 
 class NotBuilt(Exception):
@@ -148,6 +151,55 @@ def s2_rain_file():
             f"{', '.join(storm_text)} of {len(box_mean)} days")
 
 
+def a11_storms():
+    """A11 (no S number): the storm facts in config.STORMS that C8 and C9 read.
+
+    For each storm: flooding starts on or before the day it ends, and D (days flooded) is
+    the days from start_date to end_date, both counted. The wettest UTC days lie in the
+    storm's year, in order, and hold at least config.RAIN_ACCUM_DAYS days, so C3 and C9
+    have a whole n-day total there (A15 fetches the forecasts for those days). The flooded
+    barangays are 10-digit QC PSGC codes, none listed twice. Then, with A5's census table:
+    every code is one of QC's 142 barangays. A wrong code would quietly lower C8's share of
+    flooded barangays that were flagged. Last, with A4's IMERG file: IMERG's wettest n-day
+    window ending during the flood (start_date to end_date) ends on one of the wettest days,
+    so C8 takes the storm's real peak and A15 fetches the forecasts for it.
+    """
+    for storm, facts in config.STORMS.items():
+        start, end = facts["start_date"], facts["end_date"]
+        assert start <= end, f"{storm}: flooding ends ({end}) before it starts ({start})"
+        days = (end - start).days + 1
+        assert facts["D"] == days, f"{storm}: D = {facts['D']}, but {start} to {end} is {days} days"
+        first, last = facts["wettest_days"]
+        assert first.year == last.year == facts["year"], f"{storm}: wettest days {first} to {last} not in {facts['year']}"
+        assert (last - first).days + 1 >= config.RAIN_ACCUM_DAYS, (
+            f"{storm}: wettest days {first} to {last} are fewer than {config.RAIN_ACCUM_DAYS} (config.RAIN_ACCUM_DAYS)")
+        codes = facts["flooded_psgc"]
+        assert len(codes) == len(set(codes)), f"{storm}: a flooded barangay is listed twice"
+        bad = [c for c in codes if not (len(c) == 10 and c.isdigit() and c.startswith(config.QC_PSGC_PREFIX))]
+        assert not bad, f"{storm}: not 10-digit QC PSGC codes: {bad}"
+
+    need_file(config.CENSUS_QC, "A5 (python -m src.census)")
+    known = set(pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})["psgc"])
+    for storm, facts in config.STORMS.items():
+        unknown = sorted(set(facts["flooded_psgc"]) - known)
+        assert not unknown, f"{storm}: flooded barangays not among A5's {len(known)}: {unknown}"
+
+    need_file(config.IMERG_DAILY, "A4 (python -m src.imerg)")
+    from src import flood_exposure as fe
+
+    totals = fe.n_day_totals(fe.catchment_rain(), config.RAIN_ACCUM_DAYS)
+    peaks = []
+    for storm, facts in config.STORMS.items():
+        peak_mm, peak_end = fe.storm_peak(totals, facts["start_date"], facts["end_date"])
+        first, last = facts["wettest_days"]
+        assert first <= peak_end.date() <= last, (
+            f"{storm}: IMERG's wettest {config.RAIN_ACCUM_DAYS}-day window during the flood ends on "
+            f"{peak_end:%Y-%m-%d}, outside the wettest days {first} to {last}")
+        peaks.append(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays, "
+                     f"peak {peak_mm:.0f} mm ending {peak_end:%d %b}")
+    return "; ".join(peaks)
+
+
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
     """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
 
@@ -182,6 +234,161 @@ def stops_with(text, func, *args):
     return False
 
 
+def simulated_m4_rows(rng):
+    """One made-up S5 dataset: M4's rows for config.S5_WEEKS target weeks, and each row's true mu.
+
+    The weeks are real ones from 2015 week 3 (week index 2) on, so 2020-2021 are COVID
+    weeks and P is B1's population. Weekly rain is drawn from a gamma distribution, wetter
+    in the wet season; a wet-season week floods with a set chance, its EI drawn evenly in a
+    range (config.S5_SIM). Rcum2 and EI2 are built from them as B4 does. The counts follow
+    M4 with the true values (config.S5_TRUE and S5_BASE) week by week, because each week's
+    y~ is the two counts before it (option B): mu from the formula, then a draw from
+    NB(mu, theta = 5). The season waves are computed here, not with m4.season_terms, so a
+    mistake there would show up as a miss.
+    """
+    from src import m4, population
+
+    sim, true, base, theta = config.S5_SIM, config.S5_TRUE, config.S5_BASE, config.S5_THETA
+    n_weeks = config.S5_WEEKS + 2                     # 2 weeks before the first target, for y~
+    calendar = population.weekly_population()
+    calendar = calendar[calendar["week_index"] < n_weeks].reset_index(drop=True)
+    t, pop = calendar["week_index"].to_numpy(), calendar["pop"].to_numpy()
+    wet = calendar["week"].between(*sim["wet_weeks"]).to_numpy()
+    rain_mean = np.where(wet, sim["rain_mean_wet_mm"], sim["rain_mean_dry_mm"])
+    rain = rng.gamma(sim["rain_shape"], rain_mean / sim["rain_shape"])
+    ei = np.where(wet & (rng.random(n_weeks) < sim["flood_chance"]), rng.uniform(*sim["ei_range"], n_weeks), 0.0)
+    rcum2 = np.concatenate([[np.nan], rain[1:] + rain[:-1]])      # Rcum2(t) = R(t - 1) + R(t)
+    ei2 = np.concatenate([[np.nan], np.maximum(ei[1:], ei[:-1])])  # EI2(t) = max(EI(t - 1), EI(t))
+    season = sum(base[f"sin{k}"] * np.sin(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 + base[f"cos{k}"] * np.cos(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 for k in range(1, config.FOURIER_K + 1))
+    covid = calendar["year"].isin(config.COVID_YEARS).to_numpy()
+
+    y, mu = np.zeros(n_weeks), np.full(n_weeks, np.nan)
+    start = sim["start_cases"]
+    y[:2] = rng.negative_binomial(theta, theta / (theta + start), 2)
+    for s in range(2, n_weeks):                        # target s, forecast week T = s - 1
+        T = s - 1
+        log_mu = (np.log(pop[T]) + base["Intercept"] + season[s] + true["rho"] * np.log1p(y[s - 1] + y[s - 2])
+                  + true["beta1"] * rcum2[T] / config.RAIN_SCALE_MM + true["beta2"] * ei2[T] + true["delta"] * covid[s])
+        mu[s] = np.exp(log_mu)
+        y[s] = rng.negative_binomial(theta, theta / (theta + mu[s]))
+
+    targets = pd.DataFrame({"week_index": t[2:], "year": calendar["year"].to_numpy()[2:],
+                            "week": calendar["week"].to_numpy()[2:], "cases": y[2:],
+                            "forecast_week": t[2:] - 1, "recent": y[1:-1] + y[:-2]})
+    features = pd.DataFrame({"week_index": t, "rcum2": rcum2, "ei2": ei2})
+    return m4.model_rows(targets, features, calendar[["week_index", "pop"]]), mu[2:]
+
+
+def s5_m4():
+    """S5 (B5): M4 gets back the true values of made-up data, and forecasts with the offset.
+
+    From the plan: fit M4 on 50 made-up datasets of 400 weeks with true rho 0.30, beta1
+    0.15, beta2 0.05, delta -0.40 and theta 5 (simulated_m4_rows). The average estimates
+    must be near those (the plan's run gave 0.302, 0.148, 0.053, -0.396 and 5.25; here
+    within config.S5_TOLERANCE and S5_THETA_RANGE), and the forecasts, made with the
+    offset, must match the true means (median miss below config.S5_PREDICTION_TOLERANCE).
+    Then, on the last dataset: doubling P doubles every forecast (the offset's coefficient
+    is 1); M4 without EI2 is fit on the same rows and keeps Rcum2; a row with a missing
+    input is dropped from the fit but stops a forecast; with EI2 almost a copy of Rcum2
+    (correlation above 0.8) M4 leaves Rcum2 out; on rows before 2020 the COVID term is
+    left out; a negative count (S11's -999) stops the fit.
+    """
+    from src import m4
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    names = {"rho": m4.RECENT, "beta1": m4.RAIN, "beta2": m4.EI, "delta": m4.COVID}
+    estimates, misses = [], []
+    for _ in range(config.S5_DATASETS):
+        rows, true_mu = simulated_m4_rows(rng)
+        fit = m4.fit_m4(rows)
+        assert fit["terms"] == m4.ALL_TERMS and fit["dropped"] == 0, (
+            f"made-up data: terms {fit['terms']}, {fit['dropped']} rows dropped")
+        estimates.append({**{name: fit["result"].params[term] for name, term in names.items()}, "theta": fit["theta"]})
+        misses.append(np.median(np.abs(m4.predict_m4(fit, rows) / true_mu - 1)))
+    mean = pd.DataFrame(estimates).mean()
+    for name, tolerance in config.S5_TOLERANCE.items():
+        assert abs(mean[name] - config.S5_TRUE[name]) <= tolerance, (
+            f"mean {name} of {config.S5_DATASETS} fits is {mean[name]:.3f}, true {config.S5_TRUE[name]} (within {tolerance})")
+    low, high = config.S5_THETA_RANGE
+    assert low <= mean["theta"] <= high, f"mean theta {mean['theta']:.2f}, expected {low}-{high}"
+    miss = float(np.median(misses))
+    assert miss < config.S5_PREDICTION_TOLERANCE, f"forecasts miss the true means by {miss:.1%} (median)"
+
+    mu = m4.predict_m4(fit, rows)
+    assert np.allclose(m4.predict_m4(fit, rows.assign(pop=2 * rows["pop"])), 2 * mu), "doubling P must double the forecast"
+    without = m4.fit_m4(rows, with_ei=False)
+    assert without["rows"] == fit["rows"] and m4.EI not in without["terms"] and m4.RAIN in without["terms"], (
+        f"M4 without EI2: {without['rows']} rows, terms {without['terms']}")
+    gap = rows.copy()
+    gap.loc[gap.index[10], ["rcum2", m4.RAIN]] = np.nan
+    assert m4.fit_m4(gap)["rows"] == fit["rows"] - 1, "a row with a missing input must be dropped from the fit"
+    assert stops_with("missing", m4.predict_m4, fit, gap.iloc[[10]]), "a forecast row with a missing input must stop"
+    copy = rows.assign(**{m4.EI: 2 * rows[m4.RAIN] + rng.normal(0, 0.01, len(rows))})
+    collinear = m4.fit_m4(copy)
+    assert m4.RAIN not in collinear["terms"] and m4.EI in collinear["terms"], (
+        f"correlation {collinear['corr_rain_ei']:.2f}: Rcum2 must be left out, terms {collinear['terms']}")
+    early = m4.fit_m4(rows[rows["year"] < min(config.COVID_YEARS)])
+    assert m4.COVID not in early["terms"], "before 2020 the COVID term cannot be estimated and must be left out"
+    negative = rows.assign(cases=rows["cases"].where(rows.index != rows.index[5], config.S11_HIDDEN_COUNT))
+    assert stops_with("negative", m4.fit_m4, negative), "a negative count must stop the fit"
+    return (f"mean of {config.S5_DATASETS} fits: rho {mean['rho']:.3f}, beta1 {mean['beta1']:.3f}, "
+            f"beta2 {mean['beta2']:.3f}, delta {mean['delta']:.3f}, theta {mean['theta']:.2f}; "
+            f"forecasts with the offset within {miss:.1%} of the true means (median)")
+
+
+def s6_theta():
+    """S6 (B6): theta from past misses, and which past forecasts theta_for uses.
+
+    From the plan: 20,000 draws from forecast_dist(20, 5), compared with mu = 20, give
+    estimate_theta between 4.8 and 5.2 (the plan's run: 4.94); the forecast has mean 20
+    and variance 100; estimate_theta([5, 5, 5], [5, 5, 5]) is infinity, which gives the
+    Poisson forecast.
+    Then theta_for on made-up past forecasts (toy_cases counts, mu = count x 1.3 and
+    x 0.7 in turn; COVID weeks and weeks after the cutoff get mu = 1, far off), worked by hand:
+      - cutoff 2024 week 30: the last 104 non-COVID weeks are 2022 week 31 to 2024 week
+        30 (22 + 52 + 30), so theta_for equals estimate_theta on exactly those rows.
+      - every count after the cutoff overwritten with -999 (as S11 does): same theta.
+      - forecasts only from 2022 week 1, cutoff 2022 week 20: 20 rows, fewer than 26,
+        so the training fit's theta comes back.
+    """
+    dist = forecast_range.forecast_dist(20, 5)
+    assert np.isclose(dist.mean(), 20) and np.isclose(dist.var(), 100), (
+        f"forecast_dist(20, 5): mean {dist.mean()}, variance {dist.var()}")
+    draws = dist.rvs(size=config.S6_DRAWS, random_state=config.RANDOM_SEED)
+    theta = forecast_range.estimate_theta(draws, np.full(config.S6_DRAWS, 20.0))
+    low, high = config.S6_THETA_RANGE
+    assert low <= theta <= high, f"theta from {config.S6_DRAWS:,} draws is {theta:.2f}, expected {low}-{high}"
+    assert np.isinf(forecast_range.estimate_theta([5, 5, 5], [5, 5, 5])), "no extra spread must give infinity"
+    assert forecast_range.forecast_dist(5, np.inf).var() == 5, "theta = infinity must give Poisson"
+
+    cases = toy_cases(2024)
+    sign = np.where(cases["week_index"] % 2 == 0, 1, -1)
+    cutoff = weeks.week_index_of(2024, 30)
+    far_off = cases["year"].isin(config.COVID_YEARS) | (cases["week_index"] > cutoff)
+    past = pd.DataFrame({"week_index": cases["week_index"],
+                         "mu": np.where(far_off, 1.0, cases["cases"] * (1 + 0.3 * sign))})
+    used = forecast_range.scored_past(past, cases, cutoff)
+    assert len(used) == config.THETA_WINDOW, f"{len(used)} past forecasts used, expected {config.THETA_WINDOW}"
+    window = (used["week_index"].iloc[0], used["week_index"].iloc[-1])
+    assert window == (weeks.week_index_of(2022, 31), cutoff), f"window runs from week index {window[0]} to {window[1]}"
+    assert not used["year"].isin(config.COVID_YEARS).any(), "a COVID-year forecast was used"
+    by_hand = forecast_range.estimate_theta(used["y"], used["mu"])
+    got = forecast_range.theta_for(past, cases, cutoff, fit_theta=7.5)
+    assert np.isclose(got, by_hand), f"theta_for gave {got}, by hand {by_hand}"
+    hidden = hide_after(cases, cutoff)
+    assert forecast_range.theta_for(past, hidden, cutoff, fit_theta=7.5) == got, (
+        "theta used a count after the cutoff")
+
+    late = past[past["week_index"] >= weeks.week_index_of(2022, 1)]
+    short = forecast_range.theta_for(late, cases, weeks.week_index_of(2022, 20), fit_theta=7.5)
+    assert short == 7.5, f"with 20 past forecasts theta_for gave {short}, expected the fit's 7.5"
+    assert stops_with("same target week", forecast_range.theta_for,
+                      pd.concat([past, past.tail(1)]), cases, cutoff, 7.5), "a duplicate forecast must stop"
+    return f"theta from {config.S6_DRAWS:,} draws of NB(20, 5): {theta:.2f}; toy window theta {got:.1f}"
+
+
 def s7_breach():
     """S7, first part (B6's forecast_dist, B7): breach probability and thresholds.
 
@@ -195,7 +402,7 @@ def s7_breach():
       - 2025: the 5 most recent non-COVID years are 2018, 2019, 2022-2024, and
         week 53 gets week 52's threshold. With 2023 missing a week, 2017 replaces it.
       - 2017 has only 2 years before it, so it stops.
-    The second part, "S7 scores" (wis, episodes and the exact interval), waits for D1 and D3.
+    The second part, "S7 scores" (wis, episodes and the exact interval), is s7_scores (D1, D3).
     """
     dist = forecast_range.forecast_dist(20, 5)
     p = thresholds.breach_probability(dist, 12.4)
@@ -226,6 +433,56 @@ def s7_breach():
     assert stops_with("reference years", thresholds.epidemic_threshold, 2017, 1, cases, end_2024), (
         "2017 has only 2 reference years and must stop")
     return f"Pr(Y > 12.4) = {p:.3f}; toy 2019 week 1 threshold {t:g}"
+
+
+def s7_scores():
+    """S7, second part (D1, D3): WIS, episodes and the exact interval, then each score by hand.
+
+    From the plan: WIS of a forecast sitting on the truth = 0; forecast_dist(20, 5) has
+    WIS 2.12 at y = 20 and 32.0 at y = 60; the episodes of weeks [3, 4, 6, 10, 11] are
+    [[3, 4, 6], [10, 11]]; proportion_confint(5, 6, method='beta') = 0.359-0.996.
+    Worked by hand:
+      - counts 10, 20 with forecasts 12, 17: misses +2, -3, so MAE 2.5, RMSE sqrt(6.5), bias -0.5.
+      - forecast_dist(20, 5)'s 90% range holds 20 and not 60.
+      - p = 0.9, 0.2 with outcomes 1, 0: Brier (0.01 + 0.04) / 2 = 0.025; against a usual
+        rate of 0.5 (reference 0.25), BSS = 0.9.
+      - reliability of p = 0.1, 0.2, 0.3, 0.4 with outcomes 0, 1, 0, 1: the middle two pool,
+        giving observed rates 0, 0.5, 1 over 1, 2, 1 forecasts.
+      - alarms for p = 0.1, 0.4, 0.6, 0.9 with outcomes 0, 0, 1, 1: p* = 0.6, F1 = 1.
+      - usual rate: of 2018's weeks (breached, not), a COVID week and a 2017 week, only the
+        2018 ones count: 0.5.
+      - score_models on two made-up models: MAE as by hand; a model missing a week stops.
+    """
+    assert scores.wis(7, stats.randint(7, 8)) == 0, "all weight on the truth must give WIS 0"
+    dist = forecast_range.forecast_dist(20, 5)
+    w20, w60 = scores.wis(20, dist), scores.wis(60, dist)
+    assert round(w20, 2) == 2.12 and round(w60, 1) == 32.0, f"WIS at 20 = {w20:.3f}, at 60 = {w60:.3f}"
+    assert breach_scores.episodes([3, 4, 6, 10, 11]) == [[3, 4, 6], [10, 11]]
+    assert breach_scores.episodes([]) == [], "no breach weeks must give no episodes"
+    ci = breach_scores.caught_share(5, 6)
+    assert (round(ci["low"], 3), round(ci["high"], 3)) == (0.359, 0.996), f"5 of 6: {ci}"
+
+    s = scores.point_scores([10, 20], [12, 17])
+    assert np.isclose(s["mae"], 2.5) and np.isclose(s["rmse"], np.sqrt(6.5)) and np.isclose(s["bias"], -0.5), s
+    assert scores.covered(20, dist, 0.9) and not scores.covered(60, dist, 0.9)
+    assert np.isclose(breach_scores.brier([0.9, 0.2], [1, 0]), 0.025)
+    assert np.isclose(breach_scores.brier_skill_score([0.9, 0.2], [1, 0], [0.5, 0.5]), 0.9)
+    steps = breach_scores.reliability([0.1, 0.2, 0.3, 0.4], [0, 1, 0, 1])
+    assert list(steps["observed"]) == [0, 0.5, 1] and list(steps["forecasts"]) == [1, 2, 1], steps
+    assert breach_scores.best_p_star([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1]) == 0.6
+    assert breach_scores.alarm_scores([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1], 0.6)["f1"] == 1
+    outcomes = pd.DataFrame({"week_index": [100, 160, 161, 270], "year": [2017, 2018, 2018, 2020],
+                             "breached": [True, True, False, True]})
+    assert breach_scores.base_rate(outcomes, 300) == 0.5, "only 2018-on, non-COVID weeks count"
+
+    table = pd.DataFrame({"model": ["M0", "M0", "M4", "M4"], "week_index": [1, 2, 1, 2],
+                          "year": [2022] * 4, "y": [10, 20, 10, 20], "mu": [12, 17, 10, 21],
+                          "theta": [5, 5, np.inf, 5]})
+    by_model = scores.score_models(table, config.PROB_SCORE_YEARS)
+    assert np.isclose(by_model.loc["M0", "mae"], 2.5) and np.isclose(by_model.loc["M4", "mae"], 0.5), by_model
+    assert stops_with("same weeks", scores.score_models, table.iloc[:3], config.PROB_SCORE_YEARS), (
+        "a model missing a week must stop")
+    return f"WIS {w20:.2f} at 20, {w60:.1f} at 60; episodes and 5-of-6 interval as the plan; D1/D3 toys match"
 
 
 def b8_baselines():
@@ -277,6 +534,170 @@ def b8_baselines():
         assert stops_with("Week must be in", model, 2026, 53, cases, weeks.week_index_of(2026, 52)), (
             "M0 and M1 must stop on 2026 week 53, which does not exist")
     return f"{len(worked)} forecasts match the hand answers; leaks, gaps, duplicates and bad weeks stop"
+
+
+def b9_m3():
+    """B9 (no S number): M3's gap filling worked by hand, then its forecast on made-up counts.
+
+    toy_cases from 2015 to 2021: 10 x (year - 2014) + week; COVID years 2020 and 2021
+    are 10,000 in every week. Six counts are removed. 2015 weeks 1-2 come before the
+    first count, so training starts at 2015 week 3. With cutoff 2020 week 20:
+      2017 week 30 (July: monsoon)    mu_30 over 2015, 2016, 2018, 2019 = (40 + 50 + 70 + 80) / 4 = 60
+      2018 week 3 (January)           straight line between 42 and 44 = 43
+      2019 week 3 (January)           straight line between 52 and 54 = 53
+      2020 week 14 (2 April: lockdown) 0.5 x mu_14 = 0.5 x 44 = 22
+    B3's whole-series filling would also have used 2021's 10,000s. With cutoff 2019
+    week 3, 2019 week 30 is not seen yet, so mu_30 = (40 + 50 + 70) / 3 = 53.33, and
+    2019 week 3 has no later neighbour: 52, the last count. A table without the
+    (empty) 2015 week 1 row still trains from 2015 week 3.
+    Then M3 forecasts 2019 week 10 (true count 60, week starting 3 March 2019) with an
+    option B cutoff (week 9) and an option C cutoff (g = 2, week 7). Each forecast
+    must be within 10% of 60, and must not change when the counts after the cutoff are
+    hidden (S11) or when year and week come as floats. Last, on simulated counts
+    (negative binomial, theta 5, season peaking in August), fit_theta must be finite
+    and near 5 (config.B9_FIT_THETA_RANGE): the hybrid's own in-sample theta would be
+    infinite. Takes a few seconds: Prophet is fitted 7 times.
+    """
+    from src import m3_port   # imports Prophet and xgboost; only this check needs them
+
+    cases = toy_cases(2021)
+    for year, week in [(2015, 1), (2015, 2), (2017, 30), (2018, 3), (2019, 3), (2020, 14)]:
+        cases.loc[(cases["year"] == year) & (cases["week"] == week), "cases"] = np.nan
+    fills = {
+        (2020, 20): {(2017, 30): (60, "monsoon"), (2018, 3): (43, "interpolated"),
+                     (2019, 3): (53, "interpolated"), (2020, 14): (22, "lockdown")},
+        (2019, 3): {(2017, 30): (160 / 3, "monsoon"), (2018, 3): (43, "interpolated"),
+                    (2019, 3): (52, "interpolated")},
+    }
+    for (cut_year, cut_week), worked in fills.items():
+        cutoff = weeks.week_index_of(cut_year, cut_week)
+        filled = m3_port.fill_gaps(m3_port.seen_weeks(cases, cutoff))
+        assert (filled["year"].iloc[0], filled["week"].iloc[0]) == (2015, 3), "training must start at the first count"
+        gaps = filled[filled["fill_rule"] != "observed"].set_index(["year", "week"])
+        got = {key: (round(row["y"], 4), row["fill_rule"]) for key, row in gaps.iterrows()}
+        assert got == {key: (round(v, 4), rule) for key, (v, rule) in worked.items()}, (
+            f"cutoff {cut_year} week {cut_week}: fills {got}, by hand {worked}")
+        hidden = m3_port.fill_gaps(m3_port.seen_weeks(hide_after(cases, cutoff), cutoff))
+        assert hidden.equals(filled), f"cutoff {cut_year} week {cut_week}: gap filling used a count after the cutoff"
+    no_first_row = cases[~((cases["year"] == 2015) & (cases["week"] == 1))]
+    seen = m3_port.seen_weeks(no_first_row, weeks.week_index_of(2019, 3))
+    assert (seen["year"].iloc[0], seen["week"].iloc[0]) == (2015, 3), "rows before the first count must not matter"
+
+    assert weeks.week_start(weeks.week_index_of(2026, 32)) == date(2026, 8, 9), "2026 week 32 starts 9 August"
+    assert weeks.week_start(weeks.week_index_of(2026, 1)) == date(2026, 1, 4), "2026 week 1 starts 4 January"
+    assert list(m3_port.iso_weeks([date(2026, 8, 9), date(2019, 3, 3)])) == [33, 10], (
+        "ISO week: 33 for MMWR 2026 week 32 (2026 starts on a Thursday), 10 for 2019 week 10")
+
+    forecasts = []
+    for cut_week in (9, 7):
+        cutoff = weeks.week_index_of(2019, cut_week)
+        label = f"M3 2019 week 10, cutoff 2019 week {cut_week}"
+        got = m3_port.m3_forecast(2019, 10, cases, cutoff)
+        assert got["target_date"] == date(2019, 3, 3), f"{label}: target dated {got['target_date']}, not 3 March"
+        assert abs(got["mu"] - 60) <= 6, f"{label}: {got['mu']:.2f}, true count 60"
+        assert m3_port.m3_forecast(2019, 10, hide_after(cases, cutoff), cutoff) == got, (
+            f"{label}: used a count after the cutoff")
+        assert m3_port.m3_forecast(2019.0, 10.0, cases, cutoff) == got, f"{label}: fails on float year and week"
+        forecasts.append(f"{got['mu']:.1f}")
+
+    m3 = m3_port.m3_forecast
+    cutoff = weeks.week_index_of(2019, 9)
+    skipped = cases[~((cases["year"] == 2018) & (cases["week"] == 5))]
+    twice = pd.concat([cases, cases[(cases["year"] == 2018) & (cases["week"] == 5)]])
+    negative = cases.copy()
+    negative.loc[(negative["year"] == 2018) & (negative["week"] == 5), "cases"] = -5
+    mislabelled = cases.copy()
+    mislabelled.loc[(mislabelled["year"] == 2018) & (mislabelled["week"] == 5), "week"] = 6
+    assert stops_with("not after the cutoff", m3, 2019, 9, cases, cutoff), "M3 must stop when the target is seen"
+    assert stops_with("Week must be in", m3, 2026, 53, cases, cutoff), "M3 must stop on 2026 week 53"
+    assert stops_with("skips a week", m3, 2019, 10, skipped, cutoff), "M3 must stop when a week has no row"
+    assert stops_with("two rows", m3, 2019, 10, twice, cutoff), "M3 must stop when a week has two rows"
+    assert stops_with("negative", m3, 2019, 10, negative, cutoff), "M3 must stop on a negative seen count"
+    assert stops_with("not the MMWR week", m3, 2019, 10, mislabelled, cutoff), (
+        "M3 must stop when a row's year and week disagree with its week index")
+    assert stops_with("no row for the cutoff", m3, 2022, 2, cases, weeks.week_index_of(2022, 1)), (
+        "M3 must stop when the table ends before the cutoff")
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    simulated = []
+    for year in range(2015, 2020):
+        for wk in Year(year).iterweeks():
+            mu = 15 * np.exp(0.9 * np.cos(2 * np.pi * (wk.week - 32) / config.WEEKS_PER_YEAR))
+            simulated.append({"week_index": weeks.week_index(wk.startdate()), "year": year, "week": wk.week,
+                              "cases": float(rng.negative_binomial(5, 5 / (5 + mu)))})
+    fit_theta = m3(2019, 10, pd.DataFrame(simulated), cutoff)["fit_theta"]
+    low, high = config.B9_FIT_THETA_RANGE
+    assert low <= fit_theta <= high, f"M3's fit_theta on counts with theta 5 is {fit_theta:.2f}, expected {low}-{high}"
+    return (f"gap fills match the hand answers at 2 cutoffs; forecasts {' and '.join(forecasts)} (true 60) "
+            f"unchanged with later counts hidden; fit_theta {fit_theta:.2f} (true 5); bad tables stop")
+def b2_view():
+    """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
+
+    toy_cases from 2022 to 2026: 10 x (year - 2014) + week, so 2024 week 10 = 110 and 2025
+    week 53 = 163. Forecast day T = 2024 week 10, target 2024 week 11:
+      - option B: cutoff T; y~ = y(2024 w10) + y(w9) = 110 + 109 = 219. The last training
+        row is target w10, with y(w9) + y(w8) = 217; the first two rows have no y~ (2021 is
+        not in the data) and the third is y(2022 w2) + y(w1) = 82 + 81 = 163.
+      - option C, g = 2: cutoff w8; y~ = y(w8) + y(w7) = 215. The last training row is
+        target w8, with y(w5) + y(w4) = 209. g = 1 and 3: y~ = 217 and 213.
+      - the 2-week forecast (B11, h = 2) in option B: y~ unchanged, 219; target w12; the last
+        training row (w10) uses y(w8) + y(w7) = 215.
+      - across a 53-week year, option B, T = 2026 w1: y~ = y(2026 w1) + y(2025 w53) = 121 + 163.
+    The forecast's y~ equals the training row's y~ for the same target, once that target can
+    be seen (same lag). Each case is rerun with every count after the cutoff overwritten
+    with -999 (hide_after, as S11 does): nothing changes. Must stop: no option set (None),
+    option A (not built), a missing count at the cutoff, a week listed twice.
+    """
+    cases = toy_cases(2026, first_year=2022)
+    T = weeks.week_index_of(2024, 10)
+    worked = [
+        # option, g, horizon, forecast day (year, week), y~ by hand, last training row (year, week, y~)
+        ("B", 2, 1, (2024, 10), 219, (2024, 10, 217)),
+        ("C", 2, 1, (2024, 10), 215, (2024, 8, 209)),
+        ("C", 1, 1, (2024, 10), 217, (2024, 9, 107 + 106)),
+        ("C", 3, 1, (2024, 10), 213, (2024, 7, 103 + 102)),
+        ("B", 2, 2, (2024, 10), 219, (2024, 10, 215)),
+        ("B", 2, 1, (2026, 1), 121 + 163, (2026, 1, 163 + 162)),
+    ]
+    for option, g, h, (year, week), answer, (last_year, last_week, last_recent) in worked:
+        day = weeks.week_index_of(year, week)
+        label = f"option {option}, g = {g}, h = {h}, forecast day {year} week {week}"
+        cut = view.cutoff(day, option, g)
+        assert cut == day - (g if option == "C" else 0), f"{label}: cutoff {cut}"
+        row = view.prediction_row(cases, day, option, g, h)
+        assert row["recent"].iloc[0] == answer, f"{label}: y~ = {row['recent'].iloc[0]}, by hand {answer}"
+        assert row["week_index"].iloc[0] == day + h and row["forecast_week"].iloc[0] == day, f"{label}: wrong target"
+        assert weeks.year_week(row["week_index"].iloc[0]) == (row["year"].iloc[0], row["week"].iloc[0])
+        train = view.training_rows(cases, day, option, g, h)
+        last = train.iloc[-1]
+        assert (last["year"], last["week"], last["recent"]) == (last_year, last_week, last_recent), (
+            f"{label}: last training row {last['year']} week {last['week']}, y~ {last['recent']}")
+        assert (train["week_index"] <= cut).all() and len(train) == (cases["week_index"] <= cut).sum()
+        assert (train["forecast_week"] == train["week_index"] - h).all(), f"{label}: forecast_week is not target - h"
+        hidden = hide_after(cases, cut)
+        assert view.training_rows(hidden, day, option, g, h).equals(train), f"{label}: training rows read a hidden count"
+        assert view.prediction_row(hidden, day, option, g, h).equals(row), f"{label}: y~ read a hidden count"
+        # the same target, once it can be seen, gets the same y~ in training
+        later = view.training_rows(cases, day + h + view.guard_weeks(option, g), option, g, h)
+        same = later.loc[later["week_index"] == day + h, "recent"]
+        assert list(same) == [answer], f"{label}: the training row for the same target has y~ {list(same)}"
+
+    first = view.training_rows(cases, T, "B", 2, 1)["recent"].iloc[:3]
+    assert first.iloc[:2].isna().all() and first.iloc[2] == 163, f"first training rows' y~: {list(first)}"
+
+    missing = cases.copy()
+    missing.loc[missing["week_index"] == T, "cases"] = np.nan
+    twice = pd.concat([cases, cases.tail(1)])
+    assert stops_with("DATA_OPTION", view.cutoff, T, None, 2), "no data option set must stop"
+    try:
+        view.cutoff(T, "A", 2)
+        raise AssertionError("option A must stop: it is not built")
+    except NotImplementedError:
+        pass
+    assert stops_with("one is missing", view.prediction_row, missing, T, "B", 2, 1), "a missing count at the cutoff must stop"
+    assert stops_with("listed twice", view.training_rows, twice, T, "B", 2, 1), "a week listed twice must stop"
+    return (f"{len(worked)} forecast days match the hand answers in options B and C (g = 1-3, h = 1 and 2); "
+            f"counts after the cutoff hidden: nothing changes")
 
 
 def s8_census_fit():
@@ -356,6 +777,383 @@ def s8_overlay():
             f"{len(falls)} barangays fall in a rarer map, inspect: {names}")
 
 
+def toy_overlay():
+    """Made-up C2 table for S9: 2 barangays x 3 maps x 3 levels, residents worked by hand.
+
+    Barangay "B" has fewer residents in the 25-year map than in the 5-year one (S8 lists
+    real barangays like it), so the interpolation must also work going down.
+    """
+    pops = {  # (psgc, var): (Pop_5, Pop_25, Pop_100)
+        ("A", 1): (100, 200, 400), ("A", 2): (10, 50, 90), ("A", 3): (0, 0, 30),
+        ("B", 1): (80, 60, 70), ("B", 2): (0, 20, 20), ("B", 3): (0, 0, 0),
+    }
+    rows = [{"psgc": b, "var": k, "return_period": t, "residents": float(n)}
+            for (b, k), values in pops.items() for t, n in zip(config.NOAH_RETURN_PERIODS, values)]
+    return pd.DataFrame(rows)
+
+
+def s9_return_levels():
+    """S9 (C3): Gumbel return levels, the fit, and graded exposure.
+
+    From the plan: a Gumbel curve with mu = 100, beta = 30 has R(5), R(25), R(100) =
+    145.0, 196.0, 238.0. Fitting 500 samples of 25 maxima gives a median R(25) of about
+    191, with 90% of fits between 164 and 224 (within S9_FIT_TOLERANCE_MM here; the
+    random seed moves them a little). Graded exposure on toy_overlay: 0 at or below R0,
+    exactly Pop_5 at R(5), Pop_100 above R(100), halfway between Pop_5 and Pop_25 at the
+    rain halfway between. Rule 2: the fit for a year uses only years before it, so
+    changing that year's maxima or later ones changes nothing; under 10 years stops.
+    n-day totals (config.RAIN_ACCUM_DAYS): daily rain 10, 20, 30, 0, 5 gives 3-day totals
+    60, 50, 35 on days 3-5; 1 day returns the rain unchanged; a missing day stops.
+    """
+    from scipy import stats
+
+    from src import flood_exposure as fe
+
+    true = [round(fe.gumbel_level(100, 30, t), 1) for t in config.NOAH_RETURN_PERIODS]
+    assert true == [145.0, 196.0, 238.0], f"true R(5), R(25), R(100) = {true}"
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    fitted = []
+    for _ in range(config.S9_SAMPLES):
+        sample = stats.gumbel_r.rvs(loc=100, scale=30, size=config.S9_SAMPLE_YEARS, random_state=rng)
+        mu, beta = fe.fit_gumbel(sample)
+        fitted.append(fe.gumbel_level(mu, beta, 25))
+    median, low, high = np.median(fitted), *np.percentile(fitted, [5, 95])
+    tol = config.S9_FIT_TOLERANCE_MM
+    assert abs(median - 191) <= tol, f"median fitted R(25) = {median:.1f}, expected about 191"
+    assert abs(low - 164) <= tol and abs(high - 224) <= tol, f"90% of fits in {low:.0f}-{high:.0f}, expected 164-224"
+
+    levels = {"r0": 50.0, 5: 100.0, 25: 150.0, 100: 200.0}
+    overlay = toy_overlay()
+    pops = fe.map_table(overlay)
+
+    def exposure(rain):
+        table = fe.graded_exposure(rain, levels, overlay)
+        assert list(table.columns) == ["psgc", "var", "residents"], f"columns {list(table.columns)} (C5 takes psgc, var, residents)"
+        return table.set_index(["psgc", "var"])["residents"]
+
+    assert (exposure(50.0) == 0).all() and (exposure(10.0) == 0).all(), "exposure at or below R0 must be 0"
+    assert np.allclose(exposure(75.0), pops[5] / 2), "halfway between R0 and R(5) must be half of Pop_5"
+    assert np.allclose(exposure(100.0), pops[5]), "exposure at R(5) must be Pop_5 exactly"
+    assert np.allclose(exposure(125.0), (pops[5] + pops[25]) / 2), "halfway between R(5) and R(25) must be halfway"
+    assert np.allclose(exposure(200.0), pops[100]) and np.allclose(exposure(500.0), pops[100]), (
+        "exposure at and above R(100) must be Pop_100")
+    totals = fe.map_totals(overlay)
+    assert np.isclose(fe.exposed_total(125.0, levels, totals), exposure(125.0).sum()), "city total != sum of barangays"
+
+    maxima = pd.Series(stats.gumbel_r.rvs(loc=100, scale=30, size=20, random_state=rng), index=range(2000, 2020))
+    before = fe.return_levels(maxima, 2015)
+    changed = maxima.copy()
+    changed[changed.index >= 2015] = 999.0
+    assert fe.return_levels(changed, 2015) == before, "the 2015 fit used 2015 or a later year (rule 2)"
+    assert before["n_years"] == 15, f"the 2015 fit used {before['n_years']} years, expected 2000-2014"
+    assert stops_with("at least", fe.return_levels, maxima, 2009), "a fit on 9 years must stop"
+
+    daily = pd.Series([10.0, 20.0, 30.0, 0.0, 5.0], index=pd.date_range("2024-07-21", periods=5, freq="D"))
+    three = fe.n_day_totals(daily, 3)
+    assert three.tolist() == [60.0, 50.0, 35.0], f"3-day totals {three.tolist()}, by hand 60, 50, 35"
+    assert three.index[0] == pd.Timestamp("2024-07-23"), "a total must be labelled with its last day"
+    assert fe.n_day_totals(daily, 1).equals(daily), "1-day totals must be the daily rain unchanged"
+    assert stops_with("every day", fe.n_day_totals, daily.drop(daily.index[2]), 3), "a missing day must stop"
+    return (f"median fitted R(25) {median:.1f}, 90% of fits {low:.0f}-{high:.0f}; toy exposure and "
+            f"n-day totals match by hand")
+
+
+def s9_exposure_index():
+    """S9, real data (C3): ei_weekly.csv.
+
+    Made with config.RAIN_ACCUM_DAYS (the rain_days column), so a file from an older run
+    or another n is caught. One row per fit year and week, every fit year from
+    BACKTEST_FIRST_YEAR to BACKTEST_LAST_YEAR, weeks from 2015 week 1 with no gap; EI
+    between 0 and 100, never missing; the wettest week of each fit year has the highest
+    EI or ties it (EI only grows with rain).
+    """
+    need_file(config.EI_WEEKLY, "C3 (python -m src.flood_exposure)")
+    ei = pd.read_csv(config.EI_WEEKLY)
+    assert "rain_days" in ei.columns, "ei_weekly.csv has no rain_days column: rerun python -m src.flood_exposure"
+    made_with = sorted(ei["rain_days"].unique())
+    assert made_with == [config.RAIN_ACCUM_DAYS], (
+        f"ei_weekly.csv was made with {made_with}-day totals, config says {config.RAIN_ACCUM_DAYS}: rerun C3")
+    fit_years = list(range(config.BACKTEST_FIRST_YEAR, config.BACKTEST_LAST_YEAR + 1))
+    assert sorted(ei["fit_year"].unique()) == fit_years, f"fit years {sorted(ei['fit_year'].unique())}"
+    assert not ei.duplicated(["fit_year", "week_index"]).any(), "a fit year and week appear twice"
+    assert ei[["rmax_mm", "ei"]].notna().all().all(), "missing rain or EI"
+    assert ei["ei"].between(0, 100).all(), f"EI outside 0-100: {ei['ei'].min()} to {ei['ei'].max()}"
+    for year, rows in ei.groupby("fit_year"):
+        index = rows["week_index"].to_numpy()
+        assert index[0] == 0 and (np.diff(index) == 1).all(), f"fit {year}: weeks do not run from 0 without a gap"
+        assert rows.loc[rows["rmax_mm"].idxmax(), "ei"] == rows["ei"].max(), f"fit {year}: EI does not grow with rain"
+    last = ei[ei["fit_year"] == config.BACKTEST_LAST_YEAR]
+    return (f"{config.RAIN_ACCUM_DAYS}-day totals; {len(fit_years)} fit years x {len(last)} weeks; "
+            f"EI above 0 in {(last['ei'] > 0).mean():.1%} "
+            f"of weeks, highest {last['ei'].max():.1f}% ({config.BACKTEST_LAST_YEAR} fit)")
+
+
+def s10_shares():
+    """S10, first part (C4): child, pregnant and adult shares.
+
+    First a made-up city whose answers are worked out by hand, which tests the formulas
+    themselves. Then shares_qc.csv: one row for each of A5's 142 barangays; no share
+    missing or negative; the three shares add to 1 in every barangay; the pregnant counts
+    add up to QC's (A12's births x 0.75), which stay below the 3.5% upper bound; and the
+    file matches a fresh run of src.shares, which catches a file left over from older
+    inputs. The upper-bound test (3.5% of QC pregnant) must give shares that add to 1,
+    none negative, too.
+    The second part (doses and allocate) is C6 and C7.
+    """
+    from src import shares
+
+    # Made-up city of two barangays, worked by hand, with 100 pregnant women in all.
+    # a: 1,000 people in 2020, 300 under 18, 250 women 15-49 of whom 25 are 15-17; 1,250 in 2024.
+    # b: 2,000 people in 2020, 500 under 18, 750 women 15-49 of whom 50 are 15-17; 2,500 in 2024.
+    #   a: preg = 100 x 250/1000 = 25, s_preg = 25/1250 = 0.02, s_child = 300/1000 - 0.02 x 25/250 = 0.298
+    #   b: preg = 100 x 750/1000 = 75, s_preg = 75/2500 = 0.03, s_child = 500/2000 - 0.03 x 50/750 = 0.248
+    toy = pd.DataFrame({"pop_2020": [1000, 2000], "pop_2024": [1250, 2500], "children": [300, 500],
+                        "women_15_49": [250, 750], "women_15_17": [25, 50]}, index=["a", "b"])
+    got = shares.group_shares(toy, 100)
+    for col, expected in (("preg", [25, 75]), ("s_preg", [0.02, 0.03]),
+                          ("s_child", [0.298, 0.248]), ("s_adult", [0.682, 0.722])):
+        assert np.allclose(got[col], expected), f"made-up city: {col} = {list(got[col])}, expected {expected}"
+
+    need_file(config.CENSUS_QC, "A5 (python -m src.census)")
+    need_file(config.BIRTHS_2024, "A12 (copy psa_births_2024.csv from the team drive)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    table = pd.read_csv(config.SHARES_QC, dtype={"psgc": str}).set_index("psgc")
+    counts = shares.barangay_counts()
+
+    assert len(table) == config.QC_BARANGAYS and table.index.is_unique, (
+        f"shares file has {len(table)} rows, {table.index.nunique()} barangays")
+    assert set(table.index) == set(counts.index), "shares file and A5's barangays hold different barangays"
+    preg_qc = shares.pregnant_from_births(shares.qc_births())
+    upper_qc = shares.upper_bound_pregnant(counts)
+    assert preg_qc < upper_qc, f"{preg_qc:,.0f} pregnant women is above the 3.5% upper bound ({upper_qc:,.0f})"
+    upper = shares.group_shares(counts, upper_qc)
+    for label, t in (("shares file", table), ("upper bound", upper)):
+        s = t[shares.SHARES]
+        assert s.notna().all().all(), f"{label}: a share is missing"
+        assert (s >= 0).all().all(), f"{label}: negative share in {list(s.index[(s < 0).any(axis=1)])}"
+        off = (s.sum(axis=1) - 1).abs()
+        assert off.max() <= config.S10_SHARE_TOLERANCE, f"{label}: shares add to {s.sum(axis=1)[off.idxmax()]} in {off.idxmax()}"
+    assert np.isclose(table["preg"].sum(), preg_qc), f"pregnant counts add up to {table['preg'].sum():,.1f}, QC has {preg_qc:,.1f}"
+
+    fresh = shares.group_shares(counts, preg_qc).loc[table.index]
+    cols = ["pop_2020", "pop_2024", "children", "women_15_49", "women_15_17", "preg", *shares.SHARES]
+    assert np.allclose(table[cols], fresh[cols]), "shares file differs from a fresh run: rerun python -m src.shares"
+    return (f"QC child {(table['s_child'] * table['pop_2024']).sum() / table['pop_2024'].sum():.1%}, "
+            f"pregnant {preg_qc:,.0f}, smallest adult share {table['s_adult'].min():.3f} "
+            f"({upper['s_adult'].min():.3f} at the 3.5% upper bound)")
+
+
+def s10_exposed():
+    """S10, C5 part: exposed people per group, and the adult risk tiers.
+
+    First a made-up city whose answers are worked out by hand, with q and r_k away from 1
+    so both are tested. Then S10's dose input, 100 exposed adults with w = 0.5, split into
+    tiers at D = 1, 3 and 10 (C6 turns them into 600, 200 and 400 capsules), plus the
+    bounds of w and the 1- and 3-day cut-off tests. Input that would give wrong counts
+    without an error must stop the run (rule 5): a barangay missing, or two maps' rows
+    passed together. Then the real tables, at each map's own rain (C2's map x C4's
+    shares): one row per barangay, nothing missing or negative; with q = r_k = 1 everyone
+    exposed equals the map's residents; the groups add up to everyone exposed; and the
+    tiers add up to the exposed adults in every preview scenario.
+    """
+    from src import exposed
+
+    # Made-up city of two barangays, q = 0.5, r_k = 0.5 at level 1 and 1 at levels 2 and 3.
+    # a: N = 100, 200, 300 -> 0.5 x (0.5 x 100 + 200 + 300) = 275; shares 0.30 / 0.02 / 0.68 -> 82.5, 5.5, 187
+    # b: N =   0,  50,   0 -> 0.5 x 50 = 25;                       shares 0.25 / 0.03 / 0.72 -> 6.25, 0.75, 18
+    toy_shares = pd.DataFrame({"s_child": [0.30, 0.25], "s_preg": [0.02, 0.03], "s_adult": [0.68, 0.72]},
+                              index=pd.Index(["a", "b"], name="psgc"))
+    toy = pd.DataFrame({"psgc": ["a"] * 3 + ["b"] * 3, "var": [1, 2, 3] * 2,
+                        "residents": [100, 200, 300, 0, 50, 0]})
+    got = exposed.exposed_people(toy, toy_shares, q=0.5, contact={1: 0.5, 2: 1.0, 3: 1.0})
+    for col, expected in (("exposed", [275, 25]), ("e_child", [82.5, 6.25]),
+                          ("e_preg", [5.5, 0.75]), ("e_adult", [187, 18])):
+        assert np.allclose(got[col], expected), f"made-up city: {col} = {list(got[col])}, expected {expected}"
+
+    # S10's input: 100 exposed adults. (D, cut-off, w) -> (high, moderate, low)
+    adults = pd.Series([100.0])
+    for days, cutoff, w, expected in (
+        (1, 2, 0.5, (0, 50, 50)),     # short flood, split by w; C6: 2 x 50 + 10 x 50 = 600 capsules
+        (3, 2, 0.5, (100, 0, 0)),     # 2 days or more, all high; C6: 2 x ceil(3/7) x 100 = 200
+        (10, 2, 0.5, (100, 0, 0)),    # C6: 2 x ceil(10/7) x 100 = 400
+        (1, 2, 0.0, (0, 0, 100)),     # the bounds of w
+        (1, 2, 1.0, (0, 100, 0)),
+        (2, 3, 0.5, (0, 50, 50)),     # cut-off tests (C8): 2 days is short under a 3-day cut-off
+        (1, 1, 0.5, (100, 0, 0)),     # and every flood is long under a 1-day cut-off
+    ):
+        tiers = tuple(exposed.adult_tiers(adults, days, w, cutoff).iloc[0][exposed.TIERS])
+        assert np.allclose(tiers, expected), (
+            f"D = {days}, cut-off {cutoff}, w = {w}: (high, moderate, low) = {tiers}, expected {expected}")
+
+    for label, bad in (("barangay b missing", toy[toy["psgc"] == "a"]), ("two maps mixed", pd.concat([toy, toy]))):
+        try:
+            exposed.exposed_people(bad, toy_shares)
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: exposed_people did not stop")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+    table = exposed.load_shares()
+    full_contact = {k: 1.0 for k in config.NOAH_HAZARD_LEVELS}
+    parts = []
+    for period in config.NOAH_RETURN_PERIODS:
+        residents = exposed.map_residents(overlay, period)
+        people = exposed.exposed_people(residents, table)
+        assert len(people) == config.QC_BARANGAYS, f"{period}-year map: {len(people)} barangays"
+        assert people.notna().all().all() and (people >= 0).all().all(), f"{period}-year map: missing or negative counts"
+        flooded = residents.groupby("psgc")["residents"].sum().loc[people.index]
+        everyone = exposed.exposed_people(residents, table, q=1.0, contact=full_contact)["exposed"]
+        assert np.allclose(everyone, flooded), f"{period}-year map: with q = r_k = 1, exposed differs from the map's residents"
+        assert np.allclose(people[list(exposed.GROUPS)].sum(axis=1), people["exposed"]), (
+            f"{period}-year map: the groups do not add up to everyone exposed")
+        for label, days, w in exposed.scenarios():
+            tiers = exposed.adult_tiers(people["e_adult"], days, w)
+            assert np.allclose(tiers.sum(axis=1), people["e_adult"]), f"{period}-year map, {label}: tiers do not add up"
+        parts.append(f"R({period}) {people['exposed'].sum():,.0f}")
+    return f"QC exposed at {', '.join(parts)}; groups and tiers add up"
+
+
+def s10_doses():
+    """S10, C6 part: drug units per barangay.
+
+    S10's input, 100 exposed adults with w = 0.5 and u = 1, split into tiers by C5 and
+    turned into capsules: 600 at D = 1 (50 moderate x 10 + 50 low x 2), 200 at D = 3
+    (100 high x 2 x 1 week) and 400 at D = 10 (2 weeks). Then made-up children and
+    pregnant women worked by hand: 10 children need 10 courses at D = 1 and at D = 7, 20 at
+    D = 8 (a part week counts whole) and 30 at D = 15; 5 pregnant women need 30 tablets;
+    u = 0.5 halves every figure. Input that would give wrong stock without an error must
+    stop the run (rule 5): u above 1, a missing count. Then the real tables at each map's
+    own rain, in every preview flood: one row per barangay, no unit missing or negative,
+    and the doxycycline tiers add up to the total.
+    The allocation part (allocate) is C7.
+    """
+    from src import doses, exposed
+
+    def made_up(adults=0, children=0, pregnant=0, days=1):
+        """One made-up barangay's C5 table, with S10's w = 0.5 and the plan's 2-day cut-off."""
+        tiers = exposed.adult_tiers(pd.Series([float(adults)]), days, w=0.5, cutoff=2)
+        return tiers.assign(e_child=float(children), e_preg=float(pregnant))
+
+    for days, expected in ((1, 600), (3, 200), (10, 400)):
+        got = doses.doses(made_up(adults=100, days=days), days, u=1.0)["doxy100"].iloc[0]
+        assert np.isclose(got, expected), f"100 adults, D = {days}: {got} capsules, expected {expected}"
+    for days, expected in ((1, 10), (7, 10), (8, 20), (15, 30)):
+        got = doses.doses(made_up(children=10, days=days), days, u=1.0)["courses"].iloc[0]
+        assert np.isclose(got, expected), f"10 children, D = {days}: {got} courses, expected {expected}"
+    got = doses.doses(made_up(pregnant=5), 1, u=1.0)["amox500"].iloc[0]
+    assert np.isclose(got, 30), f"5 pregnant women: {got} tablets, expected 30"
+    half = doses.doses(made_up(adults=100, children=10, pregnant=5), 1, u=0.5).iloc[0]
+    for col, expected in (("doxy100", 300), ("courses", 5), ("amox500", 15)):
+        assert np.isclose(half[col], expected), f"u = 0.5: {col} = {half[col]}, expected {expected}"
+
+    for label, call in (("u = 1.5", lambda: doses.doses(made_up(adults=100), 1, u=1.5)),
+                        ("a missing count", lambda: doses.doses(made_up(adults=100).assign(e_child=np.nan), 1))):
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: doses did not stop")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
+    table = exposed.load_shares()
+    shown = []
+    for period in config.NOAH_RETURN_PERIODS:
+        residents = exposed.map_residents(overlay, period)
+        for label, days, w in exposed.scenarios():
+            stock = doses.barangay_doses(residents, table, days, w)
+            units = stock[[*doses.DOXY_BY_TIER, *doses.UNITS]]
+            assert len(stock) == config.QC_BARANGAYS, f"R({period}), {label}: {len(stock)} barangays"
+            assert units.notna().all().all() and (units >= 0).all().all(), f"R({period}), {label}: missing or negative units"
+            assert np.allclose(stock[doses.DOXY_BY_TIER].sum(axis=1), stock["doxy100"]), (
+                f"R({period}), {label}: the doxycycline tiers do not add up to the total")
+            if period == exposed.PREVIEW_MAP:
+                shown.append(f"{label}: {stock['doxy100'].sum():,.0f}")
+    return (f"QC doxycycline capsules at R({exposed.PREVIEW_MAP}), {'; '.join(shown)} "
+            f"(stock planning, not prescriptions)")
+
+
+def s10_allocate():
+    """S10, C7 part: allocate, and how the barangays' need reaches the health centers.
+
+    S10's input: need high [100, 50], moderate [40, 60], low [20, 0] with stock 180 must
+    give high 100 and 50 (in full), moderate 12 and 18 (the 30 left, shared 40 : 60), low
+    0, total 180. Also: with stock for everyone, each center gets exactly its need; with
+    none, nobody gets anything; negative stock or a missing need stops the run (rule 5).
+    Then center_shares_qc.csv: every barangay sends need, its shares add to 1; every center
+    named can be placed; a barangay with its own centers sends need only to them, one
+    without to a single nearest center; and the file matches a fresh run (which catches
+    a file left over from older inputs). Last, at R(25) in every preview flood, the
+    health centers' need adds up to the barangays' need, pool by pool and tier by tier.
+    """
+    from src import allocation, doses, exposed
+
+    need = pd.DataFrame({"high": [100, 50], "moderate": [40, 60], "low": [20, 0]}, index=["a", "b"])
+    for stock, expected in ((180, [[100, 12, 0], [50, 18, 0]]),   # S10
+                            (1000, need.to_numpy()),               # enough for everyone: exactly the need
+                            (0, [[0, 0, 0], [0, 0, 0]]),
+                            (120, [[80, 0, 0], [40, 0, 0]])):      # short in the high tier: shared 100 : 50
+        got = allocation.allocate(need, stock)
+        assert np.allclose(got.to_numpy(), expected), f"stock {stock}: got {got.to_numpy().tolist()}, expected {np.asarray(expected).tolist()}"
+    for label, call in (("negative stock", lambda: allocation.allocate(need, -1)),
+                        ("a missing need", lambda: allocation.allocate(need.astype(float).where(need > 0), 10))):
+        try:
+            call()
+        except ValueError:
+            continue
+        raise AssertionError(f"{label}: allocate did not stop")
+
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.FACILITIES_QC, "A10 (python -m src.facilities)")
+    need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
+    need_file(config.CENTER_SHARES, "C7 (python -m src.allocation)")
+    table = allocation.load_center_shares()
+    barangays = allocation.load_barangays()
+    centers, _ = allocation.load_centers(barangays)
+
+    assert set(table["psgc"]) == set(barangays["psgc"]), "the shares file and A5's barangays hold different barangays"
+    assert not table.duplicated(["psgc", "facility_code"]).any(), "a barangay and health center appear twice"
+    total = table.groupby("psgc")["share"].sum()
+    assert np.allclose(total, 1), f"shares do not add to 1 in {list(total.index[~np.isclose(total, 1)])}"
+    assert (table["share"] > 0).all(), "a share is 0 or negative"
+    assert set(table["facility_code"]) <= set(centers["facility_code"]), "a health center in the file cannot be placed"
+    home = centers.groupby("psgc")["facility_code"].apply(set)
+    centroid = barangays.set_index("psgc").geometry.centroid
+    for psgc, rows in table.groupby("psgc"):
+        if psgc in home.index:
+            assert set(rows["facility_code"]) == home[psgc], f"{psgc} does not send its need to its own health centers"
+        else:
+            assert len(rows) == 1 and (rows["rule"] == "nearest").all(), f"{psgc} has no center but is not sent to one nearest"
+            distance = centers.set_index("facility_code").distance(centroid[psgc])
+            assert np.isclose(distance[rows["facility_code"].iloc[0]], distance.min()), f"{psgc} is not sent to its nearest center"
+    fresh = allocation.center_shares(barangays, centers)
+    keys = ["psgc", "facility_code"]
+    merged = table.merge(fresh, on=keys, how="outer", suffixes=("", "_fresh"), indicator=True)
+    assert (merged["_merge"] == "both").all() and np.allclose(merged["share"], merged["share_fresh"]), (
+        "shares file differs from a fresh run: rerun python -m src.allocation")
+
+    need_file(config.OVERLAY, "C2 (python -m src.overlay)")
+    need_file(config.SHARES_QC, "C4 (python -m src.shares)")
+    residents = exposed.map_residents(pd.read_csv(config.OVERLAY, dtype={"psgc": str}), exposed.PREVIEW_MAP)
+    group_shares = exposed.load_shares()
+    for label, days, w in exposed.scenarios():
+        stock = doses.barangay_doses(residents, group_shares, days, w)
+        by_barangay = allocation.pool_needs(stock, days, w)
+        by_center = allocation.center_needs(residents, group_shares, table, days, w)
+        for pool in allocation.POOLS:
+            assert np.allclose(by_center[pool].sum(), by_barangay[pool].sum()), (
+                f"R({exposed.PREVIEW_MAP}), {label}, {pool}: the health centers' need does not add up to the barangays'")
+            assert np.isclose(by_barangay[pool].to_numpy().sum(), stock[pool].sum()), f"{label}, {pool}: tiers do not add up"
+    rules = table.drop_duplicates("psgc")["rule"].value_counts()
+    return (f"{table['facility_code'].nunique()} health centers; barangays own {rules.get('own', 0)}, "
+            f"split {rules.get('split', 0)}, nearest {rules.get('nearest', 0)} "
+            f"(farthest {table['distance_km'].max():.2f} km); need adds up")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -367,16 +1165,23 @@ CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": s2_rain_file,
     "S3 census join": s3_census,
+    "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
-    "S5 M4 simulation": not_built("B5"),
-    "S6 theta": not_built("B6"),
+    "S5 M4 simulation": s5_m4,
+    "S6 theta": s6_theta,
     "S7 breach": s7_breach,
-    "S7 scores": not_built("D1, D3"),
+    "S7 scores": s7_scores,
     "B8 M0 and M1": b8_baselines,
+    "B9 M3": b9_m3,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
-    "S9 return levels": not_built("C3"),
-    "S10 shares and doses": not_built("C4, C6"),
+    "S9 return levels": s9_return_levels,
+    "S9 exposure index": s9_exposure_index,
+    "S10 shares": s10_shares,
+    "S10 exposed": s10_exposed,
+    "S10 doses": s10_doses,
+    "S10 allocate": s10_allocate,
+    "B2 view": b2_view,
     "S11 leakage": not_built("B10"),
 }
 
