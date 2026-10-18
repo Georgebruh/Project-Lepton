@@ -68,8 +68,15 @@ Flooded barangays (12):
 - Santo Domingo (Matalahib) (`1381300065`): "NS Amoranto Brgy Sto. Domingo, above waist-high
   flood"; the same list has "Champaca corner Vargas Street, Brgy. Roxas"
   ([Inquirer, July 25, 2024](https://newsinfo.inquirer.net/1965503/fwd-list-of-flooded-areas); page blocks automated reading).
+  Confirmed 2026-10-18 on a page that opens: "Flood also reached waist level in Barangay
+  Sto. Domingo also in Quezon City"
+  ([GMA News, July 23, 2024, 2:38 PM](https://www.gmanetwork.com/news/topstories/nation/914392/carina-metro-manila-flood/story/)).
 - Talayan (`1381300118`): QCDRRMO search and rescue in Barangay Talayan
   ([Manila Bulletin, July 24, 2024](https://mb.com.ph/2024/7/24/qc-lgu-evacuates-residents-in-flooded-areas); page blocks automated reading).
+  Confirmed 2026-10-18 on the city's own post: QCDRRMO "search and rescue operation ... sa
+  Brgy. Talayan upang matulungan ang mga residenteng na-trap sa baha", flooding "dulot ng
+  bagyong Carina at Southwest Moonsoon"
+  ([QC LGU, July 24, 2024](https://quezoncity.gov.ph/qcdrrmo-rescue-operations-in-brgy-talayan)).
 
 Not counted (14 in the first version of this file):
 - Balingasa, Kalusugan, Kamuning, Mariana, Paltok, Phil-Am, South Triangle: the
@@ -204,6 +211,10 @@ The reports found show QC flooding on October 24 only: roads still flooded at 6:
 and floods in parts of Metro Manila "yesterday"
 ([Philstar, October 25, 2024](https://www.philstar.com/nation/2024/10/25/2395091/kristine-floods-metro-manila-classes-still-suspended)).
 Ask QC DRRMO (A1) for the real span if there is time; D = 2 is the ± 1 test.
+Checked 2026-10-18 for flooding on October 22-23: none found. The earliest QC reports are
+the 6:00 AM roads update and the city's evacuation update for Doña Imelda, October 24,
+3:00 PM ([QC LGU](https://quezoncity.gov.ph/evacuation-update-barangay-dona-imelda/)); the
+Inquirer's QC evacuation report blocks automated reading. D = 1 stands.
 
 Wettest UTC days: 2024-10-22 to 2024-10-24, IMERG's wettest 3-day window (195.1 mm over the
 catchments; daily 81.5, 44.5, 69.1 mm).
