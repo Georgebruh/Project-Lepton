@@ -1,4 +1,4 @@
-"""Comparing two models week by week: the primary endpoint (task D5).
+"""Comparing two models week by week: the primary endpoint (task D5), the flood and practical tests (D6).
 
 For each scored target week t, the loss difference of model a against model b is
 
@@ -36,7 +36,22 @@ D5, the primary endpoint: M4 against M3 (config.PRIMARY_COMPARISON) over the MAE
 (config.MAE_YEARS: 2018-2019 and 2022-2026). M5 (stretch task B12) is not built; if it
 is, the plan adds M5 against M3 and Holm-corrects the two.
 
-Check: python -m src.checks ("D5 primary endpoint": made-up misses worked by hand).
+D6, with the same bootstrap and window:
+  - the flood test, M4 against M4 without EI2 (config.FLOOD_TEST): does the flood exposure
+    index make the city forecast more accurate? On most forecast days the two models are
+    nested (M4 without EI2 is M4 minus one term), and for nested models DM's p-value is
+    not valid: when the extra term adds nothing, the two forecasts nearly coincide (Clark
+    & McCracken 2001). So this test has no DM, as the plan says. On days when rain and
+    EI2 correlate above 0.8, M4 leaves rain out and keeps EI2 while M4 without EI2 keeps
+    rain (src/m4.py), so there the test compares the flood index with rain. B10 should
+    record those days (fit_m4's corr_rain_ei) so the paper can say how many there were.
+    flood_finding states the answer in one sentence; if EI2 adds nothing, it says so
+    plainly: the flood maps then earn their place in Layer 2, not Layer 1.
+  - the practical test, M4 against M1 (config.PRACTICAL_TEST): does M4 beat the same-week
+    average health offices use now? Not nested, so DM is reported.
+
+Checks: python -m src.checks ("D5 primary endpoint" and "D6 flood test": made-up misses
+worked by hand).
 """
 
 import numpy as np
@@ -142,3 +157,36 @@ def primary_endpoint(table, years=config.MAE_YEARS):
     years: the MAE window; pass 2018-2026 for the all-years check (COVID years included).
     """
     return compare(table, *config.PRIMARY_COMPARISON, years=years)
+
+
+def flood_and_practical_tests(table, years=config.MAE_YEARS):
+    """D6: M4 against M4 without EI2 (no DM: nested models), then M4 against M1.
+
+    years: the MAE window; pass 2018-2026 for the all-years check. Same columns as
+    compare; the flood test's dm_stat and dm_p are empty (NaN).
+    """
+    flood = compare(table, *config.FLOOD_TEST, years=years, dm=False)
+    practical = compare(table, *config.PRACTICAL_TEST, years=years)
+    return pd.concat([flood, practical], ignore_index=True)
+
+
+def flood_finding(result):
+    """The flood test in one plain sentence (D6), from flood_and_practical_tests' result.
+
+    The sentence comes from the 8-week row; it ends by saying whether the 4- and 13-week
+    checks reach the same verdict.
+    """
+    with_ei, without_ei = config.FLOOD_TEST
+    rows = result[result["comparison"] == f"{with_ei} vs {without_ei}"].set_index("block_weeks")
+    row = rows.loc[config.BOOT_BLOCK_WEEKS]
+    interval = (f"mean difference {row['mean_diff']:+.2f} cases a week, "
+                f"95% interval {row['low']:+.2f} to {row['high']:+.2f}")
+    effect = {f"{with_ei} misses less": "makes M4 more accurate",
+              f"{without_ei} misses less": "makes M4 less accurate"}.get(row["verdict"], "adds no clear accuracy to M4")
+    sentence = f"The flood exposure index {effect} ({interval})"
+    if effect != "makes M4 more accurate":
+        sentence += ": the flood maps earn their place in Layer 2, not Layer 1"
+    tests = " and ".join(str(block) for block in config.BOOT_BLOCK_WEEKS_TESTS)
+    if (rows["verdict"] == row["verdict"]).all():
+        return f"{sentence}; the {tests}-week blocks agree."
+    return f"{sentence}; the {tests}-week blocks do not all agree, so this result depends on the block length."

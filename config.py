@@ -479,6 +479,8 @@ BOOT_INTERVAL = 0.95                       # D5, D6: the bootstrap interval runs
 RANDOM_SEED = 2026
 # D5: the primary endpoint, model a against model b. Names as in B10's forecasts table (column model).
 PRIMARY_COMPARISON = ("M4", "M3")
+FLOOD_TEST = ("M4", "M4_no_EI2")           # D6: does the flood exposure index help? (nested: no DM)
+PRACTICAL_TEST = ("M4", "M1")              # D6: does M4 beat the same-week average health offices use?
 
 # Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
 # Map classes, the same for every storm so the maps compare. A value on a break goes to
