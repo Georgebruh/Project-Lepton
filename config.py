@@ -471,6 +471,7 @@ S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are
 COVERAGE_LEVELS = (0.5, 0.9)               # D1: how often the central 50% and 90% ranges hold the truth
 EPISODE_GAP_WEEKS = 2                      # D3, assumption: a breach week at most 2 weeks after the last one joins its episode (S7: [3, 4, 6] is one)
 EPISODE_CI_METHOD = "beta"                 # D3: exact (Clopper-Pearson) 95% interval for "k of n episodes caught"
+LEAD_TIME_IN_ADVANCE_WEEKS = 1             # D4: an episode is caught in advance if its lead time is at least 1 week
 BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000

@@ -486,6 +486,61 @@ def s7_scores():
     return f"WIS {w20:.2f} at 20, {w60:.1f} at 60; episodes and 5-of-6 interval as the plan; D1/D3 toys match"
 
 
+def d4_lead_time():
+    """D4 (no S number): lead time per outbreak episode, worked by hand.
+
+    Made-up forecasts for 2023 weeks 1-16, alarm cut-off p* = 0.5. Breach weeks 4, 5, 7,
+    11, 12 and 15 form three episodes (gap 2): [4, 5, 7], [11, 12] and [15]. Alarms
+    (p >= 0.5) for weeks 3, 5, 7 and 11; week 3 did not breach, so it does not count.
+    Forecast day = target week - 1.
+      Option B (shown when the first breach week ends):
+        [4-7]: first alarm for week 5, made in week 4; shown week 4: lead 0, not in advance
+        [11-12]: alarm for week 11, made in week 10; shown week 11: lead 1, in advance
+        [15]: no alarm: not caught
+        -> 1 of 3 caught in advance; 2 alarmed, median lead 0.5
+      Option C, g = 2 (shown 2 weeks later): leads 2 and 3 -> 2 of 3, median lead 2.5
+    Counting the alarm for week 3 would give the first episode a lead of 2 in option B. An
+    alarm only for week 6, a quiet week inside the first episode, does not count either.
+    A 2021 episode with alarms lies outside the scored years (config.PROB_SCORE_YEARS).
+    A p* outside 0-1, two forecasts for one week, a missing p and no episode at all stop.
+    """
+    def week(n):
+        return weeks.week_index_of(2023, n)
+
+    target = [week(n) for n in range(1, 17)]
+    breach = [week(n) for n in (4, 5, 7, 11, 12, 15)]
+    p = [0.9 if t in (week(3), week(11)) else 0.7 if t in (week(5), week(7)) else 0.2 for t in target]
+    covid = [weeks.week_index_of(2021, n) for n in (1, 2, 3)]   # breached and alarmed, but a COVID year
+    forecasts = pd.DataFrame({"week_index": target + covid, "year": [2023] * 16 + [2021] * 3,
+                              "p": p + [0.9] * 3, "breached": [int(t in breach) for t in target] + [1] * 3})
+    worked = {
+        "B": ([0, 1, np.nan], [False, True, False], 1, 0.5),
+        "C": ([2, 3, np.nan], [True, True, False], 2, 2.5),
+    }
+    for option, (leads, advance, k, median) in worked.items():
+        table = breach_scores.lead_times(forecasts, 0.5, option=option, g=2)
+        assert list(table["first_week"]) == [week(4), week(11), week(15)], f"option {option}: episodes {table}"
+        assert np.allclose(table["lead_weeks"], leads, equal_nan=True), f"option {option}: leads {list(table['lead_weeks'])}"
+        assert list(table["in_advance"]) == advance, f"option {option}: in advance {list(table['in_advance'])}"
+        summary = breach_scores.caught_in_advance(table)
+        got = (summary["k"], summary["n"], summary["alarmed"], summary["median_lead_weeks"])
+        assert got == (k, 3, 2, median), f"option {option}: {summary}"
+    quiet_alarm = forecasts.assign(p=np.where(forecasts["week_index"] == week(6), 0.9, 0.2))
+    assert breach_scores.lead_times(quiet_alarm, 0.5, "B")["lead_weeks"].isna().all(), (
+        "an alarm for a quiet week inside an episode must not count")
+
+    lead = breach_scores.lead_times
+    missing = forecasts.assign(p=forecasts["p"].where(forecasts["week_index"] != week(6)))
+    twice = pd.concat([forecasts, forecasts.iloc[[3]]])
+    assert stops_with("p* is nan", lead, forecasts, np.nan, "B"), "a missing p* must stop"
+    assert stops_with("must lie in 0-1", lead, forecasts, 1.5, "B"), "a p* above 1 must stop"
+    assert stops_with("same target week", lead, twice, 0.5, "B"), "a repeated week must stop"
+    assert stops_with("missing", lead, missing, 0.5, "B"), "a missing p must stop"
+    quiet = lead(forecasts.assign(breached=0), 0.5, "B")
+    assert stops_with("no outbreak episode", breach_scores.caught_in_advance, quiet), "no episode must stop"
+    return "3 episodes (a 2021 one left out); option B: 1 of 3 caught in advance, option C (g = 2): 2 of 3, as by hand"
+
+
 def d2_mase():
     """D2 (no S number): MASE's fixed denominator on made-up counts, worked by hand.
 
@@ -1217,6 +1272,7 @@ CHECKS = {
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
+    "D4 lead time": d4_lead_time,
     "D2 MASE": d2_mase,
     "B8 M0 and M1": b8_baselines,
     "B9 M3": b9_m3,
