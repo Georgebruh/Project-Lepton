@@ -232,6 +232,57 @@ def stops_with(text, func, *args):
     return False
 
 
+def s6_theta():
+    """S6 (B6): theta from past misses, and which past forecasts theta_for uses.
+
+    From the plan: 20,000 draws from forecast_dist(20, 5), compared with mu = 20, give
+    estimate_theta between 4.8 and 5.2 (the plan's run: 4.94); the forecast has mean 20
+    and variance 100; estimate_theta([5, 5, 5], [5, 5, 5]) is infinity, which gives the
+    Poisson forecast.
+    Then theta_for on made-up past forecasts (toy_cases counts, mu = count x 1.3 and
+    x 0.7 in turn; COVID weeks and weeks after the cutoff get mu = 1, far off), worked by hand:
+      - cutoff 2024 week 30: the last 104 non-COVID weeks are 2022 week 31 to 2024 week
+        30 (22 + 52 + 30), so theta_for equals estimate_theta on exactly those rows.
+      - every count after the cutoff overwritten with -999 (as S11 does): same theta.
+      - forecasts only from 2022 week 1, cutoff 2022 week 20: 20 rows, fewer than 26,
+        so the training fit's theta comes back.
+    """
+    dist = forecast_range.forecast_dist(20, 5)
+    assert np.isclose(dist.mean(), 20) and np.isclose(dist.var(), 100), (
+        f"forecast_dist(20, 5): mean {dist.mean()}, variance {dist.var()}")
+    draws = dist.rvs(size=config.S6_DRAWS, random_state=config.RANDOM_SEED)
+    theta = forecast_range.estimate_theta(draws, np.full(config.S6_DRAWS, 20.0))
+    low, high = config.S6_THETA_RANGE
+    assert low <= theta <= high, f"theta from {config.S6_DRAWS:,} draws is {theta:.2f}, expected {low}-{high}"
+    assert np.isinf(forecast_range.estimate_theta([5, 5, 5], [5, 5, 5])), "no extra spread must give infinity"
+    assert forecast_range.forecast_dist(5, np.inf).var() == 5, "theta = infinity must give Poisson"
+
+    cases = toy_cases(2024)
+    sign = np.where(cases["week_index"] % 2 == 0, 1, -1)
+    cutoff = weeks.week_index_of(2024, 30)
+    far_off = cases["year"].isin(config.COVID_YEARS) | (cases["week_index"] > cutoff)
+    past = pd.DataFrame({"week_index": cases["week_index"],
+                         "mu": np.where(far_off, 1.0, cases["cases"] * (1 + 0.3 * sign))})
+    used = forecast_range.scored_past(past, cases, cutoff)
+    assert len(used) == config.THETA_WINDOW, f"{len(used)} past forecasts used, expected {config.THETA_WINDOW}"
+    window = (used["week_index"].iloc[0], used["week_index"].iloc[-1])
+    assert window == (weeks.week_index_of(2022, 31), cutoff), f"window runs from week index {window[0]} to {window[1]}"
+    assert not used["year"].isin(config.COVID_YEARS).any(), "a COVID-year forecast was used"
+    by_hand = forecast_range.estimate_theta(used["y"], used["mu"])
+    got = forecast_range.theta_for(past, cases, cutoff, fit_theta=7.5)
+    assert np.isclose(got, by_hand), f"theta_for gave {got}, by hand {by_hand}"
+    hidden = hide_after(cases, cutoff)
+    assert forecast_range.theta_for(past, hidden, cutoff, fit_theta=7.5) == got, (
+        "theta used a count after the cutoff")
+
+    late = past[past["week_index"] >= weeks.week_index_of(2022, 1)]
+    short = forecast_range.theta_for(late, cases, weeks.week_index_of(2022, 20), fit_theta=7.5)
+    assert short == 7.5, f"with 20 past forecasts theta_for gave {short}, expected the fit's 7.5"
+    assert stops_with("same target week", forecast_range.theta_for,
+                      pd.concat([past, past.tail(1)]), cases, cutoff, 7.5), "a duplicate forecast must stop"
+    return f"theta from {config.S6_DRAWS:,} draws of NB(20, 5): {theta:.2f}; toy window theta {got:.1f}"
+
+
 def s7_breach():
     """S7, first part (B6's forecast_dist, B7): breach probability and thresholds.
 
@@ -797,7 +848,7 @@ CHECKS = {
     "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
-    "S6 theta": not_built("B6"),
+    "S6 theta": s6_theta,
     "S7 breach": s7_breach,
     "S7 scores": not_built("D1, D3"),
     "B8 M0 and M1": b8_baselines,
