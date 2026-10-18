@@ -24,6 +24,9 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
+C8_RUNS = RESULTS / "c8_observed_runs.csv"            # C8: one row per storm, test, D, cut-off and w
+C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # C8: the main run, one row per barangay
+C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need per health center and pool
 C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
 C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
 C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
@@ -272,7 +275,7 @@ UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
 WOUND_SHARE_W = (0.0, 0.5, 1.0)            # assumption: illustrative grid; 0 and 1 are bounds
 CONTINUOUS_EXPOSURE_DAYS = 2               # assumption: D >= 2 -> every exposed adult high risk
-CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)
+CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)    # C8 reruns each storm with these cut-offs
 MODERATE_COURSE_DAYS = 5                   # assumption: upper end of 3-5 days
 
 # Units (DOH DM 2023-0309; stock planning, not prescriptions)
@@ -289,7 +292,7 @@ CENTER_FACILITY_TYPES = ("Rural Health Unit", "Barangay Health Station")
 ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocation): stock covering half of each pool's need
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
-STORM_D_TEST_DAYS = 1                      # D +/- 1 day
+STORM_D_TEST_DAYS = 1                      # assumption test: C8 reruns each storm with A11's D +/- 1 day
 # Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
 # residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
 # has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
