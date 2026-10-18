@@ -48,20 +48,22 @@ Open-Meteo's forecast archive, so C9 can run on it too.
   gauge-calibrated products, but that means a new 26-year download, and IMERG Final arrives
   about 3.5 months late, so it has no August 2026.
 
-### 1.2 C8 needs a definition of "flagged"
+### 1.2 Confirm the "flagged" rule
 
 The plan's C8 reports "the share of flagged barangays that A11 lists as flooded, and the
 share of flooded barangays that were flagged". But graded exposure (C3) gives every barangay
-the same weight, and all 142 barangays have some residents in the 5-year flood zones. So as
-soon as the rain passes R0, all 142 are "flagged", and both shares are meaningless
-(today: 142 of 142 flagged for 2025, 2026 and Kristine).
+the same weight, and all 142 barangays have some residents in the 5-year flood zones. So if
+"flagged" meant "anyone exposed", all 142 would be flagged as soon as the rain passes R0,
+and both shares would be meaningless.
 
-Pick a rule before C8 is coded, write it in `config.py`, and state it in the paper. Two
-simple options:
-- **Top k:** flag the k barangays with the most exposed residents, with k = the number of
-  barangays A11 lists for that storm. Then both shares are the same number, easy to explain.
-- **Share of residents:** flag a barangay when at least X% of its residents are exposed
-  (X is an assumption; report two values).
+C9 (merged) uses this rule, an assumption the team must confirm:
+`config.FLAG_EXPOSED_SHARES = (0.25, 0.50)`. A barangay is flagged when at least 25% (or
+50%) of its 2024 residents live in zones the storm's rain floods; both are reported. C8
+uses the same rule through `forecast_run.flagged` and `forecast_run.flag_scores`.
+On observed rain (IMERG) at 25%: July 2025 flags 17 barangays, 29% of them on A11's list,
+and 36% of the listed barangays are flagged; Kristine flags 17 (18% listed; 38% of
+listed flagged); Carina and August 2026 flag none. The other option, if the team prefers
+it: flag the k barangays with the most exposed residents, k = the number A11 lists.
 
 ### 1.3 Kristine's flood duration is uncertain
 
@@ -101,8 +103,9 @@ D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports
    data and scored weeks are right. Prophet's MAE is 24.73 (paper 23.68, +4.4%). The hybrid's
    is 24.60 (paper 16.72, +47%), about the same as Prophet alone. Of 75 XGBoost settings
    tried, the best hybrid MAE is 21.06 and none comes within 10% of 16.72. A leak in the
-   paper's XGBoost step would explain its numbers, but that is not proven. Details: `results/m3_reproduction.md`. In the paper, compare M4 with our M3 and do
-   not quote 16.72 as M3's accuracy.
+   paper's XGBoost step would explain its numbers, but that is not proven. Details:
+   `results/m3_reproduction.md`. In the paper, compare M4 with our M3 and do not quote
+   16.72 as M3's accuracy.
 7. **Thresholds (B7) and M1 (B8):** a reference year's own week 53 is not used, so each year
    gives one week-52 count; week 53 of a target year uses week 52's threshold.
 8. **Health centers (C7):** stock goes to health centers and barangay health stations; the
@@ -112,6 +115,27 @@ D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports
    entries in barangay Alicia: DOH000000000001842 (Bukidnon St., with coordinates) gets
    Alicia's need; DOH000000000008298 (84 Sto. Niño St., no coordinates) is left out. Check
    whether the second is a separate center or a duplicate entry.
+9. **C9's forecast run** (`python -m src.forecast_run`, results in `results/c9_*.csv`).
+   Each lead's doses use that lead's own wettest 3-day window ending on one of the storm's
+   wettest days (the plan's "each lead time's wettest forecast UTC day"). The same lead's
+   forecast over C8's window (IMERG's peak) is reported beside it, as `rain_c8_window_mm`.
+   The two differ only for Carina lead 3, August 2026 lead 1 and Kristine lead 3. The
+   forecasts are placed on ERA5's own return levels (rule 3), and the observed run on
+   IMERG's, so each product is judged on its own scale.
+
+   What it shows (3-day totals; EI = share of QC residents in zones the rain floods):
+
+   | Storm | Observed (IMERG) | Lead 1 | Lead 2 | Lead 3 |
+   | --- | --- | --- | --- | --- |
+   | Carina | 120.0 mm, at R0, EI 0.0% | 224.4 mm, R(5) to R(25), 24.6% | 176.5 mm, 16.5% | 130.4 mm, 6.5% |
+   | July 2025 | 191.0 mm, EI 13.1% | 127.6 mm, 4.7% | 110.6 mm, 1.2% | 93.2 mm, below R0, 0% |
+   | August 2026 | 141.0 mm, EI 4.0% | 139.4 mm, 7.4% | 142.3 mm, 8.0% | 123.0 mm, 4.0% |
+   | Kristine | 195.1 mm, EI 13.8% | 233.1 mm, R(5) to R(25), 25.6% | 170.2 mm, 15.2% | 160.6 mm, 13.1% |
+
+   In plain words: the forecast made a day ahead saw Carina as a 5- to 25-year storm, while
+   the satellite's own record of the rain that fell puts it at the no-flood floor. That is
+   the satellite under-reading Carina (section 3), not the forecast overshooting. For the
+   long July 2025 floods the forecasts were low at every lead.
 
 ## 3. Limitations and the papers behind them
 
@@ -152,23 +176,29 @@ References:
   the paper. In the backtest it is a leak: the seasonal baseline mu_w and the interpolation
   must use only the weeks the model may see on the forecast day (B2's view; rule 1, S11).
 - **B10:** read EI from `ei_weekly.csv` rows with `fit_year` = the forecast day's year.
-- **C8:** take each storm's rain with `flood_exposure.storm_peak(totals, start_date,
-  end_date)` and its levels with `return_levels(maxima, year)`, then
-  `doses.barangay_doses(...)` and `allocation.center_needs(...)`. Use the "flagged" rule
-  from 1.2. Rerun with the continuous-exposure cut-off at 1 and 3 days.
-- **C9:** for lead L, the 3-day forecast total over the storm's peak window (the same
-  window C8 uses) is the sum over the window's days i = 0, 1, 2 of `previous_day` L + i.
-  Fit ERA5's return levels (from `era5_daily.csv`) on years before the storm's year; never
-  IMERG's. Report D = 1 and D = 7.
+- **C8:** C9's script already runs each storm's observed rain the way C8 should
+  (`forecast_run.storm_runs`, the "observed" rows): rain from
+  `flood_exposure.storm_peak(totals, start_date, end_date)`, IMERG levels fitted on years
+  before the storm, `doses.barangay_doses(...)`, `allocation.center_needs(...)`, and the
+  flag shares from 1.2. C8 still needs its own report and the rerun with the
+  continuous-exposure cut-off at 1 and 3 days (`config.CONTINUOUS_EXPOSURE_DAYS_TESTS`).
+- **C9:** done (merged October 18). A lead-L forecast of a 3-day window takes day i of
+  the window from `previous_day` L + i; levels are ERA5's, never IMERG's; D = 1 and D = 7.
 - **D8:** dose figures carry the label "stock planning, not prescriptions".
 
 ## 5. Data and setup
 
-- **Upload to the team drive** (not in git): `data/raw/ecmwf_previous_runs/` (new replies for
-  all four storms), `data/clean/forecasts_storms.csv` (400 rows), `data/clean/ei_weekly_no2000.csv`,
-  `data/clean/center_shares_qc.csv`.
-- **Checks:** with the drive data, `python -m src.checks` has no FAIL. S4, S5, S6, S7 scores
-  and S11 SKIP until A13, B5, B6, D1/D3 and B10 are built. S8 lists 11 barangays whose
+- **Files made on October 18** (not in git). If your copy from the team drive lacks one, or
+  its `forecasts_storms.csv` has a `lead_days` column (the old Carina-only table, which C9
+  cannot read), rebuild it from the repository root:
+  - `data/raw/ecmwf_previous_runs/` and `data/clean/forecasts_storms.csv` (400 rows, column
+    `previous_day`): `python -m src.ecmwf` (fetches the four storms from Open-Meteo, seconds)
+  - `data/clean/center_shares_qc.csv`: `python -m src.allocation`
+  - `data/clean/ei_weekly_no2000.csv`: `python -m src.flood_exposure --without-2000`
+  - `results/c9_*.csv` are in git; `python -m src.forecast_run` rebuilds them byte for byte.
+- **Checks:** with the drive data, `python -m src.checks` has no FAIL (S6 passes since B6
+  merged: theta 5.00). S4, S5, S7 scores and S11 SKIP until A13, B5, D1/D3 and B10 are
+  built. S8 lists 11 barangays whose
   exposed count falls from the 5-year map to a rarer one (Bayanihan, Malaya, Marilag,
   Pag-ibig Sa Nayon, Sacred Heart, San Jose, San Martin de Porres, Sikatuna Village,
   Teachers Village West, Villa Maria Clara, Batasan Hills); the plan asks someone to look at
