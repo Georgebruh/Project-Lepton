@@ -73,3 +73,10 @@ Run after Workstream A, in this order:
 | C7 | `python -m src.allocation` | `data/clean/center_shares_qc.csv` (each barangay's need to its health centers); needs A5, A10 and C1, and C2 and C4 for its preview of stock per health center and `allocate`; a few seconds |
 | C9 | `python -m src.forecast_run` | `results/c9_forecast_runs.csv` (per storm, run, D and w: rain against the return levels, EI, flagged-versus-flooded shares, QC's units), `c9_forecast_barangays.csv`, `c9_forecast_centers.csv`; ECMWF 3-day forecasts at leads 1-3 on ERA5's return levels, beside the observed IMERG run; needs A4, A7, A14, A15, A5, C2, C4 and C7's files; a few seconds. Stock planning, not prescriptions |
 
+
+## Evaluation (Workstream D)
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| D1 | none: `point_scores`, `wis`, `covered` and `score_models` in `src/scores.py`, used on B10's forecasts (columns model, week_index, year, y, mu, theta) | nothing; check "S7 scores" in `python -m src.checks` |
+| D3 | none: `brier`, `base_rate`, `brier_skill_score`, `reliability`, `alarm_test`, `episodes` and `caught_share` in `src/breach_scores.py` | nothing; check "S7 scores" in `python -m src.checks` |

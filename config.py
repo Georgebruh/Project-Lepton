@@ -229,7 +229,7 @@ THETA_WINDOW = 104                         # last 104 non-COVID past forecasts
 THETA_MIN_FORECASTS = 26                   # fewer -> training fit's theta
 RANGE_LOW_Q = 0.05                         # 90% range
 RANGE_HIGH_Q = 0.95
-WIS_ALPHAS = (0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)  # 11 central ranges; confirm against v2's ALPHAS
+WIS_ALPHAS = (0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)  # 11 central ranges; S7's WIS values (2.12, 32.0) need all 11
 
 # Threshold (B7)
 THRESHOLD_SD = 2                           # assumption: mean + 2 SD
@@ -423,8 +423,11 @@ S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up t
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
 
 # ---------------------------------------------------------------------------
-# Evaluation (D5, D6)
+# Evaluation (D1, D3, D5, D6)
 # ---------------------------------------------------------------------------
+COVERAGE_LEVELS = (0.5, 0.9)               # D1: how often the central 50% and 90% ranges hold the truth
+EPISODE_GAP_WEEKS = 2                      # D3, assumption: a breach week at most 2 weeks after the last one joins its episode (S7: [3, 4, 6] is one)
+EPISODE_CI_METHOD = "beta"                 # D3: exact (Clopper-Pearson) 95% interval for "k of n episodes caught"
 BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000

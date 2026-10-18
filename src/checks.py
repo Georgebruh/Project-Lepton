@@ -16,9 +16,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from epiweeks import Week, Year
+from scipy import stats
 
 import config
-from src import baselines, forecast_range, thresholds, weeks
+from src import baselines, breach_scores, forecast_range, scores, thresholds, weeks
 
 
 class NotBuilt(Exception):
@@ -296,7 +297,7 @@ def s7_breach():
       - 2025: the 5 most recent non-COVID years are 2018, 2019, 2022-2024, and
         week 53 gets week 52's threshold. With 2023 missing a week, 2017 replaces it.
       - 2017 has only 2 years before it, so it stops.
-    The second part, "S7 scores" (wis, episodes and the exact interval), waits for D1 and D3.
+    The second part, "S7 scores" (wis, episodes and the exact interval), is s7_scores (D1, D3).
     """
     dist = forecast_range.forecast_dist(20, 5)
     p = thresholds.breach_probability(dist, 12.4)
@@ -327,6 +328,56 @@ def s7_breach():
     assert stops_with("reference years", thresholds.epidemic_threshold, 2017, 1, cases, end_2024), (
         "2017 has only 2 reference years and must stop")
     return f"Pr(Y > 12.4) = {p:.3f}; toy 2019 week 1 threshold {t:g}"
+
+
+def s7_scores():
+    """S7, second part (D1, D3): WIS, episodes and the exact interval, then each score by hand.
+
+    From the plan: WIS of a forecast sitting on the truth = 0; forecast_dist(20, 5) has
+    WIS 2.12 at y = 20 and 32.0 at y = 60; the episodes of weeks [3, 4, 6, 10, 11] are
+    [[3, 4, 6], [10, 11]]; proportion_confint(5, 6, method='beta') = 0.359-0.996.
+    Worked by hand:
+      - counts 10, 20 with forecasts 12, 17: misses +2, -3, so MAE 2.5, RMSE sqrt(6.5), bias -0.5.
+      - forecast_dist(20, 5)'s 90% range holds 20 and not 60.
+      - p = 0.9, 0.2 with outcomes 1, 0: Brier (0.01 + 0.04) / 2 = 0.025; against a usual
+        rate of 0.5 (reference 0.25), BSS = 0.9.
+      - reliability of p = 0.1, 0.2, 0.3, 0.4 with outcomes 0, 1, 0, 1: the middle two pool,
+        giving observed rates 0, 0.5, 1 over 1, 2, 1 forecasts.
+      - alarms for p = 0.1, 0.4, 0.6, 0.9 with outcomes 0, 0, 1, 1: p* = 0.6, F1 = 1.
+      - usual rate: of 2018's weeks (breached, not), a COVID week and a 2017 week, only the
+        2018 ones count: 0.5.
+      - score_models on two made-up models: MAE as by hand; a model missing a week stops.
+    """
+    assert scores.wis(7, stats.randint(7, 8)) == 0, "all weight on the truth must give WIS 0"
+    dist = forecast_range.forecast_dist(20, 5)
+    w20, w60 = scores.wis(20, dist), scores.wis(60, dist)
+    assert round(w20, 2) == 2.12 and round(w60, 1) == 32.0, f"WIS at 20 = {w20:.3f}, at 60 = {w60:.3f}"
+    assert breach_scores.episodes([3, 4, 6, 10, 11]) == [[3, 4, 6], [10, 11]]
+    assert breach_scores.episodes([]) == [], "no breach weeks must give no episodes"
+    ci = breach_scores.caught_share(5, 6)
+    assert (round(ci["low"], 3), round(ci["high"], 3)) == (0.359, 0.996), f"5 of 6: {ci}"
+
+    s = scores.point_scores([10, 20], [12, 17])
+    assert np.isclose(s["mae"], 2.5) and np.isclose(s["rmse"], np.sqrt(6.5)) and np.isclose(s["bias"], -0.5), s
+    assert scores.covered(20, dist, 0.9) and not scores.covered(60, dist, 0.9)
+    assert np.isclose(breach_scores.brier([0.9, 0.2], [1, 0]), 0.025)
+    assert np.isclose(breach_scores.brier_skill_score([0.9, 0.2], [1, 0], [0.5, 0.5]), 0.9)
+    steps = breach_scores.reliability([0.1, 0.2, 0.3, 0.4], [0, 1, 0, 1])
+    assert list(steps["observed"]) == [0, 0.5, 1] and list(steps["forecasts"]) == [1, 2, 1], steps
+    assert breach_scores.best_p_star([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1]) == 0.6
+    assert breach_scores.alarm_scores([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1], 0.6)["f1"] == 1
+    outcomes = pd.DataFrame({"week_index": [100, 160, 161, 270], "year": [2017, 2018, 2018, 2020],
+                             "breached": [True, True, False, True]})
+    assert breach_scores.base_rate(outcomes, 300) == 0.5, "only 2018-on, non-COVID weeks count"
+
+    table = pd.DataFrame({"model": ["M0", "M0", "M4", "M4"], "week_index": [1, 2, 1, 2],
+                          "year": [2022] * 4, "y": [10, 20, 10, 20], "mu": [12, 17, 10, 21],
+                          "theta": [5, 5, np.inf, 5]})
+    by_model = scores.score_models(table, config.PROB_SCORE_YEARS)
+    assert np.isclose(by_model.loc["M0", "mae"], 2.5) and np.isclose(by_model.loc["M4", "mae"], 0.5), by_model
+    assert stops_with("same weeks", scores.score_models, table.iloc[:3], config.PROB_SCORE_YEARS), (
+        "a model missing a week must stop")
+    return f"WIS {w20:.2f} at 20, {w60:.1f} at 60; episodes and 5-of-6 interval as the plan; D1/D3 toys match"
 
 
 def b8_baselines():
@@ -850,7 +901,7 @@ CHECKS = {
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
-    "S7 scores": not_built("D1, D3"),
+    "S7 scores": s7_scores,
     "B8 M0 and M1": b8_baselines,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
