@@ -233,6 +233,110 @@ def stops_with(text, func, *args):
     return False
 
 
+def simulated_m4_rows(rng):
+    """One made-up S5 dataset: M4's rows for config.S5_WEEKS target weeks, and each row's true mu.
+
+    The weeks are real ones from 2015 week 3 (week index 2) on, so 2020-2021 are COVID
+    weeks and P is B1's population. Weekly rain is drawn from a gamma distribution, wetter
+    in the wet season; a wet-season week floods with a set chance, its EI drawn evenly in a
+    range (config.S5_SIM). Rcum2 and EI2 are built from them as B4 does. The counts follow
+    M4 with the true values (config.S5_TRUE and S5_BASE) week by week, because each week's
+    y~ is the two counts before it (option B): mu from the formula, then a draw from
+    NB(mu, theta = 5). The season waves are computed here, not with m4.season_terms, so a
+    mistake there would show up as a miss.
+    """
+    from src import m4, population
+
+    sim, true, base, theta = config.S5_SIM, config.S5_TRUE, config.S5_BASE, config.S5_THETA
+    n_weeks = config.S5_WEEKS + 2                     # 2 weeks before the first target, for y~
+    calendar = population.weekly_population()
+    calendar = calendar[calendar["week_index"] < n_weeks].reset_index(drop=True)
+    t, pop = calendar["week_index"].to_numpy(), calendar["pop"].to_numpy()
+    wet = calendar["week"].between(*sim["wet_weeks"]).to_numpy()
+    rain_mean = np.where(wet, sim["rain_mean_wet_mm"], sim["rain_mean_dry_mm"])
+    rain = rng.gamma(sim["rain_shape"], rain_mean / sim["rain_shape"])
+    ei = np.where(wet & (rng.random(n_weeks) < sim["flood_chance"]), rng.uniform(*sim["ei_range"], n_weeks), 0.0)
+    rcum2 = np.concatenate([[np.nan], rain[1:] + rain[:-1]])      # Rcum2(t) = R(t - 1) + R(t)
+    ei2 = np.concatenate([[np.nan], np.maximum(ei[1:], ei[:-1])])  # EI2(t) = max(EI(t - 1), EI(t))
+    season = sum(base[f"sin{k}"] * np.sin(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 + base[f"cos{k}"] * np.cos(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 for k in range(1, config.FOURIER_K + 1))
+    covid = calendar["year"].isin(config.COVID_YEARS).to_numpy()
+
+    y, mu = np.zeros(n_weeks), np.full(n_weeks, np.nan)
+    start = sim["start_cases"]
+    y[:2] = rng.negative_binomial(theta, theta / (theta + start), 2)
+    for s in range(2, n_weeks):                        # target s, forecast week T = s - 1
+        T = s - 1
+        log_mu = (np.log(pop[T]) + base["Intercept"] + season[s] + true["rho"] * np.log1p(y[s - 1] + y[s - 2])
+                  + true["beta1"] * rcum2[T] / config.RAIN_SCALE_MM + true["beta2"] * ei2[T] + true["delta"] * covid[s])
+        mu[s] = np.exp(log_mu)
+        y[s] = rng.negative_binomial(theta, theta / (theta + mu[s]))
+
+    targets = pd.DataFrame({"week_index": t[2:], "year": calendar["year"].to_numpy()[2:],
+                            "week": calendar["week"].to_numpy()[2:], "cases": y[2:],
+                            "forecast_week": t[2:] - 1, "recent": y[1:-1] + y[:-2]})
+    features = pd.DataFrame({"week_index": t, "rcum2": rcum2, "ei2": ei2})
+    return m4.model_rows(targets, features, calendar[["week_index", "pop"]]), mu[2:]
+
+
+def s5_m4():
+    """S5 (B5): M4 gets back the true values of made-up data, and forecasts with the offset.
+
+    From the plan: fit M4 on 50 made-up datasets of 400 weeks with true rho 0.30, beta1
+    0.15, beta2 0.05, delta -0.40 and theta 5 (simulated_m4_rows). The average estimates
+    must be near those (the plan's run gave 0.302, 0.148, 0.053, -0.396 and 5.25; here
+    within config.S5_TOLERANCE and S5_THETA_RANGE), and the forecasts, made with the
+    offset, must match the true means (median miss below config.S5_PREDICTION_TOLERANCE).
+    Then, on the last dataset: doubling P doubles every forecast (the offset's coefficient
+    is 1); M4 without EI2 is fit on the same rows and keeps Rcum2; a row with a missing
+    input is dropped from the fit but stops a forecast; with EI2 almost a copy of Rcum2
+    (correlation above 0.8) M4 leaves Rcum2 out; on rows before 2020 the COVID term is
+    left out; a negative count (S11's -999) stops the fit.
+    """
+    from src import m4
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    names = {"rho": m4.RECENT, "beta1": m4.RAIN, "beta2": m4.EI, "delta": m4.COVID}
+    estimates, misses = [], []
+    for _ in range(config.S5_DATASETS):
+        rows, true_mu = simulated_m4_rows(rng)
+        fit = m4.fit_m4(rows)
+        assert fit["terms"] == m4.ALL_TERMS and fit["dropped"] == 0, (
+            f"made-up data: terms {fit['terms']}, {fit['dropped']} rows dropped")
+        estimates.append({**{name: fit["result"].params[term] for name, term in names.items()}, "theta": fit["theta"]})
+        misses.append(np.median(np.abs(m4.predict_m4(fit, rows) / true_mu - 1)))
+    mean = pd.DataFrame(estimates).mean()
+    for name, tolerance in config.S5_TOLERANCE.items():
+        assert abs(mean[name] - config.S5_TRUE[name]) <= tolerance, (
+            f"mean {name} of {config.S5_DATASETS} fits is {mean[name]:.3f}, true {config.S5_TRUE[name]} (within {tolerance})")
+    low, high = config.S5_THETA_RANGE
+    assert low <= mean["theta"] <= high, f"mean theta {mean['theta']:.2f}, expected {low}-{high}"
+    miss = float(np.median(misses))
+    assert miss < config.S5_PREDICTION_TOLERANCE, f"forecasts miss the true means by {miss:.1%} (median)"
+
+    mu = m4.predict_m4(fit, rows)
+    assert np.allclose(m4.predict_m4(fit, rows.assign(pop=2 * rows["pop"])), 2 * mu), "doubling P must double the forecast"
+    without = m4.fit_m4(rows, with_ei=False)
+    assert without["rows"] == fit["rows"] and m4.EI not in without["terms"] and m4.RAIN in without["terms"], (
+        f"M4 without EI2: {without['rows']} rows, terms {without['terms']}")
+    gap = rows.copy()
+    gap.loc[gap.index[10], ["rcum2", m4.RAIN]] = np.nan
+    assert m4.fit_m4(gap)["rows"] == fit["rows"] - 1, "a row with a missing input must be dropped from the fit"
+    assert stops_with("missing", m4.predict_m4, fit, gap.iloc[[10]]), "a forecast row with a missing input must stop"
+    copy = rows.assign(**{m4.EI: 2 * rows[m4.RAIN] + rng.normal(0, 0.01, len(rows))})
+    collinear = m4.fit_m4(copy)
+    assert m4.RAIN not in collinear["terms"] and m4.EI in collinear["terms"], (
+        f"correlation {collinear['corr_rain_ei']:.2f}: Rcum2 must be left out, terms {collinear['terms']}")
+    early = m4.fit_m4(rows[rows["year"] < min(config.COVID_YEARS)])
+    assert m4.COVID not in early["terms"], "before 2020 the COVID term cannot be estimated and must be left out"
+    negative = rows.assign(cases=rows["cases"].where(rows.index != rows.index[5], config.S11_HIDDEN_COUNT))
+    assert stops_with("negative", m4.fit_m4, negative), "a negative count must stop the fit"
+    return (f"mean of {config.S5_DATASETS} fits: rho {mean['rho']:.3f}, beta1 {mean['beta1']:.3f}, "
+            f"beta2 {mean['beta2']:.3f}, delta {mean['delta']:.3f}, theta {mean['theta']:.2f}; "
+            f"forecasts with the offset within {miss:.1%} of the true means (median)")
+
+
 def s6_theta():
     """S6 (B6): theta from past misses, and which past forecasts theta_for uses.
 
@@ -898,7 +1002,7 @@ CHECKS = {
     "S3 census join": s3_census,
     "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
-    "S5 M4 simulation": not_built("B5"),
+    "S5 M4 simulation": s5_m4,
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
