@@ -1,0 +1,33 @@
+storm,run,rain_mm,position,listed_flooded,flag_share,flagged,flagged_and_listed,share_flagged_listed,share_listed_flagged
+carina_2024,observed,119.9734,R0 to R(5),12,0.25,0,0,,0.0
+carina_2024,observed,119.9734,R0 to R(5),12,0.5,0,0,,0.0
+carina_2024,lead 1,224.3806,R(5) to R(25),12,0.25,70,9,0.1286,0.75
+carina_2024,lead 1,224.3806,R(5) to R(25),12,0.5,12,6,0.5,0.5
+carina_2024,lead 2,176.4733,R0 to R(5),12,0.25,30,8,0.2667,0.6667
+carina_2024,lead 2,176.4733,R0 to R(5),12,0.5,3,2,0.6667,0.1667
+carina_2024,lead 3,130.378,R0 to R(5),12,0.25,1,0,0.0,0.0
+carina_2024,lead 3,130.378,R0 to R(5),12,0.5,0,0,,0.0
+floods_2025,observed,190.9931,R0 to R(5),14,0.25,17,5,0.2941,0.3571
+floods_2025,observed,190.9931,R0 to R(5),14,0.5,1,1,1.0,0.0714
+floods_2025,lead 1,127.6485,R0 to R(5),14,0.25,0,0,,0.0
+floods_2025,lead 1,127.6485,R0 to R(5),14,0.5,0,0,,0.0
+floods_2025,lead 2,110.5542,R0 to R(5),14,0.25,0,0,,0.0
+floods_2025,lead 2,110.5542,R0 to R(5),14,0.5,0,0,,0.0
+floods_2025,lead 3,93.1898,below R0,14,0.25,0,0,,0.0
+floods_2025,lead 3,93.1898,below R0,14,0.5,0,0,,0.0
+habagat_2026,observed,140.9598,R0 to R(5),17,0.25,0,0,,0.0
+habagat_2026,observed,140.9598,R0 to R(5),17,0.5,0,0,,0.0
+habagat_2026,lead 1,139.3826,R0 to R(5),17,0.25,2,1,0.5,0.0588
+habagat_2026,lead 1,139.3826,R0 to R(5),17,0.5,0,0,,0.0
+habagat_2026,lead 2,142.3093,R0 to R(5),17,0.25,3,1,0.3333,0.0588
+habagat_2026,lead 2,142.3093,R0 to R(5),17,0.5,0,0,,0.0
+habagat_2026,lead 3,123.0261,R0 to R(5),17,0.25,0,0,,0.0
+habagat_2026,lead 3,123.0261,R0 to R(5),17,0.5,0,0,,0.0
+kristine_2024,observed,195.0766,R0 to R(5),8,0.25,17,3,0.1765,0.375
+kristine_2024,observed,195.0766,R0 to R(5),8,0.5,2,0,0.0,0.0
+kristine_2024,lead 1,233.0625,R(5) to R(25),8,0.25,72,5,0.0694,0.625
+kristine_2024,lead 1,233.0625,R(5) to R(25),8,0.5,15,3,0.2,0.375
+kristine_2024,lead 2,170.2307,R0 to R(5),8,0.25,21,4,0.1905,0.5
+kristine_2024,lead 2,170.2307,R0 to R(5),8,0.5,2,0,0.0,0.0
+kristine_2024,lead 3,160.6099,R0 to R(5),8,0.25,17,3,0.1765,0.375
+kristine_2024,lead 3,160.6099,R0 to R(5),8,0.5,1,0,0.0,0.0

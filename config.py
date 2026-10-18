@@ -30,6 +30,11 @@ C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need p
 C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
 C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
 C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
+D7_FORECAST_VS_OBSERVED = RESULTS / "d7_forecast_vs_observed.csv"  # D7: C9's doses at each lead beside C8's observed doses
+D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flooded, per storm, run and flag share
+D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
+D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
+D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
@@ -435,3 +440,12 @@ BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000
 RANDOM_SEED = 2026
+
+# Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
+# Map classes, the same for every storm so the maps compare. A value on a break goes to
+# the class above it, so the classes from FLAG_EXPOSED_SHARES up are exactly the
+# barangays C8 flags.
+D7_MAP_SHARE_BREAKS = (0.01, 0.05, 0.10, *FLAG_EXPOSED_SHARES)    # share of a barangay's residents in flood zones
+D7_MAP_DOXY_BREAKS = (100, 1_000, 5_000, 10_000, 25_000, 50_000)  # doxycycline 100 mg capsules per barangay
+D7_MAP_W = 0.5                             # a short flood's dose map shows w = 0.5, the middle of WOUND_SHARE_W; the tables give every w
+D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run must agree to 0.01 people or units (both files keep 4 decimals)
