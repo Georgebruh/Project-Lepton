@@ -136,6 +136,34 @@ D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports
    the satellite's own record of the rain that fell puts it at the no-flood floor. That is
    the satellite under-reading Carina (section 3), not the forecast overshooting. For the
    long July 2025 floods the forecasts were low at every lead.
+10. **M3 in the backtest (B9, `src/m3_port.py`).** B3's settings, refitted at each forecast
+    day on the weeks up to the cutoff (T in option B, T - g in option C). What differs from
+    B3, and why:
+    - **Gap filling sees only those weeks.** B3 filled the whole series once, so its
+      seasonal baseline mu_w and its straight-line fills used later weeks; in a backtest
+      that is a leak (rule 1). A gap at the end of the seen weeks takes the last filled
+      value, since it has no later neighbour. Weeks before the first count are left out.
+    - **Weeks are MMWR, and dates name them.** Prophet's date is the Sunday that starts each
+      MMWR week; the target's date comes from its own week index, so it stays right after
+      2025's week 53. mu_w uses MMWR weeks 1-52 (a missing week 53 borrows week 52's mean).
+    - **XGBoost's week feature is still the ISO week number**, as the paper says: the ISO
+      week holding the MMWR week's Monday. In 2015 and 2026 (years starting on a Thursday) it
+      is the MMWR week + 1; it follows the calendar date, so the same date gets the same
+      feature every year.
+    - **The training fit's theta (B6) comes from Prophet's in-sample fit, not the
+      hybrid's.** XGBoost is trained on those same weeks' errors and nearly repeats them, so
+      the hybrid's in-sample theta came out infinite (a far too narrow Poisson range) in
+      every trial; Prophet's was 4.0-4.5 on simulated counts with true theta 5. It only
+      matters for about the first half of 2018, until M3 has 26 past forecasts B6 can
+      score.
+    - **Decide (Layer 1 owners): COVID years in M3's gap filling.** B9 keeps the paper's
+      rules: mu_w leaves out 2020 only, and only 2020's ECQ and MECQ weeks
+      (`config.M3_LOCKDOWNS`) get 0.5 x mu_w. LEPTON elsewhere treats 2021 as a COVID year
+      too (`config.COVID_YEARS`). With national data (2019-2023) this changes nothing: its
+      gaps are all in 2020. With QC counts it matters only if weeks are missing: mu_w
+      would include 2021's low counts, and a missing week in NCR's 2021 ECQ or MECQ would
+      be filled as a normal week. If QC's file has such gaps, either leave out
+      `config.COVID_YEARS` from mu_w or add 2021's lockdown dates, with a source for each.
 
 ## 3. Limitations and the papers behind them
 
@@ -172,9 +200,9 @@ References:
 
 ## 4. Rules for the tasks still to build
 
-- **B9 (port M3):** B3 fills gaps once over the whole series, which is fine for reproducing
-  the paper. In the backtest it is a leak: the seasonal baseline mu_w and the interpolation
-  must use only the weeks the model may see on the forecast day (B2's view; rule 1, S11).
+- **B9 (port M3):** built (`src/m3_port.py`, section 2 item 10). B10 calls
+  `m3_port.m3_forecast(target_year, target_week, cases, cutoff)` once per forecast day and
+  reads `mu` (the forecast) and `fit_theta` (B6's theta before 26 past forecasts).
 - **B10:** read EI from `ei_weekly.csv` rows with `fit_year` = the forecast day's year.
 - **C8:** C9's script already runs each storm's observed rain the way C8 should
   (`forecast_run.storm_runs`, the "observed" rows): rain from

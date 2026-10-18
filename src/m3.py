@@ -86,6 +86,21 @@ def in_windows(day, windows):
     return any(first <= day <= last for first, last in windows)
 
 
+def gap_rule(thursday, mu_w, lockdowns):
+    """B3's first two gap rules for one missing week, judged by its Thursday: (value, rule).
+
+    In a lockdown -> (0.5 x mu_w, "lockdown"); else June-November -> (1.0 x mu_w,
+    "monsoon"); else (NaN, ""), left for the straight line. B9 (src/m3_port.py) uses
+    this too, so a change here changes both.
+    """
+    if in_windows(thursday, lockdowns):
+        return config.M3_COVID_GAP_FACTOR * mu_w, "lockdown"
+    first_month, last_month = config.M3_RAINY_MONTHS
+    if first_month <= thursday.month <= last_month:
+        return config.M3_RAINY_GAP_FACTOR * mu_w, "monsoon"
+    return np.nan, ""
+
+
 def fill_gaps(df, lockdowns=config.M3_LOCKDOWNS):
     """Add y (the filled series) and fill_rule (how each week got its value).
 
@@ -98,16 +113,9 @@ def fill_gaps(df, lockdowns=config.M3_LOCKDOWNS):
     out = df.copy()
     out["y"] = out["cases"]
     out["fill_rule"] = np.where(out["cases"].notna(), "observed", "")
-    first_month, last_month = config.M3_RAINY_MONTHS
     for i in out.index[out["cases"].isna()]:
         thursday = (out.at[i, "ds"] + timedelta(days=3)).date()
-        mu_w = mu[out.at[i, "iso_week"]]
-        if in_windows(thursday, lockdowns):
-            out.at[i, "y"] = config.M3_COVID_GAP_FACTOR * mu_w
-            out.at[i, "fill_rule"] = "lockdown"
-        elif first_month <= thursday.month <= last_month:
-            out.at[i, "y"] = config.M3_RAINY_GAP_FACTOR * mu_w
-            out.at[i, "fill_rule"] = "monsoon"
+        out.at[i, "y"], out.at[i, "fill_rule"] = gap_rule(thursday, mu[out.at[i, "iso_week"]], lockdowns)
     rest = out["y"].isna()
     out["y"] = out["y"].interpolate(method="linear")
     out.loc[rest, "fill_rule"] = "interpolated"
