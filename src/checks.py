@@ -21,7 +21,7 @@ from epiweeks import Week, Year
 from scipy import stats
 
 import config
-from src import baselines, breach_scores, forecast_range, scores, thresholds, view, weeks
+from src import baselines, breach_scores, compare, forecast_range, scores, thresholds, view, weeks
 
 
 class NotBuilt(Exception):
@@ -529,6 +529,77 @@ def d2_mase():
     assert stops_with("equals last year's", mase, cases.assign(cases=5)), "a denominator of 0 must stop"
     assert stops_with("positive", scores.add_mase, by_model, 0), "add_mase must stop on a denominator of 0"
     return f"denominator {denominator} (by hand 10.5); MASE 2 and 0.5 as by hand; bad tables stop"
+
+
+def toy_forecasts(misses, years=(2022, 2023)):
+    """Made-up forecasts for D5 and D6: every week of `years`, count y = 20.
+
+    misses: {model: list of misses}; week i's forecast is 20 + misses[i % len(misses)], so
+    each week's loss difference is known by hand. In a COVID week and a 2017 week the first
+    model misses by 1,000: a comparison that wrongly used them would be far off.
+    """
+    rows = []
+    targets = [(year, wk) for year in years for wk in Year(year).iterweeks()]
+    for i, (year, wk) in enumerate(targets):
+        for model, miss in misses.items():
+            rows.append({"model": model, "week_index": weeks.week_index(wk.startdate()), "year": year,
+                         "y": 20, "mu": 20 + miss[i % len(miss)]})
+    for year in (2017, 2020):
+        for n, model in enumerate(misses):
+            rows.append({"model": model, "week_index": weeks.week_index_of(year, 10), "year": year,
+                         "y": 20, "mu": 1020 if n == 0 else 20})
+    return pd.DataFrame(rows)
+
+
+def d5_primary_endpoint():
+    """D5 (no S number): the block bootstrap, the Diebold-Mariano test and M4 vs M3, worked by hand.
+
+      - d = 1, 2, 3, 4 with 2-week blocks: the blocks are [1, 2], [2, 3], [3, 4] (means
+        1.5, 2.5, 3.5) and a resample joins two of them, so its mean runs from 1.5 to 3.5.
+        Each end has a 1-in-9 chance, more than 2.5%, so the interval is exactly
+        1.5-3.5. Resampling single weeks instead would reach 1 and 4.
+      - One block as long as d: every resample is d itself, so the interval is its mean.
+      - DM of d = 1, -1, 2, 0: mean 0.5, sd sqrt(5/3), so DM = 0.5 / (sqrt(5/3) / 2) =
+        sqrt(0.6); its p-value equals scipy's paired t test.
+      - M4 vs M3 over 2022-2023 (104 weeks): M3 hits every count, M4 misses by 1, 3, 1, 3,
+        ..., so d alternates 1 and 3: mean 2. An 8- or 4-week block always holds as many 1s
+        as 3s, so those intervals are exactly 2-2 and M3 misses less; a 13-week block holds
+        7 of one, so its interval spreads around 2. DM = 2 / (sqrt(104/103) / sqrt(104)) =
+        2 sqrt(103). The COVID and 2017 weeks (miss 1,000) are outside the MAE window.
+      - Stops: a model missing a week, two models scored against different counts, a model
+        with no forecasts, fewer weeks than a block, and DM when every d is the same.
+    """
+    boot = compare.block_bootstrap([1, 2, 3, 4], block=2)
+    assert (boot["mean"], boot["low"], boot["high"]) == (2.5, 1.5, 3.5), f"d = 1-4, 2-week blocks: {boot}"
+    one = compare.block_bootstrap([1, 5, 2, 8], block=4)
+    assert one["low"] == one["high"] == 4, f"one block as long as d must give its mean, 4: {one}"
+    dm = compare.dm_test([1, -1, 2, 0])
+    assert np.isclose(dm["dm_stat"], np.sqrt(0.6)), f"DM {dm['dm_stat']}, by hand sqrt(0.6) = {np.sqrt(0.6):.4f}"
+    assert np.isclose(dm["dm_p"], stats.ttest_1samp([1, -1, 2, 0], 0).pvalue), "DM's p must equal the paired t test's"
+
+    table = toy_forecasts({"M4": [1, 3], "M3": [0]})
+    result = compare.primary_endpoint(table).set_index("block_weeks")
+    assert list(result.index) == [config.BOOT_BLOCK_WEEKS, *config.BOOT_BLOCK_WEEKS_TESTS], result
+    assert (result["weeks"] == 104).all() and np.allclose(result["mean_diff"], 2), result
+    for block in (8, 4):
+        assert result.at[block, "low"] == result.at[block, "high"] == 2, f"{block}-week blocks: {result.loc[block]}"
+        assert result.at[block, "verdict"] == "M3 misses less", result.at[block, "verdict"]
+    assert result.at[13, "low"] < 2 < result.at[13, "high"], f"13-week blocks: {result.loc[13]}"
+    assert np.allclose(result["dm_stat"], 2 * np.sqrt(103)), f"DM {result['dm_stat'].iloc[0]}, by hand 2 sqrt(103)"
+
+    in_window = table["year"].isin(config.MAE_YEARS)
+    missing_week = table.drop(table[in_window & (table["model"] == "M4")].index[0])
+    other_count = table.copy()
+    other_count.loc[table[in_window & (table["model"] == "M4")].index[0], "y"] = 21
+    assert stops_with("same weeks", compare.primary_endpoint, missing_week), "a model missing a week must stop"
+    assert stops_with("different counts", compare.primary_endpoint, other_count), "different counts must stop"
+    assert stops_with("need forecasts of both", compare.primary_endpoint, table[table["model"] == "M4"]), (
+        "a model with no forecasts must stop")
+    assert stops_with("fewer than one", compare.block_bootstrap, [1, 2, 3], 8), "fewer weeks than a block must stop"
+    assert stops_with("undefined", compare.dm_test, [2, 2, 2]), "DM must stop when every d is the same"
+    assert stops_with("undefined", compare.dm_test, [0.1] * 7), "DM must stop on equal d that floats store inexactly"
+    return (f"bootstrap 1.5-3.5 and DM sqrt(0.6) as by hand; M4 vs M3 on made-up misses: mean 2, "
+            f"8- and 4-week intervals 2-2, 13-week {result.at[13, 'low']:.2f}-{result.at[13, 'high']:.2f}; bad tables stop")
 
 
 def b8_baselines():
@@ -1218,6 +1289,7 @@ CHECKS = {
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
     "D2 MASE": d2_mase,
+    "D5 primary endpoint": d5_primary_endpoint,
     "B8 M0 and M1": b8_baselines,
     "B9 M3": b9_m3,
     "S8 census fit": s8_census_fit,
