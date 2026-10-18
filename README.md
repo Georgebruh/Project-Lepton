@@ -79,4 +79,5 @@ Run after Workstream A, in this order:
 | Task | Command | Writes |
 | --- | --- | --- |
 | D1 | none: `point_scores`, `wis`, `covered` and `score_models` in `src/scores.py`, used on B10's forecasts (columns model, week_index, year, y, mu, theta) | nothing; check "S7 scores" in `python -m src.checks` |
+| D2 | none: `mase_denominator` and `add_mase` in `src/scores.py`: `add_mase(score_models(table, config.MAE_YEARS), mase_denominator(cases))` | nothing; check "D2 MASE" in `python -m src.checks` |
 | D3 | none: `brier`, `base_rate`, `brier_skill_score`, `reliability`, `alarm_test`, `episodes` and `caught_share` in `src/breach_scores.py` | nothing; check "S7 scores" in `python -m src.checks` |

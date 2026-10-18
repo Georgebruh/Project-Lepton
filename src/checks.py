@@ -1,7 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs two checks with no S number: A11's storm facts and B8's hand check of
-M0 and M1.
+Also runs three checks with no S number: A11's storm facts, B8's hand check of
+M0 and M1, and D2's hand check of the MASE denominator.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -378,6 +378,51 @@ def s7_scores():
     assert stops_with("same weeks", scores.score_models, table.iloc[:3], config.PROB_SCORE_YEARS), (
         "a model missing a week must stop")
     return f"WIS {w20:.2f} at 20, {w60:.1f} at 60; episodes and 5-of-6 interval as the plan; D1/D3 toys match"
+
+
+def d2_mase():
+    """D2 (no S number): MASE's fixed denominator on made-up counts, worked by hand.
+
+    toy_cases from 2015 to 2018 (10 x (year - 2014) + week) with 52 added to 2017 week 5.
+    Every 2016 and 2017 week is 10 more than 52 weeks before, except 2017 week 5:
+    87 - 25 = 62. So the denominator is (103 x 10 + 62) / 104 = 10.5. Using 2018 too
+    (whose week 5 now misses by 42) or week numbers from the wrong year would change it.
+    Then MAE 21 and 5.25 give MASE 2 and 0.5. These stop: a missing count in 2016 or
+    in 2015 (looked back to), a negative count (S11's -999), a missing or repeated week,
+    week indexes that do not match their year and week, a table that starts in 2016
+    (nothing to look back to), no years at all, and a constant series (denominator 0).
+    """
+    cases = toy_cases(2018)
+    cases.loc[(cases["year"] == 2017) & (cases["week"] == 5), "cases"] += 52
+    denominator = scores.mase_denominator(cases)
+    assert np.isclose(denominator, 10.5), f"MASE denominator {denominator}, by hand 10.5"
+    by_model = scores.add_mase(pd.DataFrame({"mae": [21, 5.25]}, index=["M0", "M4"]), denominator)
+    assert np.allclose(by_model["mase"], [2, 0.5]), by_model
+
+    def changed(year, week, column, value):
+        """Copy of `cases` with `column` set to `value` in one week's row."""
+        out = cases.copy()
+        out.loc[(out["year"] == year) & (out["week"] == week), column] = value
+        return out
+
+    swapped = changed(2015, 10, "week_index", weeks.week_index_of(2015, 11))   # 2015 weeks 10 and 11
+    swapped.loc[(swapped["year"] == 2015) & (swapped["week"] == 11), "week_index"] = weeks.week_index_of(2015, 10)
+    twice =pd.concat([cases, cases[(cases["year"] == 2017) & (cases["week"] == 20)]])
+    absent = cases[~((cases["year"] == 2017) & (cases["week"] == 20))]
+    mase = scores.mase_denominator
+    assert stops_with("is missing", mase, changed(2016, 10, "cases", np.nan)), "a missing 2016 count must stop"
+    assert stops_with("is missing", mase, changed(2015, 10, "cases", np.nan)), "a missing 2015 count must stop"
+    assert stops_with("is negative", mase, changed(2015, 10, "cases", config.S11_HIDDEN_COUNT)), (
+        "a negative count must stop")
+    assert stops_with("repeated [20]", mase, twice), "a repeated week must stop and be named"
+    assert stops_with("missing [20]", mase, absent), "a missing week must stop and be named"
+    assert stops_with("week index is not", mase, swapped), "week indexes that disagree with year and week must stop"
+    assert stops_with("rows in the cases table, expected 1", mase, cases[cases["year"] >= 2016]), (
+        "2016 with no 2015 to look back to must stop")
+    assert stops_with("at least 1", mase, cases, ()), "no years must stop, not give NaN"
+    assert stops_with("equals last year's", mase, cases.assign(cases=5)), "a denominator of 0 must stop"
+    assert stops_with("positive", scores.add_mase, by_model, 0), "add_mase must stop on a denominator of 0"
+    return f"denominator {denominator} (by hand 10.5); MASE 2 and 0.5 as by hand; bad tables stop"
 
 
 def b8_baselines():
@@ -902,6 +947,7 @@ CHECKS = {
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
+    "D2 MASE": d2_mase,
     "B8 M0 and M1": b8_baselines,
     "S8 census fit": s8_census_fit,
     "S8 overlay": s8_overlay,
