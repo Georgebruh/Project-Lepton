@@ -1200,6 +1200,54 @@ def s10_allocate():
             f"(farthest {table['distance_km'].max():.2f} km); need adds up")
 
 
+def s11_leakage():
+    """S11 (B10): no model reads a count it may not see; every model forecasts every week, no NaN.
+
+    From the plan: at one forecast day, overwrite every count the model may not see (after
+    T - g in option C, after T in option B) with -999 and rerun: the forecasts must not
+    change. Here on backtest.simulated_cases (made-up QC-shaped counts, B4's real rain and
+    EI), forecast day 2023 week 30, every model (M3 refits Prophet: a few seconds), in
+    option B and option C (g = 2), twice each:
+      - with 60 made-up past forecasts per model (mu = 1.2 x count + 1, targets up to T,
+        so in option C the last g of them cannot be scored yet), so theta comes from past
+        misses (theta_from "past");
+      - with no past forecasts, so theta comes from each training fit (theta_from "fit").
+    Then every results/forecasts*.csv on this computer: every model on exactly the same
+    target weeks, one forecast each, and no NaN anywhere (theta may be infinity: Poisson).
+    """
+    from src import backtest
+
+    need_file(config.FEATURES_WEEKLY, "B4")
+    features, pop = backtest.load_features(), backtest.load_population()
+    cases = backtest.simulated_cases(features, pop)
+    T = weeks.week_index_of(2023, 30)
+    counts = cases.set_index("week_index")["cases"]
+    targets = np.arange(T - 59, T + 1)
+    made_up = pd.DataFrame({"week_index": targets, "mu": 1.2 * counts.reindex(targets).to_numpy() + 1})
+    for option in ("B", "C"):
+        cut = view.cutoff(T, option, config.DELAY_GUARD_G)
+        hidden = hide_after(cases, cut)
+        assert (hidden["cases"] == config.S11_HIDDEN_COUNT).sum() == (cases["week_index"] > cut).sum() > 0
+        for label, past_mu in (("past", made_up), ("fit", made_up.iloc[:0])):
+            past = {model: past_mu for model in backtest.MODELS}
+            seen = backtest.forecast_day(T, cases, features, pop, past, option, config.DELAY_GUARD_G)
+            blind = backtest.forecast_day(T, hidden, features, pop, past, option, config.DELAY_GUARD_G)
+            assert list(seen["model"]) == list(backtest.MODELS), f"option {option}: models {list(seen['model'])}"
+            assert (seen["theta_from"] == label).all(), f"option {option}: theta from {list(seen['theta_from'])}"
+            assert seen.equals(blind), (f"option {option}, theta from {label}: a forecast changed with the counts "
+                                        f"after the cutoff hidden:\n{seen.compare(blind)}")
+    runs = sorted(config.RESULTS.glob("forecasts*.csv"))
+    for path in runs:
+        table = pd.read_csv(path)
+        scores.check_same_weeks(table)
+        assert set(table["model"]) == set(backtest.MODELS) or "_partial" in path.name, f"{path.name}: models {set(table['model'])}"
+        numbers = table.select_dtypes("number")
+        assert not numbers.isna().any().any(), f"{path.name}: NaN in {list(numbers.columns[numbers.isna().any()])}"
+    return (f"forecast day 2023 week 30, options B and C, theta from past misses and from the fit: "
+            f"{len(backtest.MODELS)} models unchanged with later counts set to {config.S11_HIDDEN_COUNT}; "
+            f"{len(runs)} run file(s) complete" + (f" ({', '.join(p.name for p in runs)})" if runs else ""))
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1229,7 +1277,7 @@ CHECKS = {
     "S10 doses": s10_doses,
     "S10 allocate": s10_allocate,
     "B2 view": b2_view,
-    "S11 leakage": not_built("B10"),
+    "S11 leakage": s11_leakage,
 }
 
 
