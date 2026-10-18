@@ -71,6 +71,25 @@ The reports found show QC flooding on October 24, 2024 only, so D = 1 (the ±1-d
 D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports for October
 22-23, update `start_date` and D in `config.STORMS` and in `storm-facts.md`.
 
+### 1.4 Before B10 merges: one name for "M4 without EI2"
+
+B10 (open branch `B10-backtest`) writes the model as `M4_noEI`. D6 (merged) expects
+`M4_no_EI2` (`config.FLOOD_TEST`, and check "D6 flood test" builds its made-up tables with
+that name). On B10's output, D6's `flood_and_practical_tests` and D8's figures 1-3 stop with
+"no forecasts for ['M4_no_EI2']". D6 merged first, so the simplest fix is in B10: rename
+`M4_noEI` to `M4_no_EI2` in `src/backtest.py` (MODELS and `model_means`) and in its README
+row. Tested: with that one rename, D8 draws figures 1-3 from B10's made-up-count run.
+
+### 1.5 Which Layer 1 figures the paper gets depends on A13's row
+
+D8's figures 1-3 follow the plan: QC weekly cases with M4's and M3's forecasts, MAE by model,
+and M4's and M3's reliability. They need B10's `results/forecasts.csv`, so they wait for A13's
+case data (`config.DATA_OPTION` is still `None`). If the team is in the decision tree's last
+row (national data, no M4), figures 1-3 cannot be drawn as planned: there is no M4 and no QC.
+Then decide what replaces them, e.g. figure 1 with M3 and M1 on national data and figure 2
+with M0, M1 and M3 only; `src/paper_figures.py` would need the models it compares and its
+"Quezon City" title changed.
+
 ## 2. Where the code differs from the plan (the paper must say these)
 
 1. **Trigger rain is a 3-day total, not the single wettest UTC day** (C3,
@@ -164,6 +183,28 @@ D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports
       would include 2021's low counts, and a missing week in NCR's 2021 ECQ or MECQ would
       be filled as a normal week. If QC's file has such gaps, either leave out
       `config.COVID_YEARS` from mu_w or add 2021's lockdown dates, with a source for each.
+11. **The paper's figures (D8, `src/paper_figures.py`).** Drawn by code from `results/`, each
+    chart with a CSV of its numbers beside it (`results/d8_fig*.csv`). What goes beyond the
+    plan's list, and why:
+    - **Figure 2 has a second panel**: M4 against M3 (D5), M4 without EI2 and M1 (D6), the
+      mean of |error M4| − |error other| with D5's block-bootstrap interval. The plan asks only
+      for "MAE by model with intervals". Every model misses most in the same outbreak weeks,
+      so separate MAE intervals overlap even when one model misses less nearly every week; the
+      paired difference is what D5 tests. Each model's own MAE interval is D5's bootstrap on
+      its weekly misses (8-week blocks).
+    - **Figure 3 shows M3 beside M4**, and joins neighbouring reliability steps that have the
+      same breach rate. D3's `reliability` pools two steps only when the first rate is higher,
+      so equal rates stay apart (on made-up counts M4 had 49 steps at rate 0). The curve is
+      the same; the "forecasts per step" bars become one per rate.
+    - **Figure 4 shows Kristine beside Carina**, on the same scale (`config.D8_MAP_STORMS`).
+      Carina's map is almost empty: IMERG puts its rain at R0, EI 0.05%, no barangay at 25% or
+      more (1.1). If the team drops Kristine (1.1), set `D8_MAP_STORMS = ("carina_2024",)`.
+    - **Figure 5, the doses table**, is C8's main run per storm, with Kristine's 1-day flood at
+      w = 0, 0.5 and 1 (C5's grid). Units are rounded up to whole units (the level stock is
+      ordered at, as in D7), so Carina's doxycycline reads 1,893, not the 1,892 in 1.1.
+      Written as `d8_fig5_doses.csv` for the paper's table and as a picture, both labelled
+      stock planning, not prescriptions. The forecast-run doses per lead are D7's
+      `d7_forecast_vs_observed.csv`.
 
 ## 3. Limitations and the papers behind them
 
@@ -217,7 +258,24 @@ References:
   continuous-exposure cut-off at 1 and 3 days (`config.CONTINUOUS_EXPOSURE_DAYS_TESTS`).
 - **C9:** done (merged October 18). A lead-L forecast of a 3-day window takes day i of
   the window from `previous_day` L + i; levels are ERA5's, never IMERG's; D = 1 and D = 7.
-- **D8:** dose figures carry the label "stock planning, not prescriptions".
+- **D8:** built (`src/paper_figures.py`, section 2 item 11); dose figures carry the label
+  "stock planning, not prescriptions". Figures 4 and 5 are drawn now
+  (`python -m src.paper_figures --layer2`). Still missing for figures 1-3:
+  1. A13's `cases_weekly.csv`, then `config.DATA_OPTION` set (1.5).
+  2. B10 merged with the model renamed (1.4), and its real run writing `results/forecasts.csv`.
+     Then `python -m src.paper_figures` draws all five; copy the numbers in
+     `results/d8_fig2_mae.csv` into E6.
+  Until then, figures 1-3 can be tried on B10's made-up counts: `python -m src.backtest
+  --simulate --option C`, then `python -m src.paper_figures --preview
+  results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, which `.gitignore` keeps
+  out of git; each says "PREVIEW" at the top).
+  **For B9/B10's owners, seen in that made-up-count run (not QC data):** M3 forecast 3,201
+  cases for 2018 week 28, two weeks after a 767-case week (that week had 170), and up to 781
+  in 2019, when no week passed 99. Its 2018 MAE was 315 (M4: 31), and over the MAE window
+  68.8, worse than M0's 39.2 and M4's 18.7; from 2020 on its forecasts stay near the counts.
+  Prophet's multiplicative trend, with only 2015-2017 behind it, may run away after a spike.
+  Look at M3's 2018-2019 forecasts again once real counts arrive, before gate D freezes the
+  models.
 
 ## 5. Data and setup
 
@@ -229,6 +287,10 @@ References:
   - `data/clean/center_shares_qc.csv`: `python -m src.allocation`
   - `data/clean/ei_weekly_no2000.csv`: `python -m src.flood_exposure --without-2000`
   - `results/c9_*.csv` are in git; `python -m src.forecast_run` rebuilds them byte for byte.
+  - `data/clean/ei_weekly.csv`: `python -m src.flood_exposure` (C3); then B4's
+    `features_weekly.csv`, `rain_weekly.csv` and `imerg_weights_qc.csv` with
+    `python -m src.features`. The B10 branch carries a fix to `src/features.py` for the real
+    IMERG file ("float32 lon keys"); that version was used for D8's preview run.
 - **Checks:** with the drive data, `python -m src.checks` has no FAIL (S6 passes since B6
   merged: theta 5.00). S4, S5, S7 scores and S11 SKIP until A13, B5, D1/D3 and B10 are
   built. S8 lists 11 barangays whose

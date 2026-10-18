@@ -12,6 +12,10 @@ data/clean/*
 !data/clean/*.md
 !data/**/.gitkeep
 
+# D8 previews (python -m src.paper_figures --preview): drawn from test files such as B10's
+# made-up counts, never the paper's results.
+results/d8_preview_*
+
 # Python
 __pycache__/
 *.py[cod]
