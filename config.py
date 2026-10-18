@@ -475,7 +475,10 @@ LEAD_TIME_IN_ADVANCE_WEEKS = 1             # D4: an episode is caught in advance
 BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000
+BOOT_INTERVAL = 0.95                       # D5, D6: the bootstrap interval runs from the 2.5% to the 97.5% point
 RANDOM_SEED = 2026
+# D5: the primary endpoint, model a against model b. Names as in B10's forecasts table (column model).
+PRIMARY_COMPARISON = ("M4", "M3")
 
 # Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
 # Map classes, the same for every storm so the maps compare. A value on a break goes to
