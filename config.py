@@ -24,9 +24,20 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
+IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
+RAIN_WEEKLY = DATA_CLEAN / "rain_weekly.csv"            # B4: weekly QC rain R(t) and Rcum2(t)
+FEATURES_WEEKLY = DATA_CLEAN / "features_weekly.csv"    # B4: weekly rain and exposure (R, Rcum2, EI, EI2)
+C8_RUNS = RESULTS / "c8_observed_runs.csv"            # C8: one row per storm, test, D, cut-off and w
+C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # C8: the main run, one row per barangay
+C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need per health center and pool
 C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
 C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
 C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
+D7_FORECAST_VS_OBSERVED = RESULTS / "d7_forecast_vs_observed.csv"  # D7: C9's doses at each lead beside C8's observed doses
+D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flooded, per storm, run and flag share
+D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
+D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
+D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
@@ -60,6 +71,7 @@ BACKTEST_LAST_YEAR = 2026                  # to the last complete week of 2026
 COVID_YEARS = (2020, 2021)
 WEEKS_PER_YEAR = 52.18                     # period of the M4 season terms, B5
 MAX_WEEK = 52                              # week 53 is mapped to 52
+DAYS_PER_WEEK = 7                          # UTC days in one complete morbidity week, B4
 
 # Scoring windows (Workstream D)
 MAE_YEARS = (2018, 2019, 2022, 2023, 2024, 2025, 2026)
@@ -161,6 +173,7 @@ CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 DATA_OPTION = None                         # "A", "B" or "C"; set by the A13 decision
 DELAY_GUARD_G = 2                          # assumption, option C only
 DELAY_GUARD_G_TESTS = (1, 3)
+FORECAST_HORIZON_WEEKS = 1                 # B2, B10: forecast day T forecasts week T + 1 (the B11 stretch: 2)
 REPORTED_SHARE_CUTOFF = 0.50               # assumption, option A only
 REPORTED_SHARE_CUTOFF_TEST = 0.80
 
@@ -171,6 +184,13 @@ M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the t
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
+# B5: statsmodels' optimizers for the negative binomial fit, in order. Newton is fast and
+# exact, but can break down to NaN coefficients still flagged "converged" (seen on made-up
+# data, 2026-10-18); BFGS then reaches the same maximum. Both failing stops the run.
+M4_FIT_METHODS = ("newton", "bfgs")
+M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
+M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
+M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
 
 # M3 benchmark (B3), read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)
@@ -272,7 +292,7 @@ UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
 WOUND_SHARE_W = (0.0, 0.5, 1.0)            # assumption: illustrative grid; 0 and 1 are bounds
 CONTINUOUS_EXPOSURE_DAYS = 2               # assumption: D >= 2 -> every exposed adult high risk
-CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)
+CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)    # C8 reruns each storm with these cut-offs
 MODERATE_COURSE_DAYS = 5                   # assumption: upper end of 3-5 days
 
 # Units (DOH DM 2023-0309; stock planning, not prescriptions)
@@ -289,7 +309,7 @@ CENTER_FACILITY_TYPES = ("Rural Health Unit", "Barangay Health Station")
 ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocation): stock covering half of each pool's need
 
 FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
-STORM_D_TEST_DAYS = 1                      # D +/- 1 day
+STORM_D_TEST_DAYS = 1                      # assumption test: C8 reruns each storm with A11's D +/- 1 day
 # Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
 # residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
 # has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
@@ -413,8 +433,31 @@ S2_KNOWN_STORMS = {
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
+# S5 (B5): made-up datasets that follow M4, fitted to see if M4 gets the true values back.
+S5_DATASETS = 50                           # the plan: 50 datasets...
+S5_WEEKS = 400                             # ...of 400 target weeks each
+S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the plan's true values
+S5_THETA = 5                               # the plan's true theta
+# Our choice (the plan gives none): about 20-60 cases a week, a June-November wet season.
+S5_BASE = {"Intercept": -13.0, "sin1": 0.4, "cos1": -0.3, "sin2": 0.1, "cos2": 0.05, "sin3": 0.0, "cos3": 0.0}
+S5_SIM = {
+    "start_cases": 20,                     # mean count of the 2 weeks before the first target (y~ needs them)
+    "rain_shape": 2.0,                     # weekly rain ~ gamma with this shape...
+    "rain_mean_dry_mm": 30,                # ...and this mean outside the wet season...
+    "rain_mean_wet_mm": 120,               # ...and this mean in it
+    "wet_weeks": (23, 48),                 # MMWR weeks of the wet season (about June to November)
+    "flood_chance": 0.15,                  # chance a wet-season week has a flood (EI above 0)
+    "ei_range": (1.0, 20.0),               # a flood week's EI, % of residents, drawn evenly in this range
+}
+# Mean of 50 fits within this of the truth. rho leans about 0.02 low at 400 weeks: a model fed
+# its own past counts is biased in short series (0.273 at 400 weeks, 0.298 at 1,600, 0.299 at
+# 3,000 in a 30-dataset test on 2026-10-18), so 0.03 leaves room for that lean, not for a bug.
+S5_TOLERANCE = {"rho": 0.03, "beta1": 0.03, "beta2": 0.01, "delta": 0.06}
+S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range (the plan's run: 5.25)
+S5_PREDICTION_TOLERANCE = 0.10             # median |forecast / true mean - 1| below this
 S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
 S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
+B9_FIT_THETA_RANGE = (4.0, 6.5)            # B9 check: M3's fit_theta on simulated NB counts with theta 5 (run: 5.26)
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 S9_SAMPLES = 500                           # S9: fit this many samples...
 S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
@@ -432,3 +475,12 @@ BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000
 RANDOM_SEED = 2026
+
+# Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
+# Map classes, the same for every storm so the maps compare. A value on a break goes to
+# the class above it, so the classes from FLAG_EXPOSED_SHARES up are exactly the
+# barangays C8 flags.
+D7_MAP_SHARE_BREAKS = (0.01, 0.05, 0.10, *FLAG_EXPOSED_SHARES)    # share of a barangay's residents in flood zones
+D7_MAP_DOXY_BREAKS = (100, 1_000, 5_000, 10_000, 25_000, 50_000)  # doxycycline 100 mg capsules per barangay
+D7_MAP_W = 0.5                             # a short flood's dose map shows w = 0.5, the middle of WOUND_SHARE_W; the tables give every w
+D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run must agree to 0.01 people or units (both files keep 4 decimals)
