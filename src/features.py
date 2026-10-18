@@ -125,8 +125,9 @@ def daily_qc_rain(ds, weights_table):
     if not np.isfinite(w_sum) or w_sum <= 0:
         raise ValueError(f"invalid sum of cell weights: {w_sum}")
 
-    lon_keys = np.round(ds["lon"].to_numpy(), 4)
-    lat_keys = np.round(ds["lat"].to_numpy(), 4)
+    # IMERG stores lon as float32: round it as float64, like the weights table, or the keys never match
+    lon_keys = np.round(ds["lon"].to_numpy().astype(float), 4)
+    lat_keys = np.round(ds["lat"].to_numpy().astype(float), 4)
     pivoted = (
         weights_table.assign(
             lon_key=np.round(weights_table["lon"], 4),
@@ -148,7 +149,7 @@ def daily_qc_rain(ds, weights_table):
     # xarray aligns dimensions by name regardless of axis order
     weighted_daily = (rain * weights_da).sum(dim=["lon", "lat"], skipna=False)
     dates = pd.to_datetime(weighted_daily["time"].to_numpy()).date
-    values = weighted_daily.to_numpy(dtype=float)
+    values = weighted_daily.to_numpy().astype(float)   # xarray's to_numpy takes no dtype
 
     table = pd.DataFrame({"date": dates, "rain_mm": values})
     if table["date"].duplicated().any():
@@ -258,13 +259,13 @@ def combine_features(rain_table, ei_table):
     """Merge weekly rain features (R, Rcum2) with exposure features (EI, EI2) (task B4)."""
     with_ei2 = add_ei2(ei_table)
 
+    # C3's rain_days is the n of its n-day rain totals, not the UTC days in a week (B4's
+    # rain_days), so the two are not compared: C3's must be config's n (check S9 does the same).
     if "rain_days" in with_ei2.columns:
-        check = with_ei2[["week_index", "rain_days"]].drop_duplicates().merge(
-            rain_table[["week_index", "rain_days"]], on="week_index", suffixes=("_ei", "_rain")
-        )
-        mismatch = check[check["rain_days_ei"] != check["rain_days_rain"]]
-        if len(mismatch):
-            raise ValueError(f"rain_days mismatch between B4 and C3:\n{mismatch.head()}")
+        made_with = sorted(with_ei2["rain_days"].unique())
+        if made_with != [config.RAIN_ACCUM_DAYS]:
+            raise ValueError(f"the EI file was made with {made_with}-day rain totals, config says "
+                             f"{config.RAIN_ACCUM_DAYS}: rerun python -m src.flood_exposure")
 
     extra_cols = [
         c for c in ("fit_year", "week_index", "rmax_mm", "weekrmax_mm", "ei", "ei2")

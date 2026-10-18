@@ -203,7 +203,12 @@ References:
 - **B9 (port M3):** built (`src/m3_port.py`, section 2 item 10). B10 calls
   `m3_port.m3_forecast(target_year, target_week, cases, cutoff)` once per forecast day and
   reads `mu` (the forecast) and `fit_theta` (B6's theta before 26 past forecasts).
-- **B10:** read EI from `ei_weekly.csv` rows with `fit_year` = the forecast day's year.
+- **B10:** built (`src/backtest.py`): EI and rain come from `features_weekly.csv` rows with
+  `fit_year` = the forecast day's year. Until A13 lands, test with `--simulate`. In option C
+  the first forecast day moves to 2018 week 2 (g = 2): at 2018 week 1, 2017's last weeks are
+  still hidden, so the target has only 2 complete reference years (B7 needs 3). For M0 and
+  M1, the training-fit theta (used for the first 26 forecast days) is an assumption: see
+  the module docstring.
 - **C8:** C9's script already runs each storm's observed rain the way C8 should
   (`forecast_run.storm_runs`, the "observed" rows): rain from
   `flood_exposure.storm_peak(totals, start_date, end_date)`, IMERG levels fitted on years
