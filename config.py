@@ -38,6 +38,17 @@ D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flood
 D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
 D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
 D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
+# D8: the paper's five figures, drawn by src/paper_figures.py from the files above. Each chart
+# has a CSV beside it holding the numbers it shows. Stock planning, not prescriptions.
+D8_FIG1_FORECASTS = RESULTS / "d8_fig1_forecasts.png"      # D8 (1): weekly cases, M4 and M3, M4's 90% range
+D8_FIG2_MAE = RESULTS / "d8_fig2_mae.png"                  # D8 (2): MAE by model, and D5's and D6's differences
+D8_FIG2_TABLE = RESULTS / "d8_fig2_mae.csv"                # D8 (2): the numbers in figure 2
+D8_FIG3_RELIABILITY = RESULTS / "d8_fig3_reliability.png"  # D8 (3): reliability of the breach probabilities
+D8_FIG3_TABLE = RESULTS / "d8_fig3_reliability.csv"        # D8 (3): the reliability steps, forecasts per step
+D8_FIG4_MAP = RESULTS / "d8_fig4_exposure_map.png"         # D8 (4): share of residents in flood zones, per storm
+D8_FIG5_DOSES = RESULTS / "d8_fig5_doses.png"              # D8 (5): the doses table as a picture
+D8_FIG5_TABLE = RESULTS / "d8_fig5_doses.csv"              # D8 (5): the doses table
+D8_PREVIEW_PREFIX = "d8_preview_"                          # D8 --preview: figures 1-3 from another B10 file; not for the paper
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
@@ -490,3 +501,11 @@ D7_MAP_SHARE_BREAKS = (0.01, 0.05, 0.10, *FLAG_EXPOSED_SHARES)    # share of a b
 D7_MAP_DOXY_BREAKS = (100, 1_000, 5_000, 10_000, 25_000, 50_000)  # doxycycline 100 mg capsules per barangay
 D7_MAP_W = 0.5                             # a short flood's dose map shows w = 0.5, the middle of WOUND_SHARE_W; the tables give every w
 D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run must agree to 0.01 people or units (both files keep 4 decimals)
+
+# Paper figures (D8). Stock planning, not prescriptions.
+# Assumption: figure 4, the plan's "Carina exposure map", also shows Kristine on the same
+# scale. Carina's IMERG rain sits at R0, so its map is almost empty (Notes.md 1.1); Kristine
+# shows what a storm IMERG registers looks like. If the team does not confirm Kristine,
+# set this to ("carina_2024",).
+D8_MAP_STORMS = ("carina_2024", "kristine_2024")
+D8_RELIABILITY_YEARS = PROB_SCORE_YEARS    # figure 3 scores the breach probabilities on D3's window (2022-2026)
