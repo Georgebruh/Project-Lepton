@@ -2,6 +2,7 @@
 
 Also runs three checks with no S number: A11's storm facts, B8's hand check of
 M0 and M1, and B9's hand check of M3.
+M0 and M1, and B2's hand check of what a model may see.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -19,7 +20,7 @@ from epiweeks import Week, Year
 from scipy import stats
 
 import config
-from src import baselines, breach_scores, forecast_range, scores, thresholds, weeks
+from src import baselines, breach_scores, forecast_range, scores, thresholds, view, weeks
 
 
 class NotBuilt(Exception):
@@ -231,6 +232,110 @@ def stops_with(text, func, *args):
     except ValueError as e:
         return text in str(e)
     return False
+
+
+def simulated_m4_rows(rng):
+    """One made-up S5 dataset: M4's rows for config.S5_WEEKS target weeks, and each row's true mu.
+
+    The weeks are real ones from 2015 week 3 (week index 2) on, so 2020-2021 are COVID
+    weeks and P is B1's population. Weekly rain is drawn from a gamma distribution, wetter
+    in the wet season; a wet-season week floods with a set chance, its EI drawn evenly in a
+    range (config.S5_SIM). Rcum2 and EI2 are built from them as B4 does. The counts follow
+    M4 with the true values (config.S5_TRUE and S5_BASE) week by week, because each week's
+    y~ is the two counts before it (option B): mu from the formula, then a draw from
+    NB(mu, theta = 5). The season waves are computed here, not with m4.season_terms, so a
+    mistake there would show up as a miss.
+    """
+    from src import m4, population
+
+    sim, true, base, theta = config.S5_SIM, config.S5_TRUE, config.S5_BASE, config.S5_THETA
+    n_weeks = config.S5_WEEKS + 2                     # 2 weeks before the first target, for y~
+    calendar = population.weekly_population()
+    calendar = calendar[calendar["week_index"] < n_weeks].reset_index(drop=True)
+    t, pop = calendar["week_index"].to_numpy(), calendar["pop"].to_numpy()
+    wet = calendar["week"].between(*sim["wet_weeks"]).to_numpy()
+    rain_mean = np.where(wet, sim["rain_mean_wet_mm"], sim["rain_mean_dry_mm"])
+    rain = rng.gamma(sim["rain_shape"], rain_mean / sim["rain_shape"])
+    ei = np.where(wet & (rng.random(n_weeks) < sim["flood_chance"]), rng.uniform(*sim["ei_range"], n_weeks), 0.0)
+    rcum2 = np.concatenate([[np.nan], rain[1:] + rain[:-1]])      # Rcum2(t) = R(t - 1) + R(t)
+    ei2 = np.concatenate([[np.nan], np.maximum(ei[1:], ei[:-1])])  # EI2(t) = max(EI(t - 1), EI(t))
+    season = sum(base[f"sin{k}"] * np.sin(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 + base[f"cos{k}"] * np.cos(2 * np.pi * k * t / config.WEEKS_PER_YEAR)
+                 for k in range(1, config.FOURIER_K + 1))
+    covid = calendar["year"].isin(config.COVID_YEARS).to_numpy()
+
+    y, mu = np.zeros(n_weeks), np.full(n_weeks, np.nan)
+    start = sim["start_cases"]
+    y[:2] = rng.negative_binomial(theta, theta / (theta + start), 2)
+    for s in range(2, n_weeks):                        # target s, forecast week T = s - 1
+        T = s - 1
+        log_mu = (np.log(pop[T]) + base["Intercept"] + season[s] + true["rho"] * np.log1p(y[s - 1] + y[s - 2])
+                  + true["beta1"] * rcum2[T] / config.RAIN_SCALE_MM + true["beta2"] * ei2[T] + true["delta"] * covid[s])
+        mu[s] = np.exp(log_mu)
+        y[s] = rng.negative_binomial(theta, theta / (theta + mu[s]))
+
+    targets = pd.DataFrame({"week_index": t[2:], "year": calendar["year"].to_numpy()[2:],
+                            "week": calendar["week"].to_numpy()[2:], "cases": y[2:],
+                            "forecast_week": t[2:] - 1, "recent": y[1:-1] + y[:-2]})
+    features = pd.DataFrame({"week_index": t, "rcum2": rcum2, "ei2": ei2})
+    return m4.model_rows(targets, features, calendar[["week_index", "pop"]]), mu[2:]
+
+
+def s5_m4():
+    """S5 (B5): M4 gets back the true values of made-up data, and forecasts with the offset.
+
+    From the plan: fit M4 on 50 made-up datasets of 400 weeks with true rho 0.30, beta1
+    0.15, beta2 0.05, delta -0.40 and theta 5 (simulated_m4_rows). The average estimates
+    must be near those (the plan's run gave 0.302, 0.148, 0.053, -0.396 and 5.25; here
+    within config.S5_TOLERANCE and S5_THETA_RANGE), and the forecasts, made with the
+    offset, must match the true means (median miss below config.S5_PREDICTION_TOLERANCE).
+    Then, on the last dataset: doubling P doubles every forecast (the offset's coefficient
+    is 1); M4 without EI2 is fit on the same rows and keeps Rcum2; a row with a missing
+    input is dropped from the fit but stops a forecast; with EI2 almost a copy of Rcum2
+    (correlation above 0.8) M4 leaves Rcum2 out; on rows before 2020 the COVID term is
+    left out; a negative count (S11's -999) stops the fit.
+    """
+    from src import m4
+
+    rng = np.random.default_rng(config.RANDOM_SEED)
+    names = {"rho": m4.RECENT, "beta1": m4.RAIN, "beta2": m4.EI, "delta": m4.COVID}
+    estimates, misses = [], []
+    for _ in range(config.S5_DATASETS):
+        rows, true_mu = simulated_m4_rows(rng)
+        fit = m4.fit_m4(rows)
+        assert fit["terms"] == m4.ALL_TERMS and fit["dropped"] == 0, (
+            f"made-up data: terms {fit['terms']}, {fit['dropped']} rows dropped")
+        estimates.append({**{name: fit["result"].params[term] for name, term in names.items()}, "theta": fit["theta"]})
+        misses.append(np.median(np.abs(m4.predict_m4(fit, rows) / true_mu - 1)))
+    mean = pd.DataFrame(estimates).mean()
+    for name, tolerance in config.S5_TOLERANCE.items():
+        assert abs(mean[name] - config.S5_TRUE[name]) <= tolerance, (
+            f"mean {name} of {config.S5_DATASETS} fits is {mean[name]:.3f}, true {config.S5_TRUE[name]} (within {tolerance})")
+    low, high = config.S5_THETA_RANGE
+    assert low <= mean["theta"] <= high, f"mean theta {mean['theta']:.2f}, expected {low}-{high}"
+    miss = float(np.median(misses))
+    assert miss < config.S5_PREDICTION_TOLERANCE, f"forecasts miss the true means by {miss:.1%} (median)"
+
+    mu = m4.predict_m4(fit, rows)
+    assert np.allclose(m4.predict_m4(fit, rows.assign(pop=2 * rows["pop"])), 2 * mu), "doubling P must double the forecast"
+    without = m4.fit_m4(rows, with_ei=False)
+    assert without["rows"] == fit["rows"] and m4.EI not in without["terms"] and m4.RAIN in without["terms"], (
+        f"M4 without EI2: {without['rows']} rows, terms {without['terms']}")
+    gap = rows.copy()
+    gap.loc[gap.index[10], ["rcum2", m4.RAIN]] = np.nan
+    assert m4.fit_m4(gap)["rows"] == fit["rows"] - 1, "a row with a missing input must be dropped from the fit"
+    assert stops_with("missing", m4.predict_m4, fit, gap.iloc[[10]]), "a forecast row with a missing input must stop"
+    copy = rows.assign(**{m4.EI: 2 * rows[m4.RAIN] + rng.normal(0, 0.01, len(rows))})
+    collinear = m4.fit_m4(copy)
+    assert m4.RAIN not in collinear["terms"] and m4.EI in collinear["terms"], (
+        f"correlation {collinear['corr_rain_ei']:.2f}: Rcum2 must be left out, terms {collinear['terms']}")
+    early = m4.fit_m4(rows[rows["year"] < min(config.COVID_YEARS)])
+    assert m4.COVID not in early["terms"], "before 2020 the COVID term cannot be estimated and must be left out"
+    negative = rows.assign(cases=rows["cases"].where(rows.index != rows.index[5], config.S11_HIDDEN_COUNT))
+    assert stops_with("negative", m4.fit_m4, negative), "a negative count must stop the fit"
+    return (f"mean of {config.S5_DATASETS} fits: rho {mean['rho']:.3f}, beta1 {mean['beta1']:.3f}, "
+            f"beta2 {mean['beta2']:.3f}, delta {mean['delta']:.3f}, theta {mean['theta']:.2f}; "
+            f"forecasts with the offset within {miss:.1%} of the true means (median)")
 
 
 def s6_theta():
@@ -525,6 +630,74 @@ def b9_m3():
     assert low <= fit_theta <= high, f"M3's fit_theta on counts with theta 5 is {fit_theta:.2f}, expected {low}-{high}"
     return (f"gap fills match the hand answers at 2 cutoffs; forecasts {' and '.join(forecasts)} (true 60) "
             f"unchanged with later counts hidden; fit_theta {fit_theta:.2f} (true 5); bad tables stop")
+def b2_view():
+    """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
+
+    toy_cases from 2022 to 2026: 10 x (year - 2014) + week, so 2024 week 10 = 110 and 2025
+    week 53 = 163. Forecast day T = 2024 week 10, target 2024 week 11:
+      - option B: cutoff T; y~ = y(2024 w10) + y(w9) = 110 + 109 = 219. The last training
+        row is target w10, with y(w9) + y(w8) = 217; the first two rows have no y~ (2021 is
+        not in the data) and the third is y(2022 w2) + y(w1) = 82 + 81 = 163.
+      - option C, g = 2: cutoff w8; y~ = y(w8) + y(w7) = 215. The last training row is
+        target w8, with y(w5) + y(w4) = 209. g = 1 and 3: y~ = 217 and 213.
+      - the 2-week forecast (B11, h = 2) in option B: y~ unchanged, 219; target w12; the last
+        training row (w10) uses y(w8) + y(w7) = 215.
+      - across a 53-week year, option B, T = 2026 w1: y~ = y(2026 w1) + y(2025 w53) = 121 + 163.
+    The forecast's y~ equals the training row's y~ for the same target, once that target can
+    be seen (same lag). Each case is rerun with every count after the cutoff overwritten
+    with -999 (hide_after, as S11 does): nothing changes. Must stop: no option set (None),
+    option A (not built), a missing count at the cutoff, a week listed twice.
+    """
+    cases = toy_cases(2026, first_year=2022)
+    T = weeks.week_index_of(2024, 10)
+    worked = [
+        # option, g, horizon, forecast day (year, week), y~ by hand, last training row (year, week, y~)
+        ("B", 2, 1, (2024, 10), 219, (2024, 10, 217)),
+        ("C", 2, 1, (2024, 10), 215, (2024, 8, 209)),
+        ("C", 1, 1, (2024, 10), 217, (2024, 9, 107 + 106)),
+        ("C", 3, 1, (2024, 10), 213, (2024, 7, 103 + 102)),
+        ("B", 2, 2, (2024, 10), 219, (2024, 10, 215)),
+        ("B", 2, 1, (2026, 1), 121 + 163, (2026, 1, 163 + 162)),
+    ]
+    for option, g, h, (year, week), answer, (last_year, last_week, last_recent) in worked:
+        day = weeks.week_index_of(year, week)
+        label = f"option {option}, g = {g}, h = {h}, forecast day {year} week {week}"
+        cut = view.cutoff(day, option, g)
+        assert cut == day - (g if option == "C" else 0), f"{label}: cutoff {cut}"
+        row = view.prediction_row(cases, day, option, g, h)
+        assert row["recent"].iloc[0] == answer, f"{label}: y~ = {row['recent'].iloc[0]}, by hand {answer}"
+        assert row["week_index"].iloc[0] == day + h and row["forecast_week"].iloc[0] == day, f"{label}: wrong target"
+        assert weeks.year_week(row["week_index"].iloc[0]) == (row["year"].iloc[0], row["week"].iloc[0])
+        train = view.training_rows(cases, day, option, g, h)
+        last = train.iloc[-1]
+        assert (last["year"], last["week"], last["recent"]) == (last_year, last_week, last_recent), (
+            f"{label}: last training row {last['year']} week {last['week']}, y~ {last['recent']}")
+        assert (train["week_index"] <= cut).all() and len(train) == (cases["week_index"] <= cut).sum()
+        assert (train["forecast_week"] == train["week_index"] - h).all(), f"{label}: forecast_week is not target - h"
+        hidden = hide_after(cases, cut)
+        assert view.training_rows(hidden, day, option, g, h).equals(train), f"{label}: training rows read a hidden count"
+        assert view.prediction_row(hidden, day, option, g, h).equals(row), f"{label}: y~ read a hidden count"
+        # the same target, once it can be seen, gets the same y~ in training
+        later = view.training_rows(cases, day + h + view.guard_weeks(option, g), option, g, h)
+        same = later.loc[later["week_index"] == day + h, "recent"]
+        assert list(same) == [answer], f"{label}: the training row for the same target has y~ {list(same)}"
+
+    first = view.training_rows(cases, T, "B", 2, 1)["recent"].iloc[:3]
+    assert first.iloc[:2].isna().all() and first.iloc[2] == 163, f"first training rows' y~: {list(first)}"
+
+    missing = cases.copy()
+    missing.loc[missing["week_index"] == T, "cases"] = np.nan
+    twice = pd.concat([cases, cases.tail(1)])
+    assert stops_with("DATA_OPTION", view.cutoff, T, None, 2), "no data option set must stop"
+    try:
+        view.cutoff(T, "A", 2)
+        raise AssertionError("option A must stop: it is not built")
+    except NotImplementedError:
+        pass
+    assert stops_with("one is missing", view.prediction_row, missing, T, "B", 2, 1), "a missing count at the cutoff must stop"
+    assert stops_with("listed twice", view.training_rows, twice, T, "B", 2, 1), "a week listed twice must stop"
+    return (f"{len(worked)} forecast days match the hand answers in options B and C (g = 1-3, h = 1 and 2); "
+            f"counts after the cutoff hidden: nothing changes")
 
 
 def s8_census_fit():
@@ -994,7 +1167,7 @@ CHECKS = {
     "S3 census join": s3_census,
     "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
-    "S5 M4 simulation": not_built("B5"),
+    "S5 M4 simulation": s5_m4,
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
     "S7 scores": s7_scores,
@@ -1008,6 +1181,7 @@ CHECKS = {
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,
     "S10 allocate": s10_allocate,
+    "B2 view": b2_view,
     "S11 leakage": not_built("B10"),
 }
 
