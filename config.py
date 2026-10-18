@@ -175,6 +175,13 @@ M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the t
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
 RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
+# B5: statsmodels' optimizers for the negative binomial fit, in order. Newton is fast and
+# exact, but can break down to NaN coefficients still flagged "converged" (seen on made-up
+# data, 2026-10-18); BFGS then reaches the same maximum. Both failing stops the run.
+M4_FIT_METHODS = ("newton", "bfgs")
+M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
+M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
+M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
 
 # M3 benchmark (B3), read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)
@@ -417,6 +424,28 @@ S2_KNOWN_STORMS = {
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
+# S5 (B5): made-up datasets that follow M4, fitted to see if M4 gets the true values back.
+S5_DATASETS = 50                           # the plan: 50 datasets...
+S5_WEEKS = 400                             # ...of 400 target weeks each
+S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the plan's true values
+S5_THETA = 5                               # the plan's true theta
+# Our choice (the plan gives none): about 20-60 cases a week, a June-November wet season.
+S5_BASE = {"Intercept": -13.0, "sin1": 0.4, "cos1": -0.3, "sin2": 0.1, "cos2": 0.05, "sin3": 0.0, "cos3": 0.0}
+S5_SIM = {
+    "start_cases": 20,                     # mean count of the 2 weeks before the first target (y~ needs them)
+    "rain_shape": 2.0,                     # weekly rain ~ gamma with this shape...
+    "rain_mean_dry_mm": 30,                # ...and this mean outside the wet season...
+    "rain_mean_wet_mm": 120,               # ...and this mean in it
+    "wet_weeks": (23, 48),                 # MMWR weeks of the wet season (about June to November)
+    "flood_chance": 0.15,                  # chance a wet-season week has a flood (EI above 0)
+    "ei_range": (1.0, 20.0),               # a flood week's EI, % of residents, drawn evenly in this range
+}
+# Mean of 50 fits within this of the truth. rho leans about 0.02 low at 400 weeks: a model fed
+# its own past counts is biased in short series (0.273 at 400 weeks, 0.298 at 1,600, 0.299 at
+# 3,000 in a 30-dataset test on 2026-10-18), so 0.03 leaves room for that lean, not for a bug.
+S5_TOLERANCE = {"rho": 0.03, "beta1": 0.03, "beta2": 0.01, "delta": 0.06}
+S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range (the plan's run: 5.25)
+S5_PREDICTION_TOLERANCE = 0.10             # median |forecast / true mean - 1| below this
 S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
 S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
