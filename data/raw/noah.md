@@ -28,6 +28,18 @@ the higher level keeps that area. In the clean file the 100-year map is then
 71.10 / 112.42 / 63.76, 247.28 km2; the other two are unchanged at 2 decimals.
 The maps reach lon 121.135, lat 14.785, which covers QC (OSM outline to 121.134, 14.776),
 so the Rizal and Bulacan maps are not needed for QC.
+S8 inspection (2026-10-18): in 11 barangays the exposed count falls from the 5-year map to a
+rarer one. In 10 of them (Bayanihan, Malaya, Marilag, Pag-ibig Sa Nayon, Sacred Heart,
+San Jose, San Martin de Porres, Sikatuna Village, Teachers Village West, Villa Maria Clara;
+0.06-0.57 km2 each, around Project 4, Cubao and Diliman) the 25-year map floods more than
+the 5-year one, but the 100-year map floods less: its flood shapes are thinner and in places
+shifted by a pixel or two. The 100-year shapefile is a later NOAH release (dated 2022-11-28;
+the other two 2021) and all three come in EPSG:4326 and go through the same steps, so the
+difference is in NOAH's maps, not in A8 or C2. The largest drop is San Jose, 2,064 residents
+on the 5-year map against 1,522 on the 100-year (542 people, 9% of its population). Batasan
+Hills falls 0.2% from the 5- to the 25-year map, then rises. QC's total still rises
+(675,551, 860,921, 893,375). The maps are used as published; the paper names this as a
+limitation.
 Licence: ODC-ODbL (metadata_flood.txt); anything built from the maps is shared under ODbL.
 Cite: UP Resilience Institute / NOAH Center, Project NOAH flood hazard maps (5-, 25-, 100-year
 rain return), Metro Manila, https://noah.up.edu.ph
