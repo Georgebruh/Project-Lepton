@@ -24,6 +24,9 @@ EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
+IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
+RAIN_WEEKLY = DATA_CLEAN / "rain_weekly.csv"            # B4: weekly QC rain R(t) and Rcum2(t)
+FEATURES_WEEKLY = DATA_CLEAN / "features_weekly.csv"    # B4: weekly rain and exposure (R, Rcum2, EI, EI2)
 C8_RUNS = RESULTS / "c8_observed_runs.csv"            # C8: one row per storm, test, D, cut-off and w
 C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # C8: the main run, one row per barangay
 C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need per health center and pool
@@ -68,6 +71,7 @@ BACKTEST_LAST_YEAR = 2026                  # to the last complete week of 2026
 COVID_YEARS = (2020, 2021)
 WEEKS_PER_YEAR = 52.18                     # period of the M4 season terms, B5
 MAX_WEEK = 52                              # week 53 is mapped to 52
+DAYS_PER_WEEK = 7                          # UTC days in one complete morbidity week, B4
 
 # Scoring windows (Workstream D)
 MAE_YEARS = (2018, 2019, 2022, 2023, 2024, 2025, 2026)
