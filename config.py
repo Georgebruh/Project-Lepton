@@ -161,6 +161,7 @@ CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 DATA_OPTION = None                         # "A", "B" or "C"; set by the A13 decision
 DELAY_GUARD_G = 2                          # assumption, option C only
 DELAY_GUARD_G_TESTS = (1, 3)
+FORECAST_HORIZON_WEEKS = 1                 # B2, B10: forecast day T forecasts week T + 1 (the B11 stretch: 2)
 REPORTED_SHARE_CUTOFF = 0.50               # assumption, option A only
 REPORTED_SHARE_CUTOFF_TEST = 0.80
 

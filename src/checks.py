@@ -1,7 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs two checks with no S number: A11's storm facts and B8's hand check of
-M0 and M1.
+Also runs three checks with no S number: A11's storm facts, B8's hand check of
+M0 and M1, and B2's hand check of what a model may see.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -19,7 +19,7 @@ from epiweeks import Week, Year
 from scipy import stats
 
 import config
-from src import baselines, breach_scores, forecast_range, scores, thresholds, weeks
+from src import baselines, breach_scores, forecast_range, scores, thresholds, view, weeks
 
 
 class NotBuilt(Exception):
@@ -429,6 +429,76 @@ def b8_baselines():
         assert stops_with("Week must be in", model, 2026, 53, cases, weeks.week_index_of(2026, 52)), (
             "M0 and M1 must stop on 2026 week 53, which does not exist")
     return f"{len(worked)} forecasts match the hand answers; leaks, gaps, duplicates and bad weeks stop"
+
+
+def b2_view():
+    """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
+
+    toy_cases from 2022 to 2026: 10 x (year - 2014) + week, so 2024 week 10 = 110 and 2025
+    week 53 = 163. Forecast day T = 2024 week 10, target 2024 week 11:
+      - option B: cutoff T; y~ = y(2024 w10) + y(w9) = 110 + 109 = 219. The last training
+        row is target w10, with y(w9) + y(w8) = 217; the first two rows have no y~ (2021 is
+        not in the data) and the third is y(2022 w2) + y(w1) = 82 + 81 = 163.
+      - option C, g = 2: cutoff w8; y~ = y(w8) + y(w7) = 215. The last training row is
+        target w8, with y(w5) + y(w4) = 209. g = 1 and 3: y~ = 217 and 213.
+      - the 2-week forecast (B11, h = 2) in option B: y~ unchanged, 219; target w12; the last
+        training row (w10) uses y(w8) + y(w7) = 215.
+      - across a 53-week year, option B, T = 2026 w1: y~ = y(2026 w1) + y(2025 w53) = 121 + 163.
+    The forecast's y~ equals the training row's y~ for the same target, once that target can
+    be seen (same lag). Each case is rerun with every count after the cutoff overwritten
+    with -999 (hide_after, as S11 does): nothing changes. Must stop: no option set (None),
+    option A (not built), a missing count at the cutoff, a week listed twice.
+    """
+    cases = toy_cases(2026, first_year=2022)
+    T = weeks.week_index_of(2024, 10)
+    worked = [
+        # option, g, horizon, forecast day (year, week), y~ by hand, last training row (year, week, y~)
+        ("B", 2, 1, (2024, 10), 219, (2024, 10, 217)),
+        ("C", 2, 1, (2024, 10), 215, (2024, 8, 209)),
+        ("C", 1, 1, (2024, 10), 217, (2024, 9, 107 + 106)),
+        ("C", 3, 1, (2024, 10), 213, (2024, 7, 103 + 102)),
+        ("B", 2, 2, (2024, 10), 219, (2024, 10, 215)),
+        ("B", 2, 1, (2026, 1), 121 + 163, (2026, 1, 163 + 162)),
+    ]
+    for option, g, h, (year, week), answer, (last_year, last_week, last_recent) in worked:
+        day = weeks.week_index_of(year, week)
+        label = f"option {option}, g = {g}, h = {h}, forecast day {year} week {week}"
+        cut = view.cutoff(day, option, g)
+        assert cut == day - (g if option == "C" else 0), f"{label}: cutoff {cut}"
+        row = view.prediction_row(cases, day, option, g, h)
+        assert row["recent"].iloc[0] == answer, f"{label}: y~ = {row['recent'].iloc[0]}, by hand {answer}"
+        assert row["week_index"].iloc[0] == day + h and row["forecast_week"].iloc[0] == day, f"{label}: wrong target"
+        assert weeks.year_week(row["week_index"].iloc[0]) == (row["year"].iloc[0], row["week"].iloc[0])
+        train = view.training_rows(cases, day, option, g, h)
+        last = train.iloc[-1]
+        assert (last["year"], last["week"], last["recent"]) == (last_year, last_week, last_recent), (
+            f"{label}: last training row {last['year']} week {last['week']}, y~ {last['recent']}")
+        assert (train["week_index"] <= cut).all() and len(train) == (cases["week_index"] <= cut).sum()
+        assert (train["forecast_week"] == train["week_index"] - h).all(), f"{label}: forecast_week is not target - h"
+        hidden = hide_after(cases, cut)
+        assert view.training_rows(hidden, day, option, g, h).equals(train), f"{label}: training rows read a hidden count"
+        assert view.prediction_row(hidden, day, option, g, h).equals(row), f"{label}: y~ read a hidden count"
+        # the same target, once it can be seen, gets the same y~ in training
+        later = view.training_rows(cases, day + h + view.guard_weeks(option, g), option, g, h)
+        same = later.loc[later["week_index"] == day + h, "recent"]
+        assert list(same) == [answer], f"{label}: the training row for the same target has y~ {list(same)}"
+
+    first = view.training_rows(cases, T, "B", 2, 1)["recent"].iloc[:3]
+    assert first.iloc[:2].isna().all() and first.iloc[2] == 163, f"first training rows' y~: {list(first)}"
+
+    missing = cases.copy()
+    missing.loc[missing["week_index"] == T, "cases"] = np.nan
+    twice = pd.concat([cases, cases.tail(1)])
+    assert stops_with("DATA_OPTION", view.cutoff, T, None, 2), "no data option set must stop"
+    try:
+        view.cutoff(T, "A", 2)
+        raise AssertionError("option A must stop: it is not built")
+    except NotImplementedError:
+        pass
+    assert stops_with("one is missing", view.prediction_row, missing, T, "B", 2, 1), "a missing count at the cutoff must stop"
+    assert stops_with("listed twice", view.training_rows, twice, T, "B", 2, 1), "a week listed twice must stop"
+    return (f"{len(worked)} forecast days match the hand answers in options B and C (g = 1-3, h = 1 and 2); "
+            f"counts after the cutoff hidden: nothing changes")
 
 
 def s8_census_fit():
@@ -911,6 +981,7 @@ CHECKS = {
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,
     "S10 allocate": s10_allocate,
+    "B2 view": b2_view,
     "S11 leakage": not_built("B10"),
 }
 

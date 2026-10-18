@@ -20,6 +20,8 @@ Run from the repository root:  python -m src.weeks
 That writes the table to config.CALENDAR.
 """
 
+from datetime import timedelta
+
 import pandas as pd
 from epiweeks import Week, Year
 
@@ -44,6 +46,15 @@ def week_index_of(year, week):
     Takes whole-number floats too (2025.0), as pandas rows give them.
     """
     return week_index(Week(int(year), int(week)).startdate())
+
+
+def year_week(index):
+    """MMWR (year, week) of continuous week index `index`: the reverse of week_index_of.
+
+    In plain words: the week that starts `index` whole weeks after 2015 week 1's Sunday.
+    """
+    wk = Week.fromdate(config.FIRST_WEEK_START + timedelta(weeks=int(index)))
+    return wk.year, wk.week
 
 
 def week_of_year(week):
