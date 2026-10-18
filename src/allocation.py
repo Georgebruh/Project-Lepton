@@ -51,7 +51,8 @@ C8 and C9 call center_needs(residents, shares, center_table, D, w), then allocat
 Run from the repository root:  python -m src.allocation   (a few seconds)
 Needs A5, A10 and C1 (WorldPop grid and scale factors) for the shares file, and C2 and C4
 for the preview. It writes the shares file, then previews C7 at the 25-year map's own rain,
-R24 = R(25): the need per health center in a week-long flood, and allocate with stock
+Rn = R(25) (n-day totals, config.RAIN_ACCUM_DAYS): the need per health center in a
+week-long flood, and allocate with stock
 covering half of each pool's need (illustrative, config.ALLOCATE_PREVIEW_STOCK_SHARE) in a
 1-day flood at w = 0.5. Then run the checks (S10, C7 part):  python -m src.checks
 """
@@ -62,7 +63,7 @@ import pandas as pd
 import shapely
 
 import config
-from src import doses, exposed, rescale
+from src import doses, exposed
 
 POOLS = ["doxy100", "courses", "amox500"]   # C6's units: adult doxycycline, children's courses, amoxicillin
 SHOW = 10    # health centers printed, to inspect
@@ -107,6 +108,10 @@ def split_by_nearest_residents(shape, psgc, centers):
     The centers' Voronoi cells, cut to the barangay, hold those residents; C1's
     rescaled_residents counts them. Returns shares in the order of centers; they add to 1.
     """
+    # C1's rescale needs rasterio and exactextract, so it is imported only here: allocate
+    # and check S10 then run on a computer without them.
+    from src import rescale
+
     cells = shapely.voronoi_polygons(shapely.MultiPoint(list(centers.geometry)), extend_to=shape, ordered=True)
     if not all(cell.contains(point) for cell, point in zip(cells.geoms, centers.geometry)):
         raise ValueError(f"barangay {psgc}: Voronoi cells came back out of order, so shares would go to the wrong centers")
@@ -256,7 +261,9 @@ def main():
     barangays = load_barangays()
     centers, left_out = load_centers(barangays)
     center_table = center_shares(barangays, centers)
-    center_table.to_csv(config.CENTER_SHARES, index=False)
+    part = config.CENTER_SHARES.with_suffix(".part")    # a stopped run leaves no half file
+    center_table.to_csv(part, index=False)
+    part.replace(config.CENTER_SHARES)
     report_shares(center_table, left_out)
 
     overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})

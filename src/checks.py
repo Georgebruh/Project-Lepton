@@ -1,6 +1,7 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs B8's hand check of M0 and M1, which has no S number.
+Also runs two checks with no S number: A11's storm facts and B8's hand check of
+M0 and M1.
 
 Run from the repository root:  python -m src.checks
 A check that is not built yet, or whose data file is not on this computer, is
@@ -146,6 +147,55 @@ def s2_rain_file():
             f"{name}'s wettest day is #{best} of {len(box_mean)} days")
     return (f"{len(days)} days {days[0]:%Y-%m-%d} to {days[-1]:%Y-%m-%d}; {carina_text}; "
             f"{', '.join(storm_text)} of {len(box_mean)} days")
+
+
+def a11_storms():
+    """A11 (no S number): the storm facts in config.STORMS that C8 and C9 read.
+
+    For each storm: flooding starts on or before the day it ends, and D (days flooded) is
+    the days from start_date to end_date, both counted. The wettest UTC days lie in the
+    storm's year, in order, and hold at least config.RAIN_ACCUM_DAYS days, so C3 and C9
+    have a whole n-day total there (A15 fetches the forecasts for those days). The flooded
+    barangays are 10-digit QC PSGC codes, none listed twice. Then, with A5's census table:
+    every code is one of QC's 142 barangays. A wrong code would quietly lower C8's share of
+    flooded barangays that were flagged. Last, with A4's IMERG file: IMERG's wettest n-day
+    window ending during the flood (start_date to end_date) ends on one of the wettest days,
+    so C8 takes the storm's real peak and A15 fetches the forecasts for it.
+    """
+    for storm, facts in config.STORMS.items():
+        start, end = facts["start_date"], facts["end_date"]
+        assert start <= end, f"{storm}: flooding ends ({end}) before it starts ({start})"
+        days = (end - start).days + 1
+        assert facts["D"] == days, f"{storm}: D = {facts['D']}, but {start} to {end} is {days} days"
+        first, last = facts["wettest_days"]
+        assert first.year == last.year == facts["year"], f"{storm}: wettest days {first} to {last} not in {facts['year']}"
+        assert (last - first).days + 1 >= config.RAIN_ACCUM_DAYS, (
+            f"{storm}: wettest days {first} to {last} are fewer than {config.RAIN_ACCUM_DAYS} (config.RAIN_ACCUM_DAYS)")
+        codes = facts["flooded_psgc"]
+        assert len(codes) == len(set(codes)), f"{storm}: a flooded barangay is listed twice"
+        bad = [c for c in codes if not (len(c) == 10 and c.isdigit() and c.startswith(config.QC_PSGC_PREFIX))]
+        assert not bad, f"{storm}: not 10-digit QC PSGC codes: {bad}"
+
+    need_file(config.CENSUS_QC, "A5 (python -m src.census)")
+    known = set(pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})["psgc"])
+    for storm, facts in config.STORMS.items():
+        unknown = sorted(set(facts["flooded_psgc"]) - known)
+        assert not unknown, f"{storm}: flooded barangays not among A5's {len(known)}: {unknown}"
+
+    need_file(config.IMERG_DAILY, "A4 (python -m src.imerg)")
+    from src import flood_exposure as fe
+
+    totals = fe.n_day_totals(fe.catchment_rain(), config.RAIN_ACCUM_DAYS)
+    peaks = []
+    for storm, facts in config.STORMS.items():
+        peak_mm, peak_end = fe.storm_peak(totals, facts["start_date"], facts["end_date"])
+        first, last = facts["wettest_days"]
+        assert first <= peak_end.date() <= last, (
+            f"{storm}: IMERG's wettest {config.RAIN_ACCUM_DAYS}-day window during the flood ends on "
+            f"{peak_end:%Y-%m-%d}, outside the wettest days {first} to {last}")
+        peaks.append(f"{storm} D = {facts['D']}, {len(facts['flooded_psgc'])} flooded barangays, "
+                     f"peak {peak_mm:.0f} mm ending {peak_end:%d %b}")
+    return "; ".join(peaks)
 
 
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
@@ -466,15 +516,18 @@ def s9_exposure_index():
     return (f"{config.RAIN_ACCUM_DAYS}-day totals; {len(fit_years)} fit years x {len(last)} weeks; "
             f"EI above 0 in {(last['ei'] > 0).mean():.1%} "
             f"of weeks, highest {last['ei'].max():.1f}% ({config.BACKTEST_LAST_YEAR} fit)")
+
+
 def s10_shares():
     """S10, first part (C4): child, pregnant and adult shares.
 
     First a made-up city whose answers are worked out by hand, which tests the formulas
     themselves. Then shares_qc.csv: one row for each of A5's 142 barangays; no share
     missing or negative; the three shares add to 1 in every barangay; the pregnant counts
-    add up to QC's (A12's births x 0.75); and the file matches a fresh run of src.shares,
-    which catches a file left over from older inputs. The upper-bound test (3.5% of QC
-    pregnant) must give shares that add to 1, none negative, too.
+    add up to QC's (A12's births x 0.75), which stay below the 3.5% upper bound; and the
+    file matches a fresh run of src.shares, which catches a file left over from older
+    inputs. The upper-bound test (3.5% of QC pregnant) must give shares that add to 1,
+    none negative, too.
     The second part (doses and allocate) is C6 and C7.
     """
     from src import shares
@@ -501,7 +554,9 @@ def s10_shares():
         f"shares file has {len(table)} rows, {table.index.nunique()} barangays")
     assert set(table.index) == set(counts.index), "shares file and A5's barangays hold different barangays"
     preg_qc = shares.pregnant_from_births(shares.qc_births())
-    upper = shares.group_shares(counts, shares.upper_bound_pregnant(counts))
+    upper_qc = shares.upper_bound_pregnant(counts)
+    assert preg_qc < upper_qc, f"{preg_qc:,.0f} pregnant women is above the 3.5% upper bound ({upper_qc:,.0f})"
+    upper = shares.group_shares(counts, upper_qc)
     for label, t in (("shares file", table), ("upper bound", upper)):
         s = t[shares.SHARES]
         assert s.notna().all().all(), f"{label}: a share is missing"
@@ -739,6 +794,7 @@ CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": s2_rain_file,
     "S3 census join": s3_census,
+    "A11 storm facts": a11_storms,
     "S4 cases file": not_built("A13"),
     "S5 M4 simulation": not_built("B5"),
     "S6 theta": not_built("B6"),
@@ -749,8 +805,6 @@ CHECKS = {
     "S8 overlay": s8_overlay,
     "S9 return levels": s9_return_levels,
     "S9 exposure index": s9_exposure_index,
-    "S10 shares and doses": not_built("C4, C6"),
-    "S9 return levels": not_built("C3"),
     "S10 shares": s10_shares,
     "S10 exposed": s10_exposed,
     "S10 doses": s10_doses,

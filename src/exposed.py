@@ -1,7 +1,8 @@
 """Exposed people per barangay and group, and the adult risk tiers (task C5).
 
 C3 gives N_{b,k}: the residents of barangay b in hazard level k (1 low, 2 medium, 3 high)
-whom a storm's wettest day floods, interpolated between NOAH's maps (graded_exposure).
+whom a storm's wettest n-day rain total floods (n = config.RAIN_ACCUM_DAYS, 3 UTC days),
+interpolated between NOAH's maps (graded_exposure).
 C4 gives each barangay's child, pregnant and adult shares. C5 turns the two into the
 people each drug in C6 is for:
 
@@ -43,7 +44,7 @@ C8 and C9 call exposed_with_tiers(residents, shares, D, w), with residents from 
 graded exposure at the storm's rain.
 
 Run from the repository root:  python -m src.exposed
-The script previews C5 at each map's own rain, R24 = R(5), R(25) and R(100), where C3's
+The script previews C5 at each map's own rain, Rn = R(5), R(25) and R(100), where C3's
 graded exposure is exactly that map's residents (check S9), so it needs only C2's
 overlay_qc.csv and C4's shares_qc.csv. It prints QC's totals and writes no file; the
 storm runs are C8 and C9. Then run the checks (S10, C5 part):  python -m src.checks
@@ -66,9 +67,9 @@ def load_shares():
 
 
 def map_residents(overlay, return_period):
-    """N_{b,k} when a storm's wettest day equals the T-year map's rain: that map's rows of C2's table.
+    """N_{b,k} when a storm's wettest n-day total equals the T-year map's rain: that map's rows of C2's table.
 
-    At exactly R24 = R(T), C3's graded exposure is the T-year map's residents (check S9),
+    At exactly Rn = R(T), C3's graded exposure is the T-year map's residents (check S9),
     so C5 can run on C2's table alone. Returns the columns psgc, var and residents.
     """
     rows = overlay[overlay["return_period"] == return_period]
@@ -172,7 +173,8 @@ def report(overlay, shares):
     totals = pd.DataFrame({T: people.sum() for T, people in by_map.items()}).T
     totals["% of QC"] = 100 * totals["exposed"] / qc_pop
     totals.index.name = "map"
-    print(f"QC people exposed if a storm's wettest day equals each map's rain, R24 = R(T), at full "
+    print(f"QC people exposed if a storm's wettest {config.RAIN_ACCUM_DAYS}-day total equals each map's "
+          f"rain, Rn = R(T), at full "
           f"coverage (q = {config.CONTACT_SHARE_Q:g}, r_k = {config.CONTACT_BY_LEVEL}); "
           f"2024 census total {qc_pop:,}:")
     print(totals.to_string(float_format="{:,.0f}".format, formatters={"% of QC": "{:.1f}".format}))

@@ -176,7 +176,9 @@ def main():
         if t[SHARES].isna().any().any() or (t[SHARES] < 0).any().any():
             raise ValueError(f"missing or negative {label}:\n{t[t[SHARES].isna().any(axis=1) | (t[SHARES] < 0).any(axis=1)]}")
 
-    table.reset_index()[["psgc", *counts.columns, "preg", *SHARES]].to_csv(config.SHARES_QC, index=False)
+    part = config.SHARES_QC.with_suffix(".part")    # a stopped run leaves no half file
+    table.reset_index()[["psgc", *counts.columns, "preg", *SHARES]].to_csv(part, index=False)
+    part.replace(config.SHARES_QC)
     report(table, births, preg_qc, upper)
     print(f"\nwrote {config.SHARES_QC} ({len(table)} rows); now run python -m src.checks (S10, first part)")
 

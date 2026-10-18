@@ -8,16 +8,27 @@ API (https://open-meteo.com/en/docs/previous-runs-api), model ECMWF IFS 0.25 deg
 What "previous day N" means: for every hour, Open-Meteo keeps the value from a model
 run started at least 24 x N hours before that hour. It drops each run's first 24 x N
 hours and joins the runs into one series. So precipitation_previous_day1 is the
-forecast made about 1 day ahead, _day2 about 2 days ahead, _day3 about 3 days ahead.
+forecast made about 1 day ahead, _day2 about 2 days ahead, and so on.
 Open-Meteo began storing ECMWF IFS 0.25 runs in February 2024 (first hour: 3 Feb 2024
 for day 1).
+
+Why previous days 1 to 5 (config.FORECAST_PREVIOUS_DAYS): C9 forecasts an n-day rain
+total (n = config.RAIN_ACCUM_DAYS = 3) 1, 2 and 3 days before the window's first day
+(config.FORECAST_LEADS_DAYS). A forecast made L days before the window reaches day i of
+the window (i = 0, 1, 2) L + i days ahead, so it is previous_day L on the first day,
+L + 1 on the second and L + 2 on the third. For each hour of the day, those three values
+come from the same run. Leads 1-3 with n = 3 need previous days 1-5. Taking
+previous_day1 on all three days would mix in runs started during the storm.
 
 Where: every 0.25 degree grid cell that overlaps the A7 catchments, with its share of
 the catchment area as its weight (catchments.grid_cells). A14 uses the same cells for
 ERA5, so C9 compares each forecast with ERA5's own return levels over the same area.
 
 When: each storm's wettest UTC days, from config.STORMS (Carina first; A11 adds the
-2025 and 2026 dates). A storm without dates is skipped and listed as such.
+2025 and 2026 dates), plus the n - 1 days before the first of them. C3 and C8 take a
+storm's wettest n-day window whose last day is one of its wettest days, so a window can
+start up to n - 1 days early (fetch_span). A storm without dates is skipped and listed
+as such.
 
 Hours to UTC days: Open-Meteo labels each hourly total with the end of its hour (the
 01:00 value is rain from 00:00 to 01:00 UTC). utc_day_totals moves every label back
@@ -29,10 +40,12 @@ Each storm's reply is saved unchanged in data/raw/ecmwf_previous_runs/, one JSON
 per storm named with the model and its dates. A file already there is not fetched
 again (delete it to refresh).
 
-Output: data/clean/forecasts_storms.csv, one row per storm, lead time, UTC day and cell:
-    storm, lead_days, date, lat, lon, weight, rain_mm
-A storm and lead time are written only if the archive has every hour of every day at
-every cell. The catchment rain for one storm, lead time and day is sum(weight x rain_mm).
+Output: data/clean/forecasts_storms.csv, one row per storm, previous day N, UTC day and cell:
+    storm, previous_day, date, lat, lon, weight, rain_mm
+previous_day N holds Open-Meteo's precipitation_previous_dayN; C9 turns these into
+lead-time totals. A storm and previous day are written only if the archive has every
+hour of every day at every cell. The catchment rain for one storm, previous day and UTC
+day is sum(weight x rain_mm).
 The table is rewritten on every run, with only its header if no storm is covered, so a
 table from an earlier run is never left behind. A storm Open-Meteo refuses (HTTP 400,
 e.g. dates outside its archive) is reported as not covered; a download that still fails
@@ -58,29 +71,48 @@ TIMEOUT_S = 120
 RETRIES = 3
 RETRY_WAIT_S = 10
 SAME_POINT_DEG = 0.001  # a reply's grid point must be the requested one to within this
-COLUMNS = ["storm", "lead_days", "date", "lat", "lon", "weight", "rain_mm"]
+COLUMNS = ["storm", "previous_day", "date", "lat", "lon", "weight", "rain_mm"]
 
 
 class RequestRefused(Exception):
     """Open-Meteo answered HTTP 400 (dates outside its archive, or a bad parameter). Retrying will not help."""
 
 
-def lead_variable(lead_days):
-    """Open-Meteo's name for the forecast made lead_days days ahead, e.g. precipitation_previous_day1."""
-    return f"precipitation_previous_day{lead_days}"
+def previous_day_variable(n):
+    """Open-Meteo's name for the forecast made n days ahead of each hour, e.g. precipitation_previous_day1."""
+    return f"precipitation_previous_day{n}"
+
+
+def fetch_span(first, last):
+    """The UTC days fetched for a storm whose wettest days are first..last.
+
+    From n - 1 days before `first` (n = config.RAIN_ACCUM_DAYS), so an n-day window that
+    ends on `first` is covered, to `last`.
+    """
+    return first - timedelta(days=config.RAIN_ACCUM_DAYS - 1), last
+
+
+def leads_covered(covered):
+    """The lead times C9 can use: lead L needs previous days L to L + n - 1, all covered.
+
+    covered: coverage(table), True or False per previous day.
+    """
+    days = range(config.RAIN_ACCUM_DAYS)
+    return [lead for lead in config.FORECAST_LEADS_DAYS
+            if all(covered.get(lead + i, False) for i in days)]
 
 
 def raw_path(storm, first, last):
-    """Where one storm's reply is saved, e.g. data/raw/ecmwf_previous_runs/carina_2024_ecmwf_ifs025_20240723_20240725.json.
+    """Where one storm's reply is saved, e.g. data/raw/ecmwf_previous_runs/carina_2024_ecmwf_ifs025_20240721_20240725.json.
 
-    The model is in the name, so changing config.FORECAST_MODEL fetches new replies
-    instead of reading another model's.
+    first and last are the fetched days (fetch_span). The model is in the name, so
+    changing config.FORECAST_MODEL fetches new replies instead of reading another model's.
     """
     return config.ECMWF_RAW / f"{storm}_{config.FORECAST_MODEL}_{first:%Y%m%d}_{last:%Y%m%d}.json"
 
 
 def request_params(cells, first, last):
-    """The Previous Runs request for one storm: every cell, every lead time, in UTC.
+    """The Previous Runs request for one storm: every cell, every previous day, in UTC.
 
     end_date is the day after the storm's last day, for that day's 00:00 value (see the
     top of this file). cell_selection=nearest returns the grid point itself; Open-Meteo's
@@ -89,7 +121,7 @@ def request_params(cells, first, last):
     return {
         "latitude": ",".join(str(v) for v in cells["lat"]),
         "longitude": ",".join(str(v) for v in cells["lon"]),
-        "hourly": ",".join(lead_variable(n) for n in config.FORECAST_LEADS_DAYS),
+        "hourly": ",".join(previous_day_variable(n) for n in config.FORECAST_PREVIOUS_DAYS),
         "models": config.FORECAST_MODEL,
         "start_date": f"{first:%Y-%m-%d}",
         "end_date": f"{last + timedelta(days=1):%Y-%m-%d}",
@@ -150,10 +182,10 @@ def check_reply(replies, cells, path):
                              f"for cell {cell.lat}, {cell.lon} (delete it to refresh)")
         if reply["utc_offset_seconds"] != 0:
             raise ValueError(f"{path.name}: times are not UTC")
-        for n in config.FORECAST_LEADS_DAYS:
-            unit = reply["hourly_units"].get(lead_variable(n), "missing")
+        for n in config.FORECAST_PREVIOUS_DAYS:
+            unit = reply["hourly_units"].get(previous_day_variable(n), "missing")
             if unit != "mm":
-                raise ValueError(f"{path.name}: unit of {lead_variable(n)} is {unit}, expected mm "
+                raise ValueError(f"{path.name}: unit of {previous_day_variable(n)} is {unit}, expected mm "
                                  f"(delete it to refresh)")
 
 
@@ -171,10 +203,11 @@ def utc_day_totals(hourly):
 
 
 def storm_table(storm, replies, cells, first, last):
-    """One storm's daily forecasts: storm, lead_days, date, lat, lon, weight, rain_mm.
+    """One storm's daily forecasts: storm, previous_day, date, lat, lon, weight, rain_mm.
 
-    Days outside first..last are dropped (the request's extra day and the hour before
-    the first day). rain_mm is NaN where the archive misses an hour.
+    first..last are the fetched days (fetch_span). Days outside them are dropped (the
+    request's extra day and the hour before the first day). rain_mm is NaN where the
+    archive misses an hour.
     """
     days = pd.date_range(first, last, freq="D")
     rows = []
@@ -182,30 +215,31 @@ def storm_table(storm, replies, cells, first, last):
         hourly = pd.DataFrame(reply["hourly"]).set_index("time")
         hourly.index = pd.to_datetime(hourly.index)
         daily = utc_day_totals(hourly.astype(float)).reindex(days)
-        for n in config.FORECAST_LEADS_DAYS:
-            for day, rain in daily[lead_variable(n)].items():
-                rows.append({"storm": storm, "lead_days": n, "date": f"{day:%Y-%m-%d}",
+        for n in config.FORECAST_PREVIOUS_DAYS:
+            for day, rain in daily[previous_day_variable(n)].items():
+                rows.append({"storm": storm, "previous_day": n, "date": f"{day:%Y-%m-%d}",
                              "lat": cell.lat, "lon": cell.lon, "weight": round(cell.weight, 6),
                              "rain_mm": round(rain, 2)})  # hourly values have 2 decimals; drops float noise
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
 def coverage(table):
-    """For each lead time: True if every day at every cell has a forecast."""
-    return table.groupby("lead_days")["rain_mm"].apply(lambda r: bool(r.notna().all()))
+    """For each previous day N: True if every day at every cell has a forecast."""
+    return table.groupby("previous_day")["rain_mm"].apply(lambda r: bool(r.notna().all()))
 
 
 def catchment_rain(table):
-    """Catchment rain per lead time and day: sum of weight x rain_mm over the cells (mm)."""
+    """Catchment rain per previous day N and UTC day: sum of weight x rain_mm over the cells (mm)."""
     weighted = table.assign(mm=table["weight"] * table["rain_mm"])
-    return weighted.pivot_table(index="date", columns="lead_days", values="mm", aggfunc="sum").round(1)
+    return weighted.pivot_table(index="date", columns="previous_day", values="mm", aggfunc="sum").round(1)
 
 
 def tracker_line(status):
     """The one line for the Request Tracker: which storms the archive covers."""
     leads = ", ".join(str(n) for n in config.FORECAST_LEADS_DAYS)
     storms = "; ".join(f"{storm} {text}" for storm, text in status.items())
-    return f"A15 ({date.today():%Y-%m-%d}): Open-Meteo Previous Runs, ECMWF IFS 0.25, leads {leads} days: {storms}"
+    return (f"A15 ({date.today():%Y-%m-%d}): Open-Meteo Previous Runs, ECMWF IFS 0.25, "
+            f"{config.RAIN_ACCUM_DAYS}-day totals at leads {leads} days: {storms}")
 
 
 def main():
@@ -221,7 +255,7 @@ def main():
             status[storm] = "not checked: no dates yet (A11)"
             print(f"{storm}: skipped, no wettest days in config.STORMS yet (A11)")
             continue
-        first, last = facts["wettest_days"]
+        first, last = fetch_span(*facts["wettest_days"])
         try:
             replies = download(storm, cells, first, last)
         except RequestRefused as e:
@@ -237,8 +271,9 @@ def main():
         table = storm_table(storm, replies, cells, first, last)
 
         covered = coverage(table)
-        leads_in = [n for n in covered.index if covered[n]]
-        if len(leads_in) == len(covered):
+        days_in = [n for n in covered.index if covered[n]]
+        leads_in = leads_covered(covered)
+        if len(leads_in) == len(config.FORECAST_LEADS_DAYS):
             status[storm] = f"covered ({first} to {last})"
         elif leads_in:
             status[storm] = f"partly covered ({first} to {last}): leads {leads_in} only"
@@ -246,9 +281,9 @@ def main():
             status[storm] = f"not covered ({first} to {last})"
         print(f"  {status[storm]}")
 
-        if leads_in:
-            table = table[table["lead_days"].isin(leads_in)]
-            print("  catchment rain, mm per UTC day (columns: lead in days):")
+        if days_in:
+            table = table[table["previous_day"].isin(days_in)]
+            print("  catchment rain, mm per UTC day (columns: previous day N):")
             print("  " + catchment_rain(table).to_string().replace("\n", "\n  "))
             tables.append(table)
 
