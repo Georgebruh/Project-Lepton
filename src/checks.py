@@ -602,6 +602,47 @@ def d5_primary_endpoint():
             f"8- and 4-week intervals 2-2, 13-week {result.at[13, 'low']:.2f}-{result.at[13, 'high']:.2f}; bad tables stop")
 
 
+def d6_flood_test():
+    """D6 (no S number): the flood test and the practical test on made-up misses, worked by hand.
+
+    2022-2023 (104 weeks), count 20 every week (toy_forecasts).
+      - EI2 helps: M4 hits every count, M4 without EI2 misses by 1, 3, 1, 3, ...: d = -1, -3,
+        mean -2, and every 8-week block holds as many -1s as -3s, so the interval is
+        exactly -2 to -2: "makes M4 more accurate". M1 misses like M4 without EI2: M4 vs
+        M1 is also -2, with DM = -2 sqrt(103).
+      - EI2 adds nothing: M4 misses by 1, 0, ..., M4 without EI2 by 0, 1, ...: d = 1, -1,
+        mean 0, every 8-week block sums to 0, so the interval is 0 to 0: "adds no clear
+        accuracy ... Layer 2, not Layer 1".
+      - In both, the 4- and 13-week blocks reach the same verdict ("agree"). A made-up
+        result where the 13-week check finds no clear difference while the 8-week row
+        says M4 is more accurate must say the result depends on the block length.
+    The flood test never has a DM (nested models); the practical test always does.
+    """
+    helps = compare.flood_and_practical_tests(toy_forecasts({"M4": [0], "M4_no_EI2": [1, 3], "M1": [1, 3]}))
+    eight = helps[helps["block_weeks"] == config.BOOT_BLOCK_WEEKS].set_index("comparison")
+    for name in ("M4 vs M4_no_EI2", "M4 vs M1"):
+        assert (eight.at[name, "mean_diff"], eight.at[name, "low"], eight.at[name, "high"]) == (-2, -2, -2), eight
+        assert eight.at[name, "verdict"] == "M4 misses less", eight.at[name, "verdict"]
+    flood = helps["comparison"] == "M4 vs M4_no_EI2"
+    assert helps.loc[flood, "dm_stat"].isna().all(), "the flood test must have no DM (nested models)"
+    assert np.allclose(helps.loc[~flood, "dm_stat"], -2 * np.sqrt(103)), helps.loc[~flood, "dm_stat"]
+    found = compare.flood_finding(helps)
+    assert found.startswith("The flood exposure index makes M4 more accurate") and found.endswith("agree."), found
+
+    nothing = compare.flood_and_practical_tests(toy_forecasts({"M4": [1, 0], "M4_no_EI2": [0, 1], "M1": [3]}))
+    row = nothing[(nothing["comparison"] == "M4 vs M4_no_EI2") & (nothing["block_weeks"] == 8)].iloc[0]
+    assert (row["mean_diff"], row["low"], row["high"], row["verdict"]) == (0, 0, 0, "no clear difference"), row
+    found_nothing = compare.flood_finding(nothing)
+    assert "adds no clear accuracy" in found_nothing and "Layer 2, not Layer 1" in found_nothing, found_nothing
+    assert found_nothing.endswith("agree."), found_nothing
+
+    split = pd.DataFrame({"comparison": "M4 vs M4_no_EI2", "block_weeks": [8, 4, 13], "mean_diff": -0.3,
+                          "low": [-0.4, -0.5, -0.6], "high": [-0.1, -0.1, 0.2],
+                          "verdict": ["M4 misses less", "M4 misses less", "no clear difference"]})
+    assert compare.flood_finding(split).endswith("depends on the block length."), compare.flood_finding(split)
+    return f"EI2 helps: interval -2 to -2; EI2 adds nothing: 0 to 0, \"{found_nothing[:46]}...\"; no DM for nested models"
+
+
 def b8_baselines():
     """B8 (no S number): M0 and M1 on made-up counts, worked by hand.
 
@@ -1290,6 +1331,7 @@ CHECKS = {
     "S7 scores": s7_scores,
     "D2 MASE": d2_mase,
     "D5 primary endpoint": d5_primary_endpoint,
+    "D6 flood test": d6_flood_test,
     "B8 M0 and M1": b8_baselines,
     "B9 M3": b9_m3,
     "S8 census fit": s8_census_fit,
