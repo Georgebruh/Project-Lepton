@@ -1,0 +1,31 @@
+/* F3: buttons (Button.tsx), Figma node 3:65. The label is Label/UI (.label-ui). */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Primary: filled teal */
+.button-primary {
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+/* Secondary: outlined. As in Figma, the 1 px border adds to the size (46 px tall, not 44). */
+.button-secondary {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+/* Ghost: text only */
+.button-ghost {
+  color: var(--color-text-secondary);
+}

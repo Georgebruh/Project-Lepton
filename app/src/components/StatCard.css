@@ -1,0 +1,22 @@
+/* F3: stat cards (StatCard.tsx), Figma node 4:8. */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.stat-card-label {
+  color: var(--color-text-tertiary);
+}
+
+.stat-card-value {
+  color: var(--color-text-primary);
+}
+
+.stat-card-caption {
+  color: var(--color-text-secondary);
+}

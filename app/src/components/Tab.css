@@ -1,0 +1,22 @@
+/* F3: tabs (Tab.tsx), Figma node 3:83. The label is Label/UI (.label-ui). */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Selected: raised and outlined. As in Figma, the 1 px border adds to the size (38 px tall,
+   not 36), so a row of tabs lines them up at the top (align-items: flex-start). */
+.tab-selected {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+}
