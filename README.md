@@ -91,3 +91,12 @@ Run after Workstream A, in this order:
 | D5 | none: `primary_endpoint(table)` in `src/compare.py` (M4 vs M3 over the MAE window: mean of \|error M4\| − \|error M3\|, 95% moving-block bootstrap interval with 8-, 4- and 13-week blocks, and the Diebold–Mariano test), on B10's forecasts (columns model, week_index, year, y, mu) | nothing; check "D5 primary endpoint" in `python -m src.checks` |
 | D6 | none: `flood_and_practical_tests(table)` and `flood_finding(result)` in `src/compare.py` (M4 vs M4 without EI2, no Diebold–Mariano since the models are nested; M4 vs M1 with it; same bootstrap as D5) | nothing; check "D6 flood test" in `python -m src.checks` |
 | D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Now, before A13: `--layer2` (figures 4 and 5). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
+
+## App (Workstream F)
+
+The web app lives in `app/`. Its README has the details: the screens, the design tokens, maps
+and the Vercel setup.
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). The eight screens are placeholders until their tasks build them; `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
