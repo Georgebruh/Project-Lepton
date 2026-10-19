@@ -1,0 +1,113 @@
+/* F4: the city panel's case forecast (ForecastPanel.tsx), Figma node 53:316. */
+.forecast-panel {
+  display: flex;
+  flex-direction: column;
+  /* Figma's 18 px between the sections and 22 px top and bottom, between the spacing steps */
+  gap: 18px;
+  min-height: 100%;
+  padding: 22px var(--space-5);
+}
+
+.forecast-panel-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-primary);
+}
+
+.forecast-panel-subtitle {
+  color: var(--color-text-tertiary);
+}
+
+/* A badge keeps its own width in the column */
+.forecast-panel-badge {
+  align-self: flex-start;
+}
+
+.forecast-panel-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* A big number and its words, on one baseline */
+.forecast-panel-number {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  /* Figma's 10 px, between the spacing steps */
+  gap: 10px;
+  color: var(--color-text-primary);
+}
+
+.forecast-panel-muted {
+  color: var(--color-text-secondary);
+}
+
+.forecast-panel-none {
+  color: var(--color-text-secondary);
+}
+
+/* The chance of an outbreak: a card with the level, the percentage and a bar */
+.forecast-panel-chance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 14 px, between the spacing steps */
+  padding: 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-canvas);
+}
+
+.forecast-panel-chance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.forecast-panel-chance-head h3 {
+  color: var(--color-text-primary);
+}
+
+.forecast-panel-chance-value {
+  gap: var(--space-2);
+}
+
+.forecast-panel-chance-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-raised);
+}
+
+/* The bar fills with the level's color: teal, amber or red, as its badge */
+.forecast-panel-chance-fill {
+  height: 100%;
+  border-radius: var(--radius-xs);
+}
+
+.forecast-panel-chance-fill-low {
+  background: var(--color-accent-primary);
+}
+
+.forecast-panel-chance-fill-watch {
+  background: var(--color-status-warn);
+}
+
+.forecast-panel-chance-fill-high {
+  background: var(--color-status-alert);
+}
+
+/* margin-top: auto pushes the buttons to the bottom of the panel, as Figma's spacer does */
+.forecast-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.forecast-panel-action {
+  width: 100%;
+}

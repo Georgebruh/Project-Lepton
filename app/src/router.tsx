@@ -7,10 +7,6 @@ import Home from './screens/Home.tsx'
 import HowItWorks from './screens/HowItWorks.tsx'
 import Kit from './screens/Kit.tsx'
 import Leptospirosis from './screens/Leptospirosis.tsx'
-import MapLayout from './screens/MapLayout.tsx'
-import MapMetroManila from './screens/MapMetroManila.tsx'
-import MapProphylaxis from './screens/MapProphylaxis.tsx'
-import MapQuezonCity from './screens/MapQuezonCity.tsx'
 
 /**
  * F1: the app's eight routes, one per screen in the Figma file. The three map levels are
@@ -18,6 +14,12 @@ import MapQuezonCity from './screens/MapQuezonCity.tsx'
  * Metro Manila to Quezon City to its prophylaxis plan. Any other address, and any error while
  * drawing a screen, shows ErrorPage. F3 adds /kit, the component kit: not a screen, for
  * checking the shared components against Figma.
+ *
+ * F4: the map routes load only when opened (`lazy`), so Home and the phone guide never
+ * download MapLibre (about 1 MB). The /map route's loader fetches the map's files before the
+ * map draws; shouldRevalidate keeps them when the address's date changes, since React Router
+ * would otherwise fetch them again on any change to the query. Each level names its number
+ * in its handle (map/routes.ts).
  */
 export const router = createBrowserRouter([
   {
@@ -27,11 +29,31 @@ export const router = createBrowserRouter([
       { path: '/', element: <Home /> },
       {
         path: '/map',
-        element: <MapLayout />,
+        lazy: async () => {
+          const [{ default: Component }, { loadMapData }] = await Promise.all([
+            import('./screens/MapLayout.tsx'),
+            import('./map/mapData.ts'),
+          ])
+          return { Component, loader: loadMapData }
+        },
+        shouldRevalidate: () => false,
+        hydrateFallbackElement: <p className="route-loading body-m">Loading the map…</p>,
         children: [
-          { index: true, element: <MapMetroManila /> },
-          { path: 'quezon-city', element: <MapQuezonCity /> },
-          { path: 'quezon-city/prophylaxis', element: <MapProphylaxis /> },
+          {
+            index: true,
+            handle: { mapLevel: 1 },
+            lazy: async () => ({ Component: (await import('./screens/MapMetroManila.tsx')).default }),
+          },
+          {
+            path: 'quezon-city',
+            handle: { mapLevel: 2 },
+            lazy: async () => ({ Component: (await import('./screens/MapQuezonCity.tsx')).default }),
+          },
+          {
+            path: 'quezon-city/prophylaxis',
+            handle: { mapLevel: 3 },
+            lazy: async () => ({ Component: (await import('./screens/MapProphylaxis.tsx')).default }),
+          },
         ],
       },
       { path: '/leptospirosis', element: <Leptospirosis /> },

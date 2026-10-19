@@ -533,3 +533,12 @@ APP_COORD_DECIMALS = 5                         # about 1 m
 APP_FLAG_SHARE = FLAG_EXPOSED_SHARES[0]        # the app flags a barangay at 25% (Notes.md 1.2)
 APP_SHARE_BREAKS = (0.05, 0.15, *FLAG_EXPOSED_SHARES)   # the map's five classes: under 5%, 5-15%, 15-25%, 25-50%, 50% or more
 APP_SHORT_FLOOD_W = D7_MAP_W                   # a short flood is shown at w = 0.5, as on D7's maps
+
+# The map (F4). A city's color on the map and its panel's outbreak level come from one model's
+# chance of an outbreak next week, Pr(breach) (B7). Assumption (app plan, open question 3):
+# Low below 10%, Watch from 10% to under 50%, High from 50%, so the design's 22% reads Watch.
+APP_LEVEL_MODEL = "M4"                         # LEPTON's model fills the map and the city panel
+APP_LEVELS = (("low", 0.0), ("watch", 0.10), ("high", 0.50))   # each level and the Pr(breach) it starts at
+# Assumption: a city smaller than this gets no name written on the map, as in Figma (only
+# Pateros, 1.6 km2; the next smallest, San Juan, is 5.8 km2). Its name still shows on hover.
+APP_LABEL_MIN_KM2 = 3

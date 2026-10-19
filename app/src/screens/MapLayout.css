@@ -1,0 +1,91 @@
+/*
+ * F4: the map screens' frame (MapLayout.tsx), Figma frames 1, 2 and 3 of the map drill-down
+ * (section 53:267): the app bar, the breadcrumb bar, then the map, with the panel that slides
+ * in from the right. --map-hover, --map-camera, --map-crossfade, --map-ease and
+ * --map-panel-width come from map/motion.ts through MapLayout.tsx.
+ */
+.map-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  /* What moves with the camera; with reduced motion it is a crossfade instead */
+  --map-move: var(--map-camera);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-layout {
+    --map-move: var(--map-crossfade);
+  }
+}
+
+.map-layout-main {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg-inset);
+}
+
+/* The legend and the zoom buttons, 24 px in from the visible map's bottom right; they move left with the panel */
+.map-layout-controls {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  transition: transform var(--map-camera) var(--map-ease);
+}
+
+.map-layout[data-panel='open'] .map-layout-controls {
+  transform: translateX(calc(-1 * var(--map-panel-width)));
+}
+
+/* The panel: at level 1 it waits past the right edge, as in Figma frame 1, and slides in when a city opens */
+.map-layout-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--map-panel-width);
+  max-width: 100%;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform var(--map-camera) var(--map-ease),
+    visibility 0s linear var(--map-camera);
+}
+
+.map-layout[data-panel='open'] .map-layout-panel {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform var(--map-camera) var(--map-ease),
+    visibility 0s;
+}
+
+/* Reduced motion: the panel crossfades in place, and the controls move without sliding */
+@media (prefers-reduced-motion: reduce) {
+  .map-layout-controls {
+    transition: none;
+  }
+
+  .map-layout-panel {
+    transform: none;
+    opacity: 0;
+    transition:
+      opacity var(--map-crossfade) linear,
+      visibility 0s linear var(--map-crossfade);
+  }
+
+  .map-layout[data-panel='open'] .map-layout-panel {
+    opacity: 1;
+    transition:
+      opacity var(--map-crossfade) linear,
+      visibility 0s;
+  }
+}

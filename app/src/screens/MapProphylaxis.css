@@ -1,0 +1,12 @@
+/* F4: the prophylaxis plan's placeholder in the map's panel (MapProphylaxis.tsx). F5 replaces it. */
+.map-prophylaxis {
+  display: flex;
+  flex-direction: column;
+  /* the city panel's spacing (ForecastPanel.css): Figma's 18 px between sections, 22 px top and bottom */
+  gap: 18px;
+  padding: 22px var(--space-5);
+}
+
+.map-prophylaxis-note {
+  color: var(--color-text-secondary);
+}

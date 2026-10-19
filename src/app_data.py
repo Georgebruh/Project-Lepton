@@ -12,7 +12,8 @@ Files written to app/public/data/ (config.APP_DATA), which the app fetches as /d
                         faeldon/philippines-json-maps, MIT): psgc, name and has_data (only
                         Quezon City has data). Cleaned into one coverage with no gaps or
                         overlaps, Quezon City's outline being A5's barangays joined, so the map
-                        lines up when it drills down (map_shapes)
+                        lines up when it drills down (map_shapes). Also label_lon and
+                        label_lat, where the map writes the city's name (F4, label_points)
   qc_barangays.geojson  A5's 142 barangays: psgc and name
   storms.json           C9's runs of each storm: the rain that fell (observed, IMERG) and
                         the forecasts 1, 2 and 3 days ahead (ECMWF). Each run gives its
@@ -29,7 +30,8 @@ Files written to app/public/data/ (config.APP_DATA), which the app fetches as /d
                         threshold, and each model's mean, 90% range (the 5% and 95%
                         quantiles) and Pr(breach). From results/forecasts.csv; until it
                         exists, from the made-up-count run (config.FORECASTS_SIMULATED) with
-                        "simulated": true
+                        "simulated": true. Also the map's model and outbreak levels (F4:
+                        config.APP_LEVEL_MODEL, config.APP_LEVELS)
   scores.json           only from the real run: each model's MAE and MASE (2018-2019 and
                         2022-2026), WIS, 90% coverage and Brier score (2022-2026), and D5's
                         M4 - M3 difference with its 95% interval
@@ -63,6 +65,7 @@ import numpy as np
 import pandas as pd
 import requests
 import shapely
+import shapely.ops
 
 import config
 from src import (allocation, backtest, breach_scores, compare, doses, exposed, forecast_run,
@@ -224,6 +227,24 @@ def map_shapes(cities, barangays):
                                      crs=config.CRS_OVERLAY)
     return (out_cities.to_crs(config.CRS_LONLAT).sort_values("psgc", ignore_index=True),
             out_barangays.to_crs(config.CRS_LONLAT))
+
+
+def label_points(cities):
+    """Where the map writes each city's name (F4): cities with label_lon and label_lat added.
+
+    The point is the one farthest inside the city's largest part (shapely's polylabel, found
+    to within config.MAP_SIMPLIFY_M), so the name sits inside even a thin or curved city,
+    where its centre point might fall outside. A city smaller than config.APP_LABEL_MIN_KM2
+    gets none (empty), as in Figma.
+    """
+    points = []
+    for shape in cities.to_crs(config.CRS_OVERLAY).geometry:   # in metres
+        largest = max(shapely.get_parts(shape), key=lambda part: part.area)
+        big_enough = shape.area / 1e6 >= config.APP_LABEL_MIN_KM2
+        points.append(shapely.ops.polylabel(largest, tolerance=config.MAP_SIMPLIFY_M) if big_enough else None)
+    lonlat = gpd.GeoSeries(points, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
+    return cities.assign(label_lon=lonlat.x.round(config.APP_COORD_DECIMALS),
+                         label_lat=lonlat.y.round(config.APP_COORD_DECIMALS))
 
 
 def write_geojson(shapes, path):
@@ -478,12 +499,16 @@ def city_forecast(table, simulated, path):
     NB(mu, theta), B6) and Pr(breach) (B7). The forecast for week i was made at week
     i - config.FORECAST_HORIZON_WEEKS. Stops unless every model has a forecast for exactly
     the same weeks (rule 5) and the models agree on each week's y and threshold.
+    The map (F4) colors Quezon City by config.APP_LEVEL_MODEL's Pr(breach): "levels" lists
+    each outbreak level with the Pr(breach) it starts at (config.APP_LEVELS).
     """
     scores.check_same_weeks(table)
     unknown = sorted(set(table["model"]) - set(MODELS))
     if unknown:
         raise ValueError(f"{path.name}: models {unknown} are not B10's")
     models = [model for model in MODELS if model in set(table["model"])]
+    if config.APP_LEVEL_MODEL not in models:
+        raise ValueError(f"{path.name} has no {config.APP_LEVEL_MODEL} forecasts, the model the map shows")
     low, high = (f"q{q:.3f}" for q in (config.RANGE_LOW_Q, config.RANGE_HIGH_Q))
     weeks_out = []
     for index, rows in table.groupby("week_index"):
@@ -504,6 +529,8 @@ def city_forecast(table, simulated, path):
     return {"simulated": simulated, "note": SIMULATED_NOTE if simulated else None, "source": path.name,
             "option": str(table["option"].iloc[0]), "g": int(table["g"].iloc[0]),
             "horizon_weeks": config.FORECAST_HORIZON_WEEKS, "models": models,
+            "map_model": config.APP_LEVEL_MODEL,
+            "levels": [{"level": level, "from": start} for level, start in config.APP_LEVELS],
             "range": [config.RANGE_LOW_Q, config.RANGE_HIGH_Q], "covid_years": list(config.COVID_YEARS),
             "weeks": weeks_out}
 
@@ -608,7 +635,7 @@ def main():
     check_inputs()
     config.APP_BARANGAY_RUNS.mkdir(parents=True, exist_ok=True)
     cities, barangays = map_shapes(load_cities(download_ncr_cities()), load_barangays())
-    write_geojson(cities, config.APP_DATA / "ncr_cities.geojson")
+    write_geojson(label_points(cities), config.APP_DATA / "ncr_cities.geojson")
     write_geojson(barangays, config.APP_DATA / "qc_barangays.geojson")
     files = layer2_files()
     for name, content in files.items():

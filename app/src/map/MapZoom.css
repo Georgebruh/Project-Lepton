@@ -1,0 +1,18 @@
+/* F4: the zoom buttons (MapZoom.tsx), Figma node 55:364: two 34 px squares in one outlined box. */
+.map-zoom {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+}
+
+.map-zoom-button {
+  display: flex;
+  padding: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}

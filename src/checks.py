@@ -1430,6 +1430,9 @@ def f2_app_data():
         totals (both rounded to whole numbers, so within about half a unit per barangay);
       - the city outlines leave no gap and overlap less than 1 m2, and Quezon City's outline
         is its barangays joined (within 1 m), so the map's two levels line up;
+      - F4: every city of at least config.APP_LABEL_MIN_KM2 has a label point, inside the city,
+        and no smaller city has one; city_forecast.json names config.APP_LEVEL_MODEL and the
+        outbreak levels of config.APP_LEVELS;
       - every health center has coordinates or is listed with C7's reason for leaving it out;
       - every file with doses carries the not-prescriptions label;
       - city_forecast.json equals a fresh export when B10's forecasts are on this computer,
@@ -1493,6 +1496,13 @@ def f2_app_data():
     qc_city = flat.loc[flat["psgc"] == config.QC_CITY_PSGC].geometry.iloc[0]
     apart = qc_city.hausdorff_distance(shapes.to_crs(config.CRS_OVERLAY).union_all())
     assert apart < 1, f"Quezon City's outline lies up to {apart:.0f} m from its barangays' outline: {rerun}"
+    labeled = cities["label_lon"].notna() & cities["label_lat"].notna()
+    big_enough = flat.area / 1e6 >= config.APP_LABEL_MIN_KM2
+    assert (labeled == big_enough).all(), f"label points must be given to exactly the cities of {config.APP_LABEL_MIN_KM2} km2 or more: {rerun}"
+    points = gpd.points_from_xy(cities.loc[labeled, "label_lon"], cities.loc[labeled, "label_lat"], crs=config.CRS_LONLAT)
+    outside = [name for name, shape, point in zip(cities.loc[labeled, "name"], cities.loc[labeled].geometry, points)
+               if not shape.contains(point)]
+    assert not outside, f"label points outside their city: {outside}"
     for storm in storms["storms"]:
         for run in storm["runs"]:
             rows = fresh[run["file"]]["barangays"]
@@ -1524,12 +1534,16 @@ def f2_app_data():
     if forecast_path.exists():
         forecast = read("city_forecast.json")
         assert scores_path.exists() == (not forecast["simulated"]), "scores.json must sit beside a real run only"
+        levels = [{"level": level, "from": start} for level, start in config.APP_LEVELS]
+        assert forecast.get("map_model") == config.APP_LEVEL_MODEL and forecast.get("levels") == levels, (
+            f"city_forecast.json lacks the map's model and outbreak levels from config.py: {rerun}")
         layer1 = f"city_forecast.json {'SIMULATED' if forecast['simulated'] else 'real'}, {len(forecast['weeks'])} weeks"
     else:
         layer1 = "no city_forecast.json yet"
     left_out = sum(bool(center["left_out"]) for center in centers)
     return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; 17 cities and "
-            f"142 barangays join; {len(centers) - left_out} centers get stock, {left_out} left out and listed; {layer1}")
+            f"142 barangays join; {labeled.sum()} city labels inside their cities; {len(centers) - left_out} centers "
+            f"get stock, {left_out} left out and listed; {layer1}")
 
 
 def not_built(task):

@@ -7,7 +7,10 @@ type TabProps = {
   to?: string
   /** With `to`: select the tab only on that exact route, not the routes under it. */
   end?: boolean
-  /** Without `to`: whether the tab is selected. */
+  /**
+   * Whether the tab is selected. With `to`, leave it out to select the tab on its route; F4's
+   * map panel sets it, so its tab stays selected while the panel slides away after Back.
+   */
   selected?: boolean
   /** Without `to`: what happens on click. */
   onClick?: () => void
@@ -20,13 +23,13 @@ type TabProps = {
  * route (the app bar's views, the panel's Cases and Prophylaxis); otherwise a button that
  * reports its state to screen readers with aria-pressed.
  */
-export default function Tab({ to, end, selected = false, onClick, children }: TabProps) {
+export default function Tab({ to, end, selected, onClick, children }: TabProps) {
   if (to) {
     return (
       <NavLink
         to={to}
         end={end}
-        className={({ isActive }) => (isActive ? 'tab tab-selected label-ui' : 'tab label-ui')}
+        className={({ isActive }) => ((selected ?? isActive) ? 'tab tab-selected label-ui' : 'tab label-ui')}
       >
         {children}
       </NavLink>
@@ -36,7 +39,7 @@ export default function Tab({ to, end, selected = false, onClick, children }: Ta
     <button
       type="button"
       className={selected ? 'tab tab-selected label-ui' : 'tab label-ui'}
-      aria-pressed={selected}
+      aria-pressed={selected ?? false}
       onClick={onClick}
     >
       {children}
