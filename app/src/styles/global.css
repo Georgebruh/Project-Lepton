@@ -1,0 +1,44 @@
+/*
+ * F1: page-wide base styles. Colors and fonts come from tokens.css; the default text style,
+ * Body/M, is the class on <body> in index.html.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Spacing comes from the space tokens, so the browser's own margins are removed. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
+
+/* Buttons and form fields take the page's font, not the browser's. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Figtree is loaded at 400, 500 and 600 only, so bold text uses 600. */
+b,
+strong {
+  font-weight: 600;
+}

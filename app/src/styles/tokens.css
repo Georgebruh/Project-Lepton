@@ -1,0 +1,326 @@
+/*
+ * F1: the design tokens, exported from the LEPTON Figma file (Foundations page, "Theme
+ * sheet"): its two variable collections, Theme and Size, and its 15 text styles.
+ *
+ * Every color, corner radius, spacing step and text style in the app comes from this file.
+ * Write var(--color-text-primary), var(--radius-md), var(--space-4) or className="heading-m",
+ * never a hex color or a radius or gap that is not one of these steps. If the design changes,
+ * change it in Figma first, then here, keeping the names.
+ *
+ * Each name is the Figma variable's code syntax: bg/canvas is --color-bg-canvas,
+ * radius/sm is --radius-sm, space/4 is --space-4.
+ */
+
+/*
+ * Theme collection: 30 colors in three modes (themes).
+ *   Clinic   light, warm paper: daytime use, printing and projecting in a city health
+ *            office. The app's theme, on :root.
+ *   Monsoon  dark, cool: night operations during a storm. <html data-theme="monsoon">
+ *   Ember    dark, warm: orange carries urgency for the dose figures. <html data-theme="ember">
+ * Monsoon and Ember are kept for a later theme switch (stretch); nothing uses them yet.
+ * Their blocks must stay below :root: both selectors weigh the same, so the later one wins.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-bg-canvas: #f4f2ed;
+  --color-bg-surface: #ffffff;
+  --color-bg-raised: #ece9e2;
+  --color-bg-inset: #e2e7e9;
+
+  /* Borders */
+  --color-border-subtle: #dedad1;
+  --color-border-strong: #c4beb2;
+
+  /* Text */
+  --color-text-primary: #12161b;
+  --color-text-secondary: #545c67;
+  --color-text-tertiary: #8a9099;
+  --color-text-on-accent: #ffffff;
+
+  /* Accent */
+  --color-accent-primary: #0e6b63;
+  --color-accent-secondary: #3150c9;
+  --color-accent-subtle: #dcebe7;
+
+  /* Status */
+  --color-status-alert: #c2412d;
+  --color-status-warn: #b7791f;
+  --color-status-ok: #2f8a55;
+
+  /* Exposure ramp: the barangay classes, ramp-1 the least exposed to ramp-5 the most */
+  --color-data-ramp-1: #eef3f0;
+  --color-data-ramp-2: #c4e0d6;
+  --color-data-ramp-3: #7dbfab;
+  --color-data-ramp-4: #2f8f80;
+  --color-data-ramp-5: #0b4e48;
+
+  /* Map */
+  --color-map-land: #fbfaf7;
+  --color-map-boundary: #d3cec4;
+
+  /* Models: one chart color each */
+  --color-chart-m0: #a9aeb5;
+  --color-chart-m1: #7c838c;
+  --color-chart-m3: #3150c9;
+  --color-chart-m4: #0e6b63;
+
+  /* Outbreak levels: the city fills on the map */
+  --color-risk-low: #dcebe7;
+  --color-risk-watch: #f2ddae;
+  --color-risk-high: #f1c5bb;
+}
+
+[data-theme='monsoon'] {
+  color-scheme: dark;
+
+  --color-bg-canvas: #0a0e13;
+  --color-bg-surface: #11161d;
+  --color-bg-raised: #182029;
+  --color-bg-inset: #0d1218;
+
+  --color-border-subtle: #222c38;
+  --color-border-strong: #34414f;
+
+  --color-text-primary: #e9eef3;
+  --color-text-secondary: #9ba7b5;
+  --color-text-tertiary: #66727f;
+  --color-text-on-accent: #04201d;
+
+  --color-accent-primary: #3fd3c1;
+  --color-accent-secondary: #8aa8ff;
+  --color-accent-subtle: #123a38;
+
+  --color-status-alert: #ff6b57;
+  --color-status-warn: #f2c14e;
+  --color-status-ok: #5bd38a;
+
+  --color-data-ramp-1: #16262e;
+  --color-data-ramp-2: #1d4b4e;
+  --color-data-ramp-3: #23807b;
+  --color-data-ramp-4: #4fc0a2;
+  --color-data-ramp-5: #f0d27a;
+
+  --color-map-land: #141b23;
+  --color-map-boundary: #2a3644;
+
+  --color-chart-m0: #5d6b7a;
+  --color-chart-m1: #8b97a6;
+  --color-chart-m3: #8aa8ff;
+  --color-chart-m4: #3fd3c1;
+
+  --color-risk-low: #123a38;
+  --color-risk-watch: #4a3a12;
+  --color-risk-high: #4a1e18;
+}
+
+[data-theme='ember'] {
+  color-scheme: dark;
+
+  --color-bg-canvas: #12100e;
+  --color-bg-surface: #1a1714;
+  --color-bg-raised: #241f1b;
+  --color-bg-inset: #0f0d0b;
+
+  --color-border-subtle: #2e2722;
+  --color-border-strong: #46392f;
+
+  --color-text-primary: #f4ede5;
+  --color-text-secondary: #b5a797;
+  --color-text-tertiary: #7d7064;
+  --color-text-on-accent: #2a1405;
+
+  --color-accent-primary: #ff8a3d;
+  --color-accent-secondary: #e9c46a;
+  --color-accent-subtle: #3a2416;
+
+  --color-status-alert: #ff5c5c;
+  --color-status-warn: #f2c14e;
+  --color-status-ok: #8ccb7a;
+
+  --color-data-ramp-1: #2a211b;
+  --color-data-ramp-2: #5b3322;
+  --color-data-ramp-3: #a4492a;
+  --color-data-ramp-4: #e27938;
+  --color-data-ramp-5: #ffc47e;
+
+  --color-map-land: #1c1815;
+  --color-map-boundary: #3a2f27;
+
+  --color-chart-m0: #6e6258;
+  --color-chart-m1: #9c8e80;
+  --color-chart-m3: #e9c46a;
+  --color-chart-m4: #ff8a3d;
+
+  --color-risk-low: #2a3a22;
+  --color-risk-watch: #4a3512;
+  --color-risk-high: #4a1e1e;
+}
+
+/* Size collection: the same in every theme. */
+:root {
+  /* Corners: badges 2 px, tabs and fields 4, buttons 6, cards and panels 8.
+     No pills, no circles. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Spacing steps, for gaps and padding */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* The text styles' font: Figtree for everything. index.html loads weights 400, 500, 600. */
+  --font-sans: 'Figtree', system-ui, sans-serif;
+}
+
+/*
+ * Text styles: one class per Figma text style (Heading/M is .heading-m), with the sample
+ * text the Theme sheet shows for it. Each class sets the font, weight, size, line height
+ * and letter spacing, never the color. Weights: Regular 400, Medium 500, SemiBold 600.
+ * Figma gives letter spacing as a percent of the font size; here it is in em, the same
+ * number divided by 100 (-2.5% is -0.025em).
+ */
+
+/* Display/XL: "Before the flood" */
+.display-xl {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 72px;
+  line-height: 78px;
+  letter-spacing: -0.025em;
+}
+
+/* Display/L: "How LEPTON works" */
+.display-l {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 52px;
+  line-height: 58px;
+  letter-spacing: -0.02em;
+}
+
+/* Heading/L: "Two warnings, one model" */
+.heading-l {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 44px;
+  letter-spacing: -0.015em;
+}
+
+/* Heading/M: "What to send" */
+.heading-m {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: -0.005em;
+}
+
+/* Heading/S: "Health centers · 66" */
+.heading-s {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.002em;
+}
+
+/* Body/XL */
+.body-xl {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 36px;
+  letter-spacing: -0.005em;
+}
+
+/* Body/L: "Rain forecast to doxycycline stock." */
+.body-l {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 30px;
+  letter-spacing: 0;
+}
+
+/* Body/M: "Exposed adults by DOH risk tier." The page's default text (index.html). */
+.body-m {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+/* Body/S: "Stock planning, not prescriptions." */
+.body-s {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
+}
+
+/* Label/Eyebrow: "Residents exposed" */
+.label-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.01em;
+}
+
+/* Label/UI: "Open the map" */
+.label-ui {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+/* Label/UI-S */
+.label-ui-s {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0;
+}
+
+/* Data/XL: "3,174,170" */
+.data-xl {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 48px;
+  letter-spacing: -0.02em;
+}
+
+/* Data/L: "789,689" */
+.data-l {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+/* Data/M: "170,643 · 16,058" */
+.data-m {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
+}
