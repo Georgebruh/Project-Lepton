@@ -509,3 +509,27 @@ D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run
 # set this to ("carina_2024",).
 D8_MAP_STORMS = ("carina_2024", "kristine_2024")
 D8_RELIABILITY_YEARS = PROB_SCORE_YEARS    # figure 3 scores the breach probabilities on D3's window (2022-2026)
+
+# ---------------------------------------------------------------------------
+# App data (F2): the files the web app (app/) reads. Stock planning, not prescriptions.
+# ---------------------------------------------------------------------------
+APP_DATA = ROOT / "app" / "public" / "data"    # served to the app as /data/<file>; committed, so Vercel ships it
+APP_BARANGAY_RUNS = APP_DATA / "barangays"     # one file per storm and run
+FORECASTS_SIMULATED = RESULTS / "forecasts_simulated_C.csv"   # B10 --simulate --option C: the app's Layer 1 until A13
+# NCR's 17 cities and municipalities (PSGC as of 31 Dec 2023) from faeldon/philippines-json-maps
+# (MIT): its four NCR district files at "hires" (mapshaper's 10%), pinned to one commit.
+NCR_CITIES_RAW = DATA_RAW / "ncr_cities"
+NCR_CITIES_URL = ("https://raw.githubusercontent.com/faeldon/philippines-json-maps/"
+                  "8eeead560246863c8c820c31ca6fbca81a279477/2023/geojson/provdists/hires/"
+                  "municities-provdist-{district}.0.1.json")
+NCR_DISTRICTS = ("1303900000", "1307400000", "1307500000", "1307600000")   # Manila, then the 2nd (with QC), 3rd and 4th districts
+NCR_CITIES_BYTES = {"1303900000": 29_016, "1307400000": 23_439, "1307500000": 45_025, "1307600000": 78_208}   # the pinned files' sizes
+NCR_CITY_COUNT = 17
+QC_CITY_PSGC = QC_PSGC_PREFIX + "00000"        # Quezon City's own 10-digit PSGC: the only city with data
+# Assumption: shape detail kept for the web, in metres (about a pixel at the city's view). One
+# value for cities and barangays, which are simplified together so their borders stay one line.
+MAP_SIMPLIFY_M = 10
+APP_COORD_DECIMALS = 5                         # about 1 m
+APP_FLAG_SHARE = FLAG_EXPOSED_SHARES[0]        # the app flags a barangay at 25% (Notes.md 1.2)
+APP_SHARE_BREAKS = (0.05, 0.15, *FLAG_EXPOSED_SHARES)   # the map's five classes: under 5%, 5-15%, 15-25%, 25-50%, 50% or more
+APP_SHORT_FLOOD_W = D7_MAP_W                   # a short flood is shown at w = 0.5, as on D7's maps

@@ -1415,6 +1415,123 @@ def s11_leakage():
             f"{len(runs)} run file(s) complete" + (f" ({', '.join(p.name for p in runs)})" if runs else ""))
 
 
+def f2_app_data():
+    """F2: the web app's data files (app/public/data/) hold the results' numbers, and every shape joins.
+
+    The app plan's U1 (numbers) and U3 (joins), as code:
+      - storms.json, centers.json and every barangay file equal a fresh export from C8's and
+        C9's results and A5's and A10's files, so a file left over from older results fails;
+      - the plan's numbers: Kristine 1 day ahead (D = 1, w = 0.5) flags 72 barangays and needs
+        789,689 residents exposed, 3,174,170 doxycycline capsules, 254,430 children's courses
+        and 37,386 amoxicillin tablets; Tatalon (1381300121) has 36,809 of its 58,286
+        residents exposed (63%) and needs 138,400 capsules, 13,463 courses and 1,680 tablets;
+      - joins on PSGC: 17 of 17 NCR cities (only Quezon City has data); 142 of 142 barangays
+        in the shapes, in A5 and in every barangay file; each run's barangays add up to its QC
+        totals (both rounded to whole numbers, so within about half a unit per barangay);
+      - the city outlines leave no gap and overlap less than 1 m2, and Quezon City's outline
+        is its barangays joined (within 1 m), so the map's two levels line up;
+      - every health center has coordinates or is listed with C7's reason for leaving it out;
+      - every file with doses carries the not-prescriptions label;
+      - city_forecast.json equals a fresh export when B10's forecasts are on this computer,
+        and scores.json sits beside a real run only, never beside made-up counts.
+    """
+    import json
+
+    import geopandas as gpd
+
+    from src import app_data, doses
+
+    need_file(config.APP_DATA / "storms.json", "F2 (python -m src.app_data)")
+    need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
+    need_file(config.FACILITIES_QC, "A10 (python -m src.facilities)")
+
+    rerun = "rerun python -m src.app_data"
+
+    def read(name):
+        assert (config.APP_DATA / name).exists(), f"{name} is missing: {rerun}"
+        with open(config.APP_DATA / name, encoding="utf-8") as f:
+            return json.load(f)
+
+    def as_written(content):
+        return json.loads(json.dumps(content))   # what json makes of it: tuples become lists
+
+    def find(items, key, value, where):
+        found = [item for item in items if item[key] == value]
+        assert found, f"{where} has no {key} {value!r}: {rerun}"
+        return found[0]
+
+    fresh = app_data.layer2_files()
+    folder = config.APP_BARANGAY_RUNS.name
+    on_disk = {f"{folder}/{path.name}" for path in config.APP_BARANGAY_RUNS.glob("*.json")}
+    assert on_disk == {name for name in fresh if name.startswith(folder + "/")}, f"barangay files are not one per C9 run: {rerun}"
+    for name, content in fresh.items():
+        assert read(name) == as_written(content), f"{name} differs from a fresh export of the results: {rerun}"
+        assert content["label"] == doses.LABEL, f"{name} lacks the not-prescriptions label"
+
+    storms = fresh["storms.json"]
+    kristine = find(storms["storms"], "storm", "kristine_2024", "storms.json")
+    lead1 = find(kristine["runs"], "run", "lead 1", "Kristine in storms.json")
+    short = find(lead1["floods"], "key", "D1", "Kristine's lead 1 in storms.json")
+    got = (lead1["flagged"], short["exposed"], short["doxy100"], short["courses"], short["amox500"])
+    assert got == (72, 789_689, 3_174_170, 254_430, 37_386), f"Kristine 1 day ahead (D = 1, w = 0.5): {got}"
+    tatalon = find(fresh[lead1["file"]]["barangays"], "psgc", "1381300121", lead1["file"])
+    got = (tatalon["exposed"], tatalon["pop_2024"], round(100 * tatalon["share"]), *tatalon["units"]["D1"].values())
+    assert got == (36_809, 58_286, 63, 138_400, 13_463, 1_680), f"Tatalon, Kristine 1 day ahead: {got}"
+
+    cities = gpd.read_file(config.APP_DATA / "ncr_cities.geojson")
+    assert len(cities) == config.NCR_CITY_COUNT and cities["psgc"].is_unique, f"{len(cities)} NCR cities, expected 17 with one PSGC each"
+    assert set(cities.loc[cities["has_data"].astype(bool), "psgc"]) == {config.QC_CITY_PSGC}, "only Quezon City may have data"
+    shapes = gpd.read_file(config.APP_DATA / "qc_barangays.geojson")
+    a5 = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc"])
+    assert len(shapes) == config.QC_BARANGAYS and set(shapes["psgc"]) == set(a5["psgc"]), "the barangay shapes do not join A5's 142"
+    assert shapes.is_valid.all() and not shapes.is_empty.any(), "a barangay shape is invalid or empty after simplifying"
+    flat = cities.to_crs(config.CRS_OVERLAY)
+    union = flat.union_all()
+    gaps = sum(len(polygon.interiors) for polygon in getattr(union, "geoms", [union]))
+    overlap = flat.area.sum() - union.area
+    assert flat.is_valid.all() and gaps == 0 and overlap < 1, f"NCR cities: {gaps} gaps, {overlap:,.0f} m2 of overlap: {rerun}"
+    qc_city = flat.loc[flat["psgc"] == config.QC_CITY_PSGC].geometry.iloc[0]
+    apart = qc_city.hausdorff_distance(shapes.to_crs(config.CRS_OVERLAY).union_all())
+    assert apart < 1, f"Quezon City's outline lies up to {apart:.0f} m from its barangays' outline: {rerun}"
+    for storm in storms["storms"]:
+        for run in storm["runs"]:
+            rows = fresh[run["file"]]["barangays"]
+            assert {row["psgc"] for row in rows} == set(shapes["psgc"]), f"{run['file']}: its barangays do not join the shapes"
+            assert sum(row["flagged"] for row in rows) == run["flagged"], f"{run['file']}: flagged count differs from storms.json"
+            slack = 0.51 * len(rows) + 0.5
+            for flood in run["floods"]:
+                for name in ("exposed", *app_data.UNITS):
+                    total = sum(row["exposed"] if name == "exposed" else row["units"][flood["key"]][name] for row in rows)
+                    assert abs(total - flood[name]) <= slack, (f"{run['file']}, {flood['key']}: barangays add up to "
+                                                               f"{total:,} {name}, storms.json says {flood[name]:,}")
+
+    centers = fresh["centers.json"]["centers"]
+    for center in centers:
+        located = center["lat"] is not None and center["lon"] is not None
+        assert located or center["left_out"], f"{center['name']} has no coordinates and is not listed as left out"
+        assert center["gets_stock"] == (center["left_out"] is None), f"{center['name']}: gets stock, or is left out, not both"
+
+    table, simulated, path = app_data.load_forecasts()
+    forecast_path, scores_path = config.APP_DATA / "city_forecast.json", config.APP_DATA / "scores.json"
+    if table is not None:
+        assert read("city_forecast.json") == as_written(app_data.city_forecast(table, simulated, path)), (
+            f"city_forecast.json differs from a fresh export of {path.name}: {rerun}")
+        if not simulated:
+            from src import backtest
+            need_file(config.CASES_WEEKLY, "A13")   # MASE's denominator needs the counts
+            assert read("scores.json") == as_written(app_data.scores_file(table, backtest.load_cases())), (
+                f"scores.json differs from a fresh export of {path.name}: {rerun}")
+    if forecast_path.exists():
+        forecast = read("city_forecast.json")
+        assert scores_path.exists() == (not forecast["simulated"]), "scores.json must sit beside a real run only"
+        layer1 = f"city_forecast.json {'SIMULATED' if forecast['simulated'] else 'real'}, {len(forecast['weeks'])} weeks"
+    else:
+        layer1 = "no city_forecast.json yet"
+    left_out = sum(bool(center["left_out"]) for center in centers)
+    return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; 17 cities and "
+            f"142 barangays join; {len(centers) - left_out} centers get stock, {left_out} left out and listed; {layer1}")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1448,6 +1565,7 @@ CHECKS = {
     "S10 allocate": s10_allocate,
     "B2 view": b2_view,
     "S11 leakage": s11_leakage,
+    "F2 app data": f2_app_data,
 }
 
 
