@@ -30,7 +30,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/router.tsx` | The routes: which screen each address shows |
 | `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
 | `src/components/` | The shared components (F3), shown together at `/kit` |
-| `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels |
+| `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
 | `src/lib/maplibre.ts` | MapLibre, set up for Vite; map code imports it from here |
@@ -156,7 +156,7 @@ MapLibre adds about 1 MB of JavaScript. Import it only in the map screens, and l
 routes with React Router's `lazy` in `router.tsx`, so Home and the phone guide do not
 download it. (`npm run build` warns that the map's chunk is over 500 kB: that is MapLibre.)
 
-### The map screens (F4)
+### The map screens (F4, F5)
 
 - **One map, three levels.** `MapLayout.tsx` holds the app bar, the breadcrumb bar with the
   date picker, the map (`map/CityMap.tsx`), its legend and zoom buttons, and the panel on the
@@ -166,7 +166,9 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
 - **Data.** The `/map` route's loader fetches `ncr_cities.geojson` and `city_forecast.json`
   once. In a level's component, `useMapContext()` (`map/mapContext.ts`) gives the files, the
   chosen date, that week's forecasts and the MapLibre map, for a level that draws its own
-  layers (F5: add the barangay source and layers in an effect, remove them in its cleanup).
+  layers (the map arrives once it has drawn the cities). It also gives two empty boxes for a
+  level's own legend and tooltips, `legendSlot` beside the zoom buttons and `overlay` over the
+  map, to fill with `createPortal` (F5 does).
 - **Colors.** MapLibre paints on a canvas and cannot read CSS variables, so `CityMap` reads
   the token values once with `getComputedStyle`. The city with data is filled by its outbreak
   level: `levelOf()` in `map/forecast.ts` applies `city_forecast.json`'s `levels`, on the
@@ -175,10 +177,52 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   them to the CSS as variables. MapLibre does not animate a feature-state change, nor any
   paint value that differs from feature to feature. So animate a value the whole layer
   shares with a paint transition (the other cities' fade to 45%), or step a feature state
-  each frame (`hoverFader` in `CityMap.tsx`, which F5's 20 ms wave can reuse).
+  each frame (`map/featureFades.ts`: `featureFader` for a hover, `stagger` for F5's wave).
 - **Names on the map.** HTML elements that MapLibre keeps over each city's label point (F2's
   `label_lon`, `label_lat`), so they are set in Figtree: the blank map style has no font
   files for MapLibre's own text.
+
+### The prophylaxis plan (F5)
+
+Level 3, `/map/quezon-city/prophylaxis`, from Figma frames 3 and 3a. Stock planning, not
+prescriptions: every dose on it sits under that label, in the panel, the tooltip and the
+exported file.
+
+- **Data.** The route's own loader (`map/planData.ts`) fetches `storms.json`, `centers.json`
+  and `qc_barangays.geojson` the first time the plan opens. The forecast's barangay file is
+  fetched when it is first shown, and kept; it must join the shapes on PSGC, all 142, or the
+  page stops with an error.
+- **Which forecast.** The date picks the storm. A storm's forecasts show from the day its
+  earliest forecast was made (3 days ahead) to the last day of its rain or its flood
+  (`stormDates` in `map/plan.ts`; Kristine: 18 to 24 October 2024). Any other date says "No
+  storm forecast for this date" and links to each storm at the first day of its 1-day-ahead
+  forecast's rain (Kristine: Tue 22 Oct 2024, Figma's date). The lead chips keep the lead time
+  in the address, `?lead=2` (1 day ahead without it). The numbers are for a 1-day flood with
+  w = 0.5 (`PLAN_FLOOD`, as in Figma); C9's 7-day flood is there for the stretch switch.
+- **Going back.** While a storm is shown, "All storms" beside the heading (not in Figma) lists
+  the storms again, at the same date (`?storms=all`). A storm opened from that list is a visit:
+  the address keeps the date from before it (`?from=`), and a link out of the plan (Back, the
+  trail, the Cases forecast tab) puts that date back and drops the plan's settings
+  (`levelSearch` in `map/routes.ts`), so the plan opens afresh next time. The browser's Back
+  button returns to the list too. Picking a date with the date picker ends the visit.
+- **The barangays on the map** (`map/barangayLayers.ts`): a second source, drawn by three
+  layers between Quezon City's fill and its outline (`map/cityLayers.ts`). Opening the plan,
+  the lines fade in (300 ms), then the fills rise in a wave from the largest share of
+  residents exposed to the smallest (600 ms) while the city's fill fades out and the other
+  cities' outlines lighten, as in frame 3. Back plays it in reverse; another forecast or
+  storm recolors the barangays in the same wave. The notes' "about 20 ms apart" cannot fit
+  142 barangays into 600 ms (that takes 2.8 s), so the starts are spread over the 600 ms and
+  each fill rises in 150 ms (`map/motion.ts`). The layers outlive the route's component, so
+  Back can play before they are removed: `barangayLayers(map)` is the same object each time.
+- **Panel, legend, tooltip** (`map/PlanPanel.tsx`, `ExposureLegend.tsx`,
+  `BarangayTooltip.tsx`). The panel's health centers are frame 3's own rows (doxycycline and
+  courses), not the three-column `CenterRow`, and their names drop "Health Center"
+  (`centerName`). The tooltip adds the not-prescriptions badge, which 3a lacks (U2).
+- **Export stock list** saves `lepton-stock-list_<storm>_lead<n>.csv`, made in the browser
+  (`stockList`): the label, the forecast, the 66 health centers that get stock (the largest
+  doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
+  leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
+  add up to 29 to 37 units more than the city in each pool; the file says so.
 
 ## Deploy (Vercel)
 

@@ -1,0 +1,210 @@
+/* F5: the city panel's prophylaxis plan (PlanPanel.tsx), Figma frame 3's "Panel" (node 56:459). */
+.plan-panel {
+  display: flex;
+  flex-direction: column;
+  /* Figma's 16 px between the sections, and 22 px top and bottom (between the spacing steps) */
+  gap: var(--space-4);
+  min-height: 100%;
+  padding: 22px var(--space-5);
+}
+
+.plan-panel-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-primary);
+}
+
+/* The city's name, and All storms at the right end while a storm is shown (not in Figma) */
+.plan-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* All storms: an outlined chevron and its words, like the breadcrumb's Back (MapBreadcrumb.css);
+   34 px tall, so the heading's 44 px row does not grow */
+.plan-panel-all {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  /* the breadcrumb Back's 6 px, and 10 px after the label */
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.plan-panel-subtitle {
+  color: var(--color-text-tertiary);
+}
+
+.plan-panel-muted {
+  color: var(--color-text-secondary);
+}
+
+/* The forecast's rain: a card with the lead chips (Figma "Rain forecast", node 56:680) */
+.plan-panel-rain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-canvas);
+}
+
+.plan-panel-rain-head {
+  display: flex;
+  align-items: center;
+  /* Figma's 6 px, between the spacing steps */
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+/* The chips sit at the head's right end. As in Figma, an outlined chip's 1 px border adds to its
+   size (24 px tall, the selected one 22), so the chips line up at the top. */
+.plan-panel-leads {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+/* A lead chip (Figma "2 days", node 56:687): outlined; the selected one dark, with light text (56:685) */
+.plan-panel-lead {
+  /* Figma's 3 px by 8 px, between the spacing steps */
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.plan-panel-lead[aria-pressed='true'] {
+  border: 0;
+  background: var(--color-text-primary);
+  color: var(--color-bg-surface);
+}
+
+.plan-panel-rain-line {
+  color: var(--color-text-primary);
+}
+
+/* The totals: two rows of two numbers, then the amoxicillin line (Figma "Totals", node 56:693) */
+.plan-panel-totals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plan-panel-totals-row {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.plan-panel-total {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Figma's 2 px, between the spacing steps */
+  gap: 2px;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+/* The health centers needing the most (Figma "Health centers", node 56:709) */
+.plan-panel-centers-title {
+  /* Figma's 6 px under the title, between the spacing steps */
+  padding-bottom: 6px;
+  color: var(--color-text-secondary);
+}
+
+/* The numbers stand in two 84 px columns, 8 px from the name and from each other (Figma) */
+.plan-panel-centers-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.plan-panel-centers-table th,
+.plan-panel-centers-table td {
+  padding: 0;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.plan-panel-centers-table th:not(:first-child),
+.plan-panel-centers-table td {
+  width: calc(84px + var(--space-2));
+  padding-left: var(--space-2);
+}
+
+/* The column names, light (Figma "Columns", node 56:712) */
+.plan-panel-centers-table thead th {
+  padding-bottom: var(--space-1);
+  color: var(--color-text-tertiary);
+}
+
+/* A health center's row: a line above it, 8 px above and below (Figma "Tatalon", node 56:716) */
+.plan-panel-centers-table tbody th,
+.plan-panel-centers-table tbody td {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+}
+
+.plan-panel-centers-table tbody th {
+  text-align: left;
+}
+
+/* margin-top: auto pushes the export to the bottom of the panel, as Figma's spacer does */
+.plan-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.plan-panel-action {
+  width: 100%;
+}
+
+.plan-panel-note {
+  color: var(--color-text-tertiary);
+}
+
+/* A date without a storm forecast: the storms to choose from */
+.plan-panel-none {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.plan-panel-storms {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-panel-storms li {
+  display: flex;
+  flex-direction: column;
+  /* Figma's 2 px between a number and its words, as in the totals */
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.plan-panel-storm {
+  color: var(--color-text-primary);
+}

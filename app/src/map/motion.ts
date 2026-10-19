@@ -23,6 +23,22 @@ export const DIMMED_OPACITY = 0.45
 /** The side panel's width in px (Figma frame 2); the camera keeps the open city clear of it. */
 export const PANEL_WIDTH = 400
 
+/**
+ * F5, opening the prophylaxis plan: first the barangay lines fade in, in LINES_MS; then the
+ * barangay fills rise in a wave from the most exposed barangay to the least, all within WAVE_MS,
+ * while the city's own fill fades out. Back plays it in reverse.
+ */
+export const LINES_MS = 300
+export const WAVE_MS = 600
+
+/**
+ * How long one barangay's fill takes to rise within the wave. The notes ask for starts "about
+ * 20 ms apart" and "600 ms in all", but 142 starts 20 ms apart would take 2.8 s. So the 600 ms
+ * wins: the starts are spread evenly over the first 450 ms (about 3 ms apart, a few barangays a
+ * frame), and each fill rises in 150 ms.
+ */
+export const RISE_MS = 150
+
 /** The ease-in-out curve as CSS writes it: slow, fast, slow (easing "easeInOutCubic"). */
 export const EASE_CSS = 'cubic-bezier(0.65, 0, 0.35, 1)'
 

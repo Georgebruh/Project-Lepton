@@ -20,6 +20,9 @@ import Leptospirosis from './screens/Leptospirosis.tsx'
  * map draws; shouldRevalidate keeps them when the address's date changes, since React Router
  * would otherwise fetch them again on any change to the query. Each level names its number
  * in its handle (map/routes.ts).
+ *
+ * F5: the prophylaxis plan's own loader fetches its files (storms, health centers, barangay
+ * shapes) only when the plan first opens, and keeps them while the date and lead change.
  */
 export const router = createBrowserRouter([
   {
@@ -52,7 +55,14 @@ export const router = createBrowserRouter([
           {
             path: 'quezon-city/prophylaxis',
             handle: { mapLevel: 3 },
-            lazy: async () => ({ Component: (await import('./screens/MapProphylaxis.tsx')).default }),
+            lazy: async () => {
+              const [{ default: Component }, { loadPlanData }] = await Promise.all([
+                import('./screens/MapProphylaxis.tsx'),
+                import('./map/planData.ts'),
+              ])
+              return { Component, loader: loadPlanData }
+            },
+            shouldRevalidate: () => false,
           },
         ],
       },

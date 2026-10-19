@@ -1,0 +1,62 @@
+/* F5: the map's legend at level 3 (ExposureLegend.tsx), Figma node 56:649. */
+.exposure-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.exposure-legend-title {
+  color: var(--color-text-secondary);
+}
+
+/* The five classes side by side, each a 56 x 10 px swatch over its range; Figma's 2 px apart */
+.exposure-legend-ramp {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-primary);
+}
+
+.exposure-legend-ramp li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.exposure-legend-swatch {
+  width: 56px;
+  height: 10px;
+}
+
+/* Class 0, under 5%, is nearly white, so it keeps an outline (Figma) */
+.exposure-legend-swatch-0 {
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-data-ramp-1);
+}
+
+.exposure-legend-swatch-1 {
+  background: var(--color-data-ramp-2);
+}
+
+.exposure-legend-swatch-2 {
+  background: var(--color-data-ramp-3);
+}
+
+.exposure-legend-swatch-3 {
+  background: var(--color-data-ramp-4);
+}
+
+.exposure-legend-swatch-4 {
+  background: var(--color-data-ramp-5);
+}
+
+.exposure-legend-flag {
+  color: var(--color-text-secondary);
+}

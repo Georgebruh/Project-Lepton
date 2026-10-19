@@ -42,6 +42,20 @@
   transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
+/* F5: where a level puts its own legend. Its legend sits in the controls' row as if this box were
+   not there, and an empty slot takes no room and adds no gap. */
+.map-layout-legend {
+  display: contents;
+}
+
+/* F5: a layer over the map, the size of the map, for a level's own tooltips; the pointer passes
+   through it to the map */
+.map-layout-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* The panel: at level 1 it waits past the right edge, as in Figma frame 1, and slides in when a city opens */
 .map-layout-panel {
   position: absolute;
