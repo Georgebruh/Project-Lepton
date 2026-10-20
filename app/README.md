@@ -74,14 +74,14 @@ them with the Figma page, which is drawn in that theme.
 
 | Component | Use | Figma |
 | --- | --- | --- |
-| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
+| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site (a new tab; `tel:` and `mailto:` open in place), `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
 | `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
 | `StatCard` | `<StatCard label="Residents exposed" value="789,689" caption="..." />` | Stat card, 4:8 |
 | `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"` | Center row, 4:12 |
 | `PanelHeader` | A side-panel section's title that opens and closes it | Panel header, 4:17 |
-| `SiteHeader` | The header of Home, Leptospirosis and How it works | Site header, 4:21 |
+| `SiteHeader` | The header of Home, Leptospirosis and How it works; the current page's link is marked (`aria-current`) and darker | Site header, 4:21 |
 | `AppBar` | The header of the map screens and Compare models | Map frame, 55:319 |
 | `Footer` | The footer, with the stock-planning note | Home frame, 20:364 |
 | `Logo` | The logo; the headers and the footer already include it | Logo, 3:47 |
@@ -223,6 +223,24 @@ exported file.
   doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
   leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
   add up to 29 to 37 units more than the city in each pool; the file says so.
+
+## The Leptospirosis page (F7)
+
+`/leptospirosis`, from Figma frame "Leptospirosis" (38:277) and its notes, for residents.
+Text only; no data files.
+
+- **Sources.** Every medical fact ends with numbered links, `[1]`, to the Sources list at the
+  bottom, each a DOH page (DM 2023-0309, DOH's disease page and two 2024 press releases) or,
+  for the helpline and the waterproof bandage, the QC government and PIA. They are in
+  `SOURCES` at the top of `Leptospirosis.tsx`; a new fact cites one with `<Cite sources={[...]} />`.
+- **Text that differs from Figma**, so each fact matches its source (the component's comment
+  lists them): incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
+  rats"; high risk is DM 2023-0309's repeated or continuous exposure, not LEPTON's 2-day
+  cut-off; "a doctor decides" on preventive medicine, as the memo requires a physician.
+- **No hero photo yet.** Figma's is AI-generated (check U7). When a licensed photo arrives,
+  set `HERO_PHOTO` (file, alt text, credit) and the photo and its credit appear.
+- The page never gives doses. Before launch a health professional reviews the wording (Figma
+  notes), and a teammate checks each fact against its source (F7's Done when).
 
 ## Deploy (Vercel)
 
