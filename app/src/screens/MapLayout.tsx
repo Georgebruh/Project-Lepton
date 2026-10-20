@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { Outlet, useLoaderData, useSearchParams } from 'react-router'
 import AppBar from '../components/AppBar.tsx'
 import CityMap from '../map/CityMap.tsx'
@@ -8,7 +8,7 @@ import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
 import type { MapContext } from '../map/mapContext.ts'
 import type { loadMapData } from '../map/mapData.ts'
 import MapZoom from '../map/MapZoom.tsx'
-import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH } from '../map/motion.ts'
+import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH, SHEET_SHARE } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
 import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
 import './MapLayout.css'
@@ -27,6 +27,7 @@ const MOTION = {
   '--map-crossfade': `${CROSSFADE_MS}ms`,
   '--map-ease': EASE_CSS,
   '--map-panel-width': `${PANEL_WIDTH}px`,
+  '--map-sheet-share': `${SHEET_SHARE * 100}%`,
 } as CSSProperties
 
 /**
@@ -42,6 +43,9 @@ const MOTION = {
  *
  * F5: the prophylaxis plan (level 3) draws its barangays on the same map, and puts its own
  * legend and tooltip in two empty boxes here, which the context hands it (legendSlot, overlay).
+ *
+ * F11: on a phone (below 600 px, motion.ts's SHEET_BELOW) the panel is a sheet that slides up
+ * over the map's lower 55% instead of in from the right, so the map stays in sight above it.
  */
 export default function MapLayout() {
   const { cities, forecast } = useLoaderData<typeof loadMapData>()
@@ -50,6 +54,7 @@ export default function MapLayout() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
+  const controls = useRef<HTMLDivElement>(null)
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const { first, last } = dateRange(forecast)
@@ -78,10 +83,10 @@ export default function MapLayout() {
       <MapBreadcrumb level={level} date={date} first={first} last={last} onDateChange={changeDate} />
       <main className="map-layout-main">
         <h1 className="visually-hidden">{HEADINGS[level]}</h1>
-        <CityMap cities={cities} forecast={forecast} week={week} level={level} onMap={setMap} />
+        <CityMap cities={cities} forecast={forecast} week={week} level={level} onMap={setMap} controls={controls} />
         {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
-        <div className="map-layout-controls">
+        <div ref={controls} className="map-layout-controls">
           {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
           {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
           <div ref={setLegendSlot} className="map-layout-legend" />

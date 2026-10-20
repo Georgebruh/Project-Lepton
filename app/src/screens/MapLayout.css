@@ -1,8 +1,8 @@
 /*
  * F4: the map screens' frame (MapLayout.tsx), Figma frames 1, 2 and 3 of the map drill-down
  * (section 53:267): the app bar, the breadcrumb bar, then the map, with the panel that slides
- * in from the right. --map-hover, --map-camera, --map-crossfade, --map-ease and
- * --map-panel-width come from map/motion.ts through MapLayout.tsx.
+ * in from the right. --map-hover, --map-camera, --map-crossfade, --map-ease,
+ * --map-panel-width and --map-sheet-share come from map/motion.ts through MapLayout.tsx.
  */
 .map-layout {
   display: flex;
@@ -80,6 +80,31 @@
   transition:
     transform var(--map-camera) var(--map-ease),
     visibility 0s;
+}
+
+/* F11, below 600 px (motion.ts's SHEET_BELOW): the panel is a sheet over the map's lower part
+   (--map-sheet-share, motion.ts's SHEET_SHARE) that slides up from the bottom, and the legend
+   and zoom buttons rise with it, so the map stays in sight above it */
+@media (max-width: 599px) {
+  .map-layout-controls {
+    right: var(--space-4);
+    bottom: var(--space-4);
+    transition: bottom var(--map-camera) var(--map-ease);
+  }
+
+  .map-layout[data-panel='open'] .map-layout-controls {
+    bottom: calc(var(--map-sheet-share) + var(--space-4));
+    transform: none;
+  }
+
+  .map-layout-panel {
+    top: auto;
+    width: 100%;
+    height: var(--map-sheet-share);
+    border-top: 1px solid var(--color-border-subtle);
+    border-left: 0;
+    transform: translateY(100%);
+  }
 }
 
 /* Reduced motion: the panel crossfades in place, and the controls move without sliding */

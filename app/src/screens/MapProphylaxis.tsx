@@ -7,7 +7,7 @@ import BarangayTooltip from '../map/BarangayTooltip.tsx'
 import ExposureLegend from '../map/ExposureLegend.tsx'
 import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
-import { PANEL_WIDTH } from '../map/motion.ts'
+import { panelCover } from '../map/motion.ts'
 import { chosenRun, joinRun, stormOn, waveOrder } from '../map/plan.ts'
 import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
 import PlanPanel from '../map/PlanPanel.tsx'
@@ -186,15 +186,16 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
   if (!pointer) {
     return null
   }
-  // The panel covers the map's right side when it sits beside it (as the camera assumes, CityMap)
-  const right = pointer.width > PANEL_WIDTH * 1.5 ? pointer.width - PANEL_WIDTH : pointer.width
+  // The panel covers the map's right side, or on a phone its lower part (as the camera assumes, CityMap)
+  const cover = panelCover(pointer.width, pointer.height)
+  const shown = { ...pointer, height: pointer.height - cover.bottom }
   return createPortal(
     <BarangayTooltip
       key={pointer.psgc}
       name={names.get(pointer.psgc) ?? pointer.psgc}
       barangay={barangays?.get(pointer.psgc)}
       note={note}
-      style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST, right)}
+      style={placeTooltip(shown, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width - cover.right)}
     />,
     overlay,
   )

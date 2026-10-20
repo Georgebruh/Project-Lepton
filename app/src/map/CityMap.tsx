@@ -1,6 +1,6 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import type { LngLatBoundsLike, Map as MapLibreMap, Marker, PaddingOptions } from 'maplibre-gl'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Badge from '../components/Badge.tsx'
@@ -15,8 +15,8 @@ import {
   CROSSFADE_MS,
   DIMMED_OPACITY,
   HOVER_MS,
-  PANEL_WIDTH,
   easeInOut,
+  panelCover,
   prefersReducedMotion,
 } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
@@ -120,18 +120,25 @@ function boundsOf(features: Cities['features']): [[number, number], [number, num
 
 /**
  * What the camera shows at a level: all of Metro Manila at level 1; the open city at levels 2
- * and 3, kept clear of the panel by right padding the panel's width (unless the screen is too
- * narrow to leave room beside it).
+ * and 3, kept clear of the panel by padding the side it covers: the right by the panel's width,
+ * or on a phone the bottom by the sheet's height and by `controls`, the legend and zoom buttons
+ * that stand on it (F11, panelCover). `container` is the map's element, at its size now.
  */
-function viewFor(level: MapLevel, cities: Cities, width: number): { bounds: LngLatBoundsLike; padding: PaddingOptions } {
+function viewFor(
+  level: MapLevel,
+  cities: Cities,
+  container: HTMLElement,
+  controls: HTMLElement | null,
+): { bounds: LngLatBoundsLike; padding: PaddingOptions } {
   if (level === 1) {
     const pad = FIT_PADDING.metro
     return { bounds: boundsOf(cities.features), padding: { top: pad, bottom: pad, left: pad, right: pad } }
   }
   const pad = FIT_PADDING.city
   const open = cities.features.filter((feature) => feature.properties.psgc === QC_PSGC)
-  const right = width > PANEL_WIDTH * 1.5 ? PANEL_WIDTH + pad : pad
-  return { bounds: boundsOf(open), padding: { top: pad, bottom: pad, left: pad, right } }
+  const cover = panelCover(container.clientWidth, container.clientHeight)
+  const bottom = cover.bottom > 0 ? cover.bottom + (controls?.offsetHeight ?? 0) : 0
+  return { bounds: boundsOf(open), padding: { top: pad, bottom: pad + bottom, left: pad, right: pad + cover.right } }
 }
 
 /**
@@ -157,6 +164,8 @@ type CityMapProps = {
   level: MapLevel
   /** Called with the map once it has loaded and drawn the cities, and with null when it is removed. */
   onMap: (map: MapLibreMap | null) => void
+  /** F11: the legend and zoom buttons' box (MapLayout), which on a phone the camera keeps the open city clear of. */
+  controls: RefObject<HTMLElement | null>
 }
 
 /**
@@ -164,7 +173,7 @@ type CityMapProps = {
  * thickens its outline and shows its tooltip; clicking a city with data opens its forecast.
  * When the level changes, the camera and the cities move as the Figma notes say.
  */
-export default function CityMap({ cities, forecast, week, level, onMap }: CityMapProps) {
+export default function CityMap({ cities, forecast, week, level, onMap, controls }: CityMapProps) {
   const navigate = useNavigate()
   const { search } = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -187,7 +196,7 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
   useEffect(() => {
     const container = containerRef.current!
     const colors = tokenColors(container)
-    const start = viewFor(shownLevel.current, cities, container.clientWidth)
+    const start = viewFor(shownLevel.current, cities, container, controls.current)
     const [[west, south], [east, north]] = boundsOf(cities.features)
     const map = new maplibregl.Map({
       container,
@@ -300,7 +309,7 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
     })
     // A new map size: show the level's view again
     map.on('resize', () => {
-      const view = viewFor(shownLevel.current, cities, container.clientWidth)
+      const view = viewFor(shownLevel.current, cities, container, controls.current)
       map.fitBounds(view.bounds, { padding: view.padding, duration: 0 })
     })
 
@@ -315,7 +324,7 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
       setLoaded(false)
       onMap(null)
     }
-  }, [cities, onMap])
+  }, [cities, onMap, controls])
 
   // Color the city with data by its outbreak level for the chosen week
   useEffect(() => {
@@ -346,7 +355,7 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
     map.setPaintProperty(LAYERS.line, 'line-opacity-transition', fade)
     map.setPaintProperty(LAYERS.line, 'line-opacity', opacity)
     // Not marked essential, so MapLibre skips the camera move when the reader asks for reduced motion
-    const view = viewFor(level, cities, map.getContainer().clientWidth)
+    const view = viewFor(level, cities, map.getContainer(), controls.current)
     map.fitBounds(view.bounds, { padding: view.padding, duration: CAMERA_MS, easing: easeInOut })
     if (level > 1 && hoveredRef.current) {
       faderRef.current?.fade(hoveredRef.current, 0)
@@ -354,7 +363,7 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
       map.getCanvas().style.cursor = ''
       setPointer(null)
     }
-  }, [level, loaded, cities])
+  }, [level, loaded, cities, controls])
 
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null

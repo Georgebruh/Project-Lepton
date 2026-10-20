@@ -9,7 +9,8 @@ const GAP = 16
 /**
  * A map tooltip's place: right of the pointer, or left of it when it would pass `right` (the
  * right edge of the map the reader sees), and kept inside the map. `tallest` is the most the
- * tooltip is ever tall, so that it never runs off the bottom.
+ * tooltip is ever tall, so that it never runs off the bottom. F11: on a phone neither side may
+ * have room, so the tooltip is also kept off the left edge.
  */
 export function placeTooltip(
   { x, y, height }: MapPointer,
@@ -18,8 +19,9 @@ export function placeTooltip(
   right: number,
 ): CSSProperties {
   const onRight = x + GAP + width <= right - GAP
+  const left = onRight ? x + GAP : x - GAP - width
   return {
-    left: onRight ? x + GAP : x - GAP - width,
+    left: Math.max(GAP, Math.min(left, right - GAP - width)),
     top: Math.max(GAP, Math.min(y - GAP, height - tallest - GAP)),
     width,
   }
