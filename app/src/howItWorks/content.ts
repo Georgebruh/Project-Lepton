@@ -39,8 +39,7 @@ export const PIPELINE: { step: string; cards: PipelineCard[] }[] = [
       {
         label: 'Cases',
         title: 'QCESD weekly counts',
-        text: 'Requested from QCESD; Layer 1 runs on simulated counts until they arrive.',
-        awaited: true,
+        text: 'Cases by week of onset, 2015–2026, from QCESD’s case list; weekly totals only',
       },
     ],
   },
@@ -164,8 +163,8 @@ export const LIMITS: { title: string; text: string }[] = [
     text: 'ERA5, whose return levels judge the forecasts, also misses the highest daily totals (Lavers et al., 2022). It moves where a forecast falls, not the comparison’s fairness.',
   },
   {
-    title: 'No local case counts yet',
-    text: 'Quezon City’s weekly counts have not arrived, so every Layer 1 number on this site is simulated until they do.',
+    title: 'Final counts, not real-time ones',
+    text: 'The backtest uses QCESD’s final counts by week of onset and hides the last 2 weeks at each forecast. Counts reported in real time arrive later, so real-time accuracy may be lower.',
   },
   {
     title: 'Benchmark only partly reproduced',
