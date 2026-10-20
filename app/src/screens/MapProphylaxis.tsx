@@ -10,7 +10,7 @@ import { formatCount } from '../map/forecast.ts'
 import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
 import MapList, { type MapListItem } from '../map/MapList.tsx'
-import { panelCover } from '../map/motion.ts'
+import { SHEET_BELOW, panelCover } from '../map/motion.ts'
 import { PLAN_FLOOD, chosenRun, formatShare, joinRun, stormOn, waveOrder } from '../map/plan.ts'
 import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
 import PlanPanel from '../map/PlanPanel.tsx'
@@ -238,7 +238,8 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
       setPointer(null)
     }
   }, [map])
-  if (!pointer) {
+  // F11: on a phone the open list covers the map, and a tooltip would cover the list: the outline shows the barangay
+  if (!pointer || (pointer.fromList && pointer.width < SHEET_BELOW)) {
     return null
   }
   // The panel covers the map's right side, or on a phone its lower part (as the camera assumes, CityMap)

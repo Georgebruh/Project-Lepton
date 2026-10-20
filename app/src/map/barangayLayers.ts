@@ -42,8 +42,8 @@ export type BarangayView = {
 /** The class of a barangay on a date without a storm forecast: drawn bg/raised, like a city without data. */
 export const NO_DATA = -1
 
-/** The barangay under the pointer, and where the pointer is in the map, in px. */
-export type BarangayPointer = MapPointer & { psgc: string }
+/** The barangay under the pointer, and where the pointer is in the map, in px; F11: or the one the plan's list shows. */
+export type BarangayPointer = MapPointer & { psgc: string; fromList?: boolean }
 
 const SOURCE = 'barangays'
 const LAYERS = { fill: 'barangays-fill', line: 'barangays-line', hover: 'barangays-hover' }
@@ -161,9 +161,9 @@ function makeBarangayLayers(map: MapLibreMap) {
   }
 
   /** Reports the barangay `psgc` at the point x, y of the map, in px, for its tooltip. */
-  function report(psgc: string, x: number, y: number) {
+  function report(psgc: string, x: number, y: number, fromList = false) {
     const { clientWidth: width, clientHeight: height } = map.getContainer()
-    listener?.({ psgc, x, y, width, height })
+    listener?.({ psgc, x, y, width, height, fromList })
   }
 
   /** The pointer over a barangay: thicken its outline (150 ms) and report it, for its tooltip. */
@@ -194,7 +194,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     }
     moveHover(psgc)
     const { x, y } = map.project(middle)
-    report(psgc, x, y)
+    report(psgc, x, y, true)
   }
 
   /** Adds the source and the three layers, the lines and fills not yet shown. */

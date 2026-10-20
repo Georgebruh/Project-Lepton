@@ -17,6 +17,7 @@ import {
   CROSSFADE_MS,
   DIMMED_OPACITY,
   HOVER_MS,
+  SHEET_BELOW,
   easeInOut,
   panelCover,
   prefersReducedMotion,
@@ -426,7 +427,8 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
     const spot = lon !== null && lat !== null ? [lon, lat] : shapeMiddle(shapeParts(city.geometry))
     const { x, y } = map.project([spot[0], spot[1]])
     const { clientWidth: width, clientHeight: height } = container
-    setPointer({ psgc: city.properties.psgc, x, y, width, height, fromList: true })
+    // On a phone the open list covers the map, and a tooltip would cover the list: the outline shows the city
+    setPointer(width < SHEET_BELOW ? null : { psgc: city.properties.psgc, x, y, width, height, fromList: true })
   }
 
   const model = week?.forecasts[forecast.map_model]

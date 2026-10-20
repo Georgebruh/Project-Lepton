@@ -105,6 +105,12 @@
     border-left: 0;
     transform: translateY(100%);
   }
+
+  /* An open list of cities or barangays (map/MapList.css) covers most of the map a phone shows:
+     the legend and zoom buttons step aside, so its rows are not hidden under them */
+  .map-layout-main:has(.map-list-open) .map-layout-controls {
+    visibility: hidden;
+  }
 }
 
 /* Reduced motion: the panel crossfades in place, and the controls move without sliding */
