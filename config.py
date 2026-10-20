@@ -21,7 +21,9 @@ WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX
 WORLDPOP_SCALE_QC = DATA_CLEAN / "worldpop_scale_qc.csv"  # C1: census scale factor per barangay
 OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
-CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13
+CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13: QC weekly counts by onset week
+# A13: QCESD's case list, unchanged. Case-level records: never commit or share it (rule 11).
+QCESD_CASES_RAW = DATA_RAW / "qcesd" / "U.P Cebu Data Request.xlsx"
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
 IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
@@ -181,12 +183,41 @@ CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 # ---------------------------------------------------------------------------
 # Layer 1: case data view (B2)
 # ---------------------------------------------------------------------------
-DATA_OPTION = None                         # "A", "B" or "C"; set by the A13 decision
+# A13 (2026-10-20): QCESD's case list gives onset and admission dates but no report dates,
+# so the decision tree's row is "QC weekly counts by onset week": option C, the delay guard.
+DATA_OPTION = "C"                          # "A", "B" or "C"; set by the A13 decision
 DELAY_GUARD_G = 2                          # assumption, option C only
 DELAY_GUARD_G_TESTS = (1, 3)
 FORECAST_HORIZON_WEEKS = 1                 # B2, B10: forecast day T forecasts week T + 1 (the B11 stretch: 2)
 REPORTED_SHARE_CUTOFF = 0.50               # assumption, option A only
 REPORTED_SHARE_CUTOFF_TEST = 0.80
+
+# ---------------------------------------------------------------------------
+# Layer 1: case data (A13)
+# ---------------------------------------------------------------------------
+# QCESD's case list: one sheet per year, one row per case, these columns. Only the two dates
+# are read; a case's week is the MMWR week of its onset. The file's Morbidity_week column is
+# not used: its meaning changes from year to year (src/cases.py).
+QCESD_COLUMNS = ("Year_of_onset", "Date_of_onset", "Morbidity_week", "Date_of_Admission", "District", "Barangay")
+QCESD_ONSET = "Date_of_onset"
+QCESD_ADMISSION = "Date_of_Admission"
+# Assumption: a week's count is final once 17 days have passed between its last day and the
+# list's latest date; later weeks are missing, not zero (check S4). 99% of cases with both
+# dates were admitted within 17 days of onset (checked 2026-10-20). The delay from admission
+# to report is not in the list, so this is a lower bound.
+CASES_COMPLETE_DAYS = 17
+CASES_COMPLETE_SHARE = 0.99                # S4: at least this share of onset-to-admission delays within CASES_COMPLETE_DAYS
+CASES_DELAY_FLAG_DAYS = 30                 # A13 printout: an admission before onset or over 30 days after it is a likely date typo, counted, kept as given
+# S4: QCESD totals published during 2025, reproduced from the list by onset date. Published
+# mid-season, so later reports can add a few cases.
+CASES_PUBLISHED = (
+    {"start": date(2025, 1, 1), "end": date(2025, 8, 20), "cases": 510,
+     "source": "https://www.dzrh.com.ph/post/leptospirosis-cases-in-quezon-city-rise-to-510-deaths-double-in-just-over-a-month-to-55"},
+    # The plan's example. Found only second-hand (MesVaccins, 3 Sep 2025, citing Outbreak News Today).
+    {"start": date(2025, 1, 1), "end": date(2025, 9, 1), "cases": 535,
+     "source": "https://www.mesvaccins.net/web/news/23425-philippines-leptospirose-a-quezon-city"},
+)
+S4_PUBLISHED_TOLERANCE = 0.05              # S4: "reproduced closely" = within 5% of the published total
 
 # ---------------------------------------------------------------------------
 # Layer 1: models
