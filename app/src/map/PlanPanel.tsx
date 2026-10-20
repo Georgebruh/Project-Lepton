@@ -65,7 +65,10 @@ export default function PlanPanel(props: PlanPanelProps) {
       <PanelModes mode="prophylaxis" />
       <div className="plan-panel-heading">
         <div className="plan-panel-title">
-          <h2 className="heading-l">{city}</h2>
+          {/* F11: takes the keyboard when the plan opens (MapLayout) */}
+          <h2 className="plan-panel-city heading-l" tabIndex={-1}>
+            {city}
+          </h2>
           {storm && (
             <Link to={MAP_PATHS[3] + listSearch(search)} preventScrollReset className="plan-panel-all label-ui">
               <Icon name="chevron-left" size={16} />

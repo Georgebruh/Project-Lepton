@@ -23,6 +23,11 @@
   gap: var(--space-2);
 }
 
+/* F11: the city's name takes focus when the plan opens, for screen readers; it needs no ring */
+.plan-panel-city:focus {
+  outline: none;
+}
+
 /* All storms: an outlined chevron and its words, like the breadcrumb's Back (MapBreadcrumb.css);
    34 px tall, so the heading's 44 px row does not grow */
 .plan-panel-all {

@@ -1,0 +1,81 @@
+/*
+ * F11: the list beside the map (MapList.tsx): a card like the map's hint and legends, with a
+ * Panel header that opens it. Open, its rows scroll inside it, so it never runs past the map.
+ */
+.map-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+/* Open, it is as wide as the map's hint, 280 px, and takes the height its rows need */
+.map-list-open {
+  width: 280px;
+  padding-bottom: var(--space-3);
+}
+
+.map-list-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+/* The rows: they scroll inside the card, which the map's corner keeps inside the map */
+.map-list-items {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* The listbox takes the keyboard but the ring goes round the row reached (aria-activedescendant) */
+.map-list-items:focus-visible {
+  outline: none;
+}
+
+.map-list-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.map-list-option[aria-selected='true'] {
+  background: var(--color-bg-raised);
+}
+
+.map-list-items:focus-visible .map-list-option[aria-selected='true'] {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: -2px;
+}
+
+.map-list-name {
+  min-width: 0;
+}
+
+.map-list-detail {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.map-list-instructions {
+  padding: 0 var(--space-1);
+  color: var(--color-text-tertiary);
+}

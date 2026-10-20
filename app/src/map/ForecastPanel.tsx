@@ -46,7 +46,10 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
     <div className="forecast-panel">
       <PanelModes mode="cases" />
       <div className="forecast-panel-heading">
-        <h2 className="heading-l">{city}</h2>
+        {/* F11: takes the keyboard when the city opens (MapLayout) */}
+        <h2 className="forecast-panel-title heading-l" tabIndex={-1}>
+          {city}
+        </h2>
         <p className="forecast-panel-subtitle label-ui-s">Cases forecast · next week · whole city</p>
       </div>
       {forecast.simulated && (

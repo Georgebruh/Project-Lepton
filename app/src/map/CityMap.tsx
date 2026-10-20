@@ -1,14 +1,16 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import type { LngLatBoundsLike, Map as MapLibreMap, Marker, PaddingOptions } from 'maplibre-gl'
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type Ref, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Badge from '../components/Badge.tsx'
 import Icon from '../components/Icon.tsx'
+import { shapeMiddle, shapeParts } from '../exposed/nearest.ts'
 import maplibregl from '../lib/maplibre.ts'
 import { CITY_LAYERS as LAYERS, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
+import MapList, { type MapListHandle, type MapListItem } from './MapList.tsx'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
 import {
   CAMERA_MS,
@@ -149,8 +151,49 @@ function hoverFader(map: MapLibreMap) {
   return featureFader(map, SOURCE, 'hover', HOVER_MS)
 }
 
-/** The city under the pointer, and where the pointer is in the map, in px. */
-type Pointer = MapPointer & { psgc: string }
+/**
+ * Moves the hover to the city `psgc` (null: to none) from the city in `hovered`: the one's
+ * outline thins as the other's thickens. The pointer and, F11, the list of cities both move it.
+ */
+function moveHover(fader: ReturnType<typeof hoverFader>, hovered: { current: string | null }, psgc: string | null) {
+  if (psgc === hovered.current) {
+    return
+  }
+  if (hovered.current) {
+    fader.fade(hovered.current, 0)
+  }
+  if (psgc) {
+    fader.fade(psgc, 1)
+  }
+  hovered.current = psgc
+}
+
+/** F11: the list's rows, the cities with a forecast first, then the others by name. */
+function cityItems(cities: Cities, forecast: CityForecast, week: ForecastWeek | undefined): MapListItem[] {
+  const model = week?.forecasts[forecast.map_model]
+  const simulated = forecast.simulated ? ` (${SIMULATED_LABEL})` : ''
+  const items: MapListItem[] = cities.features.map(({ properties: city }) => {
+    if (!CITY_PATHS[city.psgc]) {
+      const detail = <span className="body-s">No data yet</span>
+      return { id: city.psgc, name: shortName(city), detail, words: 'no data yet' }
+    }
+    if (!model) {
+      return { id: city.psgc, name: shortName(city), words: 'no forecast for the week after this date', opens: true }
+    }
+    const level = levelOf(model.p_breach, forecast.levels)
+    return {
+      id: city.psgc,
+      name: shortName(city),
+      detail: <Badge tone={LEVEL_TONES[level]}>{LEVEL_NAMES[level]}</Badge>,
+      words: `${LEVEL_NAMES[level]} chance of an outbreak, ${Math.round(model.mu)} cases expected next week${simulated}`,
+      opens: true,
+    }
+  })
+  return items.sort((a, b) => Number(Boolean(b.opens)) - Number(Boolean(a.opens)) || a.name.localeCompare(b.name))
+}
+
+/** The city under the pointer, and where the pointer is in the map, in px; F11: or the city the list shows. */
+type Pointer = MapPointer & { psgc: string; fromList?: boolean }
 
 /** Where a city's name is written: the element MapLibre keeps over its label point. */
 type LabelSpot = { city: CityProperties; element: HTMLElement }
@@ -166,14 +209,22 @@ type CityMapProps = {
   onMap: (map: MapLibreMap | null) => void
   /** F11: the legend and zoom buttons' box (MapLayout), which on a phone the camera keeps the open city clear of. */
   controls: RefObject<HTMLElement | null>
+  /** F11: the list of cities, which MapLayout moves the keyboard to when the reader comes back to level 1. */
+  listRef: Ref<MapListHandle>
+  /** F11: called with the box under the hint where a level puts its own list (F5's barangays), and null when it goes. */
+  onListSlot: (slot: HTMLElement | null) => void
 }
 
 /**
  * F4: the map, its city names, the hint and the city tooltip. At level 1, hovering a city
  * thickens its outline and shows its tooltip; clicking a city with data opens its forecast.
  * When the level changes, the camera and the cities move as the Figma notes say.
+ *
+ * F11: under the hint, the list of cities reaches each of them without a mouse (MapList): the
+ * city reached thickens and shows its tooltip, as under the pointer, and Enter opens a city with
+ * a forecast. The prophylaxis plan puts its list of barangays in the same corner (onListSlot).
  */
-export default function CityMap({ cities, forecast, week, level, onMap, controls }: CityMapProps) {
+export default function CityMap({ cities, forecast, week, level, onMap, controls, listRef, onListSlot }: CityMapProps) {
   const navigate = useNavigate()
   const { search } = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -282,21 +333,12 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
         return
       }
       const psgc = String(feature.properties.psgc)
-      if (psgc !== hoveredRef.current) {
-        if (hoveredRef.current) {
-          fader.fade(hoveredRef.current, 0)
-        }
-        fader.fade(psgc, 1)
-        hoveredRef.current = psgc
-      }
+      moveHover(fader, hoveredRef, psgc)
       map.getCanvas().style.cursor = CITY_PATHS[psgc] ? 'pointer' : ''
       setPointer({ psgc, x: event.point.x, y: event.point.y, width: container.clientWidth, height: container.clientHeight })
     })
     map.on('mouseleave', LAYERS.fill, () => {
-      if (hoveredRef.current) {
-        fader.fade(hoveredRef.current, 0)
-        hoveredRef.current = null
-      }
+      moveHover(fader, hoveredRef, null)
       map.getCanvas().style.cursor = ''
       setPointer(null)
     })
@@ -357,23 +399,60 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
     // Not marked essential, so MapLibre skips the camera move when the reader asks for reduced motion
     const view = viewFor(level, cities, map.getContainer(), controls.current)
     map.fitBounds(view.bounds, { padding: view.padding, duration: CAMERA_MS, easing: easeInOut })
-    if (level > 1 && hoveredRef.current) {
-      faderRef.current?.fade(hoveredRef.current, 0)
-      hoveredRef.current = null
+    if (level > 1 && faderRef.current) {
+      moveHover(faderRef.current, hoveredRef, null)
       map.getCanvas().style.cursor = ''
       setPointer(null)
     }
   }, [level, loaded, cities, controls])
+
+  /**
+   * F11: shows a city from the list as the pointer would: its outline thickens and its tooltip
+   * shows at its label point (for Pateros, which has none, a point inside it); null hides it.
+   */
+  function showCity(psgc: string | null) {
+    const map = mapRef.current
+    const container = containerRef.current
+    if (!map || !container || !faderRef.current || shownLevel.current !== 1) {
+      return
+    }
+    moveHover(faderRef.current, hoveredRef, psgc)
+    const city = cities.features.find((feature) => feature.properties.psgc === psgc)
+    if (!city) {
+      setPointer(null)
+      return
+    }
+    const { label_lon: lon, label_lat: lat } = city.properties
+    const spot = lon !== null && lat !== null ? [lon, lat] : shapeMiddle(shapeParts(city.geometry))
+    const { x, y } = map.project([spot[0], spot[1]])
+    const { clientWidth: width, clientHeight: height } = container
+    setPointer({ psgc: city.properties.psgc, x, y, width, height, fromList: true })
+  }
 
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
   return (
     <div className="city-map" data-level={level}>
       <div ref={containerRef} className="city-map-canvas" />
-      <p className="city-map-hint body-s">
-        <Icon name="info" size={16} />
-        Hover a city to check its data · click a city to open its forecast
-      </p>
+      <div className="city-map-corner">
+        <p className="city-map-hint body-s">
+          <Icon name="info" size={16} />
+          Hover a city to check its data · click a city to open its forecast
+        </p>
+        <div className="city-map-cities">
+          <MapList
+            ref={listRef}
+            title="Cities"
+            items={cityItems(cities, forecast, week)}
+            note={forecast.simulated && <Badge tone="warn">{SIMULATED_LABEL}</Badge>}
+            instructions="The arrow keys or a city's first letters move through the list; Enter opens a city's forecast."
+            onShow={showCity}
+            onOpen={(psgc) => navigate(CITY_PATHS[psgc] + search)}
+          />
+        </div>
+        {/* F11: the prophylaxis plan's list of barangays goes here (MapProphylaxis) */}
+        <div ref={onListSlot} className="city-map-list-slot" />
+      </div>
       {spots.map(({ city, element }) =>
         createPortal(
           CITY_PATHS[city.psgc] ? (
@@ -399,6 +478,7 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
           city={cities.features.find((feature) => feature.properties.psgc === pointer.psgc)!.properties}
           forecast={forecast}
           week={week}
+          fromList={pointer.fromList ?? false}
           style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width)}
         />
       )}
@@ -410,6 +490,8 @@ type CityTooltipProps = {
   city: CityProperties
   forecast: CityForecast
   week: ForecastWeek | undefined
+  /** F11: whether the list of cities shows it, where Enter opens the forecast, not a click. */
+  fromList: boolean
   style: CSSProperties
 }
 
@@ -418,7 +500,7 @@ type CityTooltipProps = {
  * 1b: a city with data shows its outbreak level and next week's expected cases. While the
  * forecasts are simulated it carries the amber badge (app check U2), which Figma's 1b lacks.
  */
-function CityTooltip({ city, forecast, week, style }: CityTooltipProps) {
+function CityTooltip({ city, forecast, week, fromList, style }: CityTooltipProps) {
   const model = week?.forecasts[forecast.map_model]
   if (!CITY_PATHS[city.psgc]) {
     return (
@@ -455,7 +537,7 @@ function CityTooltip({ city, forecast, week, style }: CityTooltipProps) {
           {SIMULATED_LABEL}
         </Badge>
       )}
-      <p className="city-map-tooltip-hint body-s">Click to open the forecast</p>
+      <p className="city-map-tooltip-hint body-s">{fromList ? 'Press Enter' : 'Click'} to open the forecast</p>
     </div>
   )
 }

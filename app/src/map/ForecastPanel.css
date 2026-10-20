@@ -15,6 +15,11 @@
   color: var(--color-text-primary);
 }
 
+/* F11: the title takes focus when the city opens, for screen readers; it needs no ring */
+.forecast-panel-title:focus {
+  outline: none;
+}
+
 .forecast-panel-subtitle {
   color: var(--color-text-tertiary);
 }

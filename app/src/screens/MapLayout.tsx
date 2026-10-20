@@ -1,10 +1,11 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Outlet, useLoaderData, useSearchParams } from 'react-router'
 import AppBar from '../components/AppBar.tsx'
 import CityMap from '../map/CityMap.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
+import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
 import type { loadMapData } from '../map/mapData.ts'
 import MapZoom from '../map/MapZoom.tsx'
@@ -45,7 +46,9 @@ const MOTION = {
  * legend and tooltip in two empty boxes here, which the context hands it (legendSlot, overlay).
  *
  * F11: on a phone (below 600 px, motion.ts's SHEET_BELOW) the panel is a sheet that slides up
- * over the map's lower 55% instead of in from the right, so the map stays in sight above it.
+ * over the map's lower 55% instead of in from the right, so the map stays in sight above it. The
+ * map's top left corner holds a list that reaches every city (level 1) or barangay (level 3)
+ * from the keyboard; the plan puts its list there through the context (listSlot).
  */
 export default function MapLayout() {
   const { cities, forecast } = useLoaderData<typeof loadMapData>()
@@ -54,10 +57,29 @@ export default function MapLayout() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
+  const [listSlot, setListSlot] = useState<HTMLElement | null>(null)
   const controls = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLElement>(null)
+  const cityList = useRef<MapListHandle>(null)
+  const shownLevel = useRef(level)
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const { first, last } = dateRange(forecast)
+
+  // F11: the link or button that changed the level has gone, or slid away with the panel, so the
+  // keyboard moves to where the new level starts: the panel's heading, or, back at Metro Manila,
+  // the list of cities. Not on the first view, where the keyboard starts at the top as usual.
+  useEffect(() => {
+    if (shownLevel.current === level) {
+      return
+    }
+    shownLevel.current = level
+    if (level === 1) {
+      cityList.current?.focus()
+    } else {
+      panel.current?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true })
+    }
+  }, [level])
 
   /**
    * A new date replaces the address's (no new history entry); the page keeps its scroll. A date
@@ -76,14 +98,23 @@ export default function MapLayout() {
     )
   }
 
-  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay }
+  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
   return (
     <div className="map-layout" data-panel={level > 1 ? 'open' : 'closed'} style={MOTION}>
       <AppBar />
       <MapBreadcrumb level={level} date={date} first={first} last={last} onDateChange={changeDate} />
       <main className="map-layout-main">
         <h1 className="visually-hidden">{HEADINGS[level]}</h1>
-        <CityMap cities={cities} forecast={forecast} week={week} level={level} onMap={setMap} controls={controls} />
+        <CityMap
+          cities={cities}
+          forecast={forecast}
+          week={week}
+          level={level}
+          onMap={setMap}
+          controls={controls}
+          listRef={cityList}
+          onListSlot={setListSlot}
+        />
         {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
         <div ref={controls} className="map-layout-controls">
@@ -93,7 +124,7 @@ export default function MapLayout() {
           <MapZoom map={map} />
         </div>
         {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it */}
-        <aside className="map-layout-panel" aria-label="Quezon City" inert={level === 1}>
+        <aside ref={panel} className="map-layout-panel" aria-label="Quezon City" inert={level === 1}>
           <Outlet context={context} />
         </aside>
       </main>
