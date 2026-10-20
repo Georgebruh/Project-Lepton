@@ -1435,8 +1435,9 @@ def f2_app_data():
         outbreak levels of config.APP_LEVELS;
       - every health center has coordinates or is listed with C7's reason for leaving it out;
       - every file with doses carries the not-prescriptions label;
-      - city_forecast.json equals a fresh export when B10's forecasts are on this computer,
-        and scores.json sits beside a real run only, never beside made-up counts.
+      - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
+        simulated run's without M3, whose Prophet fits differ from computer to computer), and
+        scores.json sits beside a real run only, never beside made-up counts.
     """
     import json
 
@@ -1524,8 +1525,15 @@ def f2_app_data():
     table, simulated, path = app_data.load_forecasts()
     forecast_path, scores_path = config.APP_DATA / "city_forecast.json", config.APP_DATA / "scores.json"
     if table is not None:
-        assert read("city_forecast.json") == as_written(app_data.city_forecast(table, simulated, path)), (
-            f"city_forecast.json differs from a fresh export of {path.name}: {rerun}")
+        on_disk, export = read("city_forecast.json"), as_written(app_data.city_forecast(table, simulated, path))
+        if simulated:
+            # B10's --simulate run gives other M3 numbers on each computer (Prophet's fits differ;
+            # the made-up counts and the other models match), so a simulated file made on another
+            # computer is compared without M3. Its made-up numbers are not results either way.
+            for content in (on_disk, export):
+                for week in content["weeks"]:
+                    week["forecasts"].pop("M3", None)
+        assert on_disk == export, f"city_forecast.json differs from a fresh export of {path.name}: {rerun}"
         if not simulated:
             from src import backtest
             need_file(config.CASES_WEEKLY, "A13")   # MASE's denominator needs the counts

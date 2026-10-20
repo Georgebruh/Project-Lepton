@@ -94,34 +94,6 @@ same. A row of tabs therefore lines them up at the top (`align-items: flex-start
 wordmark is Instrument Sans SemiBold, as in the Figma Logo; `index.html` loads only its six
 letters. Every other text is Figtree.
 
-## Components
-
-`src/components/` holds the pieces every screen shares, built from the Figma Components page
-(F3). Use them instead of drawing your own button or badge, so the screens stay alike. Open
-http://localhost:5173/kit to see each one in every variant; choose Monsoon there to compare
-them with the Figma page, which is drawn in that theme.
-
-| Component | Use | Figma |
-| --- | --- | --- |
-| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
-| `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
-| `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise | Tab, 3:83 |
-| `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
-| `StatCard` | `<StatCard label="Residents exposed" value="789,689" caption="..." />` | Stat card, 4:8 |
-| `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"` | Center row, 4:12 |
-| `PanelHeader` | A side-panel section's title that opens and closes it | Panel header, 4:17 |
-| `SiteHeader` | The header of Home, Leptospirosis and How it works | Site header, 4:21 |
-| `AppBar` | The header of the map screens and Compare models | Map frame, 55:319 |
-| `Footer` | The footer, with the stock-planning note | Home frame, 20:364 |
-| `Logo` | The logo; the headers and the footer already include it | Logo, 3:47 |
-| `Icon` | `<Icon name="calendar" size={16} />`, any of the 18 Figma icons, in the text color | icon/…, Components page |
-
-Each component's CSS starts its classes with the component's name (`.button-primary` in
-`Button.css`). In Figma, the 1 px border of the Secondary button and the Selected tab adds to
-their size, so they are 2 px larger than the others (46 px tall, not 44); the CSS does the
-same. A row of tabs therefore lines them up at the top (`align-items: flex-start`). The logo's
-wordmark is Instrument Sans SemiBold, as in the Figma Logo; `index.html` loads only its six
-letters. Every other text is Figtree.
 ## Data (F2)
 
 `python -m src.app_data`, run from the repository root, writes the data files into
