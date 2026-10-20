@@ -1,0 +1,36 @@
+/* F3: badges (Badge.tsx), Figma node 3:78. The label is Label/Eyebrow (.label-eyebrow). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-raised);
+  white-space: nowrap;
+}
+
+/* The dot: a 6 px square in the label's color */
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.badge-neutral {
+  color: var(--color-text-secondary);
+}
+
+.badge-accent {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-primary);
+}
+
+.badge-warn {
+  color: var(--color-status-warn);
+}
+
+.badge-alert {
+  color: var(--color-status-alert);
+}

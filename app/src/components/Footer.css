@@ -1,0 +1,35 @@
+/* F3: the footer (Footer.tsx), Figma node 20:364. */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Figma's 40 px at the bottom, between the spacing steps */
+  padding: 0 var(--space-9) 40px;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.footer-team {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.footer-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.footer-note {
+  color: var(--color-text-tertiary);
+}

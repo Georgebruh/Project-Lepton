@@ -1,0 +1,36 @@
+/* F3: the app bar (AppBar.tsx), Figma node 55:319. */
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 56px;
+  /* Figma's 20 px on the left, between the spacing steps, puts the logo at x = 20 */
+  padding: 0 var(--space-4) 0 20px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-canvas);
+}
+
+.app-bar-home {
+  display: flex;
+  text-decoration: none;
+}
+
+/* The thin line between the logo and the views */
+.app-bar-divider {
+  width: 1px;
+  height: 20px;
+  flex-shrink: 0;
+  background: var(--color-border-strong);
+}
+
+/* The selected tab is 2 px taller than the others (its border), so the tabs line up at the top */
+.app-bar-views {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* margin-left: auto pushes the badge and the Methods button to the right edge */
+.app-bar-badge {
+  margin-left: auto;
+}
