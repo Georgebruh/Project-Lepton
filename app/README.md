@@ -32,7 +32,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/components/` | The shared components (F3), shown together at `/kit` |
 | `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
 | `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the route's loader |
-| `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
+| `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every city and barangay from the keyboard |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
 | `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
@@ -138,6 +138,11 @@ write a hex color or a one-off radius or gap anywhere else.
 Clinic (light) is the app's theme. The dark themes, Monsoon and Ember, are in the file too, for
 a later theme switch: `<html data-theme="monsoon">`. If the design changes, change Figma first,
 then `tokens.css`, keeping the names.
+
+F11 darkened three Clinic colors so that all text meets WCAG AA (4.5:1) on bg/canvas, surface,
+raised and inset: `text/tertiary` #626871 (was #8a9099), `status/warn` #905f18 (#b7791f) and
+`status/alert` #ba3e2b (#c2412d). Figma's Theme collection must hold the same values in its
+Clinic mode. A new color for text needs the same test against every surface it sits on.
 
 Every CSS file ends up in one stylesheet that applies on every page, so two files that use the
 same class name change each other's screens without any error. Start each class with its
@@ -390,6 +395,41 @@ files.
   carries the amber badge until QCESD's counts arrive. The limits list every limit the plan
   and Notes.md state (Figma shows five), and Sources credits every data set, map and font
   (check U8).
+
+## Motion, accessibility and small screens (F11)
+
+Fixes across the app, from the app plan's F11. Figma has no frames for the keyboard list or for
+the map on a phone; both use the existing components and tokens.
+
+- **Motion.** Checked in the browser against the drill-down notes: hover 150 ms; opening a city,
+  the camera, the other cities' fade, the panel and the hint and names all take 700 ms on the
+  ease-in-out curve; the barangays' lines 300 ms, then the 600 ms wave; Back plays it in
+  reverse. With reduced motion every one is a 150 ms crossfade and the camera jumps: MapLibre
+  skips a camera move not marked `essential`, so never mark one.
+- **Focus.** Every link, button and field shows the same ring, 2 px of `accent/secondary`
+  (`global.css`). A control in a box that clips its edges draws it inside itself
+  (`outline-offset: -2px`), as the zoom buttons and the map's canvas do.
+- **The map from the keyboard** (`map/MapList.tsx`). In the map's top left corner, under the hint,
+  "Cities · 17" (level 1) and the plan's "Barangays · 142" (level 3) are Panel headers that open a
+  list, closed at first. Tab reaches the list; the arrow keys, Home, End or a name's first
+  letters move through it, and the row reached thickens and shows its tooltip as under the
+  pointer. Enter opens Quezon City's forecast; Escape closes the list. The plan's rows run from
+  the most exposed, as the wave does. When the level changes, the keyboard moves to the panel's
+  heading, or back at Metro Manila to the list, since the link just used has gone.
+- **Screen readers.** Each row of the lists says its numbers: a city's level and expected cases,
+  a barangay's residents exposed and its three units (the list says they are stock planning).
+  Each panel keeps one `aria-live` line in the page, so a new week, a new forecast, a date
+  without one and the storm list are all read out.
+- **Small screens.** Every route holds at 1440, 1024 and 390 px without sideways scroll. Below
+  768 px the app bar takes two rows and the map's breadcrumb bar keeps Back and the date picker.
+  Below 600 px (`SHEET_BELOW` in `map/motion.ts`) the city panel is a sheet over the map's lower
+  55% (`SHEET_SHARE`) that slides up from the bottom; the camera keeps the open city clear of it
+  and of the legend standing on it (`panelCover`). An open list there hides the legend and shows
+  no tooltip, which would cover its rows. On a touch screen the map's hint says tap, not hover.
+- **Checked** (October 21, on `npm run preview`): Lighthouse accessibility 100 on all eight
+  routes, desktop and mobile; axe finds nothing with the lists open; the map flow done from the
+  keyboard alone, with reduced motion on, at 1440 and 390 px, in a scripted browser. F11's Done
+  when still asks one teammate to do that flow by hand.
 
 ## Deploy (Vercel)
 
