@@ -76,7 +76,7 @@ them with the Figma page, which is drawn in that theme.
 | --- | --- | --- |
 | `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
-| `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs) | Tab, 3:83 |
+| `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs). `<Tab href="#models" selected={...}>` links to a part of the same page (F10) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
 | `StatCard` | `<StatCard label="Residents exposed" value="789,689" caption="..." />` | Stat card, 4:8 |
 | `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"` | Center row, 4:12 |
@@ -223,6 +223,26 @@ exported file.
   doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
   leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
   add up to 29 to 37 units more than the city in each pool; the file says so.
+
+## How it works (F10)
+
+`/how-it-works`, from Figma frame "How it works" (12:1385) and its notes. Text only; no data
+files.
+
+- **The text** is in `src/howItWorks/content.ts`: the pipeline diagram's cards, the models
+  table, the three tests, the limits and the references. The plan takes it from the paper
+  (E4, E5, E7), which is not final yet, so it comes from Notes.md, lepton-plan.md, config.py
+  and `results/`. Check every sentence against the paper's final text (F10's Done when).
+- **Section tabs** jump to `#pipeline`, `#models`, `#testing`, `#limits` and `#sources` (the
+  site header's Sources link opens the last), and the tab of the part being read is selected.
+- **Formulas** sit behind "Show the formula" in the models table (M0, M1 with the threshold,
+  M4), from lepton-plan.md B5, B7 and B8, in `src/howItWorks/formulas.tsx`; none is in the
+  main text.
+- **Not as Figma:** the pipeline section draws no numbers. Its stat cards, weekly chart and
+  score table are the map's and Compare models' (F9), so it links to both. The Cases input
+  carries the amber badge until QCESD's counts arrive. The limits list every limit the plan
+  and Notes.md state (Figma shows five), and Sources credits every data set, map and font
+  (check U8).
 
 ## Deploy (Vercel)
 

@@ -26,3 +26,8 @@
   text-decoration: none;
   white-space: nowrap;
 }
+
+/* F7: the page being read */
+.site-header-link[aria-current='page'] {
+  color: var(--color-text-primary);
+}
