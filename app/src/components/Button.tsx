@@ -10,7 +10,10 @@ type ButtonProps = {
   icon?: IconName
   /** A route in the app, e.g. '/map': the button is a link to it. */
   to?: string
-  /** An address on another site: the button is a link that opens it in a new tab. */
+  /**
+   * An address on another site: the button is a link that opens it in a new tab. A phone number
+   * ('tel:122', F8) opens the phone's dialer instead, in place.
+   */
   href?: string
   /** What happens on click, for a button that is not a link. */
   onClick?: () => void
@@ -46,6 +49,13 @@ export default function Button({
       <Link to={to} className={classes}>
         {content}
       </Link>
+    )
+  }
+  if (href?.startsWith('tel:')) {
+    return (
+      <a href={href} className={classes}>
+        {content}
+      </a>
     )
   }
   if (href) {

@@ -30,6 +30,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/router.tsx` | The routes: which screen each address shows |
 | `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
 | `src/components/` | The shared components (F3), shown together at `/kit` |
+| `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
 | `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
@@ -74,7 +75,7 @@ them with the Figma page, which is drawn in that theme.
 
 | Component | Use | Figma |
 | --- | --- | --- |
-| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
+| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site (`href="tel:122"` dials, in place), `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
 | `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
@@ -223,6 +224,46 @@ exported file.
   doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
   leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
   add up to 29 to 37 units more than the city in each pool; the file says so.
+
+## The exposure guide (F8)
+
+The route `/exposed`, from Figma's three phone frames (39:301, 39:361, 39:411) and the guide's
+notes beside them (40:356). It never names a medicine or a dose: a doctor or nurse decides.
+
+- **Steps.** 1, Exposure check: five questions, each a group of radio buttons drawn as Figma's
+  answer chips. 2, Your result: the risk group and what to do (`exposed/risk.ts`), with the
+  emergency box on every result. 3, Nearest health centers: a map and the three nearest health
+  centers. The step is in the address (`/exposed?step=2`), so the phone's Back goes back a step.
+- **The rule** (`riskLevel`), from the notes: in floodwater more than once or for 2 days or more
+  is high risk; otherwise a cut or wound, or floodwater in the eyes, nose or mouth, is moderate;
+  otherwise low. Fever, muscle pain or red eyes now put "See a doctor today" first. "Not sure"
+  about the eyes, nose or mouth counts as yes (assumption). Figma words only the moderate
+  result; the others follow its pattern and DOH's advice (sources at the top of `risk.ts`). A
+  health professional should review the words before launch, as F7 asks for its page.
+- **Answers and location never leave the phone.** They live only in the screen's memory:
+  nothing stores them, no request carries them, and a reload or leaving the guide forgets them
+  (a reloaded `?step=2` opens step 1). Step 3 fetches only `centers.json` and
+  `qc_barangays.geojson`, which hold nothing about the reader.
+- **Location** is asked for only when the reader taps "Find the nearest health center".
+  Browsers share it only with https pages and localhost, so test it on a phone with a Vercel
+  preview link, not over the local network. If the reader says no, or the phone cannot tell,
+  the reader types their barangay (`BarangayPicker.tsx`: accents, dots and "Sto." do not
+  matter) and the distances start from a point inside it, near its middle (`middlePoint`).
+  "Change" picks another barangay.
+- **Distances** (`exposed/nearest.ts`) are straight lines (haversine) to the 66 health centers
+  C7 sends stock to: the registry's second Bago Bantay entry has no coordinates (its first
+  entry is listed) and Villamor Barangay Health Station's point lies 11 km from its barangay, so
+  neither is offered. Each center's arrow, and the footer's button, open Google Maps with
+  directions; the link holds only the center's coordinates, and Maps finds the start itself.
+  No opening hours: Figma's are samples, shown only once the QC Health Department confirms them.
+- **The map** (`GuideMap.tsx`) is SVG drawn from `qc_barangays.geojson`, so the guide never
+  loads MapLibre: the barangays around the reader, the reader's barangay outlined, a teal square
+  where the reader is, and the centers numbered as in the list. Figma shades the barangays by
+  Kristine's forecast, as every map in the file does; the guide is not about a storm, so they
+  are plain.
+- **Done when** (app plan): it works on a real phone with location allowed and denied, and two
+  known addresses give the same nearest centers and distances as a map's measuring tool. The
+  list shows 0.1 km steps; haversine and a map's tool differ by a few metres across the city.
 
 ## Deploy (Vercel)
 
