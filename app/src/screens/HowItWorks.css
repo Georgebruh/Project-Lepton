@@ -1,0 +1,481 @@
+/*
+ * F10: How it works (HowItWorks.tsx), Figma frame "How it works" (node 12:1385). Figma's own
+ * values between the spacing steps (56, 46, 6 and 2 px, the cards' 200 px) are written in px,
+ * as Footer.css does.
+ */
+
+/* Intro: eyebrow, title, lead and the section tabs */
+.how-it-works-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
+  padding: var(--space-8) var(--space-9) var(--space-7);
+}
+
+.how-it-works-eyebrow-accent {
+  color: var(--color-accent-primary);
+}
+
+.how-it-works-intro-lead {
+  max-width: 820px;
+  color: var(--color-text-secondary);
+}
+
+/* The tabs sit in one outlined box, as Figma's "Section tabs" */
+.how-it-works-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+/* A section: a rule above, its numbered heading, then its content */
+.how-it-works-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8) var(--space-9);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.how-it-works-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.how-it-works-eyebrow {
+  color: var(--color-text-tertiary);
+}
+
+/* Pipeline: where its numbers are shown, then the four-step diagram */
+.how-it-works-pipeline-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  color: var(--color-text-secondary);
+}
+
+.how-it-works-pipeline-links p {
+  flex: 1 1 360px;
+  max-width: 640px;
+}
+
+.how-it-works-pipeline-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Four columns with Figma's 56 px gaps, where the arrows run */
+.how-it-works-diagram {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 56px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-it-works-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.how-it-works-step-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-it-works-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.how-it-works-card-label {
+  color: var(--color-text-tertiary);
+}
+
+.how-it-works-card-text {
+  color: var(--color-text-secondary);
+}
+
+.how-it-works-card .badge {
+  margin-top: var(--space-1);
+}
+
+/* The shared computation: tinted and outlined in teal */
+.how-it-works-card.is-shared {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-primary);
+}
+
+.how-it-works-card.is-shared .how-it-works-card-label {
+  color: var(--color-accent-primary);
+}
+
+/* The two models and what the office gets are Figma's 200 px tall, so their arrows line up */
+.how-it-works-step:nth-child(n + 3) .how-it-works-card {
+  min-height: 200px;
+}
+
+/* An arrow into every card after the inputs: a 32 px line and a 10 px head in the gap before
+   it, at the card's middle (Figma's "Arrows") */
+.how-it-works-step:nth-child(n + 2) .how-it-works-card::before,
+.how-it-works-step:nth-child(n + 2) .how-it-works-card::after {
+  content: '';
+  position: absolute;
+  background: var(--color-border-strong);
+}
+
+.how-it-works-step:nth-child(n + 2) .how-it-works-card::before {
+  left: -46px;
+  top: calc(50% - 0.75px);
+  width: 32px;
+  height: 1.5px;
+}
+
+.how-it-works-step:nth-child(n + 2) .how-it-works-card::after {
+  left: -16px;
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* The exposure ramp: five steps from nobody (R0) to the 100-year map */
+.how-it-works-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.how-it-works-ramp-steps {
+  display: flex;
+  gap: 2px;
+}
+
+.how-it-works-ramp-steps span {
+  flex: 1;
+  height: 8px;
+  border-radius: 1px;
+}
+
+.how-it-works-ramp-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-tertiary);
+}
+
+/* Models: one row per model, LEPTON's tinted */
+.how-it-works-table-wrap {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Fixed layout keeps the columns at their widths, so a long equation scrolls in its box
+   instead of widening the table past its frame */
+.how-it-works-models {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.how-it-works-models th,
+.how-it-works-models td {
+  padding: var(--space-4) var(--space-5);
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+}
+
+.how-it-works-models thead th {
+  font-weight: 500;
+  background: var(--color-bg-raised);
+  color: var(--color-text-tertiary);
+}
+
+.how-it-works-models th:first-child {
+  width: 260px;
+}
+
+.how-it-works-models th:last-child,
+.how-it-works-models td:last-child {
+  width: 220px;
+}
+
+.how-it-works-models tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.how-it-works-models tr.is-ours > * {
+  background: var(--color-accent-subtle);
+}
+
+.how-it-works-models-text,
+.how-it-works-models-role {
+  color: var(--color-text-secondary);
+}
+
+/* "Show the formula": a link-like toggle that opens the formula under the description */
+.how-it-works-formula summary {
+  display: inline-block;
+  margin-top: var(--space-2);
+  color: var(--color-accent-primary);
+  list-style: none;
+  cursor: pointer;
+}
+
+.how-it-works-formula summary::-webkit-details-marker {
+  display: none;
+}
+
+.how-it-works-formula summary:hover {
+  text-decoration: underline;
+}
+
+.how-it-works-formula-hide,
+.how-it-works-formula[open] .how-it-works-formula-show {
+  display: none;
+}
+
+.how-it-works-formula[open] .how-it-works-formula-hide {
+  display: inline;
+}
+
+.how-it-works-formula-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* The equations scroll inside their box on a narrow screen, never the page */
+.how-it-works-formula-math {
+  padding: var(--space-3) var(--space-4);
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  background: var(--color-bg-canvas);
+  border-radius: var(--radius-sm);
+}
+
+.how-it-works-formula-terms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.how-it-works-formula-terms div {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.how-it-works-formula-terms dt {
+  flex-shrink: 0;
+  min-width: 96px;
+  color: var(--color-text-primary);
+}
+
+.how-it-works-formula-terms dd {
+  margin: 0;
+}
+
+/* Testing: three cards */
+.how-it-works-tests {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-it-works-test {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.how-it-works-test-text {
+  color: var(--color-text-secondary);
+}
+
+/* Limits: a list of rows, each with an amber square */
+.how-it-works-limits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-it-works-limit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.how-it-works-limit::before {
+  content: '';
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 1px;
+  background: var(--color-status-warn);
+}
+
+.how-it-works-limit h3 {
+  flex-shrink: 0;
+  width: 340px;
+}
+
+.how-it-works-limit-text,
+.how-it-works-future {
+  flex: 1;
+  color: var(--color-text-secondary);
+}
+
+/* Sources: two lists of references, each a link */
+.how-it-works-references {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.how-it-works-references ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-it-works-references a {
+  color: var(--color-text-secondary);
+  text-decoration-color: var(--color-border-strong);
+}
+
+.how-it-works-references a:hover {
+  color: var(--color-text-primary);
+}
+
+/* Below 1024 px the diagram, the cards and the limits stack, and the arrows go */
+@media (max-width: 1023px) {
+  .how-it-works-intro,
+  .how-it-works-section {
+    padding-left: var(--space-7);
+    padding-right: var(--space-7);
+  }
+
+  .how-it-works-diagram {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-5);
+  }
+
+  .how-it-works-step:nth-child(n + 3) .how-it-works-card {
+    min-height: 0;
+  }
+
+  .how-it-works-step:nth-child(n + 2) .how-it-works-card::before,
+  .how-it-works-step:nth-child(n + 2) .how-it-works-card::after {
+    content: none;
+  }
+
+  .how-it-works-tests {
+    flex-direction: column;
+  }
+
+  .how-it-works-limit {
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+  }
+
+  .how-it-works-limit h3 {
+    width: auto;
+    flex: 1;
+  }
+
+  .how-it-works-limit-text {
+    flex-basis: 100%;
+    padding-left: calc(8px + var(--space-5));
+  }
+}
+
+/* Phones: narrower margins, and each model's row stacks its three cells */
+@media (max-width: 767px) {
+  .how-it-works-intro,
+  .how-it-works-section {
+    padding-left: var(--space-5);
+    padding-right: var(--space-5);
+  }
+
+  .how-it-works-models thead {
+    display: none;
+  }
+
+  .how-it-works-models,
+  .how-it-works-models tbody,
+  .how-it-works-models tr,
+  .how-it-works-models th,
+  .how-it-works-models td {
+    display: block;
+    width: auto;
+  }
+
+  .how-it-works-models th:first-child,
+  .how-it-works-models td:last-child {
+    width: auto;
+  }
+
+  .how-it-works-models tbody th,
+  .how-it-works-models tbody td {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .how-it-works-models tbody td:last-child {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .how-it-works-models tbody tr:last-child td:last-child {
+    border-bottom: 0;
+  }
+
+  .how-it-works-formula-terms div {
+    flex-direction: column;
+    gap: 0;
+  }
+}

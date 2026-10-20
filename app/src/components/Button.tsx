@@ -11,8 +11,8 @@ type ButtonProps = {
   /** A route in the app, e.g. '/map': the button is a link to it. */
   to?: string
   /**
-   * An address on another site: the button is a link that opens it in a new tab. A phone number
-   * ('tel:122', F8) opens the phone's dialer instead, in place.
+   * An address on another site: the button is a link that opens it in a new tab. A phone or
+   * e-mail address ('tel:122', F7 and F8) opens the phone's dialer or mail app instead, in place.
    */
   href?: string
   /** What happens on click, for a button that is not a link. */
@@ -51,16 +51,15 @@ export default function Button({
       </Link>
     )
   }
-  if (href?.startsWith('tel:')) {
-    return (
-      <a href={href} className={classes}>
-        {content}
-      </a>
-    )
-  }
   if (href) {
+    const newTab = !/^(tel|mailto):/.test(href)
     return (
-      <a href={href} className={classes} target="_blank" rel="noreferrer">
+      <a
+        href={href}
+        className={classes}
+        target={newTab ? '_blank' : undefined}
+        rel={newTab ? 'noreferrer' : undefined}
+      >
         {content}
       </a>
     )
