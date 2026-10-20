@@ -1,0 +1,58 @@
+/* F6: Home's chart of the city forecast (BacktestChart.tsx), Figma node 20:283. */
+.backtest-chart {
+  position: relative;
+  margin: 0;
+}
+
+/* The same room while city_forecast.json loads */
+.backtest-chart-loading {
+  aspect-ratio: 576 / 196;
+}
+
+.backtest-chart-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.backtest-chart-axis {
+  fill: var(--color-border-strong);
+}
+
+/* Each week's count: grey bars at 35% (Figma) */
+.backtest-chart-bar {
+  fill: var(--color-text-tertiary);
+  opacity: 0.35;
+}
+
+/* The map model's 90% range, its color at 16%, and its forecast, a 2 px line (Figma) */
+.backtest-chart-range {
+  fill: var(--color-chart-m4);
+  opacity: 0.16;
+}
+
+.backtest-chart-forecast {
+  fill: none;
+  stroke: var(--color-chart-m4);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.backtest-chart-threshold {
+  fill: none;
+  stroke: var(--color-status-warn);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+}
+
+/* The simulated badge sits on the chart's top left, as in Figma */
+.backtest-chart-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.backtest-chart-status {
+  color: var(--color-text-tertiary);
+}

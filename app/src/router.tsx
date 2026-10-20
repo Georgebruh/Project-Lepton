@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import App from './App.tsx'
+import { loadMapData } from './map/mapData.ts'
+import { loadPlanData } from './map/planData.ts'
 import CompareModels from './screens/CompareModels.tsx'
 import ErrorPage from './screens/ErrorPage.tsx'
 import Exposed from './screens/Exposed.tsx'
@@ -23,6 +25,11 @@ import Leptospirosis from './screens/Leptospirosis.tsx'
  *
  * F5: the prophylaxis plan's own loader fetches its files (storms, health centers, barangay
  * shapes) only when the plan first opens, and keeps them while the date and lead change.
+ *
+ * F6: Home previews the plan with the same files and loaders, so the two small modules that
+ * fetch them (map/mapData.ts, map/planData.ts) are part of every page. Their loaders sit on the
+ * map routes directly and fetch while the screen's code loads; the map's code, with MapLibre,
+ * still loads only when the map opens.
  */
 export const router = createBrowserRouter([
   {
@@ -32,13 +39,8 @@ export const router = createBrowserRouter([
       { path: '/', element: <Home /> },
       {
         path: '/map',
-        lazy: async () => {
-          const [{ default: Component }, { loadMapData }] = await Promise.all([
-            import('./screens/MapLayout.tsx'),
-            import('./map/mapData.ts'),
-          ])
-          return { Component, loader: loadMapData }
-        },
+        loader: loadMapData,
+        lazy: async () => ({ Component: (await import('./screens/MapLayout.tsx')).default }),
         shouldRevalidate: () => false,
         hydrateFallbackElement: <p className="route-loading body-m">Loading the map…</p>,
         children: [
@@ -55,13 +57,8 @@ export const router = createBrowserRouter([
           {
             path: 'quezon-city/prophylaxis',
             handle: { mapLevel: 3 },
-            lazy: async () => {
-              const [{ default: Component }, { loadPlanData }] = await Promise.all([
-                import('./screens/MapProphylaxis.tsx'),
-                import('./map/planData.ts'),
-              ])
-              return { Component, loader: loadPlanData }
-            },
+            loader: loadPlanData,
+            lazy: async () => ({ Component: (await import('./screens/MapProphylaxis.tsx')).default }),
             shouldRevalidate: () => false,
           },
         ],
