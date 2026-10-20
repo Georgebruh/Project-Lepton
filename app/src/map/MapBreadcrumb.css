@@ -63,3 +63,16 @@
 .map-breadcrumb-date {
   margin-left: auto;
 }
+
+/* F11, below 768 px (the trail, Back and the date need about 660 at level 3): the trail only
+   at level 1, where it is one word and there is no Back */
+@media (max-width: 767px) {
+  .map-breadcrumb {
+    gap: var(--space-3);
+    padding: 0 var(--space-4);
+  }
+
+  .map-breadcrumb:not([data-level='1']) .map-breadcrumb-nav {
+    display: none;
+  }
+}
