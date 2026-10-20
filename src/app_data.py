@@ -74,8 +74,8 @@ from src import (allocation, backtest, breach_scores, compare, doses, exposed, f
 UNITS = list(doses.UNITS)                         # doxy100, courses, amox500
 OBSERVED = forecast_run.OBSERVED                  # C9's name for its observed (IMERG) run
 FLAG_COLUMN = f"flagged_{100 * config.APP_FLAG_SHARE:.0f}"   # C9's count of barangays flagged at that share
-MODEL_NAMES = {"M4_noEI": config.FLOOD_TEST[1]}   # B10 still writes M4_noEI (Notes.md 1.4); the app uses D6's name
-MODELS = [MODEL_NAMES.get(model, model) for model in backtest.MODELS]   # the order the app lists them in
+MODEL_NAMES = {"M4_noEI": config.FLOOD_TEST[1]}   # B10's old name, in forecasts files written before Oct 21 (Notes.md 1.4)
+MODELS = list(backtest.MODELS)                    # the order the app lists them in
 SIMULATED_NOTE = "Made-up QC-shaped counts from B10's --simulate run, not QC data: no number here is a result."
 INPUTS = {                                        # the files F2 reads, and the task that makes each
     config.C8_BARANGAYS: "C8: python -m src.observed_run",
