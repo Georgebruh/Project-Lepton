@@ -65,7 +65,10 @@ export default function PlanPanel(props: PlanPanelProps) {
       <PanelModes mode="prophylaxis" />
       <div className="plan-panel-heading">
         <div className="plan-panel-title">
-          <h2 className="heading-l">{city}</h2>
+          {/* F11: takes the keyboard when the plan opens (MapLayout) */}
+          <h2 className="plan-panel-city heading-l" tabIndex={-1}>
+            {city}
+          </h2>
           {storm && (
             <Link to={MAP_PATHS[3] + listSearch(search)} preventScrollReset className="plan-panel-all label-ui">
               <Icon name="chevron-left" size={16} />
@@ -87,7 +90,25 @@ export default function PlanPanel(props: PlanPanelProps) {
       ) : (
         <StormList storms={storms.storms} date={date} stormOnDate={stormOnDate} />
       )}
+      {/* Read out when the reader picks another forecast or date (Figma has no text here). F11:
+          always in the page, so the storm list is read out too. */}
+      <p className="visually-hidden" aria-live="polite">
+        {storm && run
+          ? planWords(storm, run, barangays)
+          : `${stormOnDate ? '' : 'No storm forecast for this date. '}Choose a storm with archived forecasts.`}
+      </p>
     </div>
+  )
+}
+
+/** A forecast's totals in one sentence, as a screen reader hears them when the forecast or date changes. */
+function planWords(storm: Storm, run: StormRun, barangays: number): string {
+  const flood = planFlood(storm, run)
+  return (
+    `${storm.name}, forecast ${leadWords(run.lead_days ?? 1)}: ${run.flagged} of ${barangays} barangays flagged, ` +
+    `${formatCount(flood.exposed)} residents exposed, ${formatCount(flood.doxy100)} doxycycline capsules, ` +
+    `${formatCount(flood.courses)} children's courses and ${formatCount(flood.amox500)} amoxicillin tablets. ` +
+    'Stock planning, not prescriptions.'
   )
 }
 
@@ -196,14 +217,6 @@ function PlanNumbers({ storms, centers, storm, run, barangays, onLead }: PlanNum
           Stock planning, not prescriptions. DOH DM 2023-0309 requires a doctor's consultation before any prophylaxis.
         </p>
       </div>
-
-      {/* Read out when the reader picks another forecast or date (Figma has no text here) */}
-      <p className="visually-hidden" aria-live="polite">
-        {storm.name}, forecast {leadWords(run.lead_days ?? 1)}: {run.flagged} of {barangays} barangays flagged,{' '}
-        {formatCount(flood.exposed)}{' '}
-        residents exposed, {formatCount(flood.doxy100)} doxycycline capsules, {formatCount(flood.courses)} children's
-        courses and {formatCount(flood.amox500)} amoxicillin tablets. Stock planning, not prescriptions.
-      </p>
     </>
   )
 }

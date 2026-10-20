@@ -1,8 +1,7 @@
-import type { Position } from 'geojson'
 import { useEffect, useState } from 'react'
 import { titleCase } from '../map/plan.ts'
 import type { BarangayShapes, CentersFile } from '../map/planData.ts'
-import { middlePoint, ringArea, type LonLat } from './nearest.ts'
+import { shapeMiddle, shapeParts, type LonLat } from './nearest.ts'
 
 /**
  * F8: the two files the guide's last step reads, written by F2 (python -m src.app_data), and
@@ -40,11 +39,6 @@ export type GuideBarangay = {
 
 export type GuideData = { centers: GuideCenter[]; barangays: GuideBarangay[] }
 
-/** A ring of GeoJSON positions as [longitude, latitude] points. */
-function toPoints(ring: Position[]): LonLat[] {
-  return ring.map(([lon, lat]): LonLat => [lon, lat])
-}
-
 /**
  * What the guide keeps of F2's two files. The health centers are the 66 that C7 sends stock to
  * (`left_out` empty), the plan's "66 health centers": the registry's second entry for Bago
@@ -67,12 +61,9 @@ export function guideData(centers: CentersFile, shapes: BarangayShapes): GuideDa
     }
   })
   const barangays = shapes.features.map(({ properties, geometry }) => {
-    const polygons = (geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates).map(
-      (polygon) => polygon.map(toPoints),
-    )
+    const polygons = shapeParts(geometry)
     // A barangay in several parts starts its distances from its largest part
-    const largest = polygons.reduce((big, part) => (ringArea(part[0]) > ringArea(big[0]) ? part : big))
-    return { psgc: properties.psgc, name: properties.name, rings: polygons.flat(), middle: middlePoint(largest) }
+    return { psgc: properties.psgc, name: properties.name, rings: polygons.flat(), middle: shapeMiddle(polygons) }
   })
   return { centers: guideCenters, barangays }
 }

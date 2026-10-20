@@ -13,6 +13,27 @@
   inset: 0;
 }
 
+/* F11: MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom); it fills the map,
+   whose edges clip, so its focus ring sits inside it */
+.city-map-canvas canvas:focus-visible {
+  outline-offset: -2px;
+}
+
+/* F11: the hint's words for a touch screen, which cannot hover, replace Figma's there */
+.city-map-hint-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .city-map-hint-pointer {
+    display: none;
+  }
+
+  .city-map-hint-touch {
+    display: inline;
+  }
+}
+
 /* The element MapLibre keeps over a label point: the pointer passes through it to the map */
 .city-map-spot {
   pointer-events: none;
@@ -46,11 +67,42 @@
   color: var(--color-text-secondary);
 }
 
-/* "Hover a city …", top left (Figma "Hint", node 55:468) */
-.city-map-hint {
+/* F11: the map's top left corner: the hint and the list of cities at level 1, the plan's list of
+   barangays at level 3. Kept inside the map; the pointer passes through its empty part. */
+.city-map-corner {
   position: absolute;
   top: var(--space-5);
   left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: calc(100% - 2 * var(--space-5));
+  max-height: calc(100% - 2 * var(--space-5));
+  pointer-events: none;
+}
+
+.city-map-corner > * {
+  pointer-events: auto;
+}
+
+/* The lists shrink to the corner's height, and their rows scroll (MapList.css) */
+.city-map-cities {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 100%;
+  transition:
+    opacity var(--map-move) var(--map-ease),
+    visibility 0s;
+}
+
+.city-map-list-slot {
+  display: contents;
+}
+
+/* "Hover a city …", top left (Figma "Hint", node 55:468) */
+.city-map-hint {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -65,14 +117,40 @@
     visibility 0s;
 }
 
-/* The names and the hint belong to Metro Manila: they fade with the camera when a city opens */
+/* The names and the hint belong to Metro Manila: they fade with the camera when a city opens.
+   F11: so does the list of cities, and the hint and the list leave the corner's column as they
+   go, so the plan's list of barangays takes the top (hidden, the list is out of the keyboard's
+   reach too) */
 .city-map:not([data-level='1']) .city-map-label,
-.city-map:not([data-level='1']) .city-map-hint {
+.city-map:not([data-level='1']) .city-map-hint,
+.city-map:not([data-level='1']) .city-map-cities {
   opacity: 0;
   visibility: hidden;
   transition:
     opacity var(--map-move) var(--map-ease),
     visibility 0s linear var(--map-move);
+}
+
+.city-map:not([data-level='1']) .city-map-hint,
+.city-map:not([data-level='1']) .city-map-cities {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* F11, below 600 px (motion.ts's SHEET_BELOW): 16 px from the edges, and above the panel's
+   sheet when it is open */
+@media (max-width: 599px) {
+  .city-map-corner {
+    top: var(--space-4);
+    left: var(--space-4);
+    max-width: calc(100% - 2 * var(--space-4));
+    max-height: calc(100% - 2 * var(--space-4));
+  }
+
+  .city-map:not([data-level='1']) .city-map-corner {
+    max-height: calc(100% - var(--map-sheet-share) - 2 * var(--space-4));
+  }
 }
 
 /* The city under the pointer (Figma "Tooltip", nodes 55:621 and 55:776); it fades in */

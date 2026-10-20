@@ -2,13 +2,16 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLoaderData, useSearchParams } from 'react-router'
+import Badge from '../components/Badge.tsx'
 import { NO_DATA, barangayLayers, type BarangayPointer, type BarangayView } from '../map/barangayLayers.ts'
 import BarangayTooltip from '../map/BarangayTooltip.tsx'
 import ExposureLegend from '../map/ExposureLegend.tsx'
+import { formatCount } from '../map/forecast.ts'
 import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
-import { PANEL_WIDTH } from '../map/motion.ts'
-import { chosenRun, joinRun, stormOn, waveOrder } from '../map/plan.ts'
+import MapList, { type MapListItem } from '../map/MapList.tsx'
+import { SHEET_BELOW, panelCover } from '../map/motion.ts'
+import { PLAN_FLOOD, chosenRun, formatShare, joinRun, stormOn, waveOrder } from '../map/plan.ts'
 import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
 import PlanPanel from '../map/PlanPanel.tsx'
 import { PLAN_PARAMS, QC_PSGC } from '../map/routes.ts'
@@ -30,9 +33,12 @@ const TOOLTIP_TALLEST = 230
  * barangays are drawn on the layout's map (map/barangayLayers.ts), with the legend and the
  * tooltip in the layout's two boxes for them; the numbers fill the panel (map/PlanPanel.tsx).
  * Stock planning, not prescriptions.
+ *
+ * F11: the list of the 142 barangays in the map's top left corner (listSlot) reaches each from
+ * the keyboard: the barangay reached thickens and shows its tooltip, as under the pointer.
  */
 export default function MapProphylaxis() {
-  const { cities, date, map, legendSlot, overlay } = useMapContext()
+  const { cities, date, map, legendSlot, overlay, listSlot } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateStorm = stormOn(storms.storms, date)
@@ -78,6 +84,11 @@ export default function MapProphylaxis() {
     )
   }
 
+  // The barangays' numbers in the run on the map, while a storm is shown; the tooltip and the list
+  // (F11) say why there are none otherwise
+  const numbers = hasStorm ? drawn : undefined
+  const none = dateStorm ? 'Choose a storm to see its numbers' : 'No storm forecast for this date'
+
   return (
     <>
       <title>Prophylaxis plan · LEPTON</title>
@@ -95,14 +106,24 @@ export default function MapProphylaxis() {
       {legendSlot &&
         storm &&
         createPortal(<ExposureLegend classes={storms.classes} flagShare={storms.flag_share} />, legendSlot)}
+      {map &&
+        listSlot &&
+        createPortal(
+          <MapList
+            title="Barangays"
+            items={barangayItems(shapes, numbers, none)}
+            note={<p className="body-s">{numbers ? 'Most exposed first' : `${none}.`}</p>}
+            instructions={
+              numbers
+                ? "The arrow keys or a barangay's first letters move through the list. Doses are stock planning, not prescriptions."
+                : "The arrow keys or a barangay's first letters move through the list."
+            }
+            onShow={(psgc) => barangayLayers(map).highlight(psgc)}
+          />,
+          listSlot,
+        )}
       {map && overlay && (
-        <HoverTooltip
-          map={map}
-          overlay={overlay}
-          shapes={shapes}
-          barangays={hasStorm ? drawn : undefined}
-          note={dateStorm ? 'Choose a storm to see its numbers.' : 'No storm forecast for this date.'}
-        />
+        <HoverTooltip map={map} overlay={overlay} shapes={shapes} barangays={numbers} note={`${none}.`} />
       )}
     </>
   )
@@ -112,6 +133,43 @@ export default function MapProphylaxis() {
 function runView(barangays: Map<string, BarangayRun>): BarangayView {
   const classes = new Map([...barangays].map(([psgc, barangay]) => [psgc, barangay.class]))
   return { classes, order: waveOrder(barangays.values()) }
+}
+
+/**
+ * F11: the rows of the plan's list. With a storm's numbers, the most exposed share first (as the
+ * wave), each with its share and the Flagged badge; a screen reader also hears its residents
+ * exposed and its three units. Without them, the barangays by name, each saying `none`, why.
+ */
+function barangayItems(
+  shapes: BarangayShapes,
+  barangays: Map<string, BarangayRun> | undefined,
+  none: string,
+): MapListItem[] {
+  const names = new Map(shapes.features.map(({ properties }) => [properties.psgc, properties.name]))
+  if (!barangays) {
+    return [...names]
+      .map(([psgc, name]) => ({ id: psgc, name, words: none.toLowerCase() }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+  return waveOrder(barangays.values()).map((psgc) => {
+    const barangay = barangays.get(psgc)!
+    const units = barangay.units[PLAN_FLOOD]
+    const share = formatShare(barangay.share)
+    return {
+      id: psgc,
+      name: names.get(psgc) ?? psgc,
+      detail: (
+        <>
+          {barangay.flagged && <Badge tone="alert">Flagged</Badge>}
+          <span className="data-m">{share}</span>
+        </>
+      ),
+      words:
+        `${share} of residents exposed, ${formatCount(barangay.exposed)} of ${formatCount(barangay.pop_2024)}` +
+        `${barangay.flagged ? ', flagged' : ''}; ${formatCount(units.doxy100)} doxycycline 100 mg capsules, ` +
+        `${formatCount(units.courses)} children's courses, ${formatCount(units.amox500)} amoxicillin 500 mg tablets`,
+    }
+  })
 }
 
 /** The map on a date without a storm forecast: every barangay without data, in PSGC order. */
@@ -183,18 +241,20 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
       setPointer(null)
     }
   }, [map])
-  if (!pointer) {
+  // F11: on a phone the open list covers the map, and a tooltip would cover the list: the outline shows the barangay
+  if (!pointer || (pointer.fromList && pointer.width < SHEET_BELOW)) {
     return null
   }
-  // The panel covers the map's right side when it sits beside it (as the camera assumes, CityMap)
-  const right = pointer.width > PANEL_WIDTH * 1.5 ? pointer.width - PANEL_WIDTH : pointer.width
+  // The panel covers the map's right side, or on a phone its lower part (as the camera assumes, CityMap)
+  const cover = panelCover(pointer.width, pointer.height)
+  const shown = { ...pointer, height: pointer.height - cover.bottom }
   return createPortal(
     <BarangayTooltip
       key={pointer.psgc}
       name={names.get(pointer.psgc) ?? pointer.psgc}
       barangay={barangays?.get(pointer.psgc)}
       note={note}
-      style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST, right)}
+      style={placeTooltip(shown, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width - cover.right)}
     />,
     overlay,
   )

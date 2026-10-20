@@ -14,6 +14,9 @@ import './AppBar.css'
  * Figma also has a City outlook tab and an Upload weekly cases button. They stay hidden until
  * both are designed and built: City outlook has no screen, and uploading cases needs a server
  * that refits M4 (the app plan's Screens section).
+ *
+ * F11: below 768 px the bar takes two rows, the logo and the badge over the views and Methods,
+ * so nothing scrolls sideways on a phone (AppBar.css).
  */
 export default function AppBar() {
   return (
@@ -29,7 +32,7 @@ export default function AppBar() {
       <Badge tone="warn" className="app-bar-badge">
         Stock planning, not prescriptions
       </Badge>
-      <Button variant="ghost" to="/how-it-works">
+      <Button variant="ghost" to="/how-it-works" className="app-bar-methods">
         Methods
       </Button>
     </header>

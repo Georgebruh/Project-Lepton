@@ -24,6 +24,23 @@ export const DIMMED_OPACITY = 0.45
 export const PANEL_WIDTH = 400
 
 /**
+ * F11: below this width in px the panel is a sheet that slides up over the map's lower part
+ * instead of a column beside it (MapLayout.css's media query uses the same number), and the
+ * share of the map's height the sheet covers. Figma has no phone frame for the map.
+ */
+export const SHEET_BELOW = 600
+export const SHEET_SHARE = 0.55
+
+/**
+ * How much of a map `width` by `height` px the open panel covers, in px: its right side when
+ * the panel sits beside it, or its lower part when the panel is a sheet (F11). The camera keeps
+ * the open city clear of it, and the tooltips stay out from under it.
+ */
+export function panelCover(width: number, height: number): { right: number; bottom: number } {
+  return width < SHEET_BELOW ? { right: 0, bottom: Math.round(height * SHEET_SHARE) } : { right: PANEL_WIDTH, bottom: 0 }
+}
+
+/**
  * F5, opening the prophylaxis plan: first the barangay lines fade in, in LINES_MS; then the
  * barangay fills rise in a wave from the most exposed barangay to the least, all within WAVE_MS,
  * while the city's own fill fades out. Back plays it in reverse.

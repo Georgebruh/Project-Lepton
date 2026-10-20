@@ -1,5 +1,6 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
 import type { Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
+import { shapeMiddle, shapeParts, type LonLat } from '../exposed/nearest.ts'
 import { CITY_LAYERS } from './cityLayers.ts'
 import { featureFader, stagger } from './featureFades.ts'
 import { CROSSFADE_MS, HOVER_MS, LINES_MS, RISE_MS, WAVE_MS, prefersReducedMotion } from './motion.ts'
@@ -27,7 +28,7 @@ import type { MapPointer } from './tooltip.ts'
  * The plan's route component (MapProphylaxis) calls open() when the plan opens, show() with each
  * run and close() when it leaves. The layers outlive that component, so that close() can play
  * the reverse before removing them: barangayLayers(map) gives the same object for the same map
- * every time.
+ * every time. F11: highlight() shows a barangay from the plan's list as the pointer would.
  */
 
 /** What the map shows of a run: each barangay's class and the order the wave reaches them. */
@@ -41,8 +42,8 @@ export type BarangayView = {
 /** The class of a barangay on a date without a storm forecast: drawn bg/raised, like a city without data. */
 export const NO_DATA = -1
 
-/** The barangay under the pointer, and where the pointer is in the map, in px. */
-export type BarangayPointer = MapPointer & { psgc: string }
+/** The barangay under the pointer, and where the pointer is in the map, in px; F11: or the one the plan's list shows. */
+export type BarangayPointer = MapPointer & { psgc: string; fromList?: boolean }
 
 const SOURCE = 'barangays'
 const LAYERS = { fill: 'barangays-fill', line: 'barangays-line', hover: 'barangays-hover' }
@@ -103,6 +104,7 @@ function makeBarangayLayers(map: MapLibreMap) {
   const colors = tokenColors(map.getContainer())
   const rise = new Map<string, number>() // each barangay's "rise", as last set
   const shown = new Map<string, number>() // each barangay's class, the one it shows or is going to
+  const middles = new Map<string, LonLat>() // F11: a point inside each barangay, for its tooltip from the list
   let stage: 'closed' | 'open' | 'closing' = 'closed'
   let risen = false // whether the fills have risen, or are rising, since the plan opened
   let linesFrom = 0 // when the lines began to fade in (performance.now())
@@ -144,6 +146,26 @@ function makeBarangayLayers(map: MapLibreMap) {
     clearTimeout(removeTimer)
   }
 
+  /** Moves the dark outline to the barangay `psgc` (null: to none): the old one fades out as it fades in (150 ms). */
+  function moveHover(psgc: string | null) {
+    if (psgc === hovered) {
+      return
+    }
+    if (hovered) {
+      hover?.fade(hovered, 0)
+    }
+    if (psgc) {
+      hover?.fade(psgc, 1)
+    }
+    hovered = psgc
+  }
+
+  /** Reports the barangay `psgc` at the point x, y of the map, in px, for its tooltip. */
+  function report(psgc: string, x: number, y: number, fromList = false) {
+    const { clientWidth: width, clientHeight: height } = map.getContainer()
+    listener?.({ psgc, x, y, width, height, fromList })
+  }
+
   /** The pointer over a barangay: thicken its outline (150 ms) and report it, for its tooltip. */
   function onMove(event: MapLayerMouseEvent) {
     const feature = event.features?.[0]
@@ -151,28 +173,36 @@ function makeBarangayLayers(map: MapLibreMap) {
       return
     }
     const psgc = String(feature.properties.psgc)
-    if (psgc !== hovered) {
-      if (hovered) {
-        hover?.fade(hovered, 0)
-      }
-      hover?.fade(psgc, 1)
-      hovered = psgc
-    }
-    const { clientWidth: width, clientHeight: height } = map.getContainer()
-    listener?.({ psgc, x: event.point.x, y: event.point.y, width, height })
+    moveHover(psgc)
+    report(psgc, event.point.x, event.point.y)
   }
 
   function onLeave() {
-    if (hovered) {
-      hover?.fade(hovered, 0)
-      hovered = null
-    }
+    moveHover(null)
     listener?.(null)
+  }
+
+  /**
+   * F11: shows a barangay from the plan's list as the pointer would: its outline thickens and it
+   * is reported at a point inside it, for its tooltip; null ends it.
+   */
+  function highlight(psgc: string | null) {
+    const middle = psgc ? middles.get(psgc) : undefined
+    if (stage !== 'open' || !psgc || !middle) {
+      onLeave()
+      return
+    }
+    moveHover(psgc)
+    const { x, y } = map.project(middle)
+    report(psgc, x, y, true)
   }
 
   /** Adds the source and the three layers, the lines and fills not yet shown. */
   function addLayers(shapes: BarangayShapes) {
     map.addSource(SOURCE, { type: 'geojson', data: shapes, promoteId: 'psgc' })
+    for (const { properties, geometry } of shapes.features) {
+      middles.set(properties.psgc, shapeMiddle(shapeParts(geometry)))
+    }
     const below = CITY_LAYERS.openLine // the city's outline stays on top
     map.addLayer(
       {
@@ -226,6 +256,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     }
     rise.clear()
     shown.clear()
+    middles.clear()
     hover = null
     hovered = null
     stage = 'closed'
@@ -330,5 +361,5 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener = next
   }
 
-  return { open, show, close, onHover }
+  return { open, show, close, onHover, highlight }
 }

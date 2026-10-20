@@ -17,6 +17,8 @@ export type MapContext = {
   legendSlot: HTMLElement | null
   /** F5: a layer over the map for a level's own tooltips, in the map's px; null until drawn. */
   overlay: HTMLElement | null
+  /** F11: where a level puts its own list for the keyboard, in the map's top left corner (with createPortal); null until drawn. */
+  listSlot: HTMLElement | null
 }
 
 /** The map context, in the component of a map level (MapMetroManila, MapQuezonCity, MapProphylaxis). */

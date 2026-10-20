@@ -33,10 +33,11 @@
   --color-border-subtle: #dedad1;
   --color-border-strong: #c4beb2;
 
-  /* Text */
+  /* Text. F11: tertiary was #8a9099 (2.6 to 3.2:1); this shade meets WCAG AA, 4.5:1, on
+     bg/canvas, surface, raised and inset */
   --color-text-primary: #12161b;
   --color-text-secondary: #545c67;
-  --color-text-tertiary: #8a9099;
+  --color-text-tertiary: #626871;
   --color-text-on-accent: #ffffff;
 
   /* Accent */
@@ -44,9 +45,10 @@
   --color-accent-secondary: #3150c9;
   --color-accent-subtle: #dcebe7;
 
-  /* Status */
-  --color-status-alert: #c2412d;
-  --color-status-warn: #b7791f;
+  /* Status. F11: alert was #c2412d and warn #b7791f (4.2:1 and 3.0:1 as badge text on
+     bg/raised); these shades meet WCAG AA there and on every lighter surface */
+  --color-status-alert: #ba3e2b;
+  --color-status-warn: #905f18;
   --color-status-ok: #2f8a55;
 
   /* Exposure ramp: the barangay classes, ramp-1 the least exposed to ramp-5 the most */

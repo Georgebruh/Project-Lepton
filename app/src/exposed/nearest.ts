@@ -1,3 +1,5 @@
+import type { MultiPolygon, Polygon } from 'geojson'
+
 /**
  * F8: the health centers nearest a point, the barangay a point lies in, and the search for a
  * barangay by name. Plain functions, no React. Points are [longitude, latitude] in degrees
@@ -84,6 +86,22 @@ export function middlePoint(polygon: LonLat[][]): LonLat {
     }
   }
   return [(west + east) / 2, y]
+}
+
+/** A GeoJSON shape's parts, each a polygon of rings, as [longitude, latitude] points. */
+export function shapeParts(geometry: Polygon | MultiPolygon): LonLat[][][] {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+  return polygons.map((polygon) => polygon.map((ring) => ring.map(([lon, lat]): LonLat => [lon, lat])))
+}
+
+/**
+ * A point inside a shape of one or more parts (each a polygon: its outer ring and any holes),
+ * near the middle of its largest part (middlePoint). F8 starts the distances from a picked
+ * barangay there; F11's map list shows a barangay's or a city's tooltip there.
+ */
+export function shapeMiddle(polygons: LonLat[][][]): LonLat {
+  const largest = polygons.reduce((big, part) => (ringArea(part[0]) > ringArea(big[0]) ? part : big))
+  return middlePoint(largest)
 }
 
 /** A ring's area in square degrees (the shoelace formula), to find a shape's largest part. */
