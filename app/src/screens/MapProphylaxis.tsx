@@ -2,13 +2,16 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLoaderData, useSearchParams } from 'react-router'
+import Badge from '../components/Badge.tsx'
 import { NO_DATA, barangayLayers, type BarangayPointer, type BarangayView } from '../map/barangayLayers.ts'
 import BarangayTooltip from '../map/BarangayTooltip.tsx'
 import ExposureLegend from '../map/ExposureLegend.tsx'
+import { formatCount } from '../map/forecast.ts'
 import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
+import MapList, { type MapListItem } from '../map/MapList.tsx'
 import { panelCover } from '../map/motion.ts'
-import { chosenRun, joinRun, stormOn, waveOrder } from '../map/plan.ts'
+import { PLAN_FLOOD, chosenRun, formatShare, joinRun, stormOn, waveOrder } from '../map/plan.ts'
 import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
 import PlanPanel from '../map/PlanPanel.tsx'
 import { PLAN_PARAMS, QC_PSGC } from '../map/routes.ts'
@@ -30,9 +33,12 @@ const TOOLTIP_TALLEST = 230
  * barangays are drawn on the layout's map (map/barangayLayers.ts), with the legend and the
  * tooltip in the layout's two boxes for them; the numbers fill the panel (map/PlanPanel.tsx).
  * Stock planning, not prescriptions.
+ *
+ * F11: the list of the 142 barangays in the map's top left corner (listSlot) reaches each from
+ * the keyboard: the barangay reached thickens and shows its tooltip, as under the pointer.
  */
 export default function MapProphylaxis() {
-  const { cities, date, map, legendSlot, overlay } = useMapContext()
+  const { cities, date, map, legendSlot, overlay, listSlot } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
   const dateStorm = stormOn(storms.storms, date)
@@ -95,6 +101,22 @@ export default function MapProphylaxis() {
       {legendSlot &&
         storm &&
         createPortal(<ExposureLegend classes={storms.classes} flagShare={storms.flag_share} />, legendSlot)}
+      {map &&
+        listSlot &&
+        createPortal(
+          <MapList
+            title="Barangays"
+            items={barangayItems(shapes, hasStorm ? drawn : undefined)}
+            note={<p className="body-s">{hasStorm ? 'Most exposed first' : 'No storm forecast for this date'}</p>}
+            instructions={
+              hasStorm
+                ? "The arrow keys or a barangay's first letters move through the list. Doses are stock planning, not prescriptions."
+                : "The arrow keys or a barangay's first letters move through the list."
+            }
+            onShow={(psgc) => barangayLayers(map).highlight(psgc)}
+          />,
+          listSlot,
+        )}
       {map && overlay && (
         <HoverTooltip
           map={map}
@@ -112,6 +134,39 @@ export default function MapProphylaxis() {
 function runView(barangays: Map<string, BarangayRun>): BarangayView {
   const classes = new Map([...barangays].map(([psgc, barangay]) => [psgc, barangay.class]))
   return { classes, order: waveOrder(barangays.values()) }
+}
+
+/**
+ * F11: the rows of the plan's list. With a storm's numbers, the most exposed share first (as the
+ * wave), each with its share and the Flagged badge; a screen reader also hears its residents
+ * exposed and its three units. Without them, the barangays by name.
+ */
+function barangayItems(shapes: BarangayShapes, barangays: Map<string, BarangayRun> | undefined): MapListItem[] {
+  const names = new Map(shapes.features.map(({ properties }) => [properties.psgc, properties.name]))
+  if (!barangays) {
+    return [...names]
+      .map(([psgc, name]) => ({ id: psgc, name, words: 'no storm forecast for this date' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+  return waveOrder(barangays.values()).map((psgc) => {
+    const barangay = barangays.get(psgc)!
+    const units = barangay.units[PLAN_FLOOD]
+    const share = formatShare(barangay.share)
+    return {
+      id: psgc,
+      name: names.get(psgc) ?? psgc,
+      detail: (
+        <>
+          {barangay.flagged && <Badge tone="alert">Flagged</Badge>}
+          <span className="data-m">{share}</span>
+        </>
+      ),
+      words:
+        `${share} of residents exposed, ${formatCount(barangay.exposed)} of ${formatCount(barangay.pop_2024)}` +
+        `${barangay.flagged ? ', flagged' : ''}; ${formatCount(units.doxy100)} doxycycline 100 mg capsules, ` +
+        `${formatCount(units.courses)} children's courses, ${formatCount(units.amox500)} amoxicillin 500 mg tablets`,
+    }
+  })
 }
 
 /** The map on a date without a storm forecast: every barangay without data, in PSGC order. */
