@@ -9,7 +9,7 @@ the data can score. At each forecast day:
        M0       the count 52 weeks before the target (B8)
        M1       the mean of the target's week over the threshold reference years (B8)
        M3       Prophet + XGBoost, refitted on the seen weeks (B9)
-       M4       the negative binomial model (B5), and M4_noEI, M4 without EI2 (the
+       M4       the negative binomial model (B5), and M4_no_EI2, M4 without EI2 (the
                 flood test, D6), fitted on the same rows
   3. Turn each forecast mean mu into a forecast range NB(mu, theta) (B6): theta from the
      model's own last 104 non-COVID past forecasts that the cutoff lets it score, or the
@@ -73,7 +73,8 @@ import pandas as pd
 import config
 from src import baselines, forecast_range, m4, population, scores, thresholds, view, weeks
 
-MODELS = ("M0", "M1", "M3", "M4", "M4_noEI")
+M4_NO_EI2 = config.FLOOD_TEST[1]   # "M4_no_EI2", M4 without EI2: the name D6, D8 and the app read
+MODELS = ("M0", "M1", "M3", "M4", M4_NO_EI2)
 # The quantiles behind WIS's 11 central ranges, plus the median: 0.01, 0.025, ..., 0.5, ..., 0.99
 QUANTILES = sorted({0.5} | {round(a / 2, 4) for a in config.WIS_ALPHAS} | {round(1 - a / 2, 4) for a in config.WIS_ALPHAS})
 QUANTILE_COLUMNS = [f"q{q:.3f}" for q in QUANTILES]
@@ -188,7 +189,7 @@ def m1_fit_theta(target_year, cases, cut):
 def model_means(T, cases, features, pop, option, g, models=MODELS):
     """Each model's forecast mean for target week T + h: {model: (mu, fit_theta, detail)}.
 
-    Every model reads only what B2 lets it see at forecast day T. M4 and M4_noEI read
+    Every model reads only what B2 lets it see at forecast day T. M4 and M4_no_EI2 read
     rain and EI of the forecast day's fit year (C3, B4).
     """
     cut = view.cutoff(T, option, g)
@@ -203,7 +204,7 @@ def model_means(T, cases, features, pop, option, g, models=MODELS):
         got = m3_port.m3_forecast(year, week, cases, cut)
         out["M3"] = (got["mu"], got["fit_theta"],
                      f"prophet {got['prophet']:.2f}, residual {got['residual']:.2f}, {got['weeks_filled']} weeks filled")
-    wanted = [(name, with_ei) for name, with_ei in (("M4", True), ("M4_noEI", False)) if name in models]
+    wanted = [(name, with_ei) for name, with_ei in (("M4", True), (M4_NO_EI2, False)) if name in models]
     if wanted:
         rain = features_for(features, weeks.year_week(T)[0])
         train = m4.model_rows(view.training_rows(cases, T, option, g), rain, pop)
