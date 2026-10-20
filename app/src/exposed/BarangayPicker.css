@@ -1,0 +1,79 @@
+/* F8: "Type your barangay" in the guide's step 3 (BarangayPicker.tsx). Not in Figma: the field
+   follows the Design notes (fields 4 px corners) and the list follows the app's cards. */
+.barangay-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 20px;
+  color: var(--color-text-primary);
+}
+
+.barangay-picker-why {
+  color: var(--color-text-secondary);
+}
+
+.barangay-picker-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.barangay-picker-input {
+  width: 100%;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  /* Phones zoom into a field whose text is under 16 px, so the field's text is 16 px */
+  font-size: 16px;
+}
+
+.barangay-picker-input:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.barangay-picker-count {
+  color: var(--color-text-secondary);
+}
+
+.barangay-picker-count:empty {
+  display: none;
+}
+
+/* The matching barangays, one button per line */
+.barangay-picker-matches {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  overflow: hidden;
+}
+
+.barangay-picker-matches li + li {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.barangay-picker-match {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.barangay-picker-match:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: -2px;
+}
+
+.barangay-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

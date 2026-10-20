@@ -1,12 +1,18 @@
 /* F3: health-center rows (CenterRow.tsx), Figma node 4:12. The name is Body/S, the numbers
    Data/M. */
+/* 40 px tall, as in Figma; taller only when a long name wraps on a narrow screen (F6) */
 .center-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  height: 40px;
+  min-height: 40px;
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* F6: the header row (CenterRowHeader): every column name in the tertiary color */
+.center-row-header [role='columnheader'] {
+  color: var(--color-text-tertiary);
 }
 
 .center-row-name {

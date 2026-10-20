@@ -1,0 +1,105 @@
+/*
+ * F8: one step of the exposure guide (GuideStep.tsx), Figma's phone frames 39:301, 39:361 and
+ * 39:411. Figma's 20 px sides, 14 px and 10 px gaps and 28 px under the footer's buttons fall
+ * between the spacing steps, so they are written in px here, as in Figma.
+ */
+.guide-step {
+  display: flex;
+  flex-direction: column;
+  /* A phone's width at most: wider screens show the guide in the middle */
+  max-width: 480px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+}
+
+/* The top bar: Back, the step's name, "1 of 3", and the progress bar under them */
+.guide-step-top {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 20px var(--space-3);
+}
+
+.guide-step-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Back: the 22 px chevron in a 44 px target, which the negative margin keeps out of the layout */
+.guide-step-back {
+  display: flex;
+  margin: -11px;
+  padding: 11px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.guide-step-back:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: -2px;
+}
+
+.guide-step-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+/* The title takes focus when a step opens, for screen readers; it needs no ring */
+.guide-step-title:focus {
+  outline: none;
+}
+
+.guide-step-count {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.guide-step-progress {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Each part of the progress bar: grey until its step is reached, then teal (Figma's 1 px corners) */
+.guide-step-part {
+  flex: 1;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--color-border-subtle);
+}
+
+.guide-step-part-done {
+  background: var(--color-accent-primary);
+}
+
+/* The step's content grows, so the footer sits at the bottom of a short step */
+.guide-step-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-5);
+}
+
+/* The footer stays at the bottom of the screen while a long step scrolls under it */
+.guide-step-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--space-3) 20px 28px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-canvas);
+}
+
+/* The footer's buttons fill its width, and a long label wraps instead of running off a small phone */
+.guide-step-footer .guide-step-button {
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+}

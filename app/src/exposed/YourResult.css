@@ -1,0 +1,87 @@
+/* F8: step 2 of the exposure guide (YourResult.tsx), Figma frame 39:361. */
+.your-result {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: var(--space-2) 20px 0;
+}
+
+/* The result card: the risk group's badge, what to do, and why */
+.your-result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 20px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+.your-result-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.your-result-summary {
+  color: var(--color-text-secondary);
+}
+
+.your-result-todo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--color-text-primary);
+}
+
+.your-result-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.your-result-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* The step's number, in a small teal square */
+.your-result-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-primary);
+}
+
+/* The emergency box, in every result: red outline, red icon (Figma's 1.5 px border, 14 px padding) */
+.your-result-urgent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+  border: 1.5px solid var(--color-status-alert);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+.your-result-urgent-icon {
+  color: var(--color-status-alert);
+}
+
+/* "call QC Helpline 122" dials the number */
+.your-result-call {
+  color: inherit;
+  text-decoration: underline;
+}
