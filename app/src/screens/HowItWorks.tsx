@@ -295,8 +295,8 @@ function Sources() {
  *
  * Not as Figma: the pipeline section draws no numbers. Figma's three stat cards, weekly chart
  * and score table belong to the map and Compare models (F9 draws that chart and table), so the
- * page links to both and stays text, as the plan's Screens table says. The Cases input carries
- * the amber badge until QCESD's counts arrive. Limits and sources go beyond Figma's few lines:
+ * page links to both and stays text, as the plan's Screens table says. An input still awaited
+ * carries the amber badge (none since A13's counts arrived). Limits and sources go beyond Figma's few lines:
  * every limit the plan and Notes.md state, and every source the app's data comes from (U8).
  */
 export default function HowItWorks() {
