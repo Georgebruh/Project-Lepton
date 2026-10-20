@@ -139,6 +139,12 @@ export function formatDay(day: string): string {
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
 }
 
+/** A date as day and month, for a year the reader already sees (F5's "Issued 21 Oct"). */
+export function formatDayMonth(day: string): string {
+  const date = utc(day)
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`
+}
+
 /** A week's dates: "27 Oct – 2 Nov 2024", "4–10 Oct 2026" within one month, both years across New Year. */
 export function formatWeek(start: string, end: string): string {
   const [a, b] = [utc(start), utc(end)]

@@ -81,7 +81,7 @@ export type MapData = {
 }
 
 /** Fetch one of F2's files; a missing one stops with an error, which ErrorPage shows. */
-async function fetchJson<T>(path: string): Promise<T> {
+export async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(path)
   if (!res.ok) {
     throw new Error(`${path}: ${res.status} ${res.statusText}`)

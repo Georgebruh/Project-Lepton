@@ -10,7 +10,7 @@ import type { loadMapData } from '../map/mapData.ts'
 import MapZoom from '../map/MapZoom.tsx'
 import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
-import { useMapLevel, type MapLevel } from '../map/routes.ts'
+import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
 import './MapLayout.css'
 
 /** Each level's heading, for screen readers: the map has no visible page title. */
@@ -39,28 +39,39 @@ const MOTION = {
  *
  * The chosen date is kept in the address (?date=2024-10-22), so a link opens the same week;
  * without one, the map shows the latest forecast.
+ *
+ * F5: the prophylaxis plan (level 3) draws its barangays on the same map, and puts its own
+ * legend and tooltip in two empty boxes here, which the context hands it (legendSlot, overlay).
  */
 export default function MapLayout() {
   const { cities, forecast } = useLoaderData<typeof loadMapData>()
   const level = useMapLevel()
   const [searchParams, setSearchParams] = useSearchParams()
   const [map, setMap] = useState<MapLibreMap | null>(null)
+  const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
+  const [overlay, setOverlay] = useState<HTMLElement | null>(null)
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const { first, last } = dateRange(forecast)
 
-  /** A new date replaces the address's (no new history entry); the page keeps its scroll. */
+  /**
+   * A new date replaces the address's (no new history entry); the page keeps its scroll. A date
+   * the reader picks also ends a storm opened from the plan's list (F5): there is no other date
+   * to go back to.
+   */
   function changeDate(day: string) {
     setSearchParams(
       (params) => {
         params.set('date', day)
+        params.delete(PLAN_PARAMS.from)
+        params.delete(PLAN_PARAMS.list)
         return params
       },
       { replace: true, preventScrollReset: true },
     )
   }
 
-  const context: MapContext = { cities, forecast, date, week, map }
+  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay }
   return (
     <div className="map-layout" data-panel={level > 1 ? 'open' : 'closed'} style={MOTION}>
       <AppBar />
@@ -68,8 +79,12 @@ export default function MapLayout() {
       <main className="map-layout-main">
         <h1 className="visually-hidden">{HEADINGS[level]}</h1>
         <CityMap cities={cities} forecast={forecast} week={week} level={level} onMap={setMap} />
+        {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
+        <div ref={setOverlay} className="map-layout-overlay" />
         <div className="map-layout-controls">
           {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
+          {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
+          <div ref={setLegendSlot} className="map-layout-legend" />
           <MapZoom map={map} />
         </div>
         {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it */}

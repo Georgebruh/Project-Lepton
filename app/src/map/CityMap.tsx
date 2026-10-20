@@ -6,6 +6,8 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import Badge from '../components/Badge.tsx'
 import Icon from '../components/Icon.tsx'
 import maplibregl from '../lib/maplibre.ts'
+import { CITY_LAYERS as LAYERS, CITY_SOURCE as SOURCE } from './cityLayers.ts'
+import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
 import {
@@ -18,6 +20,7 @@ import {
   prefersReducedMotion,
 } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
+import { placeTooltip, type MapPointer } from './tooltip.ts'
 import './CityMap.css'
 
 /*
@@ -27,15 +30,13 @@ import './CityMap.css'
  * The cities are one GeoJSON source keyed on PSGC (promoteId), drawn by two pairs of fill and
  * line layers: "cities" for every city but the open one, and "city-open" for the open one
  * (Quezon City, at levels 2 and 3). Opening a city fades the first pair to 45% (a plain paint
- * transition) while the camera fits the open city beside the panel, all in 700 ms.
+ * transition) while the camera fits the open city beside the panel, all in 700 ms. The ids are
+ * in cityLayers.ts, since F5's barangay layers go between them.
  *
  * MapLibre redraws a feature-state change at once: its paint transitions skip any value that
- * differs from city to city. So the hover's 150 ms fade is played frame by frame here
- * (hoverFader), and the fade to 45% uses a layer-wide value, not a per-city one.
+ * differs from city to city. So the hover's 150 ms fade is played frame by frame
+ * (featureFades.ts), and the fade to 45% uses a layer-wide value, not a per-city one.
  */
-
-const SOURCE = 'cities'
-const LAYERS = { fill: 'cities-fill', line: 'cities-line', openFill: 'city-open-fill', openLine: 'city-open-line' }
 
 /** Outline widths in px, from Figma: a city without data 1, with data 1.5, under the pointer 3, open 2.5. */
 const LINE = { noData: 1, data: 1.5, hover: 3, open: 2.5 }
@@ -50,9 +51,8 @@ const FIT_PADDING = { metro: 28, city: 32 }
  */
 const PAN_MARGIN_DEG = 1
 
-/** The tooltip's width in px (Figma), its distance from the pointer and the edges, and the most it is tall. */
+/** The tooltip's width in px (Figma), and the most it is tall. */
 const TOOLTIP_WIDTH = 256
-const TOOLTIP_GAP = 16
 const TOOLTIP_TALLEST = 150
 
 /** A city's data: feature state "level" (its outbreak level) and "hover" (0 to 1). */
@@ -139,42 +139,11 @@ function viewFor(level: MapLevel, cities: Cities, width: number): { bounds: LngL
  * fade(psgc, 1) starts a city's hover, fade(psgc, 0) ends it.
  */
 function hoverFader(map: MapLibreMap) {
-  const now = new Map<string, number>() // each city's hover at this frame
-  const goal = new Map<string, number>() // where each fading city is going
-  let frame = 0
-  let last = 0
-  function step(time: number) {
-    const move = last ? (time - last) / HOVER_MS : 0
-    last = time
-    for (const [psgc, target] of goal) {
-      const from = now.get(psgc) ?? 0
-      const next = target > from ? Math.min(target, from + move) : Math.max(target, from - move)
-      now.set(psgc, next)
-      map.setFeatureState({ source: SOURCE, id: psgc }, { hover: next })
-      if (next === target) {
-        goal.delete(psgc)
-      }
-    }
-    frame = goal.size ? requestAnimationFrame(step) : 0
-    if (!frame) {
-      last = 0
-    }
-  }
-  return {
-    fade(psgc: string, target: number) {
-      goal.set(psgc, target)
-      if (!frame) {
-        frame = requestAnimationFrame(step)
-      }
-    },
-    stop() {
-      cancelAnimationFrame(frame)
-    },
-  }
+  return featureFader(map, SOURCE, 'hover', HOVER_MS)
 }
 
 /** The city under the pointer, and where the pointer is in the map, in px. */
-type Pointer = { psgc: string; x: number; y: number; width: number; height: number }
+type Pointer = MapPointer & { psgc: string }
 
 /** Where a city's name is written: the element MapLibre keeps over its label point. */
 type LabelSpot = { city: CityProperties; element: HTMLElement }
@@ -186,7 +155,7 @@ type CityMapProps = {
   week: ForecastWeek | undefined
   /** The open level: 1 Metro Manila, 2 Quezon City, 3 its prophylaxis plan. */
   level: MapLevel
-  /** Called with the map once it is made, and with null when it is removed. */
+  /** Called with the map once it has loaded and drawn the cities, and with null when it is removed. */
   onMap: (map: MapLibreMap | null) => void
 }
 
@@ -293,6 +262,8 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
       }
       setSpots(labelSpots)
       setLoaded(true)
+      // Only now, so a level that draws its own layers (F5) finds the cities' layers in place
+      onMap(map)
     })
 
     // Level 1: hovering a city thickens its outline and shows its tooltip
@@ -333,7 +304,6 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
       map.fitBounds(view.bounds, { padding: view.padding, duration: 0 })
     })
 
-    onMap(map)
     return () => {
       fader.stop()
       markers.forEach((marker) => marker.remove())
@@ -420,21 +390,11 @@ export default function CityMap({ cities, forecast, week, level, onMap }: CityMa
           city={cities.features.find((feature) => feature.properties.psgc === pointer.psgc)!.properties}
           forecast={forecast}
           week={week}
-          style={tooltipPlace(pointer)}
+          style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width)}
         />
       )}
     </div>
   )
-}
-
-/** The tooltip's place: right of the pointer, or left of it near the map's right edge; kept inside the map. */
-function tooltipPlace({ x, y, width, height }: Pointer): CSSProperties {
-  const right = x + TOOLTIP_GAP + TOOLTIP_WIDTH <= width - TOOLTIP_GAP
-  return {
-    left: right ? x + TOOLTIP_GAP : x - TOOLTIP_GAP - TOOLTIP_WIDTH,
-    top: Math.max(TOOLTIP_GAP, Math.min(y - TOOLTIP_GAP, height - TOOLTIP_TALLEST - TOOLTIP_GAP)),
-    width: TOOLTIP_WIDTH,
-  }
 }
 
 type CityTooltipProps = {
