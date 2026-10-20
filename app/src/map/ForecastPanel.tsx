@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router'
+import { compareLink } from '../compare/periods.ts'
 import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
 import {
@@ -35,7 +36,8 @@ type ForecastPanelProps = {
  * threshold) with its level, the last 15 weeks and next week's range, then the Prophylaxis
  * plan and Compare models buttons. Every number is the map model's (M4) for the chosen week in
  * city_forecast.json; the expected count is rounded to whole cases. While the file says
- * simulated, the amber badge sits above the numbers.
+ * simulated, the amber badge sits above the numbers. F9: Compare models opens at the year of
+ * the week shown.
  */
 export default function ForecastPanel({ city, forecast, week }: ForecastPanelProps) {
   const { search } = useLocation()
@@ -63,7 +65,7 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
         <Button to={MAP_PATHS[3] + search} icon="arrow-right" className="forecast-panel-action">
           Prophylaxis plan
         </Button>
-        <Button variant="secondary" to="/compare" className="forecast-panel-action">
+        <Button variant="secondary" to={week ? compareLink(week.year) : '/compare'} className="forecast-panel-action">
           Compare models
         </Button>
       </div>

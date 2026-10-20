@@ -30,6 +30,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/router.tsx` | The routes: which screen each address shows |
 | `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
 | `src/components/` | The shared components (F3), shown together at `/kit` |
+| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the route's loader |
 | `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
@@ -63,7 +64,8 @@ A setting kept in the address's query should change with
 The map keeps its date there: `/map/quezon-city?date=2024-10-22` (F4). The date picks the
 forecast day, the MMWR week holding it, and the panel shows the forecast made that week for
 the week after ("next week"); without a date, or with one outside the backtest, the map
-shows the latest. Links between the map levels keep it (`MAP_PATHS[2] + search`).
+shows the latest. Links between the map levels keep it (`MAP_PATHS[2] + search`). Compare
+models keeps its period there: `/compare?period=2024` (F9).
 
 ## Components
 
@@ -223,6 +225,54 @@ exported file.
   doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
   leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
   add up to 29 to 37 units more than the city in each pool; the file says so.
+
+## Compare models (F9)
+
+The route `/compare`, from Figma's frame "Compare models" (12:966) and its notes (34:365). The
+frame draws the app bar and the Controls panel and leaves the room beside them empty; the
+chart there is the one drawn for this page in How it works ("Weekly leptospirosis cases, Quezon
+City · 2024", node 12:1010), and the scores under it follow How it works' models table (12:1482).
+
+- **Data.** The route's own loader (`compare/compareData.ts`) fetches `city_forecast.json` and
+  `storms.json`, and `scores.json` only when `city_forecast.json` says the run is real: F2
+  writes it beside B10's real run only, and one from another B10 file than the forecasts' is
+  not shown. The route loads only when opened (`lazy`), so Home does not download the chart.
+- **Simulated.** While `city_forecast.json` says simulated, the chart, its tooltip and the
+  latest week carry the amber "Simulated until QCESD data" badge, and every score and the
+  primary result show "—", as the Figma notes ask: nothing on the page reads as a real result.
+- **Controls** (`compare/ControlsPanel.tsx`). The five models' Toggle rows in their chart
+  colors (`compare/models.ts`: M4 teal, M3 blue, the others grey); M4 and M3 start on, as in
+  Figma. A Toggle row given a color keeps it when off, as in the frame. The Show rows (M4's 90%
+  range, the epidemic threshold, the counts) carry their marks' colors; Figma leaves them teal.
+  Figma's "Upload weekly cases" button is left out (it needs a server; the app plan cuts it),
+  so the box under the controls names the latest week only.
+- **Periods.** The latest 12 weeks, one year, or 2018–2026, kept in the address: `?period=12w`,
+  `?period=2024`, `?period=all`; without one, the latest year. Figma's middle tab names one
+  year (2024); the Year field under the tabs picks which. A year's axis spans all its 52 or 53
+  MMWR weeks, so each year's season sits in the same place. The city panel's Compare models
+  button (F4) opens the year of the week it shows.
+- **The chart** (`compare/CompareChart.tsx`), drawn at the card's width so its labels stay
+  12 px: each week's count as a grey bar, each model's forecast for the week (made the week
+  before) as a line, M4's range shaded and the threshold dashed amber, as How it works draws
+  them. A storm's flood is a hairline at the week it began (A11's dates in `storms.json`); a
+  name that would touch another is left out. The COVID years are shaded: forecast, not scored.
+  The counts axis reaches the tallest count or forecast drawn, raised for a range end or a
+  threshold by at most half again (`axisTop`); anything higher runs off the top and the
+  caption says so (on the made-up counts, weeks 25 and 26 of 2019–2025 have thresholds over
+  800). M0 and "M4 without flood index" are dashed: the dataviz palette check finds the three
+  greys too close to tell apart by color alone.
+- **Reading a week.** Pointing at the plot (or tapping it on a phone) picks the nearest week:
+  a crosshair, a dot on each line and a tooltip with every series' number. From the keyboard,
+  Tab to the plot, then the arrow keys, Home and End; a screen reader hears each week as one
+  sentence. "Show the weeks as a table" under the chart lists the same numbers.
+- **Scores** (`compare/ScoreTable.tsx`): the primary result, D5's mean of |error M4| −
+  |error M3| with its 95% interval, as a Stat card; then each model's MAE, MASE, WIS, 90%
+  coverage and Brier score over the windows `scores.json` names, with what each score means in
+  plain words. The rows run in D8's order, LEPTON's tinted.
+- **Done when** (app plan): after B10's real run, the table equals D8's `d8_fig2_mae.csv`.
+  Check "F9 scores" in `python -m src.checks` compares `scores.json` with it (each model's MAE
+  and the 8-week M4 vs M3 row); it skips until B10's real run, F2's export and D8's table are
+  all on the computer.
 
 ## Deploy (Vercel)
 

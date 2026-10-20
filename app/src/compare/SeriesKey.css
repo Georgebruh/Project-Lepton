@@ -1,0 +1,39 @@
+/* F9: a series' key (SeriesKey.tsx), like its mark on the chart (Figma's chart keys, node 12:1011). */
+.series-key-line {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.series-key-line line {
+  stroke-linecap: round;
+}
+
+/* The epidemic threshold: the chart's amber dashed line (CompareChart.css) */
+.series-key-threshold line {
+  stroke: var(--color-status-warn);
+  stroke-width: 1.5px;
+  stroke-dasharray: 5.4 4.3;
+  stroke-linecap: butt;
+}
+
+/* A block for the bars and for the range: Figma's 12 by 8 px key */
+.series-key-block {
+  display: block;
+  flex-shrink: 0;
+  width: 12px;
+  height: 8px;
+  border-radius: 1px;
+}
+
+/* The counts: the bars' grey, at Figma's 50% for the key */
+.series-key-observed {
+  background: var(--color-text-secondary);
+  opacity: 0.5;
+}
+
+/* M4's range: its color at the range's 16% */
+.series-key-range {
+  background: var(--series-key-color);
+  opacity: 0.16;
+}

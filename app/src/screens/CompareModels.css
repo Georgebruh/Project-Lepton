@@ -1,0 +1,34 @@
+/*
+ * F9: Compare models (CompareModels.tsx), Figma frame 12:966: the app bar, then the 320 px
+ * Controls panel at 16 px from the edges, and the chart and scores in the room beside it. Below
+ * 1024 px the two stack, the panel first.
+ */
+.compare-models {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.compare-models-main {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+/* The chart and the scores; ScoreTable.css lays the scores out by this column's width */
+.compare-models-results {
+  container: compare-results / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .compare-models-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

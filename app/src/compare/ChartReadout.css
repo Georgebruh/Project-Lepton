@@ -1,0 +1,69 @@
+/* F9: the chart's tooltip (ChartReadout.tsx), in the map tooltip's style (BarangayTooltip.css). */
+.chart-readout {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: 280px;
+  /* The map tooltip's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  /* The map tooltip's shadow: 0 6 20, the dark text color at 14% */
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  pointer-events: none;
+}
+
+.chart-readout-week {
+  color: var(--color-text-primary);
+}
+
+.chart-readout-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Key, number, then its name: the numbers line up in a column, level with the name's first line */
+.chart-readout-row {
+  display: grid;
+  grid-template-columns: 16px 3.5em minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+}
+
+/* The 8 px key, centered on the 18 px first line */
+.chart-readout-row > :first-child {
+  margin-top: 5px;
+}
+
+.chart-readout-value {
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* M4's range, or that the count crossed the threshold, on its own line under the name */
+.chart-readout-note {
+  display: block;
+  white-space: nowrap;
+}
+
+.chart-readout-label,
+.chart-readout-storm {
+  color: var(--color-text-secondary);
+}
+
+/* The storm's line, under a divider as wide as the tooltip */
+.chart-readout-storm {
+  align-self: stretch;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
