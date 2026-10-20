@@ -12,7 +12,7 @@ type ButtonProps = {
   to?: string
   /**
    * An address on another site: the button is a link that opens it in a new tab. A phone or
-   * e-mail address ('tel:122', F7) opens the phone's dialer or mail app instead, in place.
+   * e-mail address ('tel:122', F7 and F8) opens the phone's dialer or mail app instead, in place.
    */
   href?: string
   /** What happens on click, for a button that is not a link. */

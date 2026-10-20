@@ -1,0 +1,59 @@
+/* F8: the map of the guide's step 3 (GuideMap.tsx), Figma node 39:430. */
+.guide-map {
+  position: relative;
+  /* Figma's 390 by 280 px, at the width of the phone */
+  aspect-ratio: 390 / 280;
+  overflow: hidden;
+  background: var(--color-bg-inset);
+}
+
+.guide-map-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Lines keep their width however wide the phone */
+.guide-map-barangay {
+  fill: var(--color-map-land);
+  stroke: var(--color-map-boundary);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The reader's barangay: Figma's thick dark outline */
+.guide-map-focus {
+  fill: none;
+  stroke: var(--color-text-primary);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Where the reader is: a 16 px teal square with a white edge (Figma's 3 px corners) */
+.guide-map-you {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  border: 3px solid var(--color-bg-surface);
+  border-radius: 3px;
+  background: var(--color-accent-primary);
+}
+
+/* A health center: its number on a dark square, as in the list */
+.guide-map-center {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-bg-surface);
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: var(--color-bg-canvas);
+}

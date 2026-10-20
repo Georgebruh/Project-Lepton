@@ -1,0 +1,143 @@
+/* F8: step 3 of the exposure guide (NearestCenters.tsx), Figma frame 39:411. */
+
+/* The line above the map: a pin, where the list starts, and Change */
+.nearest-centers-location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 20px var(--space-3);
+}
+
+.nearest-centers-pin {
+  color: var(--color-accent-primary);
+}
+
+.nearest-centers-where {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+/* Change: teal words, in a target taller than the line, which the negative margin keeps out of the layout */
+.nearest-centers-change {
+  margin: -12px -8px;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nearest-centers-change:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: -2px;
+}
+
+/* What the guide is doing (finding the location, loading), or what went wrong */
+.nearest-centers-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 0 20px;
+  color: var(--color-text-secondary);
+}
+
+/* The list under the map */
+.nearest-centers-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--space-4) 20px 0;
+}
+
+.nearest-centers-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.nearest-centers-heading {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+/* The heading takes focus after a barangay is picked, for screen readers; it needs no ring */
+.nearest-centers-heading:focus {
+  outline: none;
+}
+
+.nearest-centers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One health center: its number, name and distance, and the link that opens it in Google Maps */
+.nearest-centers-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.nearest-centers-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: var(--color-bg-canvas);
+}
+
+/* The name and the distance, 2 px apart as in Figma */
+.nearest-centers-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nearest-centers-name {
+  color: var(--color-text-primary);
+}
+
+.nearest-centers-detail,
+.nearest-centers-note {
+  color: var(--color-text-secondary);
+}
+
+.nearest-centers-directions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+.nearest-centers-directions:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.nearest-centers-credit,
+.nearest-centers-footnote {
+  color: var(--color-text-tertiary);
+}

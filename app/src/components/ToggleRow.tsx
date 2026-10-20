@@ -9,8 +9,9 @@ type ToggleRowProps = {
   /** Called with the new state when the row is clicked. */
   onChange: (on: boolean) => void
   /**
-   * The swatch's color while on, as a token: 'var(--color-chart-m3)'. Teal
-   * (--color-accent-primary) when left out. Compare models (F9) passes each model's color.
+   * The series' color, as a token: 'var(--color-chart-m3)'. The swatch keeps it on and off, as
+   * in Figma's Compare models frame (F9 passes each model's color), so it names the series like
+   * a key. Without it the swatch is teal when on and grey when off (the component's variants).
    */
   color?: string
 }
@@ -22,12 +23,13 @@ type ToggleRowProps = {
  */
 export default function ToggleRow({ label, on, onChange, color }: ToggleRowProps) {
   const style = color ? ({ '--toggle-row-color': color } as CSSProperties) : undefined
+  const classes = ['toggle-row', on && 'toggle-row-on', color && 'toggle-row-colored'].filter(Boolean).join(' ')
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
-      className={on ? 'toggle-row toggle-row-on' : 'toggle-row'}
+      className={classes}
       style={style}
       onClick={() => onChange(!on)}
     >

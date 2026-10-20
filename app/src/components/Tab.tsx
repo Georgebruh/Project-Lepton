@@ -13,7 +13,12 @@ type TabProps = {
    * its Cases forecast tab is not selected on the prophylaxis plan, whose route lies under it.
    */
   selected?: boolean
-  /** Without `to`: what happens on click. */
+  /**
+   * A place on the same page, e.g. '#models' (How it works' section tabs, F10): the tab is a
+   * plain link to it, and `selected` marks the part being read.
+   */
+  href?: string
+  /** Without `to` or `href`: what happens on click. */
   onClick?: () => void
   /** The label. */
   children: ReactNode
@@ -21,10 +26,11 @@ type TabProps = {
 
 /**
  * F3: the Figma component "Tab" (node 3:83), Default or Selected. With `to` it is a link to a
- * route (the app bar's views, the panel's Cases and Prophylaxis); otherwise a button that
- * reports its state to screen readers with aria-pressed.
+ * route (the app bar's views, the panel's Cases and Prophylaxis), with `href` a link to a
+ * part of the same page (F10); otherwise a button that reports its state to screen readers
+ * with aria-pressed.
  */
-export default function Tab({ to, end, selected, onClick, children }: TabProps) {
+export default function Tab({ to, end, selected, href, onClick, children }: TabProps) {
   if (to) {
     return (
       <NavLink
@@ -37,6 +43,17 @@ export default function Tab({ to, end, selected, onClick, children }: TabProps) 
       >
         {children}
       </NavLink>
+    )
+  }
+  if (href) {
+    return (
+      <a
+        href={href}
+        aria-current={selected ? 'location' : undefined}
+        className={selected ? 'tab tab-selected label-ui' : 'tab label-ui'}
+      >
+        {children}
+      </a>
     )
   }
   return (

@@ -1,0 +1,102 @@
+/*
+ * F9: the Controls panel (ControlsPanel.tsx), Figma node 12:978: a 320 px card, 16 px padding,
+ * 14 px between its sections; toggle rows 2 px apart, the period's rows 8 px apart.
+ */
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  /* Figma's 14 px, between the spacing steps */
+  gap: 14px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.controls-panel-title {
+  color: var(--color-text-primary);
+}
+
+.controls-panel-section,
+.controls-panel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.controls-panel-section-tight,
+.controls-panel-section-tight .controls-panel-rows {
+  /* Figma's 2 px between toggle rows */
+  gap: 2px;
+}
+
+/* The three period tabs share the row equally; the selected one is 2 px taller, so they line up at the top */
+.controls-panel-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-1);
+}
+
+/* The year the middle tab shows, under the tabs while it is selected */
+.controls-panel-year {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-1);
+}
+
+.controls-panel-year-label {
+  color: var(--color-text-secondary);
+}
+
+/* Like the map's date picker (DatePicker.css): Figma's 6 px by 10 px */
+.controls-panel-year-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+}
+
+/* The browser's own list: invisible, over the whole field, so a click anywhere opens it */
+.controls-panel-year-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.controls-panel-year-field:has(.controls-panel-year-select:focus-visible) {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+/* The latest week: Figma's "Data" box, 12 px padding, 10 px between its lines */
+.controls-panel-data {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Figma's 10 px, between the spacing steps */
+  gap: 10px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+}
+
+.controls-panel-data-label {
+  color: var(--color-text-tertiary);
+}
+
+.controls-panel-data-week {
+  color: var(--color-text-primary);
+}

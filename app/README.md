@@ -30,6 +30,8 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/router.tsx` | The routes: which screen each address shows |
 | `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
 | `src/components/` | The shared components (F3), shown together at `/kit` |
+| `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
+| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the route's loader |
 | `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
 | `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
@@ -65,7 +67,8 @@ A setting kept in the address's query should change with
 The map keeps its date there: `/map/quezon-city?date=2024-10-22` (F4). The date picks the
 forecast day, the MMWR week holding it, and the panel shows the forecast made that week for
 the week after ("next week"); without a date, or with one outside the backtest, the map
-shows the latest. Links between the map levels keep it (`MAP_PATHS[2] + search`).
+shows the latest. Links between the map levels keep it (`MAP_PATHS[2] + search`). Compare
+models keeps its period there: `/compare?period=2024` (F9).
 
 ## Components
 
@@ -78,7 +81,7 @@ them with the Figma page, which is drawn in that theme.
 | --- | --- | --- |
 | `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site (a new tab; `tel:` and `mailto:` open in place), `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
-| `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs) | Tab, 3:83 |
+| `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs). `<Tab href="#models" selected={...}>` links to a part of the same page (F10) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
 | `StatCard` | `<StatCard label="Residents exposed" value="789,689" caption="..." />` | Stat card, 4:8 |
 | `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"`, under `<CenterRowHeader />`, the column names (F6, as in Home's stock list) | Center row, 4:12 |
@@ -279,6 +282,114 @@ Text only; no data files.
   set `HERO_PHOTO` (file, alt text, credit) and the photo and its credit appear.
 - The page never gives doses. Before launch a health professional reviews the wording (Figma
   notes), and a teammate checks each fact against its source (F7's Done when).
+
+## The exposure guide (F8)
+
+The route `/exposed`, from Figma's three phone frames (39:301, 39:361, 39:411) and the guide's
+notes beside them (40:356). It never names a medicine or a dose: a doctor or nurse decides.
+
+- **Steps.** 1, Exposure check: five questions, each a group of radio buttons drawn as Figma's
+  answer chips. 2, Your result: the risk group and what to do (`exposed/risk.ts`), with the
+  emergency box on every result. 3, Nearest health centers: a map and the three nearest health
+  centers. The step is in the address (`/exposed?step=2`), so the phone's Back goes back a step.
+- **The rule** (`riskLevel`), from the notes: in floodwater more than once or for 2 days or more
+  is high risk; otherwise a cut or wound, or floodwater in the eyes, nose or mouth, is moderate;
+  otherwise low. Fever, muscle pain or red eyes now put "See a doctor today" first. "Not sure"
+  about the eyes, nose or mouth counts as yes (assumption). Figma words only the moderate
+  result; the others follow its pattern and DOH's advice (sources at the top of `risk.ts`). A
+  health professional should review the words before launch, as F7 asks for its page.
+- **Answers and location never leave the phone.** They live only in the screen's memory:
+  nothing stores them, no request carries them, and a reload or leaving the guide forgets them
+  (a reloaded `?step=2` opens step 1). Step 3 fetches only `centers.json` and
+  `qc_barangays.geojson`, which hold nothing about the reader.
+- **Location** is asked for only when the reader taps "Find the nearest health center".
+  Browsers share it only with https pages and localhost, so test it on a phone with a Vercel
+  preview link, not over the local network. If the reader says no, or the phone cannot tell,
+  the reader types their barangay (`BarangayPicker.tsx`: accents, dots and "Sto." do not
+  matter) and the distances start from a point inside it, near its middle (`middlePoint`).
+  "Change" picks another barangay.
+- **Distances** (`exposed/nearest.ts`) are straight lines (haversine) to the 66 health centers
+  C7 sends stock to: the registry's second Bago Bantay entry has no coordinates (its first
+  entry is listed) and Villamor Barangay Health Station's point lies 11 km from its barangay, so
+  neither is offered. Each center's arrow, and the footer's button, open Google Maps with
+  directions; the link holds only the center's coordinates, and Maps finds the start itself.
+  No opening hours: Figma's are samples, shown only once the QC Health Department confirms them.
+- **The map** (`GuideMap.tsx`) is SVG drawn from `qc_barangays.geojson`, so the guide never
+  loads MapLibre: the barangays around the reader, the reader's barangay outlined, a teal square
+  where the reader is, and the centers numbered as in the list. Figma shades the barangays by
+  Kristine's forecast, as every map in the file does; the guide is not about a storm, so they
+  are plain.
+- **Done when** (app plan): it works on a real phone with location allowed and denied, and two
+  known addresses give the same nearest centers and distances as a map's measuring tool. The
+  list shows 0.1 km steps; haversine and a map's tool differ by a few metres across the city.
+
+## Compare models (F9)
+
+The route `/compare`, from Figma's frame "Compare models" (12:966) and its notes (34:365). The
+frame draws the app bar and the Controls panel and leaves the room beside them empty; the
+chart there is the one drawn for this page in How it works ("Weekly leptospirosis cases, Quezon
+City · 2024", node 12:1010), and the scores under it follow How it works' models table (12:1482).
+
+- **Data.** The route's own loader (`compare/compareData.ts`) fetches `city_forecast.json` and
+  `storms.json`, and `scores.json` only when `city_forecast.json` says the run is real: F2
+  writes it beside B10's real run only, and one from another B10 file than the forecasts' is
+  not shown. The route loads only when opened (`lazy`), so Home does not download the chart.
+- **Simulated.** While `city_forecast.json` says simulated, the chart, its tooltip and the
+  latest week carry the amber "Simulated until QCESD data" badge, and every score and the
+  primary result show "—", as the Figma notes ask: nothing on the page reads as a real result.
+- **Controls** (`compare/ControlsPanel.tsx`). The five models' Toggle rows in their chart
+  colors (`compare/models.ts`: M4 teal, M3 blue, the others grey); M4 and M3 start on, as in
+  Figma. A Toggle row given a color keeps it when off, as in the frame. The Show rows (M4's 90%
+  range, the epidemic threshold, the counts) carry their marks' colors; Figma leaves them teal.
+  Figma's "Upload weekly cases" button is left out (it needs a server; the app plan cuts it),
+  so the box under the controls names the latest week only.
+- **Periods.** The latest 12 weeks, one year, or 2018–2026, kept in the address: `?period=12w`,
+  `?period=2024`, `?period=all`; without one, the latest year. Figma's middle tab names one
+  year (2024); the Year field under the tabs picks which. A year's axis spans all its 52 or 53
+  MMWR weeks, so each year's season sits in the same place. The city panel's Compare models
+  button (F4) opens the year of the week it shows.
+- **The chart** (`compare/CompareChart.tsx`), drawn at the card's width so its labels stay
+  12 px: each week's count as a grey bar, each model's forecast for the week (made the week
+  before) as a line, M4's range shaded and the threshold dashed amber, as How it works draws
+  them. A storm's flood is a hairline at the week it began (A11's dates in `storms.json`); a
+  name that would touch another is left out. The COVID years are shaded: forecast, not scored.
+  The counts axis reaches the tallest count or forecast drawn, raised for a range end or a
+  threshold by at most half again (`axisTop`); anything higher runs off the top and the
+  caption says so (on the made-up counts, weeks 25 and 26 of 2019–2025 have thresholds over
+  800). M0 and "M4 without flood index" are dashed: the dataviz palette check finds the three
+  greys too close to tell apart by color alone.
+- **Reading a week.** Pointing at the plot (or tapping it on a phone) picks the nearest week:
+  a crosshair, a dot on each line and a tooltip with every series' number. From the keyboard,
+  Tab to the plot, then the arrow keys, Home and End; a screen reader hears each week as one
+  sentence. "Show the weeks as a table" under the chart lists the same numbers.
+- **Scores** (`compare/ScoreTable.tsx`): the primary result, D5's mean of |error M4| −
+  |error M3| with its 95% interval, as a Stat card; then each model's MAE, MASE, WIS, 90%
+  coverage and Brier score over the windows `scores.json` names, with what each score means in
+  plain words. The rows run in D8's order, LEPTON's tinted.
+- **Done when** (app plan): after B10's real run, the table equals D8's `d8_fig2_mae.csv`.
+  Check "F9 scores" in `python -m src.checks` compares `scores.json` with it (each model's MAE
+  and the 8-week M4 vs M3 row); it skips until B10's real run, F2's export and D8's table are
+  all on the computer.
+
+## How it works (F10)
+
+`/how-it-works`, from Figma frame "How it works" (12:1385) and its notes. Text only; no data
+files.
+
+- **The text** is in `src/howItWorks/content.ts`: the pipeline diagram's cards, the models
+  table, the three tests, the limits and the references. The plan takes it from the paper
+  (E4, E5, E7), which is not final yet, so it comes from Notes.md, lepton-plan.md, config.py
+  and `results/`. Check every sentence against the paper's final text (F10's Done when).
+- **Section tabs** jump to `#pipeline`, `#models`, `#testing`, `#limits` and `#sources` (the
+  site header's Sources link opens the last), and the tab of the part being read is selected.
+- **Formulas** sit behind "Show the formula" in the models table (M0, M1 with the threshold,
+  M4), from lepton-plan.md B5, B7 and B8, in `src/howItWorks/formulas.tsx`; none is in the
+  main text.
+- **Not as Figma:** the pipeline section draws no numbers. Its stat cards, weekly chart and
+  score table are the map's and Compare models' (F9), so it links to both. The Cases input
+  carries the amber badge until QCESD's counts arrive. The limits list every limit the plan
+  and Notes.md state (Figma shows five), and Sources credits every data set, map and font
+  (check U8).
 
 ## Deploy (Vercel)
 

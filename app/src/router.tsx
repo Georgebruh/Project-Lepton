@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router'
 import App from './App.tsx'
 import { loadMapData } from './map/mapData.ts'
 import { loadPlanData } from './map/planData.ts'
-import CompareModels from './screens/CompareModels.tsx'
 import ErrorPage from './screens/ErrorPage.tsx'
 import Exposed from './screens/Exposed.tsx'
 import Home from './screens/Home.tsx'
@@ -30,6 +29,10 @@ import Leptospirosis from './screens/Leptospirosis.tsx'
  * fetch them (map/mapData.ts, map/planData.ts) are part of every page. Their loaders sit on the
  * map routes directly and fetch while the screen's code loads; the map's code, with MapLibre,
  * still loads only when the map opens.
+ *
+ * F9: Compare models loads only when opened (`lazy`), as the map does, so Home never downloads
+ * its chart. Its loader fetches the city forecast, the storms and, beside a real run, the
+ * scores, and keeps them while the period in the address changes.
  */
 export const router = createBrowserRouter([
   {
@@ -65,7 +68,18 @@ export const router = createBrowserRouter([
       },
       { path: '/leptospirosis', element: <Leptospirosis /> },
       { path: '/exposed', element: <Exposed /> },
-      { path: '/compare', element: <CompareModels /> },
+      {
+        path: '/compare',
+        lazy: async () => {
+          const [{ default: Component }, { loadCompareData }] = await Promise.all([
+            import('./screens/CompareModels.tsx'),
+            import('./compare/compareData.ts'),
+          ])
+          return { Component, loader: loadCompareData }
+        },
+        shouldRevalidate: () => false,
+        hydrateFallbackElement: <p className="route-loading body-m">Loading the forecasts…</p>,
+      },
       { path: '/how-it-works', element: <HowItWorks /> },
       { path: '/kit', element: <Kit /> },
     ],

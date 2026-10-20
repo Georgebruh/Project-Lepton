@@ -1554,6 +1554,51 @@ def f2_app_data():
             f"get stock, {left_out} left out and listed; {layer1}")
 
 
+def f9_scores():
+    """F9: the scores Compare models shows (scores.json) equal D8's figure 2 table.
+
+    The page's score table reads each model's MAE, MASE, WIS, 90% coverage and Brier score
+    from F2's scores.json, and its primary result D5's mean of |error M4| - |error M3| with the
+    95% interval. F9 is done when, after B10's real run, the table equals D8's d8_fig2_mae.csv:
+    each model's MAE is its "MAE by model" row, and the primary result is the 8-week
+    "M4 vs M3" row (mean, interval, weeks and verdict). Both files round to 4 decimals.
+    SKIP until B10's real run, scores.json and D8's table are all on this computer; before the
+    real run there is no scores.json and the page shows "—" (check "F2 app data").
+    """
+    import json
+
+    need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
+    need_file(config.APP_DATA / "scores.json", "F2 (python -m src.app_data)")
+    need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
+    rerun = "rerun python -m src.app_data and python -m src.paper_figures on the same forecasts.csv"
+    tolerance = 1e-4   # one unit in the 4th decimal, the rounding of both files
+
+    with open(config.APP_DATA / "scores.json", encoding="utf-8") as f:
+        app = json.load(f)
+    fig2 = pd.read_csv(config.D8_FIG2_TABLE)
+    by_model = fig2[fig2["part"] == "MAE by model"].set_index("name")["value"]
+    assert set(by_model.index) == set(app["models"]), (
+        f"models differ: d8_fig2_mae.csv has {sorted(by_model.index)}, scores.json {sorted(app['models'])}: {rerun}")
+    for model, mae in by_model.items():
+        assert abs(app["models"][model]["mae"] - mae) <= tolerance, (
+            f"{model}: scores.json MAE {app['models'][model]['mae']}, d8_fig2_mae.csv {mae}: {rerun}")
+
+    comparison = " vs ".join(config.PRIMARY_COMPARISON)
+    rows = fig2[(fig2["name"] == comparison) & (fig2["block_weeks"] == config.BOOT_BLOCK_WEEKS)]
+    assert len(rows) == 1, f"d8_fig2_mae.csv has {len(rows)} rows for {comparison} with {config.BOOT_BLOCK_WEEKS}-week blocks"
+    head, primary = rows.iloc[0], app["primary"]
+    assert primary["comparison"] == comparison and primary["block_weeks"] == config.BOOT_BLOCK_WEEKS, (
+        f"scores.json's primary result is {primary['comparison']} with {primary['block_weeks']}-week blocks: {rerun}")
+    for key, column in (("mean_diff", "value"), ("low", "low"), ("high", "high")):
+        assert abs(primary[key] - head[column]) <= tolerance, (
+            f"{comparison} {key}: scores.json {primary[key]}, d8_fig2_mae.csv {head[column]}: {rerun}")
+    assert primary["weeks"] == head["weeks"] and primary["verdict"] == head["verdict"], (
+        f"{comparison}: scores.json {primary['weeks']} weeks, {primary['verdict']!r}; "
+        f"d8_fig2_mae.csv {head['weeks']} weeks, {head['verdict']!r}: {rerun}")
+    return (f"{len(by_model)} models' MAE and {comparison} ({primary['mean_diff']:+.2f}, 95% interval "
+            f"{primary['low']:+.2f} to {primary['high']:+.2f}) equal d8_fig2_mae.csv")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1588,6 +1633,7 @@ CHECKS = {
     "B2 view": b2_view,
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
+    "F9 scores": f9_scores,
 }
 
 

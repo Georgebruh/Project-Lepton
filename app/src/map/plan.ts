@@ -189,20 +189,28 @@ export function flagLine(classes: ShareClass[], flagShare: number): string {
 const LOWER_WORDS = new Set(['and', 'na'])
 
 /**
- * A health center's name as the panel writes it: the registry's capitals in title case, without
- * "Health Center" (Figma: "TATALON HEALTH CENTER" is "Tatalon"). A super health center keeps
- * it: "KAMUNING SUPER HEALTH CENTER" is "Kamuning Super Health Center".
+ * The registry's capitals in title case, every word kept: "TATALON HEALTH CENTER" is "Tatalon
+ * Health Center" (F8's guide writes names so).
  */
-export function centerName(name: string): string {
-  const full = name.trim().split(/\s+/).join(' ')
-  const shown = / super health center$/i.test(full) ? full : full.replace(/ health center$/i, '')
-  return shown
-    .split(' ')
+export function titleCase(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
     .map((word, i) => {
       const lower = word.toLowerCase()
       return i > 0 && LOWER_WORDS.has(lower) ? lower : lower.charAt(0).toUpperCase() + lower.slice(1)
     })
     .join(' ')
+}
+
+/**
+ * A health center's name as the panel writes it: the registry's capitals in title case, without
+ * "Health Center" (Figma: "TATALON HEALTH CENTER" is "Tatalon"). A super health center keeps
+ * it: "KAMUNING SUPER HEALTH CENTER" is "Kamuning Super Health Center".
+ */
+export function centerName(name: string): string {
+  const full = titleCase(name)
+  return / super health center$/i.test(full) ? full : full.replace(/ health center$/i, '')
 }
 
 /** A health center and its need for one run and flood, in whole units (rounded up). */
