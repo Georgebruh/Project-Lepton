@@ -13,6 +13,12 @@
   inset: 0;
 }
 
+/* F11: MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom); it fills the map,
+   whose edges clip, so its focus ring sits inside it */
+.city-map-canvas canvas:focus-visible {
+  outline-offset: -2px;
+}
+
 /* The element MapLibre keeps over a label point: the pointer passes through it to the map */
 .city-map-spot {
   pointer-events: none;

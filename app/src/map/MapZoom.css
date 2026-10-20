@@ -16,3 +16,8 @@
   color: var(--color-text-primary);
   cursor: pointer;
 }
+
+/* F11: the box clips the buttons' edges, so the focus ring sits inside each button */
+.map-zoom-button:focus-visible {
+  outline-offset: -2px;
+}
