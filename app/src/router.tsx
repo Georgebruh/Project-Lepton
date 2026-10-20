@@ -6,7 +6,6 @@ import ErrorPage from './screens/ErrorPage.tsx'
 import Exposed from './screens/Exposed.tsx'
 import Home from './screens/Home.tsx'
 import HowItWorks from './screens/HowItWorks.tsx'
-import Kit from './screens/Kit.tsx'
 import Leptospirosis from './screens/Leptospirosis.tsx'
 
 /**
@@ -33,7 +32,15 @@ import Leptospirosis from './screens/Leptospirosis.tsx'
  * F9: Compare models loads only when opened (`lazy`), as the map does, so Home never downloads
  * its chart. Its loader fetches the city forecast, the storms and, beside a real run, the
  * scores, and keeps them while the period in the address changes.
+ *
+ * F12: /kit is in `npm run dev` only. Its Figma sample text and its buttons that do nothing
+ * would fail check U7 (nothing fake ships), so the built site, the one Vercel serves, leaves it
+ * out: there /kit shows ErrorPage, as any other unknown address does.
  */
+const DEV_ROUTES = import.meta.env.DEV
+  ? [{ path: '/kit', lazy: async () => ({ Component: (await import('./screens/Kit.tsx')).default }) }]
+  : []
+
 export const router = createBrowserRouter([
   {
     element: <App />,
@@ -81,7 +88,7 @@ export const router = createBrowserRouter([
         hydrateFallbackElement: <p className="route-loading body-m">Loading the forecasts…</p>,
       },
       { path: '/how-it-works', element: <HowItWorks /> },
-      { path: '/kit', element: <Kit /> },
+      ...DEV_ROUTES,
     ],
   },
 ])
