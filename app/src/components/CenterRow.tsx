@@ -21,7 +21,7 @@ function formatCount(n: number): string {
  * prophylaxis panel's list (F5). The columns are doxycycline capsules, children's courses and
  * amoxicillin tablets, as whole units. Each row is a table row for screen readers
  * (role="row"), so put the rows in an element with role="table" whose first row holds the
- * column headers (role="columnheader").
+ * column headers (role="columnheader"): CenterRowHeader below.
  */
 export default function CenterRow({ name, doxycycline, courses, amoxicillin }: CenterRowProps) {
   return (
@@ -37,6 +37,30 @@ export default function CenterRow({ name, doxycycline, courses, amoxicillin }: C
       </span>
       <span className="center-row-amoxicillin data-m" role="cell">
         {formatCount(amoxicillin)}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * F6: the row of column headers above center rows, as in Home's stock list (Figma node 19:522):
+ * the same columns, in the tertiary text color. The columns are named short, as in Figma ("Doxy",
+ * "Child", "Amox"); screen readers hear the full names.
+ */
+export function CenterRowHeader() {
+  return (
+    <div className="center-row center-row-header" role="row">
+      <span className="center-row-name body-s" role="columnheader">
+        Health center
+      </span>
+      <span className="center-row-doxycycline data-m" role="columnheader" aria-label="Doxycycline 100 mg capsules">
+        Doxy
+      </span>
+      <span className="center-row-courses data-m" role="columnheader" aria-label="Children's courses">
+        Child
+      </span>
+      <span className="center-row-amoxicillin data-m" role="columnheader" aria-label="Amoxicillin 500 mg tablets">
+        Amox
       </span>
     </div>
   )
