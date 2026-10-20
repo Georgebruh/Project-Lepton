@@ -71,14 +71,14 @@ The reports found show QC flooding on October 24, 2024 only, so D = 1 (the ±1-d
 D = 2). Kristine's rain started October 22. If someone can find QC DRRMO reports for October
 22-23, update `start_date` and D in `config.STORMS` and in `storm-facts.md`.
 
-### 1.4 Before B10 merges: one name for "M4 without EI2"
+### 1.4 One name for "M4 without EI2" (fixed October 21)
 
-B10 (open branch `B10-backtest`) writes the model as `M4_noEI`. D6 (merged) expects
-`M4_no_EI2` (`config.FLOOD_TEST`, and check "D6 flood test" builds its made-up tables with
-that name). On B10's output, D6's `flood_and_practical_tests` and D8's figures 1-3 stop with
-"no forecasts for ['M4_no_EI2']". D6 merged first, so the simplest fix is in B10: rename
-`M4_noEI` to `M4_no_EI2` in `src/backtest.py` (MODELS and `model_means`) and in its README
-row. Tested: with that one rename, D8 draws figures 1-3 from B10's made-up-count run.
+B10 merged writing the model as `M4_noEI`, while D6, D8 and the app read `M4_no_EI2`
+(`config.FLOOD_TEST`). On B10's output D6's `flood_and_practical_tests` stopped ("need
+forecasts of both M4 and M4_no_EI2"). B10 now takes the name from `config.FLOOD_TEST`
+(`backtest.M4_NO_EI2`), so the two cannot drift apart again. A forecasts file written
+before the fix still loads in F2 (`app_data.MODEL_NAMES`); for D6 and D8, rerun
+`python -m src.backtest`.
 
 ### 1.5 A13: QC case data arrived (October 20); Layer 1 runs on Quezon City
 
@@ -292,8 +292,8 @@ References:
 - **D8:** built (`src/paper_figures.py`, section 2 item 11); dose figures carry the label
   "stock planning, not prescriptions". Figures 4 and 5 are drawn now
   (`python -m src.paper_figures --layer2`). A13's `cases_weekly.csv` and
-  `config.DATA_OPTION = "C"` are done (1.5). Still missing for figures 1-3: the model renamed
-  (1.4), and B10's real run writing `results/forecasts.csv`. Then `python -m src.paper_figures`
+  `config.DATA_OPTION = "C"` are done (1.5), and so is the model's name (1.4). Still missing
+  for figures 1-3: B10's real run writing `results/forecasts.csv`. Then `python -m src.paper_figures`
   draws all five; copy the numbers in `results/d8_fig2_mae.csv` into E6.
   Until then, figures 1-3 can be tried on B10's made-up counts: `python -m src.backtest
   --simulate --option C`, then `python -m src.paper_figures --preview
