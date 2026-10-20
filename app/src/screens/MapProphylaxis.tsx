@@ -84,6 +84,11 @@ export default function MapProphylaxis() {
     )
   }
 
+  // The barangays' numbers in the run on the map, while a storm is shown; the tooltip and the list
+  // (F11) say why there are none otherwise
+  const numbers = hasStorm ? drawn : undefined
+  const none = dateStorm ? 'Choose a storm to see its numbers' : 'No storm forecast for this date'
+
   return (
     <>
       <title>Prophylaxis plan · LEPTON</title>
@@ -106,10 +111,10 @@ export default function MapProphylaxis() {
         createPortal(
           <MapList
             title="Barangays"
-            items={barangayItems(shapes, hasStorm ? drawn : undefined)}
-            note={<p className="body-s">{hasStorm ? 'Most exposed first' : 'No storm forecast for this date'}</p>}
+            items={barangayItems(shapes, numbers, none)}
+            note={<p className="body-s">{numbers ? 'Most exposed first' : `${none}.`}</p>}
             instructions={
-              hasStorm
+              numbers
                 ? "The arrow keys or a barangay's first letters move through the list. Doses are stock planning, not prescriptions."
                 : "The arrow keys or a barangay's first letters move through the list."
             }
@@ -118,13 +123,7 @@ export default function MapProphylaxis() {
           listSlot,
         )}
       {map && overlay && (
-        <HoverTooltip
-          map={map}
-          overlay={overlay}
-          shapes={shapes}
-          barangays={hasStorm ? drawn : undefined}
-          note={dateStorm ? 'Choose a storm to see its numbers.' : 'No storm forecast for this date.'}
-        />
+        <HoverTooltip map={map} overlay={overlay} shapes={shapes} barangays={numbers} note={`${none}.`} />
       )}
     </>
   )
@@ -139,13 +138,17 @@ function runView(barangays: Map<string, BarangayRun>): BarangayView {
 /**
  * F11: the rows of the plan's list. With a storm's numbers, the most exposed share first (as the
  * wave), each with its share and the Flagged badge; a screen reader also hears its residents
- * exposed and its three units. Without them, the barangays by name.
+ * exposed and its three units. Without them, the barangays by name, each saying `none`, why.
  */
-function barangayItems(shapes: BarangayShapes, barangays: Map<string, BarangayRun> | undefined): MapListItem[] {
+function barangayItems(
+  shapes: BarangayShapes,
+  barangays: Map<string, BarangayRun> | undefined,
+  none: string,
+): MapListItem[] {
   const names = new Map(shapes.features.map(({ properties }) => [properties.psgc, properties.name]))
   if (!barangays) {
     return [...names]
-      .map(([psgc, name]) => ({ id: psgc, name, words: 'no storm forecast for this date' }))
+      .map(([psgc, name]) => ({ id: psgc, name, words: none.toLowerCase() }))
       .sort((a, b) => a.name.localeCompare(b.name))
   }
   return waveOrder(barangays.values()).map((psgc) => {
