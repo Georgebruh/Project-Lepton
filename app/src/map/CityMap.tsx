@@ -437,7 +437,9 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
       <div className="city-map-corner">
         <p className="city-map-hint body-s">
           <Icon name="info" size={16} />
-          Hover a city to check its data · click a city to open its forecast
+          {/* F11: a touch screen cannot hover; a tap shows a city's tooltip, or opens a city with data */}
+          <span className="city-map-hint-pointer">Hover a city to check its data · click a city to open its forecast</span>
+          <span className="city-map-hint-touch">Tap a city to check its data or open its forecast</span>
         </p>
         <div className="city-map-cities">
           <MapList

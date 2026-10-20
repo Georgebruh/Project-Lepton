@@ -19,6 +19,21 @@
   outline-offset: -2px;
 }
 
+/* F11: the hint's words for a touch screen, which cannot hover, replace Figma's there */
+.city-map-hint-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .city-map-hint-pointer {
+    display: none;
+  }
+
+  .city-map-hint-touch {
+    display: inline;
+  }
+}
+
 /* The element MapLibre keeps over a label point: the pointer passes through it to the map */
 .city-map-spot {
   pointer-events: none;
