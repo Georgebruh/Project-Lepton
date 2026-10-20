@@ -201,6 +201,56 @@ def a11_storms():
     return "; ".join(peaks)
 
 
+def s4_cases():
+    """S4 (A13): cases_weekly.csv, the weekly counts every Layer 1 model reads.
+
+    Passes when: the columns are week_index, year, week, cases; there is one row per week
+    from 2015 week 1 with no gap and no duplicate, each row's year and week match its week
+    index (A3); counts are whole numbers, 0 or more. Unconfirmed weeks are missing, not 0:
+    every week after the last complete one (cases.last_complete_week) is missing and none
+    before it is. Then, with QCESD's list: the file equals a fresh build (so it is not left
+    over from an older list), no case is lost (the weeks hold every case in the list), at
+    least 99% of onset-to-admission delays are within config.CASES_COMPLETE_DAYS (the
+    completeness rule still holds), and each published QCESD total is reproduced by onset
+    date within 5% (config.CASES_PUBLISHED).
+    """
+    from src import backtest, cases as case_list
+
+    need_file(config.CASES_WEEKLY, "A13 (python -m src.cases)")
+    table = backtest.load_cases()
+    assert list(pd.read_csv(config.CASES_WEEKLY, nrows=0).columns) == view.COLUMNS, "columns are not week_index, year, week, cases"
+    assert table["week_index"].is_unique and not table.duplicated(["year", "week"]).any(), "a week is listed twice"
+    assert (table["week_index"] == range(len(table))).all(), "the rows are not one per week from 2015 week 1 (index 0), in order"
+    calendar = [weeks.year_week(i) for i in table["week_index"]]
+    assert list(zip(table["year"], table["week"])) == calendar, "a row's year and week do not match its week index"
+    counts = table["cases"].dropna()
+    assert (counts >= 0).all() and (counts == counts.round()).all(), "a count is negative or not a whole number"
+
+    need_file(config.QCESD_CASES_RAW, "A13 (QCESD's case list, team drive: data/raw/qcesd.md)")
+    listed = case_list.read_case_list()
+    complete = case_list.last_complete_week(case_list.data_date(listed))
+    missing = table["cases"].isna()
+    assert (missing == (table["week_index"] > complete)).all(), (
+        f"missing weeks must be exactly those after the last complete week {weeks.year_week(complete)}")
+    fresh = case_list.weekly_counts(listed)
+    pd.testing.assert_frame_equal(table, fresh, check_dtype=False, obj="cases_weekly.csv against a fresh build (rerun python -m src.cases)")
+    in_missing = case_list.onset_weeks(listed).gt(complete).sum()
+    assert counts.sum() + in_missing == len(listed), f"the weeks hold {counts.sum() + in_missing:.0f} cases, the list {len(listed)}"
+
+    delay = case_list.delay_days(listed).dropna()
+    within = (delay <= config.CASES_COMPLETE_DAYS).mean()
+    assert within >= config.CASES_COMPLETE_SHARE, (
+        f"only {within:.1%} of cases admitted within {config.CASES_COMPLETE_DAYS} days of onset: "
+        f"raise config.CASES_COMPLETE_DAYS")
+    published = case_list.published_totals(listed)
+    far = published[published["gap"].abs() > config.S4_PUBLISHED_TOLERANCE]
+    assert far.empty, f"published totals not reproduced within {config.S4_PUBLISHED_TOLERANCE:.0%}:\n{far.to_string(index=False)}"
+    totals = ", ".join(f"{row.published} to {row.end:%d %b %Y} -> {row.by_onset} ({row.gap:+.1%})" for row in published.itertuples())
+    return (f"{len(table)} weeks, {counts.sum():,.0f} cases in final weeks to {weeks.year_week(complete)}, "
+            f"{missing.sum()} later weeks missing; {within:.1%} admitted within {config.CASES_COMPLETE_DAYS} days; "
+            f"published {totals}")
+
+
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
     """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
 
@@ -1611,7 +1661,7 @@ CHECKS = {
     "S2 rain file": s2_rain_file,
     "S3 census join": s3_census,
     "A11 storm facts": a11_storms,
-    "S4 cases file": not_built("A13"),
+    "S4 cases file": s4_cases,
     "S5 M4 simulation": s5_m4,
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,

@@ -1,4 +1,4 @@
-# Notes for the team (October 18, 2026)
+# Notes for the team (October 18, 2026; A13's case data added October 20)
 
 What everyone must know before gate C (Monday, October 19): the decisions still open, where
 the code now differs from the plan, what the paper must say about it, and the rules for the
@@ -80,15 +80,45 @@ that name). On B10's output, D6's `flood_and_practical_tests` and D8's figures 1
 `M4_noEI` to `M4_no_EI2` in `src/backtest.py` (MODELS and `model_means`) and in its README
 row. Tested: with that one rename, D8 draws figures 1-3 from B10's made-up-count run.
 
-### 1.5 Which Layer 1 figures the paper gets depends on A13's row
+### 1.5 A13: QC case data arrived (October 20); Layer 1 runs on Quezon City
 
-D8's figures 1-3 follow the plan: QC weekly cases with M4's and M3's forecasts, MAE by model,
-and M4's and M3's reliability. They need B10's `results/forecasts.csv`, so they wait for A13's
-case data (`config.DATA_OPTION` is still `None`). If the team is in the decision tree's last
-row (national data, no M4), figures 1-3 cannot be drawn as planned: there is no M4 and no QC.
-Then decide what replaces them, e.g. figure 1 with M3 and M1 on national data and figure 2
-with M0, M1 and M3 only; `src/paper_figures.py` would need the models it compares and its
-"Quezon City" title changed.
+QCESD sent a QC case list by e-mail (one row per case, 2015 to October 2026, 4,953 cases;
+note in `data/raw/qcesd.md`). It is a case-level record: it stays in `data/raw/qcesd/`, which
+git ignores, and is shared only through the team drive (rule 11). The adviser approved
+aggregating it to weekly counts; E2 still needs the formal request or exemption on record.
+`python -m src.cases` writes `data/clean/cases_weekly.csv`, and check S4 passes.
+
+**Decision-tree row:** the list has dates of onset and admission but no report dates, so the
+row is "QC weekly counts by onset week": `config.DATA_OPTION = "C"`, the delay guard
+g = 2 (rerun with 1 and 3). Admission is not report (the office learns of a case after it),
+so option B does not apply; option A needs report dates. The decision tree's last row
+(national data) no longer applies, so D8's figures 1-3 stay as planned.
+
+**Decide (Layer 1 owners) or confirm:**
+- **The file's own `Morbidity_week` is not used.** Its meaning changes from year to year: the
+  MMWR week of onset in 2024-2026, of admission in 2018, 2020, 2022 and 2023, and the *month*
+  of admission in 2015-2017, 2019 and 2021. `src/cases.py` takes every week from the date of
+  onset instead. Worth asking QCESD whether their own weekly reports used that column.
+- **The last weeks are missing, not 0** (`config.CASES_COMPLETE_DAYS = 17`, an assumption):
+  a week is final once 17 days have passed between its last day and the list's latest date
+  (18 Oct 2026), because 99% of cases were admitted within 17 days of onset. So the counts are
+  final to 2026 week 38, and weeks 39-42 are missing; the backtest's last target is week 38.
+  The delay from admission to report is not in the list, so 17 days is a lower bound.
+- **136 identical rows are kept as separate cases.** With them the list gives QCESD's
+  published total (535 cases admitted 1 January to 31 August 2025), so they are not double
+  entries.
+- **2015-2017 are small:** 83, 163 and 176 cases, against 775 in 2018 (2018's outbreak) and
+  366-1,033 from 2023 on. If surveillance covered fewer facilities then, the early thresholds
+  (B7) are too low: 2018 week 3's threshold is 1.5 cases. Ask QCESD whether coverage changed.
+- **M3 on the real counts (for B9/B10's owners):** forecasting 2018 week 31, two weeks into
+  the July 2018 outbreak, M3 gives 1,065 cases; the count was 58. This is the runaway after a
+  spike that section 4 saw on made-up counts (Prophet's multiplicative trend with 2015-2017
+  behind it). M0, M1 and the threshold give sensible values. Look at it before gate D.
+
+The paper (E5, limitations) says: "The backtest uses final counts by onset week with a
+2-week guard; real-time accuracy may be lower." The published mid-surge totals show why
+the guard is needed: QCESD's 207 cases to 3 August 2025 against 264 admitted by then in the
+final list.
 
 ## 2. Where the code differs from the plan (the paper must say these)
 
@@ -245,7 +275,8 @@ References:
   `m3_port.m3_forecast(target_year, target_week, cases, cutoff)` once per forecast day and
   reads `mu` (the forecast) and `fit_theta` (B6's theta before 26 past forecasts).
 - **B10:** built (`src/backtest.py`): EI and rain come from `features_weekly.csv` rows with
-  `fit_year` = the forecast day's year. Until A13 lands, test with `--simulate`. In option C
+  `fit_year` = the forecast day's year. A13's counts are in (1.5), so `python -m src.backtest`
+  runs on QC data once B4's `features_weekly.csv` is on the computer. In option C
   the first forecast day moves to 2018 week 2 (g = 2): at 2018 week 1, 2017's last weeks are
   still hidden, so the target has only 2 complete reference years (B7 needs 3). For M0 and
   M1, the training-fit theta (used for the first 26 forecast days) is an assumption: see
@@ -260,11 +291,10 @@ References:
   the window from `previous_day` L + i; levels are ERA5's, never IMERG's; D = 1 and D = 7.
 - **D8:** built (`src/paper_figures.py`, section 2 item 11); dose figures carry the label
   "stock planning, not prescriptions". Figures 4 and 5 are drawn now
-  (`python -m src.paper_figures --layer2`). Still missing for figures 1-3:
-  1. A13's `cases_weekly.csv`, then `config.DATA_OPTION` set (1.5).
-  2. B10 merged with the model renamed (1.4), and its real run writing `results/forecasts.csv`.
-     Then `python -m src.paper_figures` draws all five; copy the numbers in
-     `results/d8_fig2_mae.csv` into E6.
+  (`python -m src.paper_figures --layer2`). A13's `cases_weekly.csv` and
+  `config.DATA_OPTION = "C"` are done (1.5). Still missing for figures 1-3: the model renamed
+  (1.4), and B10's real run writing `results/forecasts.csv`. Then `python -m src.paper_figures`
+  draws all five; copy the numbers in `results/d8_fig2_mae.csv` into E6.
   Until then, figures 1-3 can be tried on B10's made-up counts: `python -m src.backtest
   --simulate --option C`, then `python -m src.paper_figures --preview
   results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, which `.gitignore` keeps
@@ -275,7 +305,7 @@ References:
   68.8, worse than M0's 39.2 and M4's 18.7; from 2020 on its forecasts stay near the counts.
   Prophet's multiplicative trend, with only 2015-2017 behind it, may run away after a spike.
   Look at M3's 2018-2019 forecasts again once real counts arrive, before gate D freezes the
-  models.
+  models. The real counts show it too: 1,065 cases forecast for 2018 week 31, against 58 (1.5).
 
 ## 5. Data and setup
 
@@ -292,8 +322,8 @@ References:
     `python -m src.features`. The B10 branch carries a fix to `src/features.py` for the real
     IMERG file ("float32 lon keys"); that version was used for D8's preview run.
 - **Checks:** with the drive data, `python -m src.checks` has no FAIL (S6 passes since B6
-  merged: theta 5.00). S4, S5, S7 scores and S11 SKIP until A13, B5, D1/D3 and B10 are
-  built. S8 lists 11 barangays whose
+  merged: theta 5.00; S4 passes since A13, October 20, with QCESD's list and
+  `cases_weekly.csv` on the computer). S8 lists 11 barangays whose
   exposed count falls from the 5-year map to a rarer one (Bayanihan, Malaya, Marilag,
   Pag-ibig Sa Nayon, Sacred Heart, San Jose, San Martin de Porres, Sikatuna Village,
   Teachers Village West, Villa Maria Clara, Batasan Hills); the plan asks someone to look at
@@ -302,5 +332,6 @@ References:
   README says. A virtual environment in a very deep folder fails with "DLL load failed ...
   The filename or extension is too long" (Windows' 260-character path limit) when importing
   netCDF4, shapely or rasterio; use a shorter path or turn on Windows long paths.
-- **Case data:** `cases_weekly.csv` (A13) does not exist yet, so Layer 1's backtest cannot
-  run. Follow the decision tree's last row if no QC counts arrived.
+- **Case data (A13, October 20):** copy QCESD's case list from the team drive into
+  `data/raw/qcesd/` (never into git: rule 11), then `python -m src.cases` writes
+  `data/clean/cases_weekly.csv` (seconds). Weekly totals only: put it on the drive too.
