@@ -10,7 +10,10 @@ type ButtonProps = {
   icon?: IconName
   /** A route in the app, e.g. '/map': the button is a link to it. */
   to?: string
-  /** An address on another site: the button is a link that opens it in a new tab. */
+  /**
+   * An address on another site: the button is a link that opens it in a new tab. A phone or
+   * e-mail address ('tel:122', F7) opens the phone's dialer or mail app instead, in place.
+   */
   href?: string
   /** What happens on click, for a button that is not a link. */
   onClick?: () => void
@@ -49,8 +52,14 @@ export default function Button({
     )
   }
   if (href) {
+    const newTab = !/^(tel|mailto):/.test(href)
     return (
-      <a href={href} className={classes} target="_blank" rel="noreferrer">
+      <a
+        href={href}
+        className={classes}
+        target={newTab ? '_blank' : undefined}
+        rel={newTab ? 'noreferrer' : undefined}
+      >
         {content}
       </a>
     )

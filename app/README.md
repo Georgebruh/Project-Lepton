@@ -31,6 +31,8 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
 | `src/components/` | The shared components (F3), shown together at `/kit` |
 | `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files |
+| `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
+| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
 | `src/lib/maplibre.ts` | MapLibre, set up for Vite; map code imports it from here |
@@ -74,16 +76,16 @@ them with the Figma page, which is drawn in that theme.
 
 | Component | Use | Figma |
 | --- | --- | --- |
-| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
+| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site (a new tab; `tel:` and `mailto:` open in place), `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
 | `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs). `<Tab href="#models" selected={...}>` links to a part of the same page (F10) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
 | `StatCard` | `<StatCard label="Residents exposed" value="789,689" caption="..." />` | Stat card, 4:8 |
-| `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"` | Center row, 4:12 |
+| `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"`, under `<CenterRowHeader />`, the column names (F6, as in Home's stock list) | Center row, 4:12 |
 | `PanelHeader` | A side-panel section's title that opens and closes it | Panel header, 4:17 |
-| `SiteHeader` | The header of Home, Leptospirosis and How it works | Site header, 4:21 |
+| `SiteHeader` | The header of Home, Leptospirosis and How it works; the open page's link is darker (F6). Below 1024 px the links wrap on a row of their own | Site header, 4:21 |
 | `AppBar` | The header of the map screens and Compare models | Map frame, 55:319 |
-| `Footer` | The footer, with the stock-planning note | Home frame, 20:364 |
+| `Footer` | The footer, with the stock-planning note; `credits` adds the page's own credits under it (F6: Home's photos) | Home frame, 20:364 |
 | `Logo` | The logo; the headers and the footer already include it | Logo, 3:47 |
 | `Icon` | `<Icon name="calendar" size={16} />`, any of the 18 Figma icons, in the text color | icon/…, Components page |
 
@@ -223,6 +225,60 @@ exported file.
   doxycycline need first), their sum, Quezon City's totals as on the panel, and the centers C7
   leaves out, with why. A center's units are rounded up, as F2 and D7 round them, so the 66
   add up to 29 to 37 units more than the city in each pool; the file says so.
+
+## Home (F6)
+
+The route `/`, from the Figma frame "Home" (node 19:256) and its notes. It draws F2's files and
+its photos, and never loads MapLibre. Stock planning, not prescriptions: every dose on it sits
+under that label.
+
+- **Data.** The plan's preview and the stock figures are Kristine's forecast 1 day ahead
+  (`PREVIEW_STORM` and `PREVIEW_LEAD` in `home/homeData.ts`, as the Home notes ask):
+  `storms.json`, `centers.json`, the barangay shapes and `barangays/kristine_2024_lead1.json`,
+  through F5's loaders, so opening the plan afterwards fetches nothing again. The preview's map
+  is SVG drawn from `qc_barangays.geojson`, not MapLibre and not a picture: each barangay filled
+  by its class, the flagged outlined in teal and the barangay of the list's first health center
+  in black (Figma's "Selected"). The chart is the latest 36 weeks of `city_forecast.json`: each
+  week's count, M4's forecast with its 90% range, and that week's threshold, under "Simulated
+  until QCESD data" while the file says simulated. A file that cannot load leaves its section
+  saying so; the rest of the page stands.
+- **Photos.** Figma's four AI images are replaced by real photos from Wikimedia Commons under
+  Creative Commons licences, each credited in the footer (`home/photos.ts`, check U8): the
+  hero, Pasig City after Typhoon Ondoy (AusAID, CC BY 2.0); Quiapo in the July 2024 Carina
+  floods (Michael Peronce, CC BY-SA 4.0); Damayang Lagi, Quezon City, after a downpour in 2023
+  (LMP 2001, CC BY-SA 4.0); and the mud after Ondoy (AusAID, CC BY 2.0). The files in
+  `src/assets/home/` are WebP at the Design notes' sizes: the hero 2880 × 1360 and 1440 × 680,
+  the others 4:3 at 1200 × 900 and 800 × 600. To change a photo, make it at those sizes and
+  change its entry in `photos.ts`, credit and all; a teammate's own photo is credited to them.
+- **Words that differ from Figma**, which predates the results: the second photo's caption says
+  heavy rain, not a typhoon (that flood came from a downpour); Try LEPTON says "The latest
+  forecast, or any week since 2018", not "Today's forecast, or any day since February 2024"
+  (LEPTON is not live); the badge is the app's "Simulated until QCESD data"; and the caption
+  credits the boundaries the app draws (A5's: PSA and NAMRIA, via OCHA on HDX), not
+  faeldon's. The numbers are today's files' (Tatalon 170,644 capsules; Figma shows an older
+  export's 170,643).
+- **Screens.** At 1440 px it matches the frame; wider, the content stays 1248 px wide in the
+  middle. Below 1024 px every section is one column and the site header's links wrap under the
+  logo; below 600 px the large text steps down to the next text style's size. No width scrolls
+  sideways.
+
+## The Leptospirosis page (F7)
+
+`/leptospirosis`, from Figma frame "Leptospirosis" (38:277) and its notes, for residents.
+Text only; no data files.
+
+- **Sources.** Every medical fact ends with numbered links, `[1]`, to the Sources list at the
+  bottom, each a DOH page (DM 2023-0309, DOH's disease page and two 2024 press releases) or,
+  for the helpline and the waterproof bandage, the QC government and PIA. They are in
+  `SOURCES` at the top of `Leptospirosis.tsx`; a new fact cites one with `<Cite sources={[...]} />`.
+- **Text that differs from Figma**, so each fact matches its source (the component's comment
+  lists them): incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
+  rats"; high risk is DM 2023-0309's repeated or continuous exposure, not LEPTON's 2-day
+  cut-off; "a doctor decides" on preventive medicine, as the memo requires a physician.
+- **No hero photo yet.** Figma's is AI-generated (check U7). When a licensed photo arrives,
+  set `HERO_PHOTO` (file, alt text, credit) and the photo and its credit appear.
+- The page never gives doses. Before launch a health professional reviews the wording (Figma
+  notes), and a teammate checks each fact against its source (F7's Done when).
 
 ## How it works (F10)
 
