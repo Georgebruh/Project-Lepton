@@ -1,0 +1,15 @@
+part,name,block_weeks,weeks,value,low,high,verdict,dm_stat,dm_p
+MAE by model,M0,8,349,9.2951,4.7667,13.7855,,,
+MAE by model,M1,8,349,8.5476,4.4246,12.1526,,,
+MAE by model,M3,8,349,15.5873,6.3834,27.6223,,,
+MAE by model,M4,8,349,6.7048,3.6884,9.5414,,,
+MAE by model,M4_no_EI2,8,349,6.8566,3.7858,9.692,,,
+mean |error a| - |error b|,M4 vs M3,8,349,-8.8825,-19.933,-1.8793,M4 misses less,-2.7374,0.0065
+mean |error a| - |error b|,M4 vs M3,4,349,-8.8825,-18.4012,-2.4959,M4 misses less,-2.7374,0.0065
+mean |error a| - |error b|,M4 vs M3,13,349,-8.8825,-20.9382,-1.311,M4 misses less,-2.7374,0.0065
+mean |error a| - |error b|,M4 vs M4_no_EI2,8,349,-0.1517,-0.5049,0.2128,no clear difference,,
+mean |error a| - |error b|,M4 vs M4_no_EI2,4,349,-0.1517,-0.5079,0.1997,no clear difference,,
+mean |error a| - |error b|,M4 vs M4_no_EI2,13,349,-0.1517,-0.5148,0.1656,no clear difference,,
+mean |error a| - |error b|,M4 vs M1,8,349,-1.8428,-3.2763,-0.2452,M4 misses less,-3.6566,0.0003
+mean |error a| - |error b|,M4 vs M1,4,349,-1.8428,-3.1899,-0.3763,M4 misses less,-3.6566,0.0003
+mean |error a| - |error b|,M4 vs M1,13,349,-1.8428,-3.1386,-0.1992,M4 misses less,-3.6566,0.0003
