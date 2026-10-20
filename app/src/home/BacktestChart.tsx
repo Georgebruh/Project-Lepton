@@ -1,0 +1,92 @@
+import { scaleLinear, scalePoint } from 'd3-scale'
+import Badge from '../components/Badge.tsx'
+import { SIMULATED_LABEL, formatWeek, rangePercent } from '../map/forecast.ts'
+import type { CityForecast, ForecastWeek } from '../map/mapData.ts'
+import type { Loaded } from './homeData.ts'
+import './BacktestChart.css'
+
+/** How many weeks the chart shows: the latest in the backtest (Figma: 36). */
+const WEEKS = 36
+
+/** The plot's size in px, from Figma "Chart" (node 20:283): 576 wide, counts standing on a line 180 down. */
+const WIDTH = 576
+const HEIGHT = 196
+const BASE = 180
+/** The space kept above the tallest mark. */
+const TOP = 8
+/** Each week's bar is 8 px wide. */
+const BAR = 8
+
+type BacktestChartProps = {
+  /** B10's forecasts (city_forecast.json), while it loads undefined, or "failed". */
+  forecast: Loaded<CityForecast>
+}
+
+/**
+ * F6: Home's chart of the city forecast, Figma "Chart" in "What you get" (node 20:283): the
+ * latest 36 weeks of the backtest, each week's count as a grey bar, the map model's (M4) forecast
+ * made the week before as a teal line with its 90% range shaded, and the epidemic threshold as an
+ * amber line. Each week has its own threshold (B7), so the amber line moves from week to week,
+ * where Figma's is flat.
+ * While city_forecast.json says simulated, the amber badge sits on it (app check U2).
+ */
+export default function BacktestChart({ forecast }: BacktestChartProps) {
+  if (forecast === 'failed') {
+    return <p className="backtest-chart-status body-s">The chart could not load.</p>
+  }
+  if (!forecast) {
+    return <div className="backtest-chart backtest-chart-loading" aria-hidden="true" />
+  }
+  const weeks = forecast.weeks.slice(-WEEKS)
+  const model = forecast.map_model
+  const x = scalePoint<number>()
+    .domain(weeks.map((week) => week.week_index))
+    .range([BAR / 2, WIDTH - BAR / 2])
+  const at = (week: ForecastWeek) => x(week.week_index) ?? 0
+  const tallest = Math.max(
+    1,
+    ...weeks.flatMap((week) => [week.y, week.threshold, week.forecasts[model].high, week.forecasts[model].mu]),
+  )
+  const y = scaleLinear().domain([0, tallest]).range([BASE, TOP])
+
+  /** A line through each week's value, as SVG path data. */
+  const line = (rows: ForecastWeek[], value: (week: ForecastWeek) => number, start = 'M') =>
+    rows.map((week, i) => `${i ? 'L' : start}${at(week).toFixed(1)} ${y(value(week)).toFixed(1)}`).join('')
+  const range = line(weeks, (week) => week.forecasts[model].high) +
+    line([...weeks].reverse(), (week) => week.forecasts[model].low, 'L') + 'Z'
+
+  const first = weeks[0]
+  const last = weeks[weeks.length - 1]
+  const crossed = weeks.filter((week) => week.breached).length
+  const label =
+    `Weekly leptospirosis cases in Quezon City, ${formatWeek(first.start, last.end)}` +
+    `${forecast.simulated ? ', simulated' : ''}: bars are each week's count; the line is ${model}'s ` +
+    `forecast made the week before, shaded across its ${rangePercent(forecast)} range; the amber line is ` +
+    `the epidemic threshold, crossed in ${crossed} of ${weeks.length} weeks.`
+
+  return (
+    <figure className="backtest-chart">
+      <svg className="backtest-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
+        <rect className="backtest-chart-axis" x={0} y={BASE} width={WIDTH} height={1} />
+        {weeks.map((week) => (
+          <rect
+            key={week.week_index}
+            className="backtest-chart-bar"
+            x={at(week) - BAR / 2}
+            y={y(week.y)}
+            width={BAR}
+            height={BASE - y(week.y)}
+          />
+        ))}
+        <path className="backtest-chart-range" d={range} />
+        <path className="backtest-chart-forecast" d={line(weeks, (week) => week.forecasts[model].mu)} />
+        <path className="backtest-chart-threshold" d={line(weeks, (week) => week.threshold)} />
+      </svg>
+      {forecast.simulated && (
+        <Badge tone="warn" className="backtest-chart-badge">
+          {SIMULATED_LABEL}
+        </Badge>
+      )}
+    </figure>
+  )
+}

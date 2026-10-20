@@ -1,0 +1,219 @@
+/* F6: Home's preview of the prophylaxis plan (PlanPreview.tsx), Figma nodes 19:291 and 19:553. */
+.plan-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+/* The box: the map's inset color under a 96 px grid of thin lines, the map on the left and the
+   stock list on the right. The map's column runs from the box's left edge, so Quezon City sits in
+   the middle of the space left of the stock list, as in Figma. */
+.plan-preview-frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  height: 560px;
+  padding: var(--space-5) var(--space-5) var(--space-5) 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--color-bg-inset);
+  background-image:
+    linear-gradient(to right, var(--color-border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-border-subtle) 1px, transparent 1px);
+  background-size: 96px 96px;
+  background-position: 47px 39px;
+}
+
+/* While the files load, or if they cannot */
+.plan-preview-status {
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  padding: var(--space-5);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.plan-preview-map {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.plan-preview-svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 500px;
+}
+
+/* The barangays: a fill per class, thin lines in the map's boundary color (Figma: 0.54 px at
+   this size), the flagged outlined in teal (0.89 px) and the selected one in black (1.61 px).
+   The lines keep their width when the map is drawn smaller. */
+.plan-preview-barangay,
+.plan-preview-flagged,
+.plan-preview-selected {
+  fill-rule: evenodd;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.plan-preview-barangay {
+  stroke: var(--color-map-boundary);
+  stroke-width: 0.54px;
+}
+
+.plan-preview-flagged {
+  fill: none;
+  stroke: var(--color-accent-primary);
+  stroke-width: 0.89px;
+}
+
+.plan-preview-selected {
+  fill: none;
+  stroke: var(--color-text-primary);
+  stroke-width: 1.61px;
+}
+
+/* A class's color, on the map and in the legend: class 0 is ramp-1, the lightest */
+.plan-preview-class-0 {
+  fill: var(--color-data-ramp-1);
+  background: var(--color-data-ramp-1);
+}
+
+.plan-preview-class-1 {
+  fill: var(--color-data-ramp-2);
+  background: var(--color-data-ramp-2);
+}
+
+.plan-preview-class-2 {
+  fill: var(--color-data-ramp-3);
+  background: var(--color-data-ramp-3);
+}
+
+.plan-preview-class-3 {
+  fill: var(--color-data-ramp-4);
+  background: var(--color-data-ramp-4);
+}
+
+.plan-preview-class-4 {
+  fill: var(--color-data-ramp-5);
+  background: var(--color-data-ramp-5);
+}
+
+/* The legend, top left (Figma: 8 px by 12 px inside, 10 px between the words and the ramp) */
+.plan-preview-legend {
+  position: absolute;
+  top: var(--space-5);
+  left: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+}
+
+.plan-preview-legend-title {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.plan-preview-ramp {
+  display: flex;
+  gap: 2px;
+}
+
+.plan-preview-swatch {
+  width: 22px;
+  height: 8px;
+  border-radius: 1px;
+}
+
+/* The stock list (Figma: 20 px inside, 14 px between its parts, between the spacing steps) */
+.plan-preview-stock {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.plan-preview-issued {
+  color: var(--color-accent-primary);
+}
+
+.plan-preview-totals {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.plan-preview-total {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  /* Figma's 10 px top and bottom, between the spacing steps */
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  white-space: nowrap;
+}
+
+.plan-preview-total-label {
+  color: var(--color-text-secondary);
+}
+
+.plan-preview-more,
+.plan-preview-caption {
+  color: var(--color-text-tertiary);
+}
+
+/* Below 1024 px: the map above the stock list, each the full width */
+@media (max-width: 1023px) {
+  .plan-preview-frame {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    height: auto;
+    padding: var(--space-4);
+  }
+
+  .plan-preview-legend {
+    top: var(--space-4);
+    left: var(--space-4);
+  }
+
+  /* Room above the map for the legend */
+  .plan-preview-map {
+    padding-top: var(--space-7);
+  }
+
+  .plan-preview-svg {
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+  }
+}
+
+@media (max-width: 599px) {
+  .plan-preview-frame {
+    padding: var(--space-3);
+  }
+
+  .plan-preview-legend {
+    top: var(--space-3);
+    left: var(--space-3);
+  }
+
+  .plan-preview-stock {
+    padding: var(--space-4);
+  }
+}

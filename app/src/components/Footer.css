@@ -30,6 +30,39 @@
   white-space: nowrap;
 }
 
-.footer-note {
+.footer-note,
+.footer-credits {
   color: var(--color-text-tertiary);
+}
+
+/* F6: the credits' links keep their underline, in the text's color */
+.footer-credits a {
+  color: inherit;
+}
+
+/* F6, below 1024 px: the logo and links on one row, the team's line under them */
+@media (max-width: 1023px) {
+  .footer {
+    padding: 0 var(--space-5) var(--space-6);
+  }
+
+  .footer-row {
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
+  }
+
+  .footer-team {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .footer-links {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 599px) {
+  .footer {
+    padding: 0 var(--space-4) var(--space-6);
+  }
 }
