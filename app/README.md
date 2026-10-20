@@ -88,6 +88,28 @@ their size, so they are 2 px larger than the others (46 px tall, not 44); the CS
 same. A row of tabs therefore lines them up at the top (`align-items: flex-start`). The logo's
 wordmark is Instrument Sans SemiBold, as in the Figma Logo; `index.html` loads only its six
 letters. Every other text is Figtree.
+## Data (F2)
+
+`python -m src.app_data`, run from the repository root, writes the data files into
+`public/data/`. The app fetches them as `/data/<file>` and computes nothing but map styling
+and distances. Barangays and cities join on the 10-digit PSGC (`psgc`, a string). Rerun it
+whenever C8, C9 or B10 change, then commit the files.
+
+| File | What it holds | Screens |
+| --- | --- | --- |
+| `ncr_cities.geojson` | NCR's 17 cities: `psgc`, `name`, `has_data` (Quezon City only) | Map |
+| `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
+| `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes` | Prophylaxis plan |
+| `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
+| `centers.json` | Health centers (`lat`, `lon`, `barangay`; `left_out` says why one gets no stock) and `needs[storm][run][flood][facility_code]` | Prophylaxis plan, Exposure guide |
+| `city_forecast.json` | Per target week: `start`, `end`, `y`, `threshold`, `breached`, and per model `mu`, `low` and `high` (the 90% range), `p_breach`. `"simulated": true` until A13's counts arrive | Map, Compare models |
+| `scores.json` | Per model: MAE, MASE, WIS, 90% coverage, Brier score; D5's M4 − M3 (`primary`). Written only after B10's real run: show "—" while it is missing | Compare models |
+
+Units: `doxy100` (doxycycline 100 mg capsules), `courses` (children's courses) and `amox500`
+(amoxicillin 500 mg tablets). Every file with doses has a `label` (stock-planning figures, not
+prescriptions); show it with them. Quezon City's and each barangay's people and units are
+rounded to the nearest whole number. A health center's units are rounded up, the level stock is
+ordered at, so the 66 centers add up to a little more than the city's total.
 
 ## Design tokens
 
