@@ -64,6 +64,11 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
           No forecast for the week after this date. Choose another date.
         </p>
       )}
+      {/* Read out when the reader picks another date (Figma has no text here). F11: always in the
+          page, so a date without a forecast is read out too. */}
+      <p className="visually-hidden" aria-live="polite">
+        {week && model ? forecastWords(forecast, week) : 'No forecast for the week after this date.'}
+      </p>
       <div className="forecast-panel-actions">
         <Button to={MAP_PATHS[3] + search} icon="arrow-right" className="forecast-panel-action">
           Prophylaxis plan
@@ -124,11 +129,17 @@ function ForecastNumbers({ forecast, week }: ForecastNumbersProps) {
         threshold={week.threshold}
         rangeName={rangeName}
       />
-      {/* Read out when the reader picks another date (Figma has no text here) */}
-      <p className="visually-hidden" aria-live="polite">
-        Week of {dates}: {expected} cases expected, {rangeName} range {model.low} to {model.high}; {chance} chance
-        of an outbreak, {LEVEL_NAMES[level]}.{forecast.simulated ? ` ${SIMULATED_LABEL}.` : ''}
-      </p>
     </>
+  )
+}
+
+/** The panel's numbers for one week in one sentence, as a screen reader hears them when the date changes. */
+function forecastWords(forecast: CityForecast, week: ForecastWeek): string {
+  const model = week.forecasts[forecast.map_model]
+  const level = levelOf(model.p_breach, forecast.levels)
+  return (
+    `Week of ${formatWeek(week.start, week.end)}: ${Math.round(model.mu)} cases expected, ` +
+    `${rangePercent(forecast)} range ${model.low} to ${model.high}; ${formatChance(model.p_breach)} chance of an ` +
+    `outbreak, ${LEVEL_NAMES[level]}.${forecast.simulated ? ` ${SIMULATED_LABEL}.` : ''}`
   )
 }
