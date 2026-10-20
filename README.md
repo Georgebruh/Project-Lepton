@@ -28,6 +28,34 @@ must say about them.
    Each check prints PASS, SKIP (its task is not built yet, or its data file is not on this
    computer) or FAIL. A FAIL stops work until it is fixed. Rerun the checks after any change.
 
+## Rebuild everything (task E10)
+
+One command reruns every task below in order, from the files in `data/raw/`, then the checks:
+
+```
+python -m src.run_all --list          # the steps, and which are skipped and why
+python -m src.run_all                 # run them all, then python -m src.checks
+python -m src.run_all --from C3       # resume at a task after fixing a failed step
+python -m src.run_all --only B3 D7    # just these tasks
+python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, until A13's file arrives
+```
+
+- It stops at the first failed step and says how to resume. Before the first step it checks
+  the files saved by hand (HydroBASINS, the census files, the Mendeley file, PSA births) and
+  `data/raw/imerg_daily.nc`, and lists any that are missing: copy them from the team drive.
+- Downloads: A6, A8, A10, A14 and A15 fetch only files not already in `data/raw/`. A4
+  (IMERG) always fetches up to today and needs an Earthdata login, so it runs only with
+  `--fetch-imerg`.
+- B10 is skipped until A13's `cases_weekly.csv` exists and `config.DATA_OPTION` is set; its
+  guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4 and 5 every run, and
+  all five once B10's `results/forecasts.csv` exists. A task not built yet is skipped.
+- `--simulate` runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
+  previews from them (`results/d8_preview_*`) and F2's `city_forecast.json` marked
+  `"simulated": true`. It tests the whole chain; none of it is a result.
+- The check "E10 package" confirms what the repository ships: every package pinned in
+  `requirements.txt` and installed at that version, nothing tracked under `data/` but the
+  notes, and no tracked table with a person's columns (rule 11).
+
 ## Rebuilding the data (Workstream A)
 
 Run from the repository root, in this order (A4's box and the A14 and A15 grid cells come from A7's
@@ -53,6 +81,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | Task | Command | Writes |
 | --- | --- | --- |
 | B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
+| B4 | `python -m src.features` | `data/clean/imerg_weights_qc.csv` (WorldPop QC weights per IMERG cell), `rain_weekly.csv` (weekly QC rain R and Rcum2), `features_weekly.csv` (R, Rcum2, EI and EI2 per fit year, read by B10); needs A3, A4, A5, A6 and C3's file |
 | B2 | none: `cutoff`, `visible`, `training_rows` and `prediction_row` in `src/view.py`, used by B5, B9 and B10. Set `config.DATA_OPTION` from A13's row first: option B sees every week up to forecast day T, option C up to T − g (`config.DELAY_GUARD_G`) | nothing; check "B2 view" in `python -m src.checks` |
 | B7 | none: functions in `src/thresholds.py` (and `forecast_dist` in `src/forecast_range.py`), used by B8 and B10 | nothing; check S7 in `python -m src.checks` |
 | B8 | none: functions in `src/baselines.py`, used by B10 | nothing; check "B8 M0 and M1" in `python -m src.checks` |

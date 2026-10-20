@@ -1546,6 +1546,84 @@ def f2_app_data():
             f"get stock, {left_out} left out and listed; {layer1}")
 
 
+PERSON_COLUMNS = {   # E10: columns of a person's record; no tracked table may have one
+    "name", "full_name", "first_name", "last_name", "patient", "patient_name", "patient_id",
+    "case_id", "age", "sex", "gender", "address", "birthdate", "birth_date", "date_of_birth",
+    "onset", "onset_date", "date_onset", "contact", "phone",
+}
+
+
+def e10_package():
+    """E10 (no S number): what the code package ships.
+
+    1. requirements.txt pins every package with == and this computer has exactly those
+       versions (the check pass values were confirmed with them).
+    2. Every package that src/ and config.py import is in requirements.txt, unless it
+       comes with Python.
+    3. git tracks nothing under data/ except the per-file notes (.md) and .gitkeep: data
+       go through the team drive, and case records never ship (rule 11).
+    4. No tracked .csv has a column of a person's record (PERSON_COLUMNS: name, age,
+       sex, address, onset date, ...): results hold aggregates only.
+    Parts 3 and 4 need git; in a copy without it they are not checked.
+    """
+    import ast
+    import re
+    import subprocess
+    from importlib import metadata
+
+    def norm(name):
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    pins, bad = {}, []
+    for line in (config.ROOT / "requirements.txt").read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if not line:
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9_.-]+)==(\S+)", line)
+        if not match:
+            bad.append(f"not pinned with ==: {line}")
+            continue
+        pins[norm(match[1])] = match[2]
+        try:
+            installed = metadata.version(match[1])
+        except metadata.PackageNotFoundError:
+            installed = "not installed"
+        if installed != match[2]:
+            bad.append(f"{match[1]}: requirements.txt pins {match[2]}, this computer has {installed}")
+
+    # Read the import statements themselves (ast), so a docstring line starting "from ..." is not one
+    sources = sorted((config.ROOT / "src").glob("*.py")) + [config.ROOT / "config.py"]
+    imported = set()
+    for path in sources:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name.split(".")[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                imported.add(node.module.split(".")[0])
+    by_import = metadata.packages_distributions()
+    for name in sorted(imported - set(sys.stdlib_module_names) - {"src", "config"}):
+        dists = [norm(dist) for dist in by_import.get(name, [])]
+        if not any(dist in pins for dist in dists):
+            bad.append(f"src/ imports {name}, which is not in requirements.txt"
+                       + ("" if dists else " (not installed either)"))
+    assert not bad, "; ".join(bad) + ". Fix: pip install -r requirements.txt, or pin the package"
+
+    listed = subprocess.run(["git", "ls-files"], cwd=config.ROOT, capture_output=True, text=True)
+    if listed.returncode != 0:
+        return f"{len(pins)} packages pinned and installed; not a git checkout, so tracked files not checked"
+    tracked = listed.stdout.splitlines()
+    data_files = [path for path in tracked if path.startswith("data/")
+                  and not path.endswith(".md") and not path.endswith(".gitkeep")]
+    assert not data_files, f"git tracks data files (share them through the team drive): {data_files}"
+    tables = [path for path in tracked if path.endswith(".csv")]
+    for path in tables:
+        columns = {str(col).strip().lower() for col in pd.read_csv(config.ROOT / path, nrows=0).columns}
+        person = sorted(columns & PERSON_COLUMNS)
+        assert not person, f"{path} has columns of a person's record: {person} (rule 11)"
+    return (f"{len(pins)} packages pinned and installed; {len(tracked)} tracked files, none under data/ "
+            f"but notes; {len(tables)} tracked tables, no person columns")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1580,6 +1658,7 @@ CHECKS = {
     "B2 view": b2_view,
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
+    "E10 package": e10_package,
 }
 
 
