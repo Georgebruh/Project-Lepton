@@ -7,6 +7,10 @@ type TabProps = {
   to?: string
   /** With `to`: select the tab only on that exact route, not the routes under it. */
   end?: boolean
+  /**
+   * Whether the tab is selected. With `to`, leave it out to select the tab on its route; F4's
+   * map panel sets it, so its tab stays selected while the panel slides away after Back.
+   */
   /** Without `to`: whether the tab is selected. */
   selected?: boolean
   /** Without `to`: what happens on click. */

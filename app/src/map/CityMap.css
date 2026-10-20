@@ -1,0 +1,134 @@
+/*
+ * F4: the map (CityMap.tsx): MapLibre's canvas, the city names, the hint and the city tooltip,
+ * Figma frames 1, 1a, 1b and 2. The durations and the curve (--map-hover, --map-move,
+ * --map-ease) come from MapLayout.css, which takes them from map/motion.ts.
+ */
+.city-map {
+  position: absolute;
+  inset: 0;
+}
+
+.city-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* The element MapLibre keeps over a label point: the pointer passes through it to the map */
+.city-map-spot {
+  pointer-events: none;
+}
+
+/* A city's name, grey; dark while the city is under the pointer (Figma 1a) */
+.city-map-label {
+  display: block;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  transition:
+    color var(--map-hover) linear,
+    opacity var(--map-move) var(--map-ease),
+    visibility 0s;
+}
+
+.city-map-label-hovered {
+  color: var(--color-text-primary);
+}
+
+/* A city with data: its name over next week's expected cases (Figma "Quezon City", node 55:445) */
+.city-map-label-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.city-map-label-cases {
+  color: var(--color-text-secondary);
+}
+
+/* "Hover a city …", top left (Figma "Hint", node 55:468) */
+.city-map-hint {
+  position: absolute;
+  top: var(--space-5);
+  left: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* Figma's 8 px, with 12 px after the text and 10 px before the icon */
+  padding: var(--space-2) var(--space-3) var(--space-2) 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  transition:
+    opacity var(--map-move) var(--map-ease),
+    visibility 0s;
+}
+
+/* The names and the hint belong to Metro Manila: they fade with the camera when a city opens */
+.city-map:not([data-level='1']) .city-map-label,
+.city-map:not([data-level='1']) .city-map-hint {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--map-move) var(--map-ease),
+    visibility 0s linear var(--map-move);
+}
+
+/* The city under the pointer (Figma "Tooltip", nodes 55:621 and 55:776); it fades in */
+.city-map-tooltip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  /* Figma's 6 px between rows and 14 px sides, between the spacing steps */
+  gap: 6px;
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  /* Figma's shadow: 0 6 20, the dark text color at 14% */
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  pointer-events: none;
+  animation: city-map-tooltip-in var(--map-hover) linear;
+}
+
+@keyframes city-map-tooltip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.city-map-tooltip-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.city-map-tooltip-icon {
+  color: var(--color-text-tertiary);
+}
+
+/* The level badge sits at the title's right end */
+.city-map-tooltip-level {
+  margin-left: auto;
+}
+
+.city-map-tooltip-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-text-primary);
+}
+
+.city-map-tooltip-text {
+  color: var(--color-text-secondary);
+}
+
+.city-map-tooltip-badge {
+  align-self: flex-start;
+}
+
+.city-map-tooltip-hint {
+  color: var(--color-text-tertiary);
+}

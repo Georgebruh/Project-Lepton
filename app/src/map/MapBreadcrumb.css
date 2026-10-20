@@ -1,0 +1,65 @@
+/* F4: the map's breadcrumb bar (MapBreadcrumb.tsx), Figma nodes 55:369, 53:299 and 56:446. */
+.map-breadcrumb {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  /* Figma's 14 px gap and 20 px sides, between the spacing steps (20 px, as in the app bar) */
+  gap: 14px;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+}
+
+/* Back: an outlined chevron and the level above */
+.map-breadcrumb-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* Figma's 6 px, and 10 px after the label */
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.map-breadcrumb-trail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.map-breadcrumb-trail li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.map-breadcrumb-trail a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.map-breadcrumb-trail a:hover {
+  text-decoration: underline;
+}
+
+.map-breadcrumb-separator {
+  color: var(--color-text-tertiary);
+}
+
+.map-breadcrumb-open {
+  color: var(--color-text-primary);
+}
+
+/* margin-left: auto pushes the date picker to the right edge */
+.map-breadcrumb-date {
+  margin-left: auto;
+}

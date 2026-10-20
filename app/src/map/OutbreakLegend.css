@@ -1,0 +1,61 @@
+/* F4: the map's outbreak legend (OutbreakLegend.tsx), Figma node 55:349. */
+.outbreak-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.outbreak-legend-badge {
+  align-self: flex-start;
+}
+
+.outbreak-legend-title {
+  color: var(--color-text-secondary);
+}
+
+.outbreak-legend-levels {
+  display: flex;
+  /* Figma's 14 px between the levels, 6 px between a swatch and its name */
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-primary);
+}
+
+.outbreak-legend-levels li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A 14 px square in the level's map color, outlined like the cities */
+.outbreak-legend-swatch {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-text-primary);
+  border-radius: var(--radius-xs);
+}
+
+.outbreak-legend-swatch-low {
+  background: var(--color-risk-low);
+}
+
+.outbreak-legend-swatch-watch {
+  background: var(--color-risk-watch);
+}
+
+.outbreak-legend-swatch-high {
+  background: var(--color-risk-high);
+}
+
+.outbreak-legend-swatch-none {
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-bg-raised);
+}

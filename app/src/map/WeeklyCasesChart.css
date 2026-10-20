@@ -1,0 +1,39 @@
+/* F4: the city panel's chart (WeeklyCasesChart.tsx), Figma node 53:345. */
+.weekly-cases-chart {
+  display: flex;
+  flex-direction: column;
+  /* Figma's caption sits 6 px under the bars */
+  gap: 6px;
+  margin: 0;
+}
+
+.weekly-cases-chart-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.weekly-cases-chart-bar {
+  fill: var(--color-text-tertiary);
+  opacity: 0.45;
+}
+
+.weekly-cases-chart-range {
+  fill: var(--color-chart-m4);
+  opacity: 0.25;
+  rx: var(--radius-xs);
+}
+
+.weekly-cases-chart-forecast {
+  fill: var(--color-chart-m4);
+  rx: var(--radius-xs);
+}
+
+.weekly-cases-chart-threshold {
+  fill: var(--color-status-warn);
+}
+
+.weekly-cases-chart-caption {
+  color: var(--color-text-tertiary);
+}
