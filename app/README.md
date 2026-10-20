@@ -76,7 +76,7 @@ them with the Figma page, which is drawn in that theme.
 
 | Component | Use | Figma |
 | --- | --- | --- |
-| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site, `onClick` otherwise | Button, 3:65 |
+| `Button` | `<Button variant="secondary" icon="arrow-right" to="/map">Try LEPTON</Button>`; `to` for a route, `href` for another site (a new tab; `tel:` and `mailto:` open in place), `onClick` otherwise | Button, 3:65 |
 | `Badge` | `<Badge tone="warn">Simulated until QCESD data</Badge>`; tones neutral, accent, warn, alert | Badge, 3:78 |
 | `Tab` | `<Tab to="/map">Map</Tab>` is selected on its route; `<Tab selected onClick={...}>` otherwise. With both, `selected` wins (F4's panel tabs) | Tab, 3:83 |
 | `ToggleRow` | `<ToggleRow label="M3" on={on} onChange={setOn} color="var(--color-chart-m3)" />` | Toggle row, 3:94 |
@@ -261,6 +261,24 @@ under that label.
   middle. Below 1024 px every section is one column and the site header's links wrap under the
   logo; below 600 px the large text steps down to the next text style's size. No width scrolls
   sideways.
+
+## The Leptospirosis page (F7)
+
+`/leptospirosis`, from Figma frame "Leptospirosis" (38:277) and its notes, for residents.
+Text only; no data files.
+
+- **Sources.** Every medical fact ends with numbered links, `[1]`, to the Sources list at the
+  bottom, each a DOH page (DM 2023-0309, DOH's disease page and two 2024 press releases) or,
+  for the helpline and the waterproof bandage, the QC government and PIA. They are in
+  `SOURCES` at the top of `Leptospirosis.tsx`; a new fact cites one with `<Cite sources={[...]} />`.
+- **Text that differs from Figma**, so each fact matches its source (the component's comment
+  lists them): incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
+  rats"; high risk is DM 2023-0309's repeated or continuous exposure, not LEPTON's 2-day
+  cut-off; "a doctor decides" on preventive medicine, as the memo requires a physician.
+- **No hero photo yet.** Figma's is AI-generated (check U7). When a licensed photo arrives,
+  set `HERO_PHOTO` (file, alt text, credit) and the photo and its credit appear.
+- The page never gives doses. Before launch a health professional reviews the wording (Figma
+  notes), and a teammate checks each fact against its source (F7's Done when).
 
 ## Deploy (Vercel)
 

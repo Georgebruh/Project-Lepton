@@ -1,0 +1,421 @@
+/*
+ * F7: the Leptospirosis page for residents (Leptospirosis.tsx), Figma frame "Leptospirosis"
+ * (node 38:277). Figma's own values between the spacing steps (80, 112, 28, 20, 36 and 14 px)
+ * are written in px, as Footer.css does.
+ */
+
+/* Every block keeps Figma's 96 px side margin */
+.leptospirosis-hero,
+.leptospirosis-facts,
+.leptospirosis-section,
+.leptospirosis-cta,
+.leptospirosis-footer {
+  padding-left: var(--space-9);
+  padding-right: var(--space-9);
+}
+
+/* The [n] source links after a fact. line-height 0 keeps them from opening up the line. */
+.leptospirosis-cite {
+  line-height: 0;
+  white-space: nowrap;
+}
+
+.leptospirosis-cite a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+.leptospirosis-cite a:hover {
+  text-decoration: underline;
+}
+
+/* Hero */
+.leptospirosis-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+/* Figma's text column is 624 px wide beside the photo; it keeps that width without one */
+.leptospirosis-hero-text {
+  flex: 1;
+  max-width: 624px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.leptospirosis-eyebrow {
+  color: var(--color-accent-primary);
+}
+
+.leptospirosis-lead {
+  color: var(--color-text-secondary);
+}
+
+.leptospirosis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.leptospirosis-hero-photo {
+  flex-shrink: 0;
+  width: 560px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.leptospirosis-hero-photo img {
+  display: block;
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+.leptospirosis-hero-photo figcaption {
+  color: var(--color-text-tertiary);
+}
+
+/* Key facts: three columns between two rules */
+.leptospirosis-facts {
+  display: flex;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  list-style: none;
+}
+
+.leptospirosis-fact {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 28px var(--space-6);
+  border-top: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.leptospirosis-fact:first-child {
+  padding-left: 0;
+}
+
+.leptospirosis-fact + .leptospirosis-fact {
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.leptospirosis-fact-text {
+  color: var(--color-text-secondary);
+}
+
+/* A section: its heading over a rule, then its content */
+.leptospirosis-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: 112px;
+}
+
+.leptospirosis-section-head {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+/* How you get it */
+.leptospirosis-ways {
+  display: flex;
+  gap: var(--space-7);
+}
+
+.leptospirosis-way {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.leptospirosis-way-text {
+  color: var(--color-text-secondary);
+}
+
+/* Signs: two cards, the second outlined in red */
+.leptospirosis-signs {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.leptospirosis-signs-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.leptospirosis-signs-card.is-alert {
+  border: 1.5px solid var(--color-status-alert);
+}
+
+.leptospirosis-signs-alert-title {
+  color: var(--color-status-alert);
+}
+
+.leptospirosis-signs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each sign has an 8 px square bullet, 9 px down as in Figma */
+.leptospirosis-signs-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.leptospirosis-signs-list li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 9px;
+  border-radius: 1px;
+  background: var(--color-accent-primary);
+}
+
+.leptospirosis-signs-list.is-alert li::before {
+  background: var(--color-status-alert);
+}
+
+/* The small grey line under a list (Body/M) */
+.leptospirosis-note {
+  color: var(--color-text-secondary);
+}
+
+/* Risk levels: one row each, badge, description and link */
+.leptospirosis-risk {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leptospirosis-risk-level {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-3) var(--space-5) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.leptospirosis-risk-badge {
+  flex-shrink: 0;
+  width: 180px;
+}
+
+.leptospirosis-risk-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.leptospirosis-risk-action {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.leptospirosis-risk-action:hover {
+  text-decoration: underline;
+}
+
+/* Protect yourself: four tiles */
+.leptospirosis-tips {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leptospirosis-tip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  background: var(--color-bg-raised);
+  border-radius: var(--radius-md);
+}
+
+.leptospirosis-tip-text {
+  color: var(--color-text-secondary);
+}
+
+/* The closing call to the exposure guide, between two rules */
+.leptospirosis-cta {
+  padding-top: 112px;
+  padding-bottom: 80px;
+}
+
+.leptospirosis-cta-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 36px 0;
+  border-top: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.leptospirosis-cta-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.leptospirosis-cta-text p {
+  color: var(--color-text-secondary);
+}
+
+/* Footer: Figma's closing line, then the numbered sources */
+.leptospirosis-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-7);
+  color: var(--color-text-tertiary);
+}
+
+.leptospirosis-footer h2 {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.leptospirosis-sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.leptospirosis-sources a {
+  color: var(--color-text-secondary);
+}
+
+/* Below 1024 px the columns stack (the plan's rule for Home, kept here) */
+@media (max-width: 1023px) {
+  .leptospirosis-hero,
+  .leptospirosis-facts,
+  .leptospirosis-section,
+  .leptospirosis-cta,
+  .leptospirosis-footer {
+    padding-left: var(--space-7);
+    padding-right: var(--space-7);
+  }
+
+  .leptospirosis-hero {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+  }
+
+  .leptospirosis-hero-photo {
+    width: 100%;
+  }
+
+  .leptospirosis-hero-photo img {
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+
+  .leptospirosis-facts,
+  .leptospirosis-ways,
+  .leptospirosis-signs {
+    flex-direction: column;
+  }
+
+  .leptospirosis-fact,
+  .leptospirosis-fact:first-child {
+    padding: var(--space-5) 0;
+  }
+
+  .leptospirosis-fact + .leptospirosis-fact {
+    border-top: 0;
+    border-left: 0;
+  }
+
+  .leptospirosis-ways {
+    gap: var(--space-5);
+  }
+
+  .leptospirosis-section {
+    padding-top: var(--space-8);
+  }
+
+  .leptospirosis-tips {
+    flex-wrap: wrap;
+  }
+
+  .leptospirosis-tip {
+    flex-basis: calc(50% - var(--space-5) / 2);
+  }
+
+  .leptospirosis-cta {
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+  }
+
+  .leptospirosis-cta-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Phones: narrower margins, and each risk row wraps under its badge */
+@media (max-width: 600px) {
+  .leptospirosis-hero,
+  .leptospirosis-facts,
+  .leptospirosis-section,
+  .leptospirosis-cta,
+  .leptospirosis-footer {
+    padding-left: var(--space-5);
+    padding-right: var(--space-5);
+  }
+
+  .leptospirosis-risk-level {
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding-right: 0;
+  }
+
+  .leptospirosis-risk-badge {
+    width: 100%;
+  }
+
+  .leptospirosis-risk-text {
+    flex-basis: 100%;
+  }
+
+  .leptospirosis-tip {
+    flex-basis: 100%;
+  }
+}
