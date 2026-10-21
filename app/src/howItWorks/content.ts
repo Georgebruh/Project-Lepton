@@ -5,6 +5,8 @@
  * config.py and results/. When the paper is final, check every sentence here against it.
  */
 
+import { HERO_PHOTO, STRIP_PHOTOS } from '../home/photos.ts'
+
 /** One card in the pipeline diagram. */
 export type PipelineCard = {
   /** The small label over the title, e.g. "Rain". */
@@ -212,8 +214,8 @@ export const LIMITS: { title: string; text: string }[] = [
 export const FUTURE_WORK =
   'Left for future work: Cebu City, live weekly forecasts, nowcasting from report dates, a distributed-lag model, a satellite flood check (Sentinel-1) and hospital demand.'
 
-/** One reference: its text (APA 7 style) and a link to it. */
-export type Reference = { text: string; url: string }
+/** One reference: its text (APA 7 style) and a link to it; no link for data shared on request. */
+export type Reference = { text: string; url?: string }
 
 /** Papers and guidelines behind each choice, alphabetical. */
 export const PAPERS: Reference[] = [
@@ -306,11 +308,11 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://doi.org/10.1002/hyp.9740',
   },
   {
-    text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange.',
+    text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange. From NAMRIA and PSA. CC BY-IGO.',
     url: 'https://data.humdata.org/dataset/cod-ab-phl',
   },
   {
-    text: 'OCHA Philippines. (n.d.). Philippines population by single-year age, sex and barangay, 2020 census [Data set]. Humanitarian Data Exchange.',
+    text: 'OCHA Philippines. (n.d.). Philippines population by single-year age, sex and barangay, 2020 census [Data set]. Humanitarian Data Exchange. From PSA. CC BY.',
     url: 'https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020',
   },
   {
@@ -326,6 +328,9 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://openstat.psa.gov.ph',
   },
   {
+    text: 'Quezon City Epidemiology and Surveillance Division. (2026). Leptospirosis cases in Quezon City by date of onset, 2015–2026 [Unpublished data, shared on request]. The app and its code hold weekly totals only.',
+  },
+  {
     text: 'UP Resilience Institute & NOAH Center. (n.d.). Project NOAH flood hazard maps, 5-, 25- and 100-year rain return, Metro Manila [Data set]. ODbL.',
     url: 'https://noah.up.edu.ph',
   },
@@ -338,3 +343,14 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://fonts.google.com/specimen/Figtree',
   },
 ]
+
+/**
+ * F12: Home's four photos (home/photos.ts), each with its author, its licence and what was
+ * changed, as Home's footer says (check U8).
+ */
+export const PHOTO_SOURCES: Reference[] = [HERO_PHOTO, ...STRIP_PHOTOS].map((photo) => ({
+  text:
+    `${photo.credit.author}. ${photo.credit.title} [Photograph]. Wikimedia Commons. ${photo.credit.license}; ` +
+    `${photo === HERO_PHOTO ? 'cropped and resized' : 'resized'} for Home.`,
+  url: photo.credit.source,
+}))

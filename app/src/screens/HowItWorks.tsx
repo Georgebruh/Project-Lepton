@@ -10,6 +10,7 @@ import {
   LIMITS,
   MODELS,
   PAPERS,
+  PHOTO_SOURCES,
   PIPELINE,
   TESTS,
   type FormulaId,
@@ -258,17 +259,21 @@ function Limits() {
   )
 }
 
-/** A list of references, each linking to its paper, data set or page. */
+/** A list of references, each linking to its paper, data set or page (data shared on request has no link). */
 function ReferenceList({ title, references }: { title: string; references: Reference[] }) {
   return (
     <div className="how-it-works-references">
       <h3 className="how-it-works-eyebrow label-eyebrow">{title}</h3>
       <ul>
         {references.map(({ text, url }) => (
-          <li key={url + text} className="body-s">
-            <a href={url} target="_blank" rel="noreferrer">
-              {text}
-            </a>
+          <li key={text} className="body-s">
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer">
+                {text}
+              </a>
+            ) : (
+              text
+            )}
           </li>
         ))}
       </ul>
@@ -282,6 +287,7 @@ function Sources() {
       <SectionHead id="sources" number="05 · Sources" title="Papers and guidelines behind each choice" />
       <ReferenceList title="Papers and guidelines" references={PAPERS} />
       <ReferenceList title="Data, maps and fonts" references={DATA_SOURCES} />
+      <ReferenceList title="Photos" references={PHOTO_SOURCES} />
     </section>
   )
 }
@@ -298,6 +304,7 @@ function Sources() {
  * page links to both and stays text, as the plan's Screens table says. An input still awaited
  * carries the amber badge (none since A13's counts arrived). Limits and sources go beyond Figma's few lines:
  * every limit the plan and Notes.md state, and every source the app's data comes from (U8).
+ * F12: Sources also credits Home's photos and QCESD's counts, which check U8 asks for here too.
  */
 export default function HowItWorks() {
   const current = useCurrentSection()

@@ -365,7 +365,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Sources: two lists of references, each a link */
+/* Sources: three lists of references, each a link (F12: QCESD's data, shared on request, has none) */
 .how-it-works-references {
   display: flex;
   flex-direction: column;
@@ -381,6 +381,7 @@
   list-style: none;
 }
 
+.how-it-works-references li,
 .how-it-works-references a {
   color: var(--color-text-secondary);
   text-decoration-color: var(--color-border-strong);
