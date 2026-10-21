@@ -5,7 +5,8 @@ with its task code and the files its numbers come from. All styling is in `lepto
 sections can move to another template unchanged.
 
 Status (October 21): E4 (background, problem, scope and limitations, and the assumptions table)
-is written. The other sections are stubs that print a red **[Check: …]** note naming their task.
+and E5 (the methodology, and its formulas in Appendix B) are written. The other sections are
+stubs that print a red **[Check: …]** note naming their task.
 Note: E1's reading of the 2026 PJDSC primer (branch `E1-submission-rules`) is that the final
 submission is a slide deck, a video and this repository, with no written paper. The team writes
 the paper anyway, as the project's full report.
@@ -51,7 +52,7 @@ itself.
 too, but its latexmk needs Perl installed separately.
 
 Checked on October 21 with TinyTeX (TeX Live 2026), by hand and with latexmk as LaTeX Workshop
-runs it: 8 pages, no errors, Biber without warnings.
+runs it: 17 pages with E5, no errors, no overfull lines, Biber without warnings.
 
 ## Files
 
@@ -64,10 +65,11 @@ runs it: 8 pages, no errors, Biber without warnings.
 | `sections/problem.tex` | E4 | The problem |
 | `sections/objectives.tex` | E3 | Objectives (stub) |
 | `sections/scope.tex` | E4 | Scope, limitations, and what is not covered (future work) |
-| `sections/methodology.tex` | E5 | Methodology (stub) |
+| `sections/methodology.tex` | E5 | Methodology: data, the shared flood computation, Layer 1, Layer 2, evaluation; Table 1 (the storms) |
 | `sections/results.tex` | E6 | Results (stub) |
-| `sections/appendix.tex` | E8 | Appendices; holds E4's assumptions table |
+| `sections/appendix.tex` | E8 | Appendices; holds E4's assumptions table and E5's formulas |
 | `tables/assumptions.tex` | E4 | Table A1: every assumption, its value, its `config.py` name and how it was tested |
+| `tables/formulas.tex` | E5 | Table B1: the formula behind each step of the methodology, with the `src/` file that computes it |
 | `references.bib` | E7 | References, APA 7th edition (biblatex-apa) |
 | `figures/` | D8 | Put the paper's figures here; `figures/pjdsc-logo.png` replaces the band's words |
 
