@@ -175,7 +175,8 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   (`handle: { mapLevel: 2 }`). At level 1 the panel waits off-screen with Quezon City's
   forecast, as in Figma frame 1, so it slides in already filled.
 - **Data.** The `/map` route's loader fetches `ncr_cities.geojson` and `city_forecast.json`
-  once. In a level's component, `useMapContext()` (`map/mapContext.ts`) gives the files, the
+  once, and (F13) the street map's style; a style that does not load in 2 s leaves the map on
+  its plain background, with all of LEPTON's data. In a level's component, `useMapContext()` (`map/mapContext.ts`) gives the files, the
   chosen date, that week's forecasts and the MapLibre map, for a level that draws its own
   layers (the map arrives once it has drawn the cities). It also gives two empty boxes for a
   level's own legend and tooltips, `legendSlot` beside the zoom buttons and `overlay` over the
@@ -190,8 +191,13 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   shares with a paint transition (the other cities' fade to 45%), or step a feature state
   each frame (`map/featureFades.ts`: `featureFader` for a hover, `stagger` for F5's wave).
 - **Names on the map.** HTML elements that MapLibre keeps over each city's label point (F2's
-  `label_lon`, `label_lat`), so they are set in Figtree: the blank map style has no font
-  files for MapLibre's own text.
+  `label_lon`, `label_lat`), so they are set in Figtree. F13: the street map's own names (Noto
+  Sans, from OpenFreeMap) leave out NCR's cities while LEPTON writes them (from zoom 8.5);
+  zoomed further out, LEPTON's names hide and the street map's come back (`map/basemap.ts`).
+- **The street map (F13).** OpenFreeMap's Positron style under LEPTON's data, in the Figma map
+  colors, with the cities' fills over its roads and under its names; zoomed out the map is a
+  globe, and the pin button above Zoom brings the open level back. The drawing order lives in
+  `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
 
 ### The prophylaxis plan (F5)
 

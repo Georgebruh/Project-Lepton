@@ -1,4 +1,6 @@
+import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec'
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import { fetchBaseStyle } from './basemap.ts'
 
 /**
  * F4: the files the map screens read, written by F2 (python -m src.app_data) into
@@ -78,6 +80,8 @@ export type CityForecast = {
 export type MapData = {
   cities: Cities
   forecast: CityForecast
+  /** F13: the street map's style, or null if it did not load (the map then draws on a plain background). */
+  baseStyle: StyleSpecification | null
 }
 
 /** Fetch one of F2's files; a missing one stops with an error, which ErrorPage shows. */
@@ -89,11 +93,16 @@ export async function fetchJson<T>(path: string): Promise<T> {
   return (await res.json()) as T
 }
 
-/** The /map route's loader: the city outlines and the city forecast, fetched together. */
+/**
+ * The /map route's loader: the city outlines, the city forecast and (F13) the street map's
+ * style, fetched together. A missing data file stops with an error; a street map that does
+ * not load does not.
+ */
 export async function loadMapData(): Promise<MapData> {
-  const [cities, forecast] = await Promise.all([
+  const [cities, forecast, baseStyle] = await Promise.all([
     fetchJson<Cities>('/data/ncr_cities.geojson'),
     fetchJson<CityForecast>('/data/city_forecast.json'),
+    fetchBaseStyle(),
   ])
-  return { cities, forecast }
+  return { cities, forecast, baseStyle }
 }

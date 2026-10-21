@@ -3,6 +3,7 @@ import type { Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
 import { shapeMiddle, shapeParts, type LonLat } from '../exposed/nearest.ts'
 import { CITY_LAYERS } from './cityLayers.ts'
 import { featureFader, stagger } from './featureFades.ts'
+import { SLOTS } from './layerOrder.ts'
 import { CROSSFADE_MS, HOVER_MS, LINES_MS, RISE_MS, WAVE_MS, prefersReducedMotion } from './motion.ts'
 import type { BarangayShapes } from './planData.ts'
 import type { MapPointer } from './tooltip.ts'
@@ -12,7 +13,8 @@ import type { MapPointer } from './tooltip.ts'
  * 3a, and the notes "Map drill-down · design notes", node 58:447).
  *
  * The barangays are one GeoJSON source keyed on PSGC (promoteId), drawn by three layers that sit
- * between the open city's fill and its outline (cityLayers.ts): the fills, one color per class
+ * between the open city's fill and its outline (cityLayers.ts; F13: the fills go in with the
+ * city fills, over the street map's roads and under its names, layerOrder.ts): the fills, one color per class
  * (the share of each barangay's residents in zones the rain floods); white lines, 0.75 px; and a
  * dark 2 px outline for the barangay under the pointer.
  *
@@ -214,7 +216,7 @@ function makeBarangayLayers(map: MapLibreMap) {
           'fill-opacity': RISE,
         },
       },
-      below,
+      SLOTS.fills, // above the open city's fill, which fades out under them
     )
     map.addLayer(
       {

@@ -20,8 +20,10 @@
 
 .outbreak-legend-levels {
   display: flex;
+  /* F13: on a narrow map a level moves to the next line whole */
+  flex-wrap: wrap;
   /* Figma's 14 px between the levels, 6 px between a swatch and its name */
-  gap: 14px;
+  gap: var(--space-1) 14px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -30,6 +32,7 @@
 
 .outbreak-legend-levels li {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
 }

@@ -5,13 +5,15 @@ import AppBar from '../components/AppBar.tsx'
 import CityMap from '../map/CityMap.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
+import MapButton from '../map/MapButton.tsx'
 import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
-import type { loadMapData } from '../map/mapData.ts'
+import type { MapData } from '../map/mapData.ts'
 import MapZoom from '../map/MapZoom.tsx'
-import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH, SHEET_SHARE } from '../map/motion.ts'
+import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH, SHEET_SHARE, easeInOut } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
 import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
+import { viewFor } from '../map/view.ts'
 import './MapLayout.css'
 
 /** Each level's heading, for screen readers: the map has no visible page title. */
@@ -20,6 +22,9 @@ const HEADINGS: Record<MapLevel, string> = {
   2: 'Quezon City: next week’s leptospirosis cases',
   3: 'Quezon City: the prophylaxis plan',
 }
+
+/** F13: what the pin button above Zoom brings back into view at each level. */
+const LEVEL_PLACES: Record<MapLevel, string> = { 1: 'Metro Manila', 2: 'Quezon City', 3: 'Quezon City' }
 
 /** map/motion.ts's durations and curve, as the CSS variables MapLayout.css and the map's CSS use. */
 const MOTION = {
@@ -49,9 +54,14 @@ const MOTION = {
  * over the map's lower 55% instead of in from the right, so the map stays in sight above it. The
  * map's top left corner holds a list that reaches every city (level 1) or barangay (level 3)
  * from the keyboard; the plan puts its list there through the context (listSlot).
+ *
+ * F13: the map lies on a street map of the whole world, and the reader may pan away from Metro
+ * Manila; the pin button above Zoom brings the open level back into view.
  */
 export default function MapLayout() {
-  const { cities, forecast } = useLoaderData<typeof loadMapData>()
+  // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
+  // too deep for TypeScript, and with no server nothing is serialized
+  const { cities, forecast, baseStyle } = useLoaderData() as MapData
   const level = useMapLevel()
   const [searchParams, setSearchParams] = useSearchParams()
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -98,6 +108,15 @@ export default function MapLayout() {
     )
   }
 
+  /** F13: the pin button: the camera goes back to the open level's view, as when the level opened. */
+  function showLevel() {
+    if (!map) {
+      return
+    }
+    const view = viewFor(level, cities, map.getContainer(), controls.current)
+    map.fitBounds(view.bounds, { padding: view.padding, duration: CAMERA_MS, easing: easeInOut })
+  }
+
   const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
   return (
     <div className="map-layout" data-panel={level > 1 ? 'open' : 'closed'} style={MOTION}>
@@ -108,6 +127,7 @@ export default function MapLayout() {
         <CityMap
           cities={cities}
           forecast={forecast}
+          baseStyle={baseStyle}
           week={week}
           level={level}
           onMap={setMap}
@@ -121,7 +141,10 @@ export default function MapLayout() {
           {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
           {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
           <div ref={setLegendSlot} className="map-layout-legend" />
-          <MapZoom map={map} />
+          <div className="map-layout-buttons">
+            <MapButton icon="pin" label={`Back to ${LEVEL_PLACES[level]}`} onClick={showLevel} />
+            <MapZoom map={map} />
+          </div>
         </div>
         {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it */}
         <aside ref={panel} className="map-layout-panel" aria-label="Quezon City" inert={level === 1}>

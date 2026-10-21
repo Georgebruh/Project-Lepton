@@ -315,13 +315,15 @@ def write_noah_files():
     """
     if not config.NOAH_FLOOD.exists():
         return [f"noah_*.json left as they were: {config.NOAH_FLOOD.name} not on this computer (A8: python -m src.noah)"]
-    flood = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard")
+    flood = None   # A8's 2 million points are read only when a file must be written again
     lines = []
     for return_period in config.NOAH_RETURN_PERIODS:
         path = noah_path(return_period)
         if noah_is_current(path):
             lines.append(f"{path.name} left as it was: up to date with A8 and config")
             continue
+        if flood is None:
+            flood = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard")
         overlay = noah_overlay(flood, return_period)
         kept = overlay.area.sum() / flood.loc[flood["return_period"] == return_period].area.sum()
         write_geojson(overlay.to_crs(config.CRS_LONLAT), path)
