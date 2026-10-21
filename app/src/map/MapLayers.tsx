@@ -13,6 +13,12 @@ const BASE_SHOWN: Record<BaseMap, string> = {
   terrain: 'Terrain shading shown under the map',
 }
 
+/** What screen readers hear when the 3D view is turned on or off. */
+const VIEW_WORDS = {
+  on: 'Map tilted in 3D: drag with the right mouse button, two fingers, or Shift and the arrow keys to turn and tilt it',
+  off: 'Map flat, facing north',
+}
+
 /** What screen readers hear of NOAH's map `period` as it loads, shows or fails; and when the zones are turned off. */
 function floodWords(status: FloodStatus, period: FloodPeriod | null): string {
   if (status === 'off' || period === null) {
@@ -27,6 +33,9 @@ type MapLayersProps = {
   id: string
   base: BaseMap
   onBase: (base: BaseMap) => void
+  /** Whether the map is in 3D: tilted, with the ground's relief and buildings (terrain.ts). */
+  view3d: boolean
+  on3D: (on: boolean) => void
   /** Whether the street map loaded (if not, the map shows a plain background and the panel does not credit it). */
   hasStreetMap: boolean
   /** The NOAH map of flood zones shown, by its rain's return period; null when they are off. */
@@ -53,6 +62,8 @@ type MapLayersProps = {
  * are drawn with the map's tokens (MapLayers.css). The choice lives in the address (?base=,
  * layerParams.ts), and a line read out by screen readers says what the map now shows.
  *
+ * The 3D view: a switch that tilts the map over the ground's relief, with buildings (?view=3d).
+ *
  * Flood hazard: a switch for NOAH's flood zones (floodLayer.ts) and, while they are on, the
  * chips that pick NOAH's map for a 5-, 25- or 100-year rain (?flood=), like the plan's lead
  * chips. While a map loads, or if it fails, a line under the chips says so; a failed map has
@@ -62,6 +73,8 @@ export default function MapLayers({
   id,
   base,
   onBase,
+  view3d,
+  on3D,
   hasStreetMap,
   flood,
   floodChoice,
@@ -116,6 +129,7 @@ export default function MapLayers({
           ))}
         </div>
       </fieldset>
+      <ToggleRow label="3D view: tilt, terrain, buildings" on={view3d} onChange={on3D} />
       <fieldset className="map-layers-section">
         <legend className="map-layers-title label-ui-s">Flood hazard</legend>
         <div className="map-layers-flood">
@@ -159,9 +173,10 @@ export default function MapLayers({
       <p className="map-layers-credits body-s">
         {[hasStreetMap && CREDITS.street, CREDITS.satellite, CREDITS.terrain].filter(Boolean).join(' · ')}
       </p>
-      {/* One line for both, in parts: only the part that changed is read out */}
+      {/* One line for all three, in parts: only the part that changed is read out */}
       <p className="visually-hidden" aria-live="polite">
         <span>{BASE_SHOWN[base]}. </span>
+        <span>{VIEW_WORDS[view3d ? 'on' : 'off']}. </span>
         <span>{floodWords(floodStatus, flood)}.</span>
       </p>
     </section>

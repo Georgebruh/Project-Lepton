@@ -1,6 +1,7 @@
 import type {
   FilterSpecification,
   LayerSpecification,
+  RasterDEMSourceSpecification,
   SkySpecification,
   StyleSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
@@ -26,6 +27,8 @@ import type { Cities } from './mapData.ts'
  * (Sentinel-2 cloudless 2024 by EOX, 10 m pixels), with the street map's roads and names kept
  * over it; and terrain, the street map with hill shading from elevation tiles (Mapzen Terrain
  * Tiles on AWS). Each is added the first time it is chosen, in the base slot (layerOrder.ts).
+ * In the 3D view the street map gets the hill shading too: MapLibre does not light the ground
+ * it raises, so without shading the relief would show only at its edges.
  */
 
 /** The base maps the Layers panel offers, the street map first (the address leaves it out). */
@@ -45,12 +48,22 @@ const SATELLITE_CREDIT =
   '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless 2024</a> by EOX ' +
   '(contains modified Copernicus Sentinel data 2024)'
 
-/** Elevation for the hill shading: Mapzen's Terrain Tiles on AWS (terrarium encoding, SRTM in the Philippines). */
+/**
+ * Elevation for the hill shading and the 3D view (terrain.ts): Mapzen's Terrain Tiles on AWS
+ * (terrarium encoding, SRTM in the Philippines). Each makes its own source from it, as MapLibre
+ * advises for hill shading and terrain.
+ */
+export const ELEVATION_SOURCE: RasterDEMSourceSpecification = {
+  type: 'raster-dem',
+  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  tileSize: 256,
+  maxzoom: 15,
+  encoding: 'terrarium',
+  attribution:
+    'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>',
+}
 const HILLSHADE = 'hillshade'
 const ELEVATION = 'elevation-hillshade'
-const ELEVATION_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
-const ELEVATION_CREDIT =
-  'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>'
 
 /** How strongly the hills are shaded, 0 to 1: Metro Manila is low, but Marikina's valley and the Sierra Madre's foothills show. */
 const HILLSHADE_STRENGTH = 0.5
@@ -62,7 +75,7 @@ const GROUND_SOURCE_LAYERS = ['landcover', 'landuse', 'park', 'water', 'building
 export const CREDITS = {
   street: 'Street map © OpenStreetMap contributors, OpenFreeMap',
   satellite: 'Satellite: Sentinel-2 cloudless 2024 by EOX',
-  terrain: 'Terrain: Mapzen Terrain Tiles',
+  terrain: 'Terrain and 3D: Mapzen Terrain Tiles',
 }
 
 /** Per map, the street map's ground layers the satellite imagery hides (shown before it hid them). */
@@ -78,8 +91,8 @@ const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
  */
 const BASE_STYLE_TIMEOUT_MS = 2000
 
-/** The style's tile source, and the credit its tiles need (OpenFreeMap's style leaves it empty). */
-const BASE_SOURCE = 'openmaptiles'
+/** The style's tile source (terrain.ts raises its buildings), and the credit its tiles need (OpenFreeMap's style leaves it empty). */
+export const BASE_SOURCE = 'openmaptiles'
 const BASE_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
   '<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> ' +
@@ -153,14 +166,7 @@ function addSatellite(map: MapLibreMap) {
 
 function addHillshade(map: MapLibreMap) {
   const colors = mapColors(map.getContainer())
-  map.addSource(ELEVATION, {
-    type: 'raster-dem',
-    tiles: [ELEVATION_TILES],
-    tileSize: 256,
-    maxzoom: 15,
-    encoding: 'terrarium',
-    attribution: ELEVATION_CREDIT,
-  })
+  map.addSource(ELEVATION, ELEVATION_SOURCE)
   map.addLayer(
     {
       id: HILLSHADE,
@@ -198,17 +204,18 @@ function groundShown(map: MapLibreMap): string[] {
 /**
  * Shows the base map `base`: the street map alone, the satellite imagery under the street map's
  * roads and names (its ground hidden), or the street map with hill shading. Leaving the imagery
- * shows again exactly the ground it hid.
+ * shows again exactly the ground it hid. In the 3D view (`view3d`) the street map is shaded too.
  */
-export function setBase(map: MapLibreMap, base: BaseMap) {
+export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
+  const shaded = base === 'terrain' || (base === 'map' && view3d)
   if (base === 'satellite' && !map.getLayer(SATELLITE)) {
     addSatellite(map)
   }
-  if (base === 'terrain' && !map.getLayer(HILLSHADE)) {
+  if (shaded && !map.getLayer(HILLSHADE)) {
     addHillshade(map)
   }
   show(map, SATELLITE, base === 'satellite')
-  show(map, HILLSHADE, base === 'terrain')
+  show(map, HILLSHADE, shaded)
   const hidden = hiddenGround.get(map)
   if (base === 'satellite' && !hidden) {
     const ground = groundShown(map)

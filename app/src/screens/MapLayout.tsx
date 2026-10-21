@@ -9,7 +9,7 @@ import FloodLegend from '../map/FloodLegend.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
 import MapButton from '../map/MapButton.tsx'
-import { baseOf, floodOf, setBaseParam, setFloodParam } from '../map/layerParams.ts'
+import { baseOf, floodOf, is3D, set3DParam, setBaseParam, setFloodParam } from '../map/layerParams.ts'
 import MapLayers from '../map/MapLayers.tsx'
 import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
@@ -18,7 +18,8 @@ import MapZoom from '../map/MapZoom.tsx'
 import { CAMERA_MS, CROSSFADE_MS, EASE_CSS, HOVER_MS, PANEL_WIDTH, SHEET_SHARE, easeInOut } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
 import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
-import { viewFor } from '../map/view.ts'
+import { TILT } from '../map/terrain.ts'
+import { moveToLevel, viewFor } from '../map/view.ts'
 import './MapLayout.css'
 
 /** Each level's heading, for screen readers: the map has no visible page title. */
@@ -63,7 +64,7 @@ const MOTION = {
  * F13: the map lies on a street map of the whole world, and the reader may pan away from Metro
  * Manila; the pin button above Zoom brings the open level back into view. The Layers button
  * opens the Layers panel (map/MapLayers.tsx); its choices live in the address (?base=, ?flood=,
- * map/layerParams.ts), so a link opens the same map. NOAH's flood zones (map/floodLayer.ts) bring
+ * ?view=3d, map/layerParams.ts), so a link opens the same map. NOAH's flood zones (map/floodLayer.ts) bring
  * their legend, which stands above the map's own.
  */
 export default function MapLayout() {
@@ -85,6 +86,7 @@ export default function MapLayout() {
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const base = baseOf(searchParams)
+  const view3d = is3D(searchParams)
   const flood = floodOf(searchParams)
   const [floodChoice, setFloodChoice] = useState<FloodPeriod>(flood ?? DEFAULT_FLOOD)
   if (flood !== null && flood !== floodChoice) {
@@ -131,6 +133,11 @@ export default function MapLayout() {
     setSearchParams((params) => setBaseParam(params, next), { replace: true, preventScrollReset: true })
   }
 
+  /** F13: the 3D view turned on or off in the Layers panel replaces the address's (no new history entry). */
+  function change3D(on: boolean) {
+    setSearchParams((params) => set3DParam(params, on), { replace: true, preventScrollReset: true })
+  }
+
   /** F13: NOAH's map chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
   function changeFlood(next: FloodPeriod | null) {
     setSearchParams((params) => setFloodParam(params, next), { replace: true, preventScrollReset: true })
@@ -147,8 +154,10 @@ export default function MapLayout() {
     if (!map) {
       return
     }
-    const view = viewFor(level, cities, map.getContainer(), controls.current)
-    map.fitBounds(view.bounds, { padding: view.padding, duration: CAMERA_MS, easing: easeInOut })
+    moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current), view3d ? TILT : 0, {
+      duration: CAMERA_MS,
+      easing: easeInOut,
+    })
   }
 
   const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
@@ -169,6 +178,7 @@ export default function MapLayout() {
           forecast={forecast}
           baseStyle={baseStyle}
           base={base}
+          view3d={view3d}
           week={week}
           level={level}
           onMap={setMap}
@@ -208,6 +218,8 @@ export default function MapLayout() {
             id="map-layers"
             base={base}
             onBase={changeBase}
+            view3d={view3d}
+            on3D={change3D}
             hasStreetMap={baseStyle !== null}
             flood={flood}
             floodChoice={floodChoice}

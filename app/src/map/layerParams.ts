@@ -4,10 +4,10 @@ import { FLOOD_PERIODS, type FloodPeriod } from './floodLayer.ts'
 /*
  * F13: the map layers chosen in the Layers panel live in the address, like ?date= and ?lead=,
  * so a link opens the same map: ?base=satellite or ?base=terrain (the street map, the default,
- * is left out), and ?flood=5, 25 or 100 for NOAH's flood zones (left out when they are off).
- * levelSearch (routes.ts) keeps them when the reader moves between the levels.
+ * is left out), ?flood=5, 25 or 100 for NOAH's flood zones, and ?view=3d for the 3D view (each
+ * left out when off). levelSearch (routes.ts) keeps them when the reader moves between the levels.
  */
-export const LAYER_PARAMS = { base: 'base', flood: 'flood' }
+export const LAYER_PARAMS = { base: 'base', flood: 'flood', view: 'view' }
 
 /** The base map the address names; the street map if it names none, or one the app does not know. */
 export function baseOf(params: URLSearchParams): BaseMap {
@@ -37,6 +37,21 @@ export function setFloodParam(params: URLSearchParams, period: FloodPeriod | nul
     params.delete(LAYER_PARAMS.flood)
   } else {
     params.set(LAYER_PARAMS.flood, String(period))
+  }
+  return params
+}
+
+/** Whether the address asks for the 3D view (?view=3d). */
+export function is3D(params: URLSearchParams): boolean {
+  return params.get(LAYER_PARAMS.view) === '3d'
+}
+
+/** Writes the 3D view into `params` (the flat map, the default, as no setting at all). */
+export function set3DParam(params: URLSearchParams, on: boolean): URLSearchParams {
+  if (on) {
+    params.set(LAYER_PARAMS.view, '3d')
+  } else {
+    params.delete(LAYER_PARAMS.view)
   }
   return params
 }

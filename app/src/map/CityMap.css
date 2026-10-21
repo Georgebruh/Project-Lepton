@@ -15,6 +15,12 @@
   background: var(--color-map-space);
 }
 
+/* F13: the 3D view lays the world flat (terrain.ts); past its far edge, where tiles have not come
+   yet, the land's color, not the dark around the globe */
+.city-map[data-view='3d'] .city-map-canvas {
+  background: var(--color-map-land);
+}
+
 /* F13: the sources' credits (MapLibre's attribution control): an "i" button bottom left, 24 px
    in from the map's edges like the other controls, that opens the credits over the map. It is
    MapLibre's element and cannot take the body-s class, so it copies body-s here. Opened, the

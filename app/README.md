@@ -216,6 +216,20 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   the credit to the map's corner. While a file loads the panel says so; if it fails, the panel
   says that with a Try again button, and the legend goes. A failed map is removed, so choosing
   it later fetches it again.
+- **The 3D view (F13).** The panel's "3D view" switch, `?view=3d` in the address
+  (`map/terrain.ts`). The ground rises with Mapzen's Terrain Tiles (heights doubled: Metro
+  Manila is low), the street map gets the hill shading, and its buildings stand up from zoom 14.
+  The camera tilts 60°; the reader can turn and tilt it with a right-button drag, two fingers,
+  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north. In 3D
+  the world is laid flat (Mercator): MapLibre does not fully support raised ground on the globe.
+- **The camera and the levels (F13).** A level's view (`map/view.ts`) is reached with
+  `moveToLevel` (`levelCamera` and `easeTo`), not `fitBounds`: the zoom is the flat map's fit,
+  and the level's padding (the panel, the sheet) becomes the camera's own, so the camera tilts,
+  turns and zooms about the middle of the map left in sight. `fitBounds` shifts the middle only
+  for a flat map, and on a phone a tilt threw the city off the strip above the sheet. Moves to a
+  level's view carry `LEVEL_FIT`. The reader's own moves (a drag, a pinch, a key, the wheel, the
+  zoom buttons with `READER_MOVE`) mark the map as moved: then a resize no longer refits the
+  level, and 3D tilts where the reader is. MapLibre's own moves (a resize) mark nothing.
 
 ### The prophylaxis plan (F5)
 
