@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router'
 import AppBar from '../components/AppBar.tsx'
 import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
-import CenterRow from '../components/CenterRow.tsx'
+import CenterRow, { CenterRowHeader } from '../components/CenterRow.tsx'
 import Footer from '../components/Footer.tsx'
 import Icon from '../components/Icon.tsx'
 import { ICON_NAMES } from '../components/iconShapes.tsx'
@@ -164,6 +164,7 @@ export default function Kit() {
 
       <KitSection title="Center row" node="Components · 4:12">
         <div className="kit-center-rows" role="table" aria-label="Health centers">
+          <CenterRowHeader />
           <CenterRow name="Tatalon Health Center" doxycycline={92935} courses={8737} amoxicillin={1124} />
         </div>
       </KitSection>

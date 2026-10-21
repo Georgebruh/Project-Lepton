@@ -1,0 +1,123 @@
+/*
+ * F9: the scores under the chart (ScoreTable.tsx). Figma leaves this room empty: the primary
+ * result is the Stat card (F3, 320 px wide in Figma) and the table follows How it works' models
+ * table (node 12:1482): a raised header row in Label/Eyebrow, 16 by 24 px cells, LEPTON's row tinted.
+ */
+.score-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.score-table-title {
+  color: var(--color-text-primary);
+}
+
+/* The Stat card beside the table; above it when the results column is narrow (the end of this file) */
+.score-table-body {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.score-table-primary {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The table scrolls sideways inside its border on a narrow phone; the page does not */
+.score-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.score-table-scroll:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.score-table-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.score-table-table th,
+.score-table-table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.score-table-table thead th {
+  background: var(--color-bg-raised);
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.score-table-table th:first-child {
+  text-align: left;
+}
+
+.score-table-table tbody th {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+.score-table-table td {
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-table-table tbody tr:last-child th,
+.score-table-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* LEPTON's row: the accent's pale tint, as in Figma's models table */
+.score-table-table .score-table-ours th,
+.score-table-table .score-table-ours td {
+  background: var(--color-accent-subtle);
+}
+
+.score-table-note {
+  color: var(--color-text-secondary);
+}
+
+/* What each score means, two columns where there is room */
+.score-table-words {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.score-table-words dt {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.score-table-words dd {
+  margin: 0;
+}
+
+/*
+ * When the results column (CompareModels.css) is under 900 px: the Stat card above the table,
+ * and tighter cells, so the six columns fit the 656 px column at 1024 px. Last in the file, so
+ * these win over the rules above.
+ */
+@container compare-results (max-width: 900px) {
+  .score-table-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .score-table-table th,
+  .score-table-table td {
+    padding: var(--space-3) var(--space-4);
+  }
+}

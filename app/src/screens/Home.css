@@ -1,0 +1,451 @@
+/*
+ * F6: Home (Home.tsx), Figma frame "Home" (node 19:256), drawn at 1440 px. Sizes between the
+ * spacing steps are Figma's own (the 120 and 140 px above each section, the hero's 152 and 22).
+ * Below 1024 px the sections stack in one column; below 600 px the large text steps down to the
+ * next text style's size.
+ */
+
+/* Each section's sides: Figma's 96 px; on screens wider than the frame, the content stays
+   1248 px wide in the middle while the backgrounds run the full width. */
+.home {
+  --home-side: max(var(--space-9), calc((100% - 1248px) / 2));
+}
+
+/* --- Hero --------------------------------------------------------------- */
+
+/* The photo's own colors are the same in every theme: white text over a dark shade (Design
+   notes), Figma's near-black teal at 45%, 50% and 70%. The dark behind it shows while the photo
+   loads, so the white text stays readable. */
+.home-hero {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 680px;
+  padding: 152px var(--home-side) var(--space-8);
+  overflow: hidden;
+  background: rgb(5 13 15);
+}
+
+.home-hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* On a narrow screen the two residents, left of centre, stay in view */
+  object-position: 30% 50%;
+}
+
+.home-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(5 13 15 / 45%), rgb(5 13 15 / 50%) 50%, rgb(5 13 15 / 70%));
+}
+
+/* Figma's three waterlines, kept at their size along the hero's bottom (cut at the sides on a
+   narrow screen) so the waves keep their shape */
+.home-hero-waterlines {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: max(100%, 1440px);
+  height: 680px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.home-hero-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 686px;
+  text-align: center;
+}
+
+.home-hero-title {
+  color: white;
+  text-shadow: 0 2px 24px rgb(0 0 0 / 35%);
+}
+
+/* One line each, as in Figma */
+.home-hero-title span {
+  display: block;
+}
+
+.home-hero-text {
+  max-width: 640px;
+  color: rgb(255 255 255 / 88%);
+  text-shadow: 0 1px 16px rgb(0 0 0 / 35%);
+}
+
+/* Figma's "Hero button": glass over the photo, not one of the three Button styles */
+.home .home-hero-button {
+  padding: var(--space-3) 20px;
+  border: 1px solid rgb(255 255 255 / 35%);
+  background: rgb(13 31 31 / 55%);
+  color: white;
+}
+
+/* --- Banner for residents -------------------------------------------------- */
+
+.home-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 22px var(--home-side);
+  background: var(--color-accent-subtle);
+}
+
+.home-banner-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-banner-subtitle {
+  color: var(--color-text-secondary);
+}
+
+.home-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* --- Why it matters ------------------------------------------------------- */
+
+.home-why {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  padding: 120px var(--home-side) 0;
+}
+
+.home-why-lead {
+  max-width: 900px;
+}
+
+.home-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.home-photo-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
+.home-photo-caption {
+  color: var(--color-text-secondary);
+}
+
+/* --- The map ------------------------------------------------------------- */
+
+.home-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: 140px var(--home-side) 0;
+}
+
+.home-map-title {
+  max-width: 760px;
+}
+
+/* --- What you get: the stock list and the city's cases, side by side ------------- */
+
+.home-get {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 140px var(--home-side) 0;
+}
+
+.home-get-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: 40px var(--space-7) var(--space-2) 0;
+}
+
+.home-get-cases {
+  padding: 40px 0 var(--space-2) var(--space-7);
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.home-get-eyebrow {
+  color: var(--color-accent-primary);
+}
+
+.home-get-text {
+  color: var(--color-text-secondary);
+}
+
+.home-get-figures {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding-top: var(--space-4);
+}
+
+.home-get-figure {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.home-get-figure dt {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.home-get-figure dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.home-get-note {
+  color: var(--color-text-tertiary);
+}
+
+/* --- How it's built -------------------------------------------------------- */
+
+.home-built {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 140px var(--home-side) 0;
+}
+
+.home-built-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-built-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-7);
+  padding: 28px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.home-built-name {
+  flex: 0 0 340px;
+}
+
+.home-built-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.home-built-tag {
+  flex: 0 0 110px;
+  color: var(--color-text-tertiary);
+  text-align: right;
+}
+
+.home-built-more {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding-top: var(--space-5);
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+/* --- Try LEPTON ---------------------------------------------------------- */
+
+.home-try {
+  padding: 140px var(--home-side) var(--space-9);
+}
+
+.home-try-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 40px 0;
+  border-top: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.home-try-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.home-try-subtitle {
+  color: var(--color-text-secondary);
+}
+
+/* The 88 px teal square with the arrow (Figma "Go") */
+.home-try-go {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+/* --- Below 1024 px: one column ------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .home {
+    --home-side: var(--space-5);
+  }
+
+  .home-hero {
+    min-height: 560px;
+    padding-top: var(--space-9);
+  }
+
+  /* Display/XL steps down to Display/L's size */
+  .home-hero-title,
+  .home-try-title {
+    font-size: 52px;
+    line-height: 58px;
+    letter-spacing: -0.02em;
+  }
+
+  .home-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding-block: var(--space-5);
+  }
+
+  .home-banner-actions {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .home-why {
+    gap: var(--space-6);
+    padding-top: var(--space-8);
+  }
+
+  .home-photos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-map,
+  .home-get,
+  .home-built {
+    padding-top: var(--space-8);
+  }
+
+  .home-get {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-get-column,
+  .home-get-cases {
+    padding: var(--space-6) 0;
+  }
+
+  .home-get-cases {
+    border-top: 1px solid var(--color-border-strong);
+    border-left: 0;
+  }
+
+  /* Each row: its tag above its name, then the text */
+  .home-built-row {
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-5) 0;
+  }
+
+  .home-built-name,
+  .home-built-tag {
+    flex-basis: auto;
+  }
+
+  .home-built-tag {
+    order: -1;
+    text-align: left;
+  }
+
+  .home-try {
+    padding: var(--space-8) var(--home-side);
+  }
+}
+
+/* --- Below 600 px: phones ------------------------------------------------- */
+
+@media (max-width: 599px) {
+  .home {
+    --home-side: var(--space-4);
+  }
+
+  .home-hero {
+    min-height: 520px;
+    padding-top: var(--space-8);
+  }
+
+  /* Display/L steps down to Heading/L's size */
+  .home-hero-title,
+  .home-try-title {
+    font-size: 36px;
+    line-height: 44px;
+    letter-spacing: -0.015em;
+  }
+
+  /* Body/XL steps down to Body/L's size, Heading/L to Body/XL's */
+  .home-why-lead {
+    font-size: 19px;
+    line-height: 30px;
+  }
+
+  .home-map-title,
+  .home-get-title,
+  .home-built-title {
+    font-size: 26px;
+    line-height: 36px;
+  }
+
+  .home-try-line {
+    gap: var(--space-4);
+    padding: var(--space-6) 0;
+  }
+
+  .home-try-go {
+    width: 64px;
+    height: 64px;
+  }
+}

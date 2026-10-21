@@ -15,14 +15,18 @@ What runs and what does not:
     with --fetch-imerg. Without it, data/raw/imerg_daily.nc must be there.
   - Files saved by hand (HydroBASINS, the census files, the Mendeley file, PSA births)
     are checked before the first step; the run stops with the list of missing files.
+  - QCESD's case list (A13) is not one of them: it is a case-level record, kept on the
+    team drive only (rule 11), so a copy of the repository without it must still run.
+    A13 is skipped when the list is not in data/raw/qcesd/; B10 then reads
+    cases_weekly.csv if it was copied from the drive, and is skipped if not.
   - A step whose task is not built yet (its module is not in src/) is skipped, and so is
     B10 until A13's cases_weekly.csv exists and config.DATA_OPTION is set. B10's guard
     reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5) waits for
     B10's results/forecasts.csv; its --layer2 run (figures 4 and 5) does not.
   - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
-    B10 --simulate --option C (results/forecasts_simulated_C.csv, no guard reruns), D8's
-    figures 1-3 as previews from it (results/d8_preview_*, not for the paper), and F2's
-    city_forecast.json marked "simulated". Never the paper's results.
+    A13 is not run, B10 --simulate --option C (results/forecasts_simulated_C.csv, no
+    guard reruns), D8's figures 1-3 as previews from it (results/d8_preview_*, not for
+    the paper), and F2's city_forecast.json marked "simulated". Never the paper's results.
   - C5 and C6 are not steps: they only print. C8, C9 and D7 call their functions.
 
 Run from the repository root:
@@ -31,7 +35,7 @@ Run from the repository root:
     python -m src.run_all --from C3       # start at C3's first step (e.g. after A8, which is slow)
     python -m src.run_all --only B3 D7    # just these tasks' steps
     python -m src.run_all --fetch-imerg   # also download IMERG (A4) first
-    python -m src.run_all --simulate      # Layer 1 on made-up counts, before A13
+    python -m src.run_all --simulate      # Layer 1 on made-up counts, without QC's case data
 The first run downloads what is missing (A8's NOAH maps can take over an hour; A4, if
 asked, an hour or more). B3's --diagnose takes about 5 minutes; B10 about 12 minutes per
 run (M3 refits Prophet every week).
@@ -56,6 +60,7 @@ STEPS = [
     ("A14", "src.era5", ()),
     ("A9", "src.benchmark", ()),
     ("A15", "src.ecmwf", ()),
+    ("A13", "src.cases", ()),                       # QC weekly cases; skipped without QCESD's list
     ("B1", "src.population", ()),
     ("C1", "src.rescale", ()),
     ("C2", "src.overlay", ()),
@@ -82,6 +87,7 @@ FETCH_ONLY = {"A4"}   # runs only with --fetch-imerg (see the module docstring)
 
 # With --simulate: each Layer 1 step's arguments on B10's made-up counts (None: not run).
 SIMULATED = {
+    ("A13", ()): None,
     ("B10", ()): ("--simulate", "--option", "C"),
     ("B10", ("--g", "1")): None,
     ("B10", ("--g", "3")): None,
@@ -108,15 +114,20 @@ def step_name(step):
 def skip_reason(step, simulate=False):
     """Why a step cannot run yet, or None when it can.
 
-    A task not built yet (its module is not in src/); B10 before A13's cases file and
-    config.DATA_OPTION; B10's guard reruns outside option C; D8's full run before B10's
-    forecasts.csv. With --simulate, B10 and D8 need none of these.
+    A task not built yet (its module is not in src/); A13 without QCESD's case list;
+    B10 before A13's cases file and config.DATA_OPTION; B10's guard reruns outside
+    option C; D8's full run before B10's forecasts.csv. With --simulate, B10 and D8 need
+    none of these.
     """
     task, module, args = step
     if not (config.ROOT / (module.replace(".", "/") + ".py")).exists():
         return f"task {task} not built yet ({module} not found)"
     if simulate:
         return None
+    if task == "A13" and not config.QCESD_CASES_RAW.exists():
+        have = "B10 uses the copied" if config.CASES_WEEKLY.exists() else "copy it, or"
+        return (f"QCESD's case list is not in {config.QCESD_CASES_RAW.parent.relative_to(config.ROOT).as_posix()}/ "
+                f"(team drive only, rule 11); {have} {config.CASES_WEEKLY.name} from the drive")
     if task == "D8" and not args and not config.FORECASTS.exists():
         return f"figures 1-3 need B10's {config.FORECASTS.name} (the --layer2 step drew 4 and 5)"
     if task == "B10":
@@ -181,7 +192,7 @@ def main():
     parser.add_argument("--from", dest="start", metavar="TASK", help="start at this task's first step")
     parser.add_argument("--only", nargs="+", metavar="TASK", help="run only these tasks' steps")
     parser.add_argument("--fetch-imerg", action="store_true", help="also download IMERG (A4): needs an Earthdata login")
-    parser.add_argument("--simulate", action="store_true", help="Layer 1 on B10's made-up counts, before A13")
+    parser.add_argument("--simulate", action="store_true", help="Layer 1 on B10's made-up counts, without QC's case data")
     args = parser.parse_args()
 
     steps = choose_steps(args.start, args.only, args.fetch_imerg, args.simulate)

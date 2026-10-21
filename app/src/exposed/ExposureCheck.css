@@ -1,0 +1,69 @@
+/* F8: step 1 of the exposure guide (ExposureCheck.tsx), Figma frame 39:301. */
+.exposure-check {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: var(--space-2) 20px 0;
+}
+
+.exposure-check-intro {
+  color: var(--color-text-secondary);
+}
+
+/* One question: its words, then its answers */
+.exposure-check-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exposure-check-text {
+  color: var(--color-text-primary);
+}
+
+/* "Choose an answer." beside a question left unanswered, and the line above See what to do */
+.exposure-check-left {
+  color: var(--color-status-alert);
+}
+
+.exposure-check-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* An answer: Figma's Tab, outlined on white; the chosen one raised, in the primary text color.
+   The 1 px border adds to the size, as in Figma (38 px tall). */
+.exposure-check-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.exposure-check-chosen {
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+}
+
+/* The radio button itself is invisible inside the answer; the answer shows where the keyboard is */
+.exposure-check-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.exposure-check-option:has(.exposure-check-input:focus-visible) {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}

@@ -1,0 +1,166 @@
+% E4 (SCRUM-25): the assumptions table, which E4's limitations point to; E8 places it among the
+% appendices. Rows = the 29 assumptions in lepton-plan.md ("Assumptions to state in the paper"),
+% less option A's reported-share cut-off (not used: A13 chose option C), plus the choices the
+% build added (Notes.md sections 1-2 and config.py). Each value is the one in config.py; the
+% config.py name sits under each assumption. Task codes are in the comment at each row's end.
+% A test marked \checkme has not been run yet: run it, or change the cell to "Stated".
+{\footnotesize
+\renewcommand{\arraystretch}{1.18}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.22\textwidth}
+                    >{\raggedright\arraybackslash}p{0.43\textwidth}
+                    >{\raggedright\arraybackslash}p{0.29\textwidth}@{}}
+\caption{Every assumption in LEPTON, its value and how it was tested. Values are set once, in
+the code's \texttt{config.py}, under the names shown in small type.}\label{tab:assumptions}\\
+\toprule
+\textbf{Assumption} & \textbf{Value} & \textbf{Tested or stated} \\
+\midrule
+\endfirsthead
+\multicolumn{3}{@{}l}{\textit{Table~\thetable, continued}}\\
+\toprule
+\textbf{Assumption} & \textbf{Value} & \textbf{Tested or stated} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{@{}r}{\textit{Continued on the next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+%
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Cases and the city forecast (Layer 1)}}\\
+A case's week \cfg{QCESD_ONSET}
+  & The MMWR week of its date of onset; the list's own morbidity-week column is not used
+  & Stated: that column changes meaning between years \\ % A13
+Delay guard \cfg{DELAY_GUARD_G}
+  & 2 weeks: forecasting week $T+1$ at week $T$, every model sees counts up to week $T-2$
+  & Rerun with 1 and 3 weeks \checkme{not run yet: \texttt{python -m src.backtest --g 1}, then
+    \texttt{--g 3}} \\ % B2, B6, D3, D4
+When a week's count is final \cfg{CASES_COMPLETE_DAYS}
+  & 17 days after the week ends; later weeks are missing, not zero
+  & 99\% of cases were admitted within 17 days of onset; a lower bound, since the delay from
+    admission to report is unknown \\ % A13
+Repeated rows in the case list
+  & The 136 rows that repeat another row are kept as separate cases
+  & With them the list matches QCESD's published 2025 totals to within 1\% \\ % A13, S4
+Epidemic threshold \cfg{THRESHOLD_SD}
+  & The week's mean plus 2 standard deviations over the up to 5 most recent complete non-COVID
+    years before the target year, at least 3
+  & Stated; QCESD's own method is not known \\ % B7
+Week 53 \cfg{MAX_WEEK}
+  & Treated as week 52; a reference year's own week 53 is not used
+  & Stated \\ % A3, B7, B8
+COVID-19 years \cfg{COVID_YEARS}
+  & 2020--2021: an indicator in M4; not threshold reference years; out of headline scores
+  & Every score also computed over all years, as a check \checkme{not in results/ yet (E6)}
+    \\ % B5, B7, D
+Forecast spread before 26 past forecasts \cfg{THETA_MIN_FORECASTS}
+  & Each model's training fit: M4's fitted $\theta$; M0's and M1's own fits on the weeks they
+    see; Prophet's in-sample fit for M3
+  & Stated; used for about the first half of 2018 only \\ % B6, B9, B10
+M3's XGBoost settings \cfg{M3_XGB_PARAMS}
+  & xgboost's defaults with 100 rounds; the paper gives none
+  & Rerun with a maximum depth of 2: hybrid error 26.04 on the paper's data \\ % B3, B9
+M3's gap filling \cfg{M3_LOCKDOWNS}
+  & Our reading of the paper's three steps: lockdown weeks are those under ECQ or MECQ
+    (15 March--31 May and 4--18 August 2020), and the series has no row for ISO 2020 week 53
+  & Our seasonal naive forecast then matches all eight of the paper's published scores for it
+    \\ % B3
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Rain and flood exposure}}\\
+Trigger rain \cfg{RAIN_ACCUM_DAYS}
+  & The wettest three consecutive UTC days of daily IMERG Late rain
+  & The single wettest day, run as a comparison \\ % A4, C3
+A storm's rain
+  & Its wettest three-day total ending during the flood
+  & Stated \\ % C8, C9 (Notes.md 2.2)
+Rain area \cfg{CATCHMENT_OUTLETS}
+  & HydroBASINS level-12 sub-basins draining to the Marikina, San Juan and Tullahan rivers, each
+    rain cell weighted by its area inside them
+  & Stated \\ % A7, C3
+IMERG's first year \cfg{IMERG_KEEP_2000}
+  & June--December 2000 kept
+  & Refit without it: return levels move by under 1~mm, the exposure index by at most 0.1
+    point \\ % C3
+Return-level fit \cfg{GUMBEL_MIN_YEARS}
+  & Gumbel, on the annual maxima of at least 10 years before the forecast or storm year,
+    refitted each year
+  & Stated \checkme{the plan's one GEV refit for Carina was not run} \\ % C3
+No-flood floor $R_0$ \cfg{R0_FACTOR}
+  & $R_0 = 0.5\,\hat{R}(5)$, fixed
+  & Stated; tuning it is future work \\ % C3
+ERA5 fit years \cfg{ERA5_YEARS}
+  & June 2000 to the year before each storm, the same years as IMERG
+  & Stated \\ % A14, C9
+Forecast model and lead times \cfg{FORECAST_LEADS_DAYS}
+  & ECMWF IFS 0.25\textdegree, issued 1, 2 and 3 days before the rain
+  & All four storms are in the archive \\ % A15, C9
+Overlay rule
+  & A pixel's residents count in proportion to its area inside a zone
+  & Stated \\ % C2
+Population map
+  & WorldPop 2024, constrained 100~m (R2025A), fitted to each barangay's 2024 census total
+  & Stated; Meta's map is future work \\ % A6, C1
+Flood maps \cfg{NOAH_RETURN_PERIODS}
+  & NOAH's 5-, 25- and 100-year Metro Manila maps, as published
+  & The 11 barangays where a rarer map floods fewer residents were listed and inspected \\ % A8, C2
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}People and prophylaxis stock (Layer 2)}}\\
+Age structure \cfg{CHILD_AGES}
+  & The 2020 census's age shares, applied to 2024 totals
+  & Stated \\ % C4
+Pregnant women \cfg{PREG_BIRTHS_FACTOR}
+  & 2024 registered births to mothers living in QC $\times$ 0.75, split among barangays by
+    their share of women aged 15--49
+  & 0.79\% of QC's residents, below the 3.5\% upper bound \\ % C4
+Contact and uptake \cfg{CONTACT_SHARE_Q}
+  & Every resident of a flood zone touches the water ($q = 1$) and takes prophylaxis ($u = 1$)
+  & Stated; a health office scales the totals \\ % C5
+Contact by hazard level \cfg{CONTACT_BY_LEVEL}
+  & The same at every level ($r_k = 1$)
+  & Stated \\ % C5
+Adults with a wound or mucosal exposure \cfg{WOUND_SHARE_W}
+  & A share $w$ of 0, 0.5 and 1 of exposed adults, in floods shorter than the cut-off below
+  & 0 and 1 are the bounds \\ % C5
+Continuous exposure \cfg{CONTINUOUS_EXPOSURE_DAYS}
+  & A flood of 2 days or more makes every exposed adult high risk
+  & Rerun at 1 and 3 days \\ % C5, C8
+Moderate-risk course \cfg{MODERATE_COURSE_DAYS}
+  & 5 days, the upper end of the memo's 3 to 5
+  & Stated as a planning upper bound \\ % C6
+Flood duration $D$ \cfg{STORMS}
+  & From city and news reports: Carina 3, Kristine 1, July 2025 6 and August 2026 4 days
+  & Rerun at $D \pm 1$ day \\ % A11, C5, C8
+Flood duration in forecast runs \cfg{FORECAST_RUN_D}
+  & $D = 1$ and $D = 7$ days, both reported
+  & The observed $D$ shown beside them \\ % C9
+Lactating women
+  & Not separated from other adults
+  & Stated: the memo gives them no regimen \\ % C6
+Distribution points \cfg{CENTER_FACILITY_TYPES}
+  & Health centers and barangay health stations, not the City Health Office
+  & Stated \\ % C7
+Barangays with several health centers, or none
+  & Several: split by the residents living nearest each center; none: the nearest center, at
+    most 2.04~km away
+  & Stated \\ % C7
+Flagged barangay \cfg{FLAG_EXPOSED_SHARES}
+  & At least 25\% of its 2024 residents live in zones the storm's rain floods
+  & Also reported at 50\% \checkme{the team confirms the rule, Notes.md 1.2} \\ % C8, C9
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Evaluation}}\\
+Bootstrap blocks \cfg{BOOT_BLOCK_WEEKS}
+  & 8-week blocks, 2,000 resamples
+  & Rerun with 4- and 13-week blocks \\ % D5, D6
+Base rate for the Brier skill score
+  & The share of non-COVID weeks from 2018 to the guard's cutoff that breached
+  & Stated \\ % D3
+Alarm cut-off $p^{*}$
+  & The best F1 score on the first half of the forecast days
+  & The full precision--recall curve reported \checkme{reported in Results (E6)?} \\ % D3
+Outbreak episode \cfg{EPISODE_GAP_WEEKS}
+  & Breach weeks at most 2 weeks apart form one episode
+  & Stated \\ % D3
+Surveillance delay, for lead time \cfg{DELAY_GUARD_G}
+  & A breach shows in surveillance 2 weeks after its week, as in the delay guard
+  & Stated \\ % D4
+\end{longtable}
+}

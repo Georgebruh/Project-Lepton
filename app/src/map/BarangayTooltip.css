@@ -1,0 +1,80 @@
+/*
+ * F5: the barangay tooltip (BarangayTooltip.tsx), Figma frame 3a's "Tooltip" (node 57:1020). It
+ * fades in like the city tooltip (CityMap.css); --map-hover comes from MapLayout.
+ */
+.barangay-tooltip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  /* Figma's shadow: 0 6 20, the dark text color at 14% */
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  pointer-events: none;
+  animation: barangay-tooltip-in var(--map-hover) linear;
+}
+
+@keyframes barangay-tooltip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The name, with the Flagged badge at its right end */
+.barangay-tooltip-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.barangay-tooltip-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+}
+
+.barangay-tooltip-text {
+  color: var(--color-text-secondary);
+}
+
+.barangay-tooltip-divider {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--color-border-subtle);
+}
+
+/* The three units: a name on the left, the number on the right */
+.barangay-tooltip-units {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.barangay-tooltip-units div {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.barangay-tooltip-units dt {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.barangay-tooltip-units dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.barangay-tooltip-badge {
+  align-self: flex-start;
+}

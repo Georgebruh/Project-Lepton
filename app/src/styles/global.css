@@ -37,6 +37,14 @@ textarea {
   color: inherit;
 }
 
+/* F11: where the keyboard is, on every link, button and field: a 2 px ring in accent/secondary,
+   as the fields that hide the browser's own (the date picker, F4) already draw it. A control in
+   a box that clips its edges draws the ring inside itself instead (outline-offset: -2px). */
+:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
 /* Figtree is loaded at 400, 500 and 600 only, so bold text uses 600. */
 b,
 strong {

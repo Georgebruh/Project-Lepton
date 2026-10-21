@@ -37,7 +37,7 @@ python -m src.run_all --list          # the steps, and which are skipped and why
 python -m src.run_all                 # run them all, then python -m src.checks
 python -m src.run_all --from C3       # resume at a task after fixing a failed step
 python -m src.run_all --only B3 D7    # just these tasks
-python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, until A13's file arrives
+python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, without QC's case data
 ```
 
 - It stops at the first failed step and says how to resume. Before the first step it checks
@@ -46,10 +46,13 @@ python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, until A
 - Downloads: A6, A8, A10, A14 and A15 fetch only files not already in `data/raw/`. A4
   (IMERG) always fetches up to today and needs an Earthdata login, so it runs only with
   `--fetch-imerg`.
-- B10 is skipped until A13's `cases_weekly.csv` exists and `config.DATA_OPTION` is set; its
-  guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4 and 5 every run, and
-  all five once B10's `results/forecasts.csv` exists. A task not built yet is skipped.
-- `--simulate` runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
+- QC's case data: A13 runs only when QCESD's case list is in `data/raw/qcesd/`. The list is
+  case-level and stays on the team drive (rule 11), so in any other copy A13 is skipped, not
+  stopped. B10 then runs on `data/clean/cases_weekly.csv` if it was copied from the drive, and
+  is skipped if not; its guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4
+  and 5 every run, and all five once B10's `results/forecasts.csv` exists. A task not built
+  yet is skipped.
+- `--simulate` skips A13 and runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
   previews from them (`results/d8_preview_*`) and F2's `city_forecast.json` marked
   `"simulated": true`. It tests the whole chain; none of it is a result.
 - The check "E10 package" confirms what the repository ships: every package pinned in
@@ -75,6 +78,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | A11 | by hand: dates, D and flooded barangays in `config.STORMS`, with sources in `data/raw/storm-facts.md` | nothing; check "A11 storm facts" in `python -m src.checks` |
 | A12 | by hand: the `curl` command in `data/raw/psa_births_2024.csv.md` | `data/raw/psa_births_2024.csv` |
 | A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv` (previous days 1-5 for C9's 3-day totals at leads 1-3, from 2 days before each storm's wettest days); storms without A11's dates in `config.STORMS` are skipped |
+| A13 | `python -m src.cases` | `data/clean/cases_weekly.csv` (week_index, year, week, cases: QC cases by MMWR week of onset, 2015 week 1 on; the last weeks, still filling in, are missing, not 0); needs QCESD's case list in `data/raw/qcesd/` (team drive; case-level records, never commit them: note in `data/raw/qcesd.md`). Decision-tree row: onset weeks, no report dates, so `config.DATA_OPTION = "C"`. Check S4 in `python -m src.checks` |
 
 ## Layer 1: city forecast (Workstream B)
 
@@ -89,7 +93,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
 | B9 | none: `m3_forecast` in `src/m3_port.py`, used by B10 (M3 refitted on the weeks it may see, about 0.5 s a forecast day) | nothing; check "B9 M3" in `python -m src.checks` |
 | B5 | none: `model_rows`, `fit_m4` (M4, and M4 without EI2 with `with_ei=False`) and `predict_m4` in `src/m4.py`, used by B10 at every forecast day; `plot_residual_acf` draws v2's residual check once case data exist (`results/m4_residual_acf.png`). Inputs: B2's rows, B4's weekly `rcum2` and `ei2`, B1's population | nothing; check S5 in `python -m src.checks` (50 made-up datasets, a few seconds) |
-| B10 | `python -m src.backtest` (option from `config.DATA_OPTION`, or `--option B`/`C`; `--g 1` and `--g 3` for the guard reruns). Before A13: `python -m src.backtest --simulate --option C` on made-up QC-shaped counts | `results/forecasts.csv`: one row per model (M0, M1, M3, M4, M4_noEI) and forecast day, 2018 week 1 on, with mu, theta, the 23 WIS quantiles, the threshold, Pr(breach), y and breached. Guard reruns write `forecasts_g1.csv`, simulated runs `forecasts_simulated_B.csv` / `_C.csv`. Needs B1, B4 (`features_weekly.csv`) and A13; about 12 minutes (M3 refits Prophet every week). Check S11 in `python -m src.checks` |
+| B10 | `python -m src.backtest` (option from `config.DATA_OPTION`, or `--option B`/`C`; `--g 1` and `--g 3` for the guard reruns). Before A13: `python -m src.backtest --simulate --option C` on made-up QC-shaped counts | `results/forecasts.csv`: one row per model (M0, M1, M3, M4, M4_no_EI2) and forecast day, 2018 week 1 on, with mu, theta, the 23 WIS quantiles, the threshold, Pr(breach), y and breached. Guard reruns write `forecasts_g1.csv`, simulated runs `forecasts_simulated_B.csv` / `_C.csv`. Needs B1, B4 (`features_weekly.csv`) and A13; about 12 minutes (M3 refits Prophet every week). Check S11 in `python -m src.checks` |
 
 ## Layer 2: barangay doses (Workstream C)
 
@@ -121,6 +125,15 @@ Run after Workstream A, in this order:
 | D6 | none: `flood_and_practical_tests(table)` and `flood_finding(result)` in `src/compare.py` (M4 vs M4 without EI2, no Diebold–Mariano since the models are nested; M4 vs M1 with it; same bootstrap as D5) | nothing; check "D6 flood test" in `python -m src.checks` |
 | D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Now, before A13: `--layer2` (figures 4 and 5). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
 
+## Paper (Workstream E)
+
+The paper's LaTeX source is in `paper/`; its README says how to build it (Overleaf, or
+`latexmk -pdf main.tex` in `paper/`) and which file holds which task.
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
+
 ## App (Workstream F)
 
 The web app lives in `app/`. Its README has the details: the screens, the design tokens, maps
@@ -128,6 +141,14 @@ and the Vercel setup.
 
 | Task | Command | Writes |
 | --- | --- | --- |
-| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). The eight screens are placeholders until their tasks build them; `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
+| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
 | F2 | `python -m src.app_data` (repository root, after C8 and C9; downloads NCR's city outlines once into `data/raw/ncr_cities/`). For the city forecast before A13: `python -m src.backtest --simulate --option C` first | `app/public/data/`: `ncr_cities.geojson`, `qc_barangays.geojson`, `storms.json`, `barangays/<storm>_<run>.json` (one per run), `centers.json`, `city_forecast.json` (B10's `forecasts.csv`, or until it exists the made-up-count run, marked `"simulated": true`) and, beside a real run only, `scores.json`. Commit them: Vercel builds from git. Needs C8, C9, A5 and A10; seconds. Stock planning, not prescriptions. Check "F2 app data" in `python -m src.checks` |
 | F4 | none: the map's first two levels in `app/` (`npm run dev`, then http://localhost:5173/map and `/map/quezon-city`). They read F2's files: `ncr_cities.geojson` now carries each city's label point (`config.APP_LABEL_MIN_KM2`), and `city_forecast.json` the map's model and outbreak levels (`config.APP_LEVEL_MODEL`, `config.APP_LEVELS`); rerun `python -m src.app_data` after changing them | nothing; check "F2 app data" in `python -m src.checks` also checks the label points and the levels |
+| F5 | none: the map's level 3, the prophylaxis plan, in `app/` (`npm run dev`, then http://localhost:5173/map/quezon-city/prophylaxis?date=2024-10-22). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson` and one `barangays/<storm>_<run>.json` per forecast shown | nothing; its Export stock list button saves `lepton-stock-list_<storm>_lead<n>.csv` in the browser. Stock planning, not prescriptions |
+| F6 | none: Home in `app/` (`npm run dev`, then http://localhost:5173/). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson`, `barangays/kristine_2024_lead1.json` (the plan's preview, Kristine 1 day ahead) and `city_forecast.json` (the chart); its four photos are real and licensed, in `app/src/assets/home/`, credited in the footer (`app/src/home/photos.ts`) | nothing. Stock planning, not prescriptions |
+| F7 | none: the Leptospirosis page for residents in `app/` (`npm run dev`, then http://localhost:5173/leptospirosis). Text only, each medical fact linked to its DOH source (DM 2023-0309 and DOH advisories); no doses | nothing |
+| F8 | none: the "I have been exposed to floodwater" guide in `app/` (`npm run dev`, then http://localhost:5173/exposed). Its last step reads F2's `centers.json` and `qc_barangays.geojson` | nothing: answers and location stay in the page's memory, never stored or sent |
+| F9 | none: Compare models in `app/` (`npm run dev`, then http://localhost:5173/compare; `?period=12w`, `?period=2024` or `?period=all`). It reads F2's `city_forecast.json` and `storms.json`, and `scores.json` beside B10's real run only; until then every score shows "—" | nothing; check "F9 scores" in `python -m src.checks`: after B10's real run, the page's scores (`scores.json`) equal D8's `d8_fig2_mae.csv` |
+| F10 | none: the How it works page in `app/` (`npm run dev`, then http://localhost:5173/how-it-works). Text only, in `app/src/howItWorks/content.ts`: the pipeline, models (formulas behind "Show the formula"), testing, limits and sources; check it against the paper's final text (E4, E5, E7) | nothing |
+| F11 | none: motion, accessibility and small screens across `app/` (its README, "Motion, accessibility and small screens"): the map's keyboard lists, one focus ring, live updates, text contrast to WCAG AA, and layouts at 1440, 1024 and 390 px (the map panel a bottom sheet on a phone) | nothing; Lighthouse accessibility 100 on every route. Figma's Theme collection needs the three darker Clinic colors in `app/src/styles/tokens.css` |
+| F12 | `python -m src.app_data` on the latest results, then in `app/`: `npm run build`, `npm run preview` and the app checks U1–U8 (`app/README.md`, "Deploy and checks"); Vercel deploys `main` | the production link, at the top of this README once Vercel is set up (`app/README.md`, "Deploy (Vercel)"). Checked October 21 on B10's real run: U1–U8 pass after two fixes (U7: `/kit` in `npm run dev` only; U8: the footer and How it works credit every source); still by hand: two phones and two laptops, a teammate's keyboard run |

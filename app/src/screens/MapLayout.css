@@ -1,8 +1,8 @@
 /*
  * F4: the map screens' frame (MapLayout.tsx), Figma frames 1, 2 and 3 of the map drill-down
  * (section 53:267): the app bar, the breadcrumb bar, then the map, with the panel that slides
- * in from the right. --map-hover, --map-camera, --map-crossfade, --map-ease and
- * --map-panel-width come from map/motion.ts through MapLayout.tsx.
+ * in from the right. --map-hover, --map-camera, --map-crossfade, --map-ease,
+ * --map-panel-width and --map-sheet-share come from map/motion.ts through MapLayout.tsx.
  */
 .map-layout {
   display: flex;
@@ -42,6 +42,20 @@
   transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
+/* F5: where a level puts its own legend. Its legend sits in the controls' row as if this box were
+   not there, and an empty slot takes no room and adds no gap. */
+.map-layout-legend {
+  display: contents;
+}
+
+/* F5: a layer over the map, the size of the map, for a level's own tooltips; the pointer passes
+   through it to the map */
+.map-layout-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* The panel: at level 1 it waits past the right edge, as in Figma frame 1, and slides in when a city opens */
 .map-layout-panel {
   position: absolute;
@@ -66,6 +80,37 @@
   transition:
     transform var(--map-camera) var(--map-ease),
     visibility 0s;
+}
+
+/* F11, below 600 px (motion.ts's SHEET_BELOW): the panel is a sheet over the map's lower part
+   (--map-sheet-share, motion.ts's SHEET_SHARE) that slides up from the bottom, and the legend
+   and zoom buttons rise with it, so the map stays in sight above it */
+@media (max-width: 599px) {
+  .map-layout-controls {
+    right: var(--space-4);
+    bottom: var(--space-4);
+    transition: bottom var(--map-camera) var(--map-ease);
+  }
+
+  .map-layout[data-panel='open'] .map-layout-controls {
+    bottom: calc(var(--map-sheet-share) + var(--space-4));
+    transform: none;
+  }
+
+  .map-layout-panel {
+    top: auto;
+    width: 100%;
+    height: var(--map-sheet-share);
+    border-top: 1px solid var(--color-border-subtle);
+    border-left: 0;
+    transform: translateY(100%);
+  }
+
+  /* An open list of cities or barangays (map/MapList.css) covers most of the map a phone shows:
+     the legend and zoom buttons step aside, so its rows are not hidden under them */
+  .map-layout-main:has(.map-list-open) .map-layout-controls {
+    visibility: hidden;
+  }
 }
 
 /* Reduced motion: the panel crossfades in place, and the controls move without sliding */

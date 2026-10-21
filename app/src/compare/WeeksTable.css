@@ -1,0 +1,58 @@
+/* F9: the chart's table view (WeeksTable.tsx). Figma has none; it follows the How it works table (node 12:1482). */
+.weeks-table-summary {
+  width: fit-content;
+  color: var(--color-accent-primary);
+  cursor: pointer;
+}
+
+/* The weeks scroll inside the card, under a header row that stays in view */
+.weeks-table-scroll {
+  max-height: 360px;
+  margin-top: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.weeks-table-scroll:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.weeks-table-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-text-secondary);
+}
+
+.weeks-table-table th,
+.weeks-table-table td {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.weeks-table-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-raised);
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.weeks-table-table tbody th {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-align: left;
+}
+
+.weeks-table-table thead th:first-child {
+  text-align: left;
+}
+
+.weeks-table-table tbody tr:last-child th,
+.weeks-table-table tbody tr:last-child td {
+  border-bottom: 0;
+}

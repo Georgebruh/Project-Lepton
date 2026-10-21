@@ -1,0 +1,147 @@
+/*
+ * F9: the Compare models chart (CompareChart.tsx), from Figma's "Chart card" (How it works, node
+ * 12:1010): 20 px padding, 14 px between the header and the plot. Its marks' widths and colors
+ * are the card's: bars in the secondary text color at 38%, M4's range in its teal at 16%, the
+ * threshold a 1.5 px amber line dashed 5.4 on, 4.3 off; the models' lines are set in models.ts.
+ */
+.compare-chart {
+  display: flex;
+  flex-direction: column;
+  /* Figma's 14 px, between the spacing steps */
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  /* Figma's 20 px, between the spacing steps */
+  padding: 20px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* The title, the simulated badge, then the key at the right; the key wraps under them when narrow */
+.compare-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.compare-chart-title {
+  color: var(--color-text-primary);
+}
+
+.compare-chart-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+/* A key and its name, 6 px apart (Figma) */
+.compare-chart-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+/* The plot: drawn by the chart at its own width; the tooltip sits over it */
+.compare-chart-plot {
+  position: relative;
+  border-radius: var(--radius-sm);
+}
+
+.compare-chart-plot:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.compare-chart-svg {
+  display: block;
+  overflow: visible;
+}
+
+.compare-chart-grid,
+.compare-chart-baseline {
+  fill: var(--color-border-subtle);
+}
+
+.compare-chart-axis {
+  fill: var(--color-text-tertiary);
+}
+
+/* The storms' names and the COVID years' label, above the plot */
+.compare-chart-top-label {
+  fill: var(--color-text-primary);
+}
+
+.compare-chart-covid-label {
+  fill: var(--color-text-tertiary);
+}
+
+/* A storm's flood: a hairline at the week it began, under the data */
+.compare-chart-storm {
+  fill: var(--color-border-strong);
+}
+
+/* The COVID years: forecast, but not scored (D8's figure 1 shades them too) */
+.compare-chart-covid {
+  fill: var(--color-bg-canvas);
+}
+
+.compare-chart-bar {
+  fill: var(--color-text-secondary);
+  opacity: 0.38;
+}
+
+.compare-chart-bar-active {
+  opacity: 0.7;
+}
+
+.compare-chart-range {
+  opacity: 0.16;
+}
+
+.compare-chart-threshold {
+  fill: none;
+  stroke: var(--color-status-warn);
+  stroke-width: 1.5px;
+  stroke-dasharray: 5.4 4.3;
+}
+
+.compare-chart-line {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* The week under the pointer: a hairline, and each line's value as a dot ringed in the surface color */
+.compare-chart-crosshair {
+  fill: var(--color-text-tertiary);
+}
+
+.compare-chart-dot {
+  stroke: var(--color-bg-surface);
+  stroke-width: 2px;
+}
+
+/* The pointer's target: invisible, over the whole chart */
+.compare-chart-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.compare-chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.compare-chart-caption {
+  color: var(--color-text-secondary);
+}

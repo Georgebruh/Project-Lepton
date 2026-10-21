@@ -34,3 +34,42 @@
 .app-bar-badge {
   margin-left: auto;
 }
+
+/* F11, below 768 px (one row needs about 735): the logo and the badge on the first row, the
+   views and Methods on the second. The order in the page, which the keyboard follows, stays
+   logo, views, Methods. */
+@media (max-width: 767px) {
+  .app-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'home badge badge'
+      'views views methods';
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    height: auto;
+    padding: var(--space-3) var(--space-4) var(--space-2);
+  }
+
+  .app-bar-home {
+    grid-area: home;
+  }
+
+  .app-bar-divider {
+    display: none;
+  }
+
+  .app-bar-views {
+    grid-area: views;
+  }
+
+  .app-bar-badge {
+    grid-area: badge;
+    justify-self: end;
+    margin-left: 0;
+  }
+
+  .app-bar-methods {
+    grid-area: methods;
+  }
+}

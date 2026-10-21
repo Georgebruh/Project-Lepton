@@ -26,6 +26,11 @@
   background: var(--toggle-row-color, var(--color-accent-primary));
 }
 
+/* F9: a row given its series' color keeps it when off too (Figma's Compare models frame) */
+.toggle-row-colored .toggle-row-swatch {
+  background: var(--toggle-row-color);
+}
+
 .toggle-row-label {
   flex: 1;
   min-width: 0;

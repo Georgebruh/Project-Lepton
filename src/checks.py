@@ -201,6 +201,56 @@ def a11_storms():
     return "; ".join(peaks)
 
 
+def s4_cases():
+    """S4 (A13): cases_weekly.csv, the weekly counts every Layer 1 model reads.
+
+    Passes when: the columns are week_index, year, week, cases; there is one row per week
+    from 2015 week 1 with no gap and no duplicate, each row's year and week match its week
+    index (A3); counts are whole numbers, 0 or more. Unconfirmed weeks are missing, not 0:
+    every week after the last complete one (cases.last_complete_week) is missing and none
+    before it is. Then, with QCESD's list: the file equals a fresh build (so it is not left
+    over from an older list), no case is lost (the weeks hold every case in the list), at
+    least 99% of onset-to-admission delays are within config.CASES_COMPLETE_DAYS (the
+    completeness rule still holds), and each published QCESD total is reproduced by onset
+    date within 5% (config.CASES_PUBLISHED).
+    """
+    from src import backtest, cases as case_list
+
+    need_file(config.CASES_WEEKLY, "A13 (python -m src.cases)")
+    table = backtest.load_cases()
+    assert list(pd.read_csv(config.CASES_WEEKLY, nrows=0).columns) == view.COLUMNS, "columns are not week_index, year, week, cases"
+    assert table["week_index"].is_unique and not table.duplicated(["year", "week"]).any(), "a week is listed twice"
+    assert (table["week_index"] == range(len(table))).all(), "the rows are not one per week from 2015 week 1 (index 0), in order"
+    calendar = [weeks.year_week(i) for i in table["week_index"]]
+    assert list(zip(table["year"], table["week"])) == calendar, "a row's year and week do not match its week index"
+    counts = table["cases"].dropna()
+    assert (counts >= 0).all() and (counts == counts.round()).all(), "a count is negative or not a whole number"
+
+    need_file(config.QCESD_CASES_RAW, "A13 (QCESD's case list, team drive: data/raw/qcesd.md)")
+    listed = case_list.read_case_list()
+    complete = case_list.last_complete_week(case_list.data_date(listed))
+    missing = table["cases"].isna()
+    assert (missing == (table["week_index"] > complete)).all(), (
+        f"missing weeks must be exactly those after the last complete week {weeks.year_week(complete)}")
+    fresh = case_list.weekly_counts(listed)
+    pd.testing.assert_frame_equal(table, fresh, check_dtype=False, obj="cases_weekly.csv against a fresh build (rerun python -m src.cases)")
+    in_missing = case_list.onset_weeks(listed).gt(complete).sum()
+    assert counts.sum() + in_missing == len(listed), f"the weeks hold {counts.sum() + in_missing:.0f} cases, the list {len(listed)}"
+
+    delay = case_list.delay_days(listed).dropna()
+    within = (delay <= config.CASES_COMPLETE_DAYS).mean()
+    assert within >= config.CASES_COMPLETE_SHARE, (
+        f"only {within:.1%} of cases admitted within {config.CASES_COMPLETE_DAYS} days of onset: "
+        f"raise config.CASES_COMPLETE_DAYS")
+    published = case_list.published_totals(listed)
+    far = published[published["gap"].abs() > config.S4_PUBLISHED_TOLERANCE]
+    assert far.empty, f"published totals not reproduced within {config.S4_PUBLISHED_TOLERANCE:.0%}:\n{far.to_string(index=False)}"
+    totals = ", ".join(f"{row.published} to {row.end:%d %b %Y} -> {row.by_onset} ({row.gap:+.1%})" for row in published.itertuples())
+    return (f"{len(table)} weeks, {counts.sum():,.0f} cases in final weeks to {weeks.year_week(complete)}, "
+            f"{missing.sum()} later weeks missing; {within:.1%} admitted within {config.CASES_COMPLETE_DAYS} days; "
+            f"published {totals}")
+
+
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
     """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
 
@@ -1435,8 +1485,9 @@ def f2_app_data():
         outbreak levels of config.APP_LEVELS;
       - every health center has coordinates or is listed with C7's reason for leaving it out;
       - every file with doses carries the not-prescriptions label;
-      - city_forecast.json equals a fresh export when B10's forecasts are on this computer,
-        and scores.json sits beside a real run only, never beside made-up counts.
+      - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
+        simulated run's without M3, whose Prophet fits differ from computer to computer), and
+        scores.json sits beside a real run only, never beside made-up counts.
     """
     import json
 
@@ -1524,8 +1575,15 @@ def f2_app_data():
     table, simulated, path = app_data.load_forecasts()
     forecast_path, scores_path = config.APP_DATA / "city_forecast.json", config.APP_DATA / "scores.json"
     if table is not None:
-        assert read("city_forecast.json") == as_written(app_data.city_forecast(table, simulated, path)), (
-            f"city_forecast.json differs from a fresh export of {path.name}: {rerun}")
+        on_disk, export = read("city_forecast.json"), as_written(app_data.city_forecast(table, simulated, path))
+        if simulated:
+            # B10's --simulate run gives other M3 numbers on each computer (Prophet's fits differ;
+            # the made-up counts and the other models match), so a simulated file made on another
+            # computer is compared without M3. Its made-up numbers are not results either way.
+            for content in (on_disk, export):
+                for week in content["weeks"]:
+                    week["forecasts"].pop("M3", None)
+        assert on_disk == export, f"city_forecast.json differs from a fresh export of {path.name}: {rerun}"
         if not simulated:
             from src import backtest
             need_file(config.CASES_WEEKLY, "A13")   # MASE's denominator needs the counts
@@ -1547,9 +1605,13 @@ def f2_app_data():
 
 
 PERSON_COLUMNS = {   # E10: columns of a person's record; no tracked table may have one
-    "name", "full_name", "first_name", "last_name", "patient", "patient_name", "patient_id",
+    # Not a bare "name": results tables use it for a model's or a comparison's name (D8's d8_fig2_mae.csv)
+    "full_name", "first_name", "last_name", "patient", "patient_name", "patient_id",
     "case_id", "age", "sex", "gender", "address", "birthdate", "birth_date", "date_of_birth",
     "onset", "onset_date", "date_onset", "contact", "phone",
+    # A13: QCESD's case list (config.QCESD_COLUMNS), lower-cased; District and Barangay are left out
+    # because aggregated tables use them too
+    "year_of_onset", "date_of_onset", "morbidity_week", "date_of_admission", "admission_date",
 }
 
 
@@ -1562,8 +1624,8 @@ def e10_package():
        comes with Python.
     3. git tracks nothing under data/ except the per-file notes (.md) and .gitkeep: data
        go through the team drive, and case records never ship (rule 11).
-    4. No tracked .csv has a column of a person's record (PERSON_COLUMNS: name, age,
-       sex, address, onset date, ...): results hold aggregates only.
+    4. No tracked .csv has a column of a person's record (PERSON_COLUMNS: full name, age,
+       sex, address, onset date, QCESD's case-list columns, ...): results hold aggregates only.
     Parts 3 and 4 need git; in a copy without it they are not checked.
     """
     import ast
@@ -1624,6 +1686,51 @@ def e10_package():
             f"but notes; {len(tables)} tracked tables, no person columns")
 
 
+def f9_scores():
+    """F9: the scores Compare models shows (scores.json) equal D8's figure 2 table.
+
+    The page's score table reads each model's MAE, MASE, WIS, 90% coverage and Brier score
+    from F2's scores.json, and its primary result D5's mean of |error M4| - |error M3| with the
+    95% interval. F9 is done when, after B10's real run, the table equals D8's d8_fig2_mae.csv:
+    each model's MAE is its "MAE by model" row, and the primary result is the 8-week
+    "M4 vs M3" row (mean, interval, weeks and verdict). Both files round to 4 decimals.
+    SKIP until B10's real run, scores.json and D8's table are all on this computer; before the
+    real run there is no scores.json and the page shows "—" (check "F2 app data").
+    """
+    import json
+
+    need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
+    need_file(config.APP_DATA / "scores.json", "F2 (python -m src.app_data)")
+    need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
+    rerun = "rerun python -m src.app_data and python -m src.paper_figures on the same forecasts.csv"
+    tolerance = 1e-4   # one unit in the 4th decimal, the rounding of both files
+
+    with open(config.APP_DATA / "scores.json", encoding="utf-8") as f:
+        app = json.load(f)
+    fig2 = pd.read_csv(config.D8_FIG2_TABLE)
+    by_model = fig2[fig2["part"] == "MAE by model"].set_index("name")["value"]
+    assert set(by_model.index) == set(app["models"]), (
+        f"models differ: d8_fig2_mae.csv has {sorted(by_model.index)}, scores.json {sorted(app['models'])}: {rerun}")
+    for model, mae in by_model.items():
+        assert abs(app["models"][model]["mae"] - mae) <= tolerance, (
+            f"{model}: scores.json MAE {app['models'][model]['mae']}, d8_fig2_mae.csv {mae}: {rerun}")
+
+    comparison = " vs ".join(config.PRIMARY_COMPARISON)
+    rows = fig2[(fig2["name"] == comparison) & (fig2["block_weeks"] == config.BOOT_BLOCK_WEEKS)]
+    assert len(rows) == 1, f"d8_fig2_mae.csv has {len(rows)} rows for {comparison} with {config.BOOT_BLOCK_WEEKS}-week blocks"
+    head, primary = rows.iloc[0], app["primary"]
+    assert primary["comparison"] == comparison and primary["block_weeks"] == config.BOOT_BLOCK_WEEKS, (
+        f"scores.json's primary result is {primary['comparison']} with {primary['block_weeks']}-week blocks: {rerun}")
+    for key, column in (("mean_diff", "value"), ("low", "low"), ("high", "high")):
+        assert abs(primary[key] - head[column]) <= tolerance, (
+            f"{comparison} {key}: scores.json {primary[key]}, d8_fig2_mae.csv {head[column]}: {rerun}")
+    assert primary["weeks"] == head["weeks"] and primary["verdict"] == head["verdict"], (
+        f"{comparison}: scores.json {primary['weeks']} weeks, {primary['verdict']!r}; "
+        f"d8_fig2_mae.csv {head['weeks']} weeks, {head['verdict']!r}: {rerun}")
+    return (f"{len(by_model)} models' MAE and {comparison} ({primary['mean_diff']:+.2f}, 95% interval "
+            f"{primary['low']:+.2f} to {primary['high']:+.2f}) equal d8_fig2_mae.csv")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1636,7 +1743,7 @@ CHECKS = {
     "S2 rain file": s2_rain_file,
     "S3 census join": s3_census,
     "A11 storm facts": a11_storms,
-    "S4 cases file": not_built("A13"),
+    "S4 cases file": s4_cases,
     "S5 M4 simulation": s5_m4,
     "S6 theta": s6_theta,
     "S7 breach": s7_breach,
@@ -1658,6 +1765,7 @@ CHECKS = {
     "B2 view": b2_view,
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
+    "F9 scores": f9_scores,
     "E10 package": e10_package,
 }
 
