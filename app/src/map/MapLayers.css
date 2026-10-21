@@ -177,6 +177,48 @@
   cursor: pointer;
 }
 
+/* Weather: Figma's "Radio row", a 16 px round button and a label with a caption, 6 px above and below */
+.map-layers-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 6px 0;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* The round button: a 1.5 px outline, or a 5 px accent ring when chosen (Figma's Off and On) */
+.map-layers-radio-input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  /* the label's first line is 22 px tall: the button sits in its middle */
+  margin: 3px 0 0;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  cursor: pointer;
+  appearance: none;
+}
+
+.map-layers-radio-input:checked {
+  border: 5px solid var(--color-accent-primary);
+}
+
+.map-layers-radio-input:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.map-layers-radio-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-layers-radio-caption {
+  color: var(--color-text-secondary);
+}
+
 .map-layers-credits {
   margin: 0;
   color: var(--color-text-tertiary);

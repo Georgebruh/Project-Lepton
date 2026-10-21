@@ -66,6 +66,45 @@
   transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
+/* F13: the legends and the map buttons, side by side; the legends narrow and wrap their levels
+   before the buttons would move */
+.map-layout-controls-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* F13: a live weather layer's timeline (map/WeatherTimeline.tsx) stands at the bottom left of the
+   map in sight (Figma "Map · L2 Satellite and live radar"), beside the legends and buttons; where
+   the map in sight is too narrow for both, it spans the bottom and they stand above it. The
+   controls then span the map in sight, and the credits' "i" rises above the timeline. */
+.map-layout {
+  --map-timeline-height: 56px;
+}
+
+.map-layout[data-timeline] .map-layout-controls {
+  width: calc(100% - 2 * var(--space-5));
+  max-width: none;
+  flex-wrap: wrap-reverse;
+}
+
+.map-layout[data-timeline][data-panel='open'] .map-layout-controls {
+  width: calc(100% - var(--map-panel-width) - 2 * var(--space-5));
+  max-width: none;
+}
+
+/* Figma's 788 px at most; 420 px at least beside the legends, or it takes the bottom line */
+.map-layout-controls .weather-timeline {
+  flex: 1 1 420px;
+  max-width: 788px;
+}
+
+.map-layout[data-timeline] .city-map .maplibregl-ctrl-bottom-left {
+  bottom: calc(var(--map-timeline-height) + var(--space-3));
+}
+
 /* F13: over NOAH's flood zones the cities' names get the halo they have on satellite (CityMap.css),
    so they read over the blues */
 .map-layout[data-flood] .city-map-label {
@@ -160,6 +199,27 @@
   .map-layout[data-panel='open'] .maplibregl-ctrl-bottom-left,
   .map-layout[data-layers='open'] .maplibregl-ctrl-bottom-left {
     bottom: var(--map-sheet-share);
+  }
+
+  /* F13: the weather timeline spans the phone's map, and the credits rise above it */
+  .map-layout[data-timeline] .map-layout-controls,
+  .map-layout[data-timeline][data-panel='open'] .map-layout-controls {
+    width: calc(100% - 2 * var(--space-4));
+  }
+
+  .map-layout-controls .weather-timeline {
+    max-width: none;
+  }
+
+  /* F13: with the city's sheet up, the strip of map above it is short: the weather legend goes
+     (the timeline and the Layers panel still name the layer) */
+  .map-layout[data-panel='open'] .weather-legend {
+    display: none;
+  }
+
+  .map-layout[data-timeline][data-panel='open'] .city-map .maplibregl-ctrl-bottom-left,
+  .map-layout[data-timeline][data-layers='open'] .city-map .maplibregl-ctrl-bottom-left {
+    bottom: calc(var(--map-sheet-share) + var(--map-timeline-height) + var(--space-3));
   }
 
   /* F13: the Layers panel is a sheet over the map's lower part, as tall as the city panel's, and

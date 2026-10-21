@@ -1,13 +1,15 @@
 import { BASE_MAPS, type BaseMap } from './basemap.ts'
 import { FLOOD_PERIODS, type FloodPeriod } from './floodLayer.ts'
+import { WEATHER, type Weather } from './weather.ts'
 
 /*
  * F13: the map layers chosen in the Layers panel live in the address, like ?date= and ?lead=,
  * so a link opens the same map: ?base=satellite or ?base=terrain (the street map, the default,
- * is left out), ?flood=5, 25 or 100 for NOAH's flood zones, and ?view=3d for the 3D view (each
- * left out when off). levelSearch (routes.ts) keeps them when the reader moves between the levels.
+ * is left out), ?flood=5, 25 or 100 for NOAH's flood zones, ?view=3d for the 3D view, and
+ * ?wx=clouds, radar, rain, rain-day or photo-day for the weather layer (each left out when off).
+ * levelSearch (routes.ts) keeps them when the reader moves between the levels.
  */
-export const LAYER_PARAMS = { base: 'base', flood: 'flood', view: 'view' }
+export const LAYER_PARAMS = { base: 'base', flood: 'flood', view: 'view', weather: 'wx' }
 
 /** The base map the address names; the street map if it names none, or one the app does not know. */
 export function baseOf(params: URLSearchParams): BaseMap {
@@ -52,6 +54,22 @@ export function set3DParam(params: URLSearchParams, on: boolean): URLSearchParam
     params.set(LAYER_PARAMS.view, '3d')
   } else {
     params.delete(LAYER_PARAMS.view)
+  }
+  return params
+}
+
+/** The weather layer the address names; null (none) if it names none the app has. */
+export function weatherOf(params: URLSearchParams): Weather | null {
+  const value = params.get(LAYER_PARAMS.weather)
+  return WEATHER.find((kind) => kind === value) ?? null
+}
+
+/** Writes the weather layer `kind` into `params` (none, the default, as no setting at all). */
+export function setWeatherParam(params: URLSearchParams, kind: Weather | null): URLSearchParams {
+  if (kind === null) {
+    params.delete(LAYER_PARAMS.weather)
+  } else {
+    params.set(LAYER_PARAMS.weather, kind)
   }
   return params
 }

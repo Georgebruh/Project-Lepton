@@ -9,7 +9,16 @@ import FloodLegend from '../map/FloodLegend.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
 import MapButton from '../map/MapButton.tsx'
-import { baseOf, floodOf, is3D, set3DParam, setBaseParam, setFloodParam } from '../map/layerParams.ts'
+import {
+  baseOf,
+  floodOf,
+  is3D,
+  set3DParam,
+  setBaseParam,
+  setFloodParam,
+  setWeatherParam,
+  weatherOf,
+} from '../map/layerParams.ts'
 import MapLayers from '../map/MapLayers.tsx'
 import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
@@ -20,6 +29,9 @@ import OutbreakLegend from '../map/OutbreakLegend.tsx'
 import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
 import { TILT } from '../map/terrain.ts'
 import { moveToLevel, viewFor } from '../map/view.ts'
+import { WEATHER_NAMES, isLive, useWeather, type Weather } from '../map/weather.ts'
+import WeatherLegend from '../map/WeatherLegend.tsx'
+import WeatherTimeline from '../map/WeatherTimeline.tsx'
 import './MapLayout.css'
 
 /** Each level's heading, for screen readers: the map has no visible page title. */
@@ -64,8 +76,9 @@ const MOTION = {
  * F13: the map lies on a street map of the whole world, and the reader may pan away from Metro
  * Manila; the pin button above Zoom brings the open level back into view. The Layers button
  * opens the Layers panel (map/MapLayers.tsx); its choices live in the address (?base=, ?flood=,
- * ?view=3d, map/layerParams.ts), so a link opens the same map. NOAH's flood zones (map/floodLayer.ts) bring
- * their legend, which stands above the map's own.
+ * ?view=3d, ?wx=, map/layerParams.ts), so a link opens the same map. NOAH's flood zones
+ * (map/floodLayer.ts) and the weather layer (map/weather.ts) bring their legends, which stand
+ * above the map's own; a live weather layer brings its timeline, at the bottom left.
  */
 export default function MapLayout() {
   // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
@@ -94,6 +107,9 @@ export default function MapLayout() {
   }
   const { status: floodStatus, retry: retryFlood } = useFloodZones(map, flood)
   const floodShown = flood !== null && floodStatus !== 'failed'
+  const weather = weatherOf(searchParams)
+  const wx = useWeather(map, weather, date)
+  const timeline = weather !== null && isLive(weather) && wx.frames.length > 1
   const { first, last } = dateRange(forecast)
 
   // F11: the link or button that changed the level has gone, or slid away with the panel, so the
@@ -143,6 +159,11 @@ export default function MapLayout() {
     setSearchParams((params) => setFloodParam(params, next), { replace: true, preventScrollReset: true })
   }
 
+  /** F13: the weather layer chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
+  function changeWeather(next: Weather | null) {
+    setSearchParams((params) => setWeatherParam(params, next), { replace: true, preventScrollReset: true })
+  }
+
   /** F13: closing the Layers panel gives the keyboard back to its button. */
   function closeLayers() {
     setLayersOpen(false)
@@ -167,6 +188,7 @@ export default function MapLayout() {
       data-panel={level > 1 ? 'open' : 'closed'}
       data-layers={layersOpen ? 'open' : undefined}
       data-flood={floodShown ? 'on' : undefined}
+      data-timeline={timeline ? 'on' : undefined}
       style={MOTION}
     >
       <AppBar />
@@ -189,24 +211,40 @@ export default function MapLayout() {
         {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
         <div ref={controls} className="map-layout-controls">
-          {/* F13: the legends, one above the other: the flood zones' over the map's own */}
-          <div className="map-layout-legends">
-            {floodShown && <FloodLegend period={flood} />}
-            {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
-            {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
-            <div ref={setLegendSlot} className="map-layout-legend" />
-          </div>
-          <div className="map-layout-buttons">
-            <MapButton icon="pin" label={`Back to ${LEVEL_PLACES[level]}`} onClick={showLevel} />
-            <MapButton
-              ref={layersButton}
-              icon="layers"
-              label="Map layers"
-              open={layersOpen}
-              controls="map-layers"
-              onClick={() => setLayersOpen((open) => !open)}
+          {/* F13: a live weather layer's timeline, at the bottom left */}
+          {timeline && (
+            <WeatherTimeline
+              label={WEATHER_NAMES[weather].label}
+              frames={wx.frames}
+              index={wx.index}
+              fetched={wx.fetched}
+              playing={wx.playing}
+              onPlay={wx.play}
+              onFrame={wx.showFrame}
             />
-            <MapZoom map={map} />
+          )}
+          {/* F13: the legends and the map buttons, side by side as one row */}
+          <div className="map-layout-controls-row">
+            {/* F13: the legends, one above the other: the weather's and the flood zones' over the map's own */}
+            <div className="map-layout-legends">
+              {weather && (wx.status === 'loading' || wx.status === 'shown') && <WeatherLegend kind={weather} day={date} />}
+              {floodShown && <FloodLegend period={flood} />}
+              {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
+              {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
+              <div ref={setLegendSlot} className="map-layout-legend" />
+            </div>
+            <div className="map-layout-buttons">
+              <MapButton icon="pin" label={`Back to ${LEVEL_PLACES[level]}`} onClick={showLevel} />
+              <MapButton
+                ref={layersButton}
+                icon="layers"
+                label="Map layers"
+                open={layersOpen}
+                controls="map-layers"
+                onClick={() => setLayersOpen((open) => !open)}
+              />
+              <MapZoom map={map} />
+            </div>
           </div>
         </div>
         {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it */}
@@ -226,6 +264,11 @@ export default function MapLayout() {
             floodStatus={floodStatus}
             onFlood={changeFlood}
             onFloodRetry={retryFlood}
+            weather={weather}
+            weatherStatus={wx.status}
+            day={date}
+            onWeather={changeWeather}
+            onWeatherRetry={wx.retry}
             onClose={closeLayers}
           />
         )}

@@ -222,6 +222,22 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   The camera tilts 60°; the reader can turn and tilt it with a right-button drag, two fingers,
   or Shift and the arrow keys. Switching 3D off returns the map flat and facing north. In 3D
   the world is laid flat (Mercator): MapLibre does not fully support raised ground on the globe.
+- **Weather (F13).** The panel's Weather rows show one layer at a time, `?wx=` in the address
+  (`map/weather.ts`): live clouds (Himawari-9 infrared, JMA, through NASA GIBS; the last 3 hours),
+  live radar (RainViewer, the past 2 hours), live rain (NASA IMERG, the last 6 hours), and the
+  map's date's rain (IMERG, one UTC day, 8 AM to 8 AM Philippine time) and satellite photo (NASA
+  VIIRS). Each frame is a raster source and layer in the weather slot (`map/layerOrder.ts`), at
+  opacity 0 but the one shown, so the animation does not flicker; frames are added newest first,
+  one after another (RainViewer allows 100 requests a minute). GIBS can list a time before its
+  tiles exist, and MapLibre draws a missing tile as nothing, so each GIBS frame is checked first
+  with one headers-only request for its world tile. The live layers play 500 ms a frame, pausing on
+  the newest, once every frame is in (not with reduced motion), and are fetched again every 10
+  minutes; `map/WeatherTimeline.tsx` plays, pauses and steps them, with times in Philippine time
+  and a badge saying they are now, not the map's date. `map/WeatherLegend.tsx` draws each layer's
+  colors as its provider does (GIBS's colormaps, RainViewer's Universal Blue), so they are not
+  tokens. A failed source says so in the panel, with Try again; a date NASA has no picture of
+  says that. The tile servers see the reader's address and the part of the world in view, as
+  for the street map; the Exposure guide loads none of them.
 - **The camera and the levels (F13).** A level's view (`map/view.ts`) is reached with
   `moveToLevel` (`levelCamera` and `easeTo`), not `fitBounds`: the zoom is the flat map's fit,
   and the level's padding (the panel, the sheet) becomes the camera's own, so the camera tilts,

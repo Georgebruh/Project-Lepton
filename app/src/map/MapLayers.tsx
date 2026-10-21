@@ -3,6 +3,8 @@ import Icon from '../components/Icon.tsx'
 import ToggleRow from '../components/ToggleRow.tsx'
 import { BASE_MAPS, CREDITS, SATELLITE_PREVIEW, type BaseMap } from './basemap.ts'
 import { FLOOD_PERIODS, type FloodPeriod, type FloodStatus } from './floodLayer.ts'
+import { formatDay } from './forecast.ts'
+import { WEATHER, WEATHER_CREDIT, WEATHER_NAMES, isLive, type Weather, type WeatherStatus } from './weather.ts'
 import './MapLayers.css'
 
 /** Each base map's name in the panel, and what screen readers hear when it is chosen. */
@@ -11,6 +13,20 @@ const BASE_SHOWN: Record<BaseMap, string> = {
   map: 'Street map shown',
   satellite: 'Satellite imagery shown under the map',
   terrain: 'Terrain shading shown under the map',
+}
+
+/** What screen readers hear of the weather layer `kind` as it loads, shows, fails or has no picture for `day`. */
+function weatherWords(status: WeatherStatus, kind: Weather | null, day: string): string {
+  if (status === 'off' || kind === null) {
+    return 'Weather off'
+  }
+  const { label, picture } = WEATHER_NAMES[kind]
+  return {
+    loading: `Loading ${picture}`,
+    shown: `${label} shown`,
+    missing: isLive(kind) ? `No frames of ${picture} right now` : `No picture from NASA for ${formatDay(day)}`,
+    failed: `Couldn't load ${picture}`,
+  }[status]
 }
 
 /** What screen readers hear when the 3D view is turned on or off. */
@@ -47,6 +63,15 @@ type MapLayersProps = {
   onFlood: (period: FloodPeriod | null) => void
   /** Fetches a map that failed to load again. */
   onFloodRetry: () => void
+  /** The weather layer shown (weather.ts); null when none is. */
+  weather: Weather | null
+  /** How the weather layer is doing. */
+  weatherStatus: WeatherStatus
+  /** The map's date, which the weather layers of the map's date show. */
+  day: string
+  onWeather: (kind: Weather | null) => void
+  /** Fetches a weather layer that failed to load again. */
+  onWeatherRetry: () => void
   /** Closes the panel; the layout then gives the keyboard back to the Layers button. */
   onClose: () => void
 }
@@ -68,6 +93,10 @@ type MapLayersProps = {
  * chips that pick NOAH's map for a 5-, 25- or 100-year rain (?flood=), like the plan's lead
  * chips. While a map loads, or if it fails, a line under the chips says so; a failed map has
  * a Try again button.
+ *
+ * Weather, one layer at a time: radio rows (Figma "Radio row") for none, the three live layers
+ * and the two of the map's date (?wx=, weather.ts), with a line for loading, failing, or no
+ * picture for the map's date.
  */
 export default function MapLayers({
   id,
@@ -81,6 +110,11 @@ export default function MapLayers({
   floodStatus,
   onFlood,
   onFloodRetry,
+  weather,
+  weatherStatus,
+  day,
+  onWeather,
+  onWeatherRetry,
   onClose,
 }: MapLayersProps) {
   const chosen = useRef<HTMLInputElement>(null)
@@ -170,14 +204,54 @@ export default function MapLayers({
           )}
         </div>
       </fieldset>
+      <fieldset className="map-layers-section">
+        <legend className="map-layers-title label-ui-s">Weather · one at a time</legend>
+        {[null, ...WEATHER].map((option) => (
+          <label key={option ?? 'off'} className="map-layers-radio">
+            <input
+              type="radio"
+              name={`${id}-weather`}
+              className="map-layers-radio-input"
+              value={option ?? 'off'}
+              checked={option === weather}
+              onChange={() => onWeather(option)}
+            />
+            <span className="map-layers-radio-text">
+              <span className="body-m">{option ? WEATHER_NAMES[option].label : 'Off'}</span>
+              {option && <span className="map-layers-radio-caption body-s">{WEATHER_NAMES[option].caption}</span>}
+            </span>
+          </label>
+        ))}
+        {weather && weatherStatus === 'loading' && (
+          <p className="map-layers-about body-s">Loading {WEATHER_NAMES[weather].picture}…</p>
+        )}
+        {weather && weatherStatus === 'missing' && (
+          <p className="map-layers-about body-s">
+            {isLive(weather)
+              ? `No frames of ${WEATHER_NAMES[weather].picture} right now.`
+              : `No picture from NASA for ${formatDay(day)}.`}
+          </p>
+        )}
+        {weather && weatherStatus === 'failed' && (
+          <p className="map-layers-failed body-s">
+            Couldn't load {WEATHER_NAMES[weather].picture}; the rest of the map works as before.{' '}
+            <button type="button" className="map-layers-retry body-s" onClick={onWeatherRetry}>
+              Try again
+            </button>
+          </p>
+        )}
+      </fieldset>
       <p className="map-layers-credits body-s">
-        {[hasStreetMap && CREDITS.street, CREDITS.satellite, CREDITS.terrain].filter(Boolean).join(' · ')}
+        {[hasStreetMap && CREDITS.street, CREDITS.satellite, CREDITS.terrain, WEATHER_CREDIT]
+          .filter(Boolean)
+          .join(' · ')}
       </p>
-      {/* One line for all three, in parts: only the part that changed is read out */}
+      {/* One line for all four, in parts: only the part that changed is read out */}
       <p className="visually-hidden" aria-live="polite">
         <span>{BASE_SHOWN[base]}. </span>
         <span>{VIEW_WORDS[view3d ? 'on' : 'off']}. </span>
-        <span>{floodWords(floodStatus, flood)}.</span>
+        <span>{floodWords(floodStatus, flood)}. </span>
+        <span>{weatherWords(weatherStatus, weather, day)}.</span>
       </p>
     </section>
   )

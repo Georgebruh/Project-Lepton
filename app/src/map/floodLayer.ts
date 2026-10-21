@@ -53,8 +53,8 @@ function fillColor(element: HTMLElement): ExpressionSpecification {
   return ['match', ['get', 'var'], 1, low, 2, medium, high]
 }
 
-/** Whether an error MapLibre raised came from the source `id` (it adds the id to its sources' errors). */
-function isFrom(event: MapEventType['error'], id: string) {
+/** Whether an error MapLibre raised came from the source `id` (it adds the id to its sources' errors; weather.ts uses it too). */
+export function isSourceError(event: MapEventType['error'], id: string) {
   return 'sourceId' in event && event.sourceId === id
 }
 
@@ -80,7 +80,7 @@ function addFlood(map: MapLibreMap, period: FloodPeriod) {
     SLOTS.flood,
   )
   const onError = (event: MapEventType['error']) => {
-    if (isFrom(event, id)) {
+    if (isSourceError(event, id)) {
       map.off('error', onError)
       map.removeLayer(id)
       map.removeSource(id)
@@ -125,7 +125,7 @@ function showFlood(map: MapLibreMap, period: FloodPeriod | null, onStatus: (stat
     }
   }
   const onError = (event: MapEventType['error']) => {
-    if (isFrom(event, shown)) {
+    if (isSourceError(event, shown)) {
       stop()
       onStatus('failed')
     }
