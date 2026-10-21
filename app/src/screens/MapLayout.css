@@ -66,13 +66,31 @@
   transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
+/* F13: over NOAH's flood zones the cities' names get the halo they have on satellite (CityMap.css),
+   so they read over the blues */
+.map-layout[data-flood] .city-map-label {
+  text-shadow:
+    0 0 3px var(--color-bg-surface),
+    0 0 3px var(--color-bg-surface);
+}
+
 /* F13: opened credits wrap within the map's visible part, left of the panel */
 .map-layout[data-panel='open'] .city-map .maplibregl-ctrl-attrib {
   max-width: calc(100% - var(--map-panel-width) - 2 * var(--space-5));
 }
 
-/* F5: where a level puts its own legend. Its legend sits in the controls' row as if this box were
-   not there, and an empty slot takes no room and adds no gap. */
+/* F13: the legends, one above the other at the right, left of the map buttons: the flood zones'
+   (map/FloodLegend.tsx) over the map's own. Narrowed, each wraps its levels. */
+.map-layout-legends {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* F5: where a level puts its own legend. Its legend sits in the legends' column as if this box
+   were not there, and an empty slot takes no room and adds no gap. */
 .map-layout-legend {
   display: contents;
 }
@@ -163,6 +181,13 @@
   .map-layout[data-layers='open'] .map-layout-controls {
     bottom: calc(var(--map-sheet-share) + var(--space-4));
     max-width: calc(100% - 2 * var(--space-4) - var(--space-6));
+  }
+
+  /* Only the buttons stand on the Layers sheet (Figma "Map · Layers, phone"): the legends, which
+     it covers on a wider screen, would cover the map left above it. Gone, not just hidden, so the
+     camera (map/view.ts) leaves room for the buttons alone. */
+  .map-layout[data-layers='open'] .map-layout-legends {
+    display: none;
   }
 
   .map-layout-panel {

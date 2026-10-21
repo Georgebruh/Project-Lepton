@@ -1,13 +1,15 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { BaseMap } from '../map/basemap.ts'
+import { DEFAULT_FLOOD, useFloodZones, type FloodPeriod } from '../map/floodLayer.ts'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Outlet, useLoaderData, useSearchParams } from 'react-router'
 import AppBar from '../components/AppBar.tsx'
 import CityMap from '../map/CityMap.tsx'
+import FloodLegend from '../map/FloodLegend.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
 import MapButton from '../map/MapButton.tsx'
-import { baseOf, setBaseParam } from '../map/layerParams.ts'
+import { baseOf, floodOf, setBaseParam, setFloodParam } from '../map/layerParams.ts'
 import MapLayers from '../map/MapLayers.tsx'
 import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
@@ -60,8 +62,9 @@ const MOTION = {
  *
  * F13: the map lies on a street map of the whole world, and the reader may pan away from Metro
  * Manila; the pin button above Zoom brings the open level back into view. The Layers button
- * opens the Layers panel (map/MapLayers.tsx); its choices live in the address (?base=,
- * map/layerParams.ts), so a link opens the same map.
+ * opens the Layers panel (map/MapLayers.tsx); its choices live in the address (?base=, ?flood=,
+ * map/layerParams.ts), so a link opens the same map. NOAH's flood zones (map/floodLayer.ts) bring
+ * their legend, which stands above the map's own.
  */
 export default function MapLayout() {
   // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
@@ -82,6 +85,13 @@ export default function MapLayout() {
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const base = baseOf(searchParams)
+  const flood = floodOf(searchParams)
+  const [floodChoice, setFloodChoice] = useState<FloodPeriod>(flood ?? DEFAULT_FLOOD)
+  if (flood !== null && flood !== floodChoice) {
+    setFloodChoice(flood) // the switch brings back the map last shown, however the address came to name it
+  }
+  const { status: floodStatus, retry: retryFlood } = useFloodZones(map, flood)
+  const floodShown = flood !== null && floodStatus !== 'failed'
   const { first, last } = dateRange(forecast)
 
   // F11: the link or button that changed the level has gone, or slid away with the panel, so the
@@ -121,6 +131,11 @@ export default function MapLayout() {
     setSearchParams((params) => setBaseParam(params, next), { replace: true, preventScrollReset: true })
   }
 
+  /** F13: NOAH's map chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
+  function changeFlood(next: FloodPeriod | null) {
+    setSearchParams((params) => setFloodParam(params, next), { replace: true, preventScrollReset: true })
+  }
+
   /** F13: closing the Layers panel gives the keyboard back to its button. */
   function closeLayers() {
     setLayersOpen(false)
@@ -142,6 +157,7 @@ export default function MapLayout() {
       className="map-layout"
       data-panel={level > 1 ? 'open' : 'closed'}
       data-layers={layersOpen ? 'open' : undefined}
+      data-flood={floodShown ? 'on' : undefined}
       style={MOTION}
     >
       <AppBar />
@@ -163,9 +179,13 @@ export default function MapLayout() {
         {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
         <div ref={controls} className="map-layout-controls">
-          {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
-          {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
-          <div ref={setLegendSlot} className="map-layout-legend" />
+          {/* F13: the legends, one above the other: the flood zones' over the map's own */}
+          <div className="map-layout-legends">
+            {floodShown && <FloodLegend period={flood} />}
+            {level < 3 && <OutbreakLegend levels={forecast.levels} simulated={forecast.simulated} />}
+            {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
+            <div ref={setLegendSlot} className="map-layout-legend" />
+          </div>
           <div className="map-layout-buttons">
             <MapButton icon="pin" label={`Back to ${LEVEL_PLACES[level]}`} onClick={showLevel} />
             <MapButton
@@ -189,6 +209,11 @@ export default function MapLayout() {
             base={base}
             onBase={changeBase}
             hasStreetMap={baseStyle !== null}
+            flood={flood}
+            floodChoice={floodChoice}
+            floodStatus={floodStatus}
+            onFlood={changeFlood}
+            onFloodRetry={retryFlood}
             onClose={closeLayers}
           />
         )}

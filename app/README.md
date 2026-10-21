@@ -110,7 +110,7 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 | --- | --- | --- |
 | `ncr_cities.geojson` | NCR's 17 cities: `psgc`, `name`, `has_data` (Quezon City only), and `label_lon`, `label_lat`, where the map writes the name (empty for Pateros, too small) | Map |
 | `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
-| `noah_5yr.json`, `noah_25yr.json`, `noah_100yr.json` | F13: NOAH's flood maps (A8) for the map's flood overlay, one MultiPolygon per hazard level: `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), and the settings they were made with (`min_m2`, `simplify_m`). Simplified for the browser (`config.APP_NOAH_*`: patches under 400 m² dropped, the three levels' outlines simplified together, so they still meet without gaps), they show 90–93% of NOAH's flooded area; every number uses A8's full maps. Written again only when A8's file or those settings change. ODbL, as NOAH's maps are. Named `.json`, not `.geojson`, so Vercel sends them compressed (7.6–9.0 MB each, 1.3–1.5 MB sent) | Map (F13; not drawn yet) |
+| `noah_5yr.json`, `noah_25yr.json`, `noah_100yr.json` | F13: NOAH's flood maps (A8) for the map's flood overlay, one MultiPolygon per hazard level: `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), and the settings they were made with (`min_m2`, `simplify_m`). Simplified for the browser (`config.APP_NOAH_*`: patches under 400 m² dropped, the three levels' outlines simplified together, so they still meet without gaps), they show 90–93% of NOAH's flooded area; every number uses A8's full maps. Written again only when A8's file or those settings change. ODbL, as NOAH's maps are. Named `.json`, not `.geojson`, so Vercel sends them compressed (7.6–9.0 MB each, 1.3–1.5 MB sent) | Map's flood zones (F13), fetched when first turned on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes` | Prophylaxis plan |
 | `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
 | `centers.json` | Health centers (`lat`, `lon`, `barangay`; `left_out` says why one gets no stock) and `needs[storm][run][flood][facility_code]` | Prophylaxis plan, Exposure guide |
@@ -206,6 +206,16 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   added on first use by `setBase` in `map/basemap.ts`. Over imagery or shading the city and
   barangay fills drop to 60% (terrain 75%, `DATA_OPACITY`). The choice lives in the address,
   `?base=satellite` or `?base=terrain` (`map/layerParams.ts`), and links between the levels keep it.
+- **NOAH's flood zones (F13).** The panel's Flood hazard switch draws one of NOAH's maps
+  (`map/floodLayer.ts`), the 25-year one first; while it is on, chips pick the 5-, 25- or
+  100-year map, `?flood=25` in the address. Each map is fetched the first time it is chosen:
+  MapLibre loads the file and cuts it into tiles in its worker, then keeps it. The zones go
+  over LEPTON's fills and under the street map's names, in the `map/hazard-*` blues at 80%,
+  and the cities' names get a halo. Their legend (`map/FloodLegend.tsx`) stands above the
+  map's own; on a phone it shows only the levels' names (the depths are read out) and leaves
+  the credit to the map's corner. While a file loads the panel says so; if it fails, the panel
+  says that with a Try again button, and the legend goes. A failed map is removed, so choosing
+  it later fetches it again.
 
 ### The prophylaxis plan (F5)
 

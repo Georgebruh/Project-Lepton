@@ -124,6 +124,59 @@
   background: linear-gradient(135deg, var(--color-border-strong), var(--color-map-land) 50%, var(--color-bg-raised));
 }
 
+/* Flood hazard: the switch, the map's chips and what they mean (Figma's 8 px apart) */
+.map-layers-flood {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* As in Figma, an outlined chip's 1 px border adds to its size (24 px tall, the selected one 22),
+   so the chips line up at the top */
+.map-layers-chips {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* A chip (Figma "Chip"): outlined; the chosen one dark, with light text */
+.map-layers-chip {
+  /* Figma's 3 px by 8 px, between the spacing steps */
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.map-layers-chip[aria-pressed='true'] {
+  border: 0;
+  background: var(--color-text-primary);
+  color: var(--color-bg-surface);
+}
+
+.map-layers-about {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.map-layers-failed {
+  margin: 0;
+  color: var(--color-status-alert);
+}
+
+/* Try again: a link-like button at the end of the line */
+.map-layers-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .map-layers-credits {
   margin: 0;
   color: var(--color-text-tertiary);
