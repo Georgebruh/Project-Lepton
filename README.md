@@ -101,6 +101,7 @@ The paper's LaTeX source is in `paper/`; its README says how to build it (Overle
 | Task | Command | Writes |
 | --- | --- | --- |
 | E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
+| E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table B1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
 
 ## App (Workstream F)
 
