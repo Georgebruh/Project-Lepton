@@ -3,6 +3,41 @@ Leptospirosis Exposure Prediction &amp; Targeting Operational Network
 
 A few days’ warning before a storm lets health offices send doxycycline to the barangays most likely to flood, and a week’s warning lets hospitals prepare for the cases that follow. Project LEPTON will give Local Government Units both warnings. Standard forecasting models smooth over the sharp post-typhoon spikes that define leptospirosis outbreaks, so health offices cannot position prophylaxis where needed. Project LEPTON will run on one shared flood computation combining NASA IMERG rainfall, Project NOAH flood hazard maps and WorldPop population data to estimate how many residents of each barangay a storm exposes. Layer 1, a negative binomial regression on season, recent cases, two weeks of rainfall and a flood exposure index, will forecast next week’s city-level cases with a 90% range and the probability of crossing the epidemic threshold. Layer 2 will convert 1- to 3-day rain forecasts into barangay-level prophylaxis stock under DOH Memorandum 2023-0309, serving the high-risk tier first when supplies run short. Layer 1 will be tested in a weekly rolling-origin backtest (2018 to 2026) against two seasonal baselines and the published Prophet-XGBoost hybrid, with mean absolute error as the primary endpoint. Layer 2 will be tested on Typhoon Carina (2024) and the 2025 and 2026 floods against flood reports.
 
+## Submission rules (task E1)
+
+From the 2026 PJDSC Event Primer (pages 8–15), read on October 18, 2026. The primer says exact
+dates may change: check PJDSC's Facebook page before the deadline.
+
+**Due Saturday, October 24, 2026, 11:59 PM** (not October 23), through
+bit.ly/pjdsc2026FinalProjectSubmission. The primer asks for no written paper (the team's paper in
+`paper/` is extra, not a required item). The final submission is:
+
+| Item | Limit | Penalty for going over |
+| --- | --- | --- |
+| Slide deck, PDF | 20 slides, counting the title slide, references and appendices | 1 point for every 1–2 slides over, at most 10 |
+| Recorded demonstration video | 3 minutes | 1 point for every 15 seconds over, at most 10 |
+| Link to the complete code repository | none given | none |
+
+Results are expected: "Findings and Analysis" is a judging criterion. The judging criteria:
+
+- **Project rationale and design:** problem statement and motivation; data sources and acquisition; methodology and approach.
+- **Execution and impact:** findings and analysis; challenges and mitigation strategies; future directions and real-world application.
+- **Code repository:** code structure and documentation; functional execution and reproducibility; dependencies and data management.
+- **Demonstration video:** communication quality and clarity; technical content and functional showcase; how much it helps the audience understand.
+- **Technical rigor and innovation:** validity and appropriateness of techniques; novelty and creativity; analytical depth.
+- **Sources:** reliable, up to date, APA 7th edition.
+
+After the deadline:
+
+- The top 10 teams are announced on November 4, 2026. Finalists present on November 14, 2026, in
+  Quezon City: a live demonstration of the working product, a 10-minute talk (stopped at 10
+  minutes) and 10 minutes of questions. Finals are judged on functionality and technical
+  robustness (including code quality and reproducibility), real-world impact, user experience and
+  design, presentation, and sources.
+- **The whole project, "including the code and datasets," is published on UP Data Science
+  Society's GitHub.** Anything in this repository at submission time should be fit to publish:
+  no case-level records (rule 11), and weekly case counts only if their source allows it.
+
 Read `Notes.md` first: the open decisions, the changes from the plan, and what the paper
 must say about them.
 
