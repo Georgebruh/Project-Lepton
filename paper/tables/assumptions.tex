@@ -32,8 +32,7 @@ A case's week \cfg{QCESD_ONSET}
   & Stated: that column changes meaning between years \\ % A13
 Delay guard \cfg{DELAY_GUARD_G}
   & 2 weeks: forecasting week $T+1$ at week $T$, every model sees counts up to week $T-2$
-  & Rerun with 1 and 3 weeks \checkme{not run yet: \texttt{python -m src.backtest --g 1}, then
-    \texttt{--g 3}} \\ % B2, B6, D3, D4
+  & Rerun with 1 and 3 weeks: the same three verdicts (Table~\ref{tab:robustness}) \\ % B2, B6, D3, D4
 When a week's count is final \cfg{CASES_COMPLETE_DAYS}
   & 17 days after the week ends; later weeks are missing, not zero
   & 99\% of cases were admitted within 17 days of onset; a lower bound, since the delay from
@@ -50,7 +49,7 @@ Week 53 \cfg{MAX_WEEK}
   & Stated \\ % A3, B7, B8
 COVID-19 years \cfg{COVID_YEARS}
   & 2020--2021: an indicator in M4; not threshold reference years; out of headline scores
-  & Every score also computed over all years, as a check \checkme{not in results/ yet (E6)}
+  & Every score also computed over all years, as a check (Section~\ref{sec:results-checks})
     \\ % B5, B7, D
 Forecast spread before 26 past forecasts \cfg{THETA_MIN_FORECASTS}
   & Each model's training fit: M4's fitted $\theta$; M0's and M1's own fits on the weeks they
@@ -155,7 +154,7 @@ Base rate for the Brier skill score
   & Stated \\ % D3
 Alarm cut-off $p^{*}$
   & The best F1 score on the first half of the forecast days
-  & The full precision--recall curve reported \checkme{reported in Results (E6)?} \\ % D3
+  & The full precision--recall curve, reported in Section~\ref{sec:results-layer1} \\ % D3
 Outbreak episode \cfg{EPISODE_GAP_WEEKS}
   & Breach weeks at most 2 weeks apart form one episode
   & Stated \\ % D3

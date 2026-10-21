@@ -1649,6 +1649,50 @@ def f9_scores():
             f"{primary['low']:+.2f} to {primary['high']:+.2f}) equal d8_fig2_mae.csv")
 
 
+def e6_score_tables():
+    """D1-D6's score tables for E6 (src/score_tables.py) agree with B10's forecasts and D8's tables.
+
+    d1_scores.csv: each window holds as many target weeks as forecasts.csv has in its years;
+    each model's MAE over the MAE years equals its "MAE by model" row in d8_fig2_mae.csv;
+    M4's and M3's Brier scores over 2022-2026 equal those in d8_fig3_reliability.csv. The
+    all-years comparisons cover every target week. All files round to 4 decimals.
+    SKIP until B10's forecasts, D8's tables and the score tables are on this computer.
+    """
+    need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
+    need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
+    need_file(config.D8_FIG3_TABLE, "D8 (python -m src.paper_figures)")
+    for path in (config.D_SCORES, config.D_TESTS_ALL_YEARS):
+        need_file(path, "E6's score tables (python -m src.score_tables)")
+    rerun = "rerun python -m src.paper_figures and python -m src.score_tables on the same forecasts.csv"
+    tolerance = 1e-4   # one unit in the 4th decimal, the rounding of every file
+
+    forecasts = pd.read_csv(config.FORECASTS, usecols=["model", "week_index", "year"])
+    table = pd.read_csv(config.D_SCORES)
+    windows = {"MAE years": config.MAE_YEARS, "prob years": config.PROB_SCORE_YEARS, "all years": config.ALL_YEARS}
+    for window, years in windows.items():
+        expected = forecasts.loc[forecasts["year"].isin(years), "week_index"].nunique()
+        found = set(table.loc[table["window"] == window, "weeks"])
+        assert found == {expected}, f"{window}: d1_scores.csv has weeks {found}, forecasts.csv {expected}: {rerun}"
+
+    point = table[table["window"] == "MAE years"].set_index("model")["mae"]
+    fig2 = pd.read_csv(config.D8_FIG2_TABLE)
+    by_model = fig2[fig2["part"] == "MAE by model"].set_index("name")["value"]
+    assert set(point.index) == set(by_model.index), f"models differ from d8_fig2_mae.csv: {rerun}"
+    for model, mae in by_model.items():
+        assert abs(point[model] - mae) <= tolerance, f"{model}: MAE {point[model]}, d8_fig2_mae.csv {mae}: {rerun}"
+
+    brier = table[table["window"] == "prob years"].set_index("model")["brier"]
+    fig3 = pd.read_csv(config.D8_FIG3_TABLE).drop_duplicates("model").set_index("model")["brier"]
+    for model, value in fig3.items():
+        assert abs(brier[model] - value) <= tolerance, f"{model}: Brier {brier[model]}, d8_fig3_reliability.csv {value}: {rerun}"
+
+    all_years = pd.read_csv(config.D_TESTS_ALL_YEARS)
+    weeks_all = forecasts.loc[forecasts["year"].isin(config.ALL_YEARS), "week_index"].nunique()
+    assert set(all_years["weeks"]) == {weeks_all}, f"d5_d6_all_years.csv weeks {set(all_years['weeks'])}, not {weeks_all}: {rerun}"
+    return (f"{len(point)} models' MAE equal d8_fig2_mae.csv and {len(fig3)} Brier scores d8_fig3_reliability.csv; "
+            f"windows of {', '.join(str(int(table.loc[table['window'] == w, 'weeks'].iloc[0])) for w in windows)} weeks")
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1684,6 +1728,7 @@ CHECKS = {
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
+    "E6 score tables": e6_score_tables,
 }
 
 

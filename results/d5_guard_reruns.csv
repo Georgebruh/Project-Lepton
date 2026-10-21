@@ -1,0 +1,25 @@
+g,source,part,name,block_weeks,weeks,value,low,high,verdict,dm_stat,dm_p
+1,forecasts_g1.csv,MAE by model,M0,8,350,9.2743,4.8256,13.6401,,,
+1,forecasts_g1.csv,MAE by model,M1,8,350,8.5269,4.4488,12.1118,,,
+1,forecasts_g1.csv,MAE by model,M3,8,350,12.9611,6.2092,20.5098,,,
+1,forecasts_g1.csv,MAE by model,M4,8,350,6.1714,3.5675,8.7053,,,
+1,forecasts_g1.csv,MAE by model,M4_no_EI2,8,350,6.161,3.5439,8.7509,,,
+1,forecasts_g1.csv,mean |error a| - |error b|,M4 vs M3,8,350,-6.7897,-13.2735,-1.9672,M4 misses less,-3.676,0.0003
+1,forecasts_g1.csv,mean |error a| - |error b|,M4 vs M4_no_EI2,8,350,0.0104,-0.3059,0.3013,no clear difference,,
+1,forecasts_g1.csv,mean |error a| - |error b|,M4 vs M1,8,350,-2.3555,-3.9909,-0.4633,M4 misses less,-3.8789,0.0001
+2,forecasts.csv,MAE by model,M0,8,349,9.2951,4.7667,13.7855,,,
+2,forecasts.csv,MAE by model,M1,8,349,8.5476,4.4246,12.1526,,,
+2,forecasts.csv,MAE by model,M3,8,349,15.5873,6.3834,27.6223,,,
+2,forecasts.csv,MAE by model,M4,8,349,6.7048,3.6884,9.5414,,,
+2,forecasts.csv,MAE by model,M4_no_EI2,8,349,6.8566,3.7858,9.692,,,
+2,forecasts.csv,mean |error a| - |error b|,M4 vs M3,8,349,-8.8825,-19.933,-1.8793,M4 misses less,-2.7374,0.0065
+2,forecasts.csv,mean |error a| - |error b|,M4 vs M4_no_EI2,8,349,-0.1517,-0.5049,0.2128,no clear difference,,
+2,forecasts.csv,mean |error a| - |error b|,M4 vs M1,8,349,-1.8428,-3.2763,-0.2452,M4 misses less,-3.6566,0.0003
+3,forecasts_g3.csv,MAE by model,M0,8,348,9.319,4.7126,13.8796,,,
+3,forecasts_g3.csv,MAE by model,M1,8,348,8.5669,4.4187,12.1235,,,
+3,forecasts_g3.csv,MAE by model,M3,8,348,17.5131,6.4661,33.1795,,,
+3,forecasts_g3.csv,MAE by model,M4,8,348,6.8719,3.6273,9.8557,,,
+3,forecasts_g3.csv,MAE by model,M4_no_EI2,8,348,7.0182,3.683,10.0047,,,
+3,forecasts_g3.csv,mean |error a| - |error b|,M4 vs M3,8,348,-10.6412,-25.5052,-1.9261,M4 misses less,-2.3328,0.0202
+3,forecasts_g3.csv,mean |error a| - |error b|,M4 vs M4_no_EI2,8,348,-0.1463,-0.5732,0.2549,no clear difference,,
+3,forecasts_g3.csv,mean |error a| - |error b|,M4 vs M1,8,348,-1.695,-3.1678,-0.2509,M4 misses less,-3.7809,0.0002

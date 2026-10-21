@@ -1,0 +1,6 @@
+model,p_star,first_half_alarms,first_half_breaches,first_half_precision,first_half_sensitivity,first_half_f1,second_half_alarms,second_half_breaches,second_half_precision,second_half_sensitivity,second_half_f1,second_half_weeks,second_half_from,episodes,alarmed,alarmed_low,alarmed_high,in_advance,in_advance_low,in_advance_high,median_lead_weeks
+M0,0.078,37,9,0.1081,0.4444,0.1739,74,29,0.2568,0.6552,0.3689,124,488,14,13,0.6613,0.9982,11,0.492,0.9534,3.0
+M1,0.0976,36,9,0.1667,0.6667,0.2667,87,29,0.2414,0.7241,0.3621,124,488,14,9,0.3514,0.8724,9,0.3514,0.8724,3.0
+M3,0.2598,11,9,0.2727,0.3333,0.3,48,29,0.2708,0.4483,0.3377,124,488,14,9,0.3514,0.8724,9,0.3514,0.8724,3.0
+M4,0.3327,12,9,0.5833,0.7778,0.6667,11,29,0.7273,0.2759,0.4,124,488,14,4,0.0839,0.581,4,0.0839,0.581,2.5
+M4_no_EI2,0.4159,9,9,0.6667,0.6667,0.6667,6,29,1.0,0.2069,0.3429,124,488,14,3,0.0466,0.508,3,0.0466,0.508,2.0
