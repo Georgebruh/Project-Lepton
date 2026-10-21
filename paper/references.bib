@@ -1,6 +1,6 @@
 % References for the LEPTON paper, APA 7th edition through biblatex-apa (task E7 owns this
-% file; E4 added the works it cites). Titles are in sentence case, with proper nouns in braces
-% so biblatex-apa keeps their capitals. Each entry was checked against its source on
+% file; E4 and E5 added the works they cite). Titles are in sentence case, with proper nouns in
+% braces so biblatex-apa keeps their capitals. Each entry was checked against its source on
 % 2026-10-21 unless its comment says otherwise.
 
 % --- Health and disease ----------------------------------------------------------------
@@ -133,6 +133,150 @@
   doi          = {10.17632/v98325dpxv.1},
 }
 
+@article{taylor2018,
+  author       = {Taylor, Sean J. and Letham, Benjamin},
+  title        = {Forecasting at scale},
+  journaltitle = {The American Statistician},
+  date         = {2018},
+  volume       = {72},
+  number       = {1},
+  pages        = {37--45},
+  doi          = {10.1080/00031305.2017.1380080},
+}
+% Prophet (M3). This entry and the others E5 added were checked against their Crossref
+% records (api.crossref.org/works/<doi>) on 2026-10-21; the HDX data sets against HDX's own
+% records (data.humdata.org/api/3/action/package_show).
+
+@incollection{chen2016,
+  author       = {Chen, Tianqi and Guestrin, Carlos},
+  title        = {{XGBoost}},
+  subtitle     = {A scalable tree boosting system},
+  booktitle    = {{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge
+                  Discovery and Data Mining}},
+  date         = {2016},
+  pages        = {785--794},
+  publisher    = {ACM},
+  doi          = {10.1145/2939672.2939785},
+}
+% XGBoost (M3). @incollection for the reason given at latigay2026.
+
+@incollection{seabold2010,
+  author       = {Seabold, Skipper and Perktold, Josef},
+  title        = {Statsmodels},
+  subtitle     = {Econometric and statistical modeling with {Python}},
+  booktitle    = {{Proceedings of the 9th Python in Science Conference}},
+  date         = {2010},
+  pages        = {92--96},
+  doi          = {10.25080/Majora-92bf1922-011},
+}
+% statsmodels (M4's fit). Pages as in the Crossref record.
+
+@article{virtanen2020,
+  author       = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt
+                  and Reddy, Tyler and Cournapeau, David and Burovski, Evgeni and Peterson, Pearu
+                  and Weckesser, Warren and Bright, Jonathan and van der Walt, Stéfan J.
+                  and Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod
+                  and Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and Kern, Robert
+                  and Larson, Eric and Carey, C. J. and Polat, {\.I}lhan and Feng, Yu
+                  and Moore, Eric W. and VanderPlas, Jake and Laxalde, Denis and Perktold, Josef
+                  and Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and Harris, Charles R.
+                  and Archibald, Anne M. and Ribeiro, Antônio H. and Pedregosa, Fabian
+                  and van Mulbregt, Paul and {SciPy 1.0 Contributors}},
+  title        = {{SciPy} 1.0},
+  subtitle     = {Fundamental algorithms for scientific computing in {Python}},
+  journaltitle = {Nature Methods},
+  date         = {2020},
+  volume       = {17},
+  number       = {3},
+  pages        = {261--272},
+  doi          = {10.1038/s41592-019-0686-2},
+}
+% SciPy (the Gumbel fit and the forecast distributions). The 34 named authors and the group,
+% as the paper lists them; APA 7 prints the first 19, an ellipsis and the last.
+
+% --- Scores and tests ------------------------------------------------------------------
+
+@article{hyndman2006,
+  author       = {Hyndman, Rob J. and Koehler, Anne B.},
+  title        = {Another look at measures of forecast accuracy},
+  journaltitle = {International Journal of Forecasting},
+  date         = {2006},
+  volume       = {22},
+  number       = {4},
+  pages        = {679--688},
+  doi          = {10.1016/j.ijforecast.2006.03.001},
+}
+
+@article{bracher2021,
+  author       = {Bracher, Johannes and Ray, Evan L. and Gneiting, Tilmann and Reich, Nicholas G.},
+  title        = {Evaluating epidemic forecasts in an interval format},
+  journaltitle = {PLOS Computational Biology},
+  date         = {2021},
+  volume       = {17},
+  number       = {2},
+  eid          = {e1008618},
+  doi          = {10.1371/journal.pcbi.1008618},
+}
+% As in the submitted proposal.
+
+@article{brier1950,
+  author       = {Brier, Glenn W.},
+  title        = {Verification of forecasts expressed in terms of probability},
+  journaltitle = {Monthly Weather Review},
+  date         = {1950},
+  volume       = {78},
+  number       = {1},
+  pages        = {1--3},
+  doi          = {10.1175/1520-0493(1950)078<0001:VOFEIT>2.0.CO;2},
+}
+
+@article{dimitriadis2021,
+  author       = {Dimitriadis, Timo and Gneiting, Tilmann and Jordan, Alexander I.},
+  title        = {Stable reliability diagrams for probabilistic classifiers},
+  journaltitle = {Proceedings of the National Academy of Sciences},
+  date         = {2021},
+  volume       = {118},
+  number       = {8},
+  eid          = {e2016191118},
+  doi          = {10.1073/pnas.2016191118},
+}
+% The CORP reliability diagram (D3, D8 figure 3).
+
+@article{diebold1995,
+  author       = {Diebold, Francis X. and Mariano, Roberto S.},
+  title        = {Comparing predictive accuracy},
+  journaltitle = {Journal of Business \& Economic Statistics},
+  date         = {1995},
+  volume       = {13},
+  number       = {3},
+  pages        = {253--263},
+  doi          = {10.1080/07350015.1995.10524599},
+}
+
+@article{clark2001,
+  author       = {Clark, Todd E. and McCracken, Michael W.},
+  title        = {Tests of equal forecast accuracy and encompassing for nested models},
+  journaltitle = {Journal of Econometrics},
+  date         = {2001},
+  volume       = {105},
+  number       = {1},
+  pages        = {85--110},
+  doi          = {10.1016/S0304-4076(01)00071-9},
+}
+% Why the flood test (D6) has no Diebold-Mariano test; cited in src/compare.py.
+
+@article{clopper1934,
+  author       = {Clopper, C. J. and Pearson, E. S.},
+  title        = {The use of confidence or fiducial limits illustrated in the case of the binomial},
+  journaltitle = {Biometrika},
+  date         = {1934},
+  volume       = {26},
+  number       = {4},
+  pages        = {404--413},
+  doi          = {10.1093/biomet/26.4.404},
+}
+% The exact interval for "k of n episodes caught" (D3).
+
 % --- Rain ------------------------------------------------------------------------------
 
 @dataset{huffman2024,
@@ -227,6 +371,15 @@
   doi          = {10.1002/qj.4351},
 }
 
+@book{coles2001,
+  author       = {Coles, Stuart},
+  title        = {An introduction to statistical modeling of extreme values},
+  date         = {2001},
+  publisher    = {Springer},
+  doi          = {10.1007/978-1-4471-3675-0},
+}
+% The Gumbel fit to annual maxima, by maximum likelihood (C3).
+
 @online{pagasa_nd,
   author       = {{Philippine Atmospheric, Geophysical and Astronomical Services Administration}},
   shortauthor  = {PAGASA},
@@ -249,6 +402,19 @@
   pages        = {1283--1289},
   doi          = {10.5194/hess-15-1283-2011},
 }
+
+@article{lehner2013,
+  author       = {Lehner, Bernhard and Grill, Günther},
+  title        = {Global river hydrography and network routing},
+  subtitle     = {Baseline data and new approaches to study the world's large river systems},
+  journaltitle = {Hydrological Processes},
+  date         = {2013},
+  volume       = {27},
+  number       = {15},
+  pages        = {2171--2186},
+  doi          = {10.1002/hyp.9740},
+}
+% HydroBASINS (A7), the citation its data note gives (data/raw/hybas_au_lev12_v1c.md).
 
 @dataset{noah_nd,
   author       = {{UP NOAH Center}},
@@ -281,6 +447,42 @@
   url          = {https://psa.gov.ph/content/2024-census-population-popcen-population-counts-declared-official-president},
   urldate      = {2026-10-15},
 }
+
+@dataset{psa_age2020,
+  author       = {{Philippine Statistics Authority}},
+  title        = {{Philippines}},
+  subtitle     = {Population by single-year age, sex and {Admin4} (barangay), {Census} 2020},
+  titleaddon   = {Data set},
+  date         = {2023},
+  publisher    = {OCHA Philippines, Humanitarian Data Exchange},
+  url          = {https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020},
+  urldate      = {2026-10-15},
+}
+% HDX lists PSA as the source and OCHA Philippines as the publisher, dated 2023-09-21
+% (data/raw/2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx.md).
+
+@dataset{namria_codab2025,
+  author       = {{National Mapping and Resource Information Authority} and
+                  {Philippine Statistics Authority}},
+  title        = {{Philippines}},
+  subtitle     = {Subnational administrative boundaries},
+  titleaddon   = {Data set},
+  version      = {v03},
+  date         = {2025},
+  publisher    = {OCHA, Humanitarian Data Exchange},
+  url          = {https://data.humdata.org/dataset/cod-ab-phl},
+  urldate      = {2026-10-15},
+}
+% COD-AB v03, valid on 2025-02-13 (data/raw/phl_admin_boundaries.gdb.zip.md). HDX lists NAMRIA
+% and PSA as the source and OCHA as the publisher.
+
+@online{doh_nhfr,
+  author       = {{Department of Health}},
+  title        = {{National Health Facility Registry}},
+  url          = {https://nhfr.doh.gov.ph},
+  urldate      = {2026-10-15},
+}
+% As its data note cites it (data/raw/nhfr.md).
 
 @dataset{psa_births2026,
   author       = {{Philippine Statistics Authority}},

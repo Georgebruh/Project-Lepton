@@ -1,6 +1,337 @@
 % E5 (SCRUM-56): Methodology, as built: QC only; M0, M1, M3, M4; the decision-tree row used
-% (option C, g = 2); observed and forecast rain on the storms. No formula in the main text;
-% formulas go in the appendix (lepton-plan.md, E5).
+% ("QC weekly counts by onset week", no report dates: option C, g = 2, Notes.md 1.5); observed
+% and forecast rain on the four storms (Kristine added, Notes.md 1.1; confirmed for E4 on
+% 2026-10-21). No formula in the main text: every formula is in Appendix B, tables/formulas.tex
+% (lepton-plan.md, E5). Started from the submitted proposal's Methodology: the plan's "condensed
+% draft from this chat" is not in the repository.
+% Numbers:
+%   results/forecasts.csv: 454 forecast days per model, 2018 week 2 to 2026 week 37 (targets
+%     14-20 Jan 2018 to 20-26 Sep 2026); 349 targets in config.MAE_YEARS and 247 in
+%     config.PROB_SCORE_YEARS; theta_from "fit" on the first 28 forecast days (to the target week
+%     29 Jul-4 Aug 2018); column detail: M4 and M4_no_EI2 leave out COVID on 105 forecast days
+%     and Rcum2 on none; M3 fills 0 weeks on every forecast day.
+%   results/c8_observed_runs.csv, c9_forecast_runs.csv (levels_years 24-26);
+%     results/c8_observed_centers.csv (66 health centers); results/catchments_qc.png (6 sub-basins).
+%   data/raw notes: qcesd.md (17 days, 99%), imerg_daily.md (1 Jun 2000 to 13 Oct 2026),
+%     ecmwf_previous_runs.md (previous days 1-5, archive from Feb 2024, 4 cells),
+%     era5_open_meteo.md (Jun 2000 to Dec 2025), noah.md (depth bands), psa_births_2024.csv.md
+%     (32,578 births, 24,434 pregnant women), nhfr.md (69 facilities; one 11.0 km from its
+%     barangay; Bago Bantay listed twice), storm-facts.md (Table 1).
+%   Notes.md 2.8 (2.04 km); config.py for every setting (STORMS, CASES_COMPLETE_DAYS,
+%     DELAY_GUARD_G, M3_*, THETA_*, THRESHOLD_*, GUMBEL_MIN_YEARS, R0_FACTOR, RAIN_ACCUM_DAYS,
+%     FORECAST_LEADS_DAYS, FORECAST_RUN_D, WOUND_SHARE_W, DOXY_*, AMOX_TABS_PREG,
+%     FLAG_EXPOSED_SHARES, BOOT_*, EPISODE_GAP_WEEKS, S5_*); 18-26 IMERG fit years as in E4.
 \section{Methodology}\label{sec:methodology}
 
-\checkme{E5: the methodology (lepton-plan.md, E5).}
+LEPTON has two layers that share one flood computation, which sets a storm's rain against flood
+hazard maps and population counts to estimate how many residents of each barangay the rain
+exposes. Layer~1 uses it, with past cases and rain, to forecast next week's cases in QC. Layer~2
+turns it into prophylaxis stock for each barangay and health center. This section describes the
+data, the shared computation, the two layers and how we evaluated them. It holds no formulas:
+the formula behind each step is in Appendix~\ref{app:formulas}, and each assumption's value and
+test in Table~\ref{tab:assumptions}.
+
+\subsection{Data}\label{sec:data}
+
+\paragraph{Cases}
+QCESD's list gives each case's date of onset and date of admission, but not the date it was
+reported. We counted cases by the CDC/MMWR epidemiological week (Sunday to Saturday) of their
+onset, from the week of 4--10 January 2015, and did not use the list's own morbidity-week column,
+whose meaning changes between years. Cases reach hospitals days after onset, so a week's count is
+final only once 17 days have passed since the week ended, the time within which 99\% of cases
+were admitted. The last final week is 20--26 September 2026; later weeks are missing, not zero.
+With our adviser's approval we used the list only as weekly counts, and no case-level record
+appears in this paper or in our code repository \checkme{E2: name the ethics board and the date
+of the ethics request or exemption}.
+
+\paragraph{Rain}
+Observed rain is NASA's IMERG Late daily product, version 07, on a 0.1\textdegree{} grid
+\parencite{huffman2024}: the rain of each UTC day (8~AM to 8~AM Philippine time) from 1 June 2000
+to 13 October 2026, over a box that holds QC and the catchments that drain into it. The
+forecast runs use ECMWF's IFS forecasts at 0.25\textdegree{} from Open-Meteo's archive of past
+runs \parencite{zippenfenig2023}, which gives, for every hour since February 2024, the value from
+runs started at least one, two or more days earlier; we used one to five days. They are judged against the ERA5
+reanalysis \parencite{hersbach2020}, hourly rain from June 2000 to December 2025, also from
+Open-Meteo. Both come from the four 0.25\textdegree{} cells that overlap the catchments, each
+weighted by its area inside them, with each hour added to its UTC day.
+
+\paragraph{Catchments}
+Floods on the Marikina are driven by rain over its upper watershed \parencite{abon2011}, so we
+measure a storm's rain over the catchments that drain into QC, not over the city. From
+HydroBASINS \parencite{lehner2013} we kept six level-12 sub-basins: those upstream of a point on
+the Marikina (the Sto.~Niño gauge) and on the Tullahan (Novaliches), traced through each
+sub-basin's downstream link, and the San Juan River's own sub-basin, whose upstream trace would
+wrongly add the whole Laguna de Bay basin.
+
+\paragraph{Flood maps and people}
+Project NOAH's 5-, 25- and 100-year flood hazard maps of Metro Manila \parencite{noah_nd} mark
+three hazard levels: low (up to 0.5~m of water), medium (0.5 to 1.5~m) and high (over 1.5~m). We
+repaired their invalid shapes and, where two levels of one map overlap, gave the area to the
+higher level. Residents come from WorldPop's 2024 population grid at about 100~m
+\parencite{bondarenko2025}, fitted to the 2024 census totals of QC's 142 barangays
+\parencite{psa_census2024}, within the barangay boundaries of the national mapping agency and the
+Philippine Statistics Authority \parencite{namria_codab2025}. Ages come from the 2020 census by single year of age and sex
+\parencite{psa_age2020}, and pregnancies from the 32,578 live births registered in 2024 to
+mothers living in QC \parencite{psa_births2026}. Health centers and their locations come from
+the DOH's National Health Facility Registry \parencite{doh_nhfr}.
+
+\paragraph{Storms}
+Layer~2 ran on the four storms in Table~\ref{tab:storms}; Section~\ref{sec:scope-scope} says why
+we added Kristine to the three in our proposal. For each, the city government's road and
+evacuation updates and news reports gave the days QC was flooded and the barangays named as
+flooded. A barangay counts only if a report from that storm names it as flooded, or its residents
+as evacuated, rescued or left homeless; a road that shares a barangay's name does not count. Our
+repository links every fact to its source.
+
+\begin{table}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{The storms run through Layer~2: Typhoon Carina, Severe Tropical Storm Kristine, the
+July 2025 floods and the August 2026 habagat floods. For each, the days QC was flooded, the
+flood's duration $D$ in days, the storm's three wettest UTC days and the number of barangays
+that reports named as flooded. Each forecast window ends on one of the wettest
+days.}\label{tab:storms}
+\begin{tabular}{@{}l l c l r@{}}
+\toprule
+\textbf{Storm} & \textbf{QC flooded} & $\boldsymbol{D}$ & \textbf{Wettest days} & \textbf{Named} \\
+\midrule
+Carina, 2024   & 23--25 Jul & 3 & 23--25 Jul & 12 \\
+Kristine, 2024 & 24 Oct     & 1 & 22--24 Oct &  8 \\
+Floods, 2025   & 19--24 Jul & 6 & 17--19 Jul & 14 \\
+Habagat, 2026  & 8--11 Aug  & 4 & 8--10 Aug  & 17 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Benchmark data}
+To check our copy of M3 we used the national weekly counts its authors used
+\parencite{parreno2023}, from 2019 to 2023.
+
+\subsection{Shared Flood Computation}\label{sec:flood}
+
+\paragraph{Residents in each flood zone}
+WorldPop says where people live within a barangay, and the census says how many: we scaled each
+barangay's WorldPop counts so that they add up to its 2024 census total, splitting a pixel that a
+boundary cuts by its area on each side. We then counted, for each barangay, hazard level and map,
+the residents who live in that zone, a pixel half inside the zone counting half its residents.
+The result, 142 barangays by three hazard levels by three maps, serves both layers.
+
+\paragraph{Storm rain and return levels}
+Each UTC day's IMERG rain is averaged over the catchments, each 0.1\textdegree{} cell weighted by
+its area inside them, and a storm is measured by its wettest three consecutive days. Our proposal
+used the single wettest day, which missed the long habagat floods of 2025 and 2026, so the single
+day is kept only as a comparison run. To place a rain total among the flood maps, we fitted a
+Gumbel distribution by maximum likelihood \parencite{coles2001,virtanen2020} to each year's
+wettest three-day total, using only years before the forecast or storm year: 18 to 26 years,
+depending on the year, never fewer than ten. The fit gives the three-day totals expected once in
+5, 25 and 100 years, one for each NOAH map, and a no-flood floor $R_0$ at half the five-year
+total, below which nobody counts as exposed. All of these are on IMERG's own scale. A second
+comparison run refits them without IMERG's partial first year (June to December 2000).
+
+\paragraph{Graded exposure and the exposure index}
+A rain total between two of these levels exposes, in each barangay and hazard level, a number of
+residents interpolated in a straight line between the two maps' counts: nobody at the floor, each
+map's residents at its own return level, and the 100-year map's residents for any heavier rain.
+The flood exposure index of a week is the percentage of QC's residents who live in zones that the
+week's wettest three-day total would flood. Its denominator is the 2024 census total the
+population map was fitted to, not that week's population, so the index is a pure share. Because
+the return levels are refitted each year, the index for every week since 2015 is recomputed with
+each forecast year's levels, and a forecast reads the series of its own year.
+
+\subsection{Layer 1: City Forecast}\label{sec:layer1}
+
+\paragraph{What each model may see}
+At the end of each week, the forecast day, every model forecasts the number of cases with onset in
+the next week. Our plan fixed in advance what to do with each kind of case data we might receive.
+For weekly counts by week of onset without report dates, the kind we received, it prescribes a
+delay guard: every model sees counts only up to two weeks before the forecast day, as if the last
+two weeks had not been reported yet, so each forecast reaches three weeks past the newest count it
+sees. Two weeks is our assumption, because QCESD's reporting delay is not known. Rain and the
+exposure index are never hidden, since IMERG's Late run is published about 14 hours after each
+day ends \parencite{huffman2024}. M4's recent-cases input is built
+for every training week with the same three-week lag it has at the forecast, so the model never
+learns from a fresher signal than it gets on the forecast day. A check overwrites every count a model may not see
+with an impossible value and confirms that no forecast changes.
+
+\paragraph{Models}
+We compare four models.
+\begin{itemize}
+  \item \textbf{M0}, last year: the count 52 weeks before the target week.
+  \item \textbf{M1}, the seasonal average: the mean count of the same week of the year over the
+    epidemic threshold's reference years (below).
+  \item \textbf{M3}, the benchmark: the Prophet--XGBoost hybrid of \textcite{latigay2026}. Prophet
+    \parencite{taylor2018} is fitted to the weekly counts with multiplicative seasonality, a
+    changepoint prior scale of 0.55, weekly and yearly seasonality and no holidays. XGBoost
+    \parencite{chen2016} then learns Prophet's in-sample errors from two features, Prophet's
+    forecast and the ISO week number, and the forecast is Prophet's plus XGBoost's correction,
+    floored at zero. The paper gives no XGBoost settings beyond ``low complexity'', so we used
+    xgboost's defaults with 100 boosting rounds.
+  \item \textbf{M4}, our model: a negative binomial regression of the week's count on the season
+    (three pairs of yearly sine and cosine waves), recent cases (the sum of the two newest counts
+    the model may see), the last two weeks' rain over QC, the flood exposure index (the larger of
+    the last two weeks' values) and an indicator for the COVID-19 years 2020--2021. QC's
+    population enters as an offset, so the other terms describe cases per resident.
+\end{itemize}
+
+M4 follows the time-series regression design of Section~\ref{sec:background}, and its two weeks
+of rain match the lag at which leptospirosis admissions in Manila peaked after rainfall
+\parencite{matsushita2018}. Its rain over QC averages the IMERG cells, each weighted by the
+WorldPop residents it holds inside the city, so rain where people live counts more; a week's
+rain is the sum of its seven days. QC's population grows by a constant percentage between the
+2015, 2020 and 2024 censuses, and at the 2020--2024 rate after mid-2024. We fitted M4 by maximum
+likelihood with statsmodels' negative binomial regression, which estimates the overdispersion
+along with the coefficients \parencite{seabold2010}. A term with the same value in every training
+row cannot be estimated and is left out: this happened only to the COVID-19 indicator, on the 105
+forecast days before any COVID-19 week reached the training data. Rain would have been dropped
+had it correlated with the exposure index above 0.8 in a training set; that never happened. To
+test the flood index, we also fitted \emph{M4 without it} on the same rows.
+
+Before porting M3 to QC, we rebuilt it on the benchmark's own data and evaluation: 260 national
+weeks from 2019 to 2023, the paper's three-step filling of the weeks missing in 2020, its rolling
+origin (a first training window of 115 weeks, forecasts two weeks ahead, the origin moved 16 weeks
+at a time: nine folds and 18 forecast weeks) and its four scores, which are mean absolute error,
+root mean squared error, symmetric mean absolute percentage error and bias. We would accept our
+copy if Prophet's and the hybrid's mean absolute errors came within about 10\% of the published
+ones; Section~\ref{sec:limitations} reports what we found. In the QC backtest, M3 is refitted with
+the same settings at every forecast day, on the weeks the guard lets it see. QC's weekly counts
+have no missing weeks, so its gap filling never applied.
+
+\paragraph{Forecast ranges}
+Every model gives a full forecast distribution: a negative binomial whose mean is the model's
+forecast and whose spread makes its ranges as wide as the model's own past misses. The spread is
+estimated from the model's last 104 forecasts outside the COVID-19 years whose target weeks the
+guard already lets it see. Until a model has 26 such forecasts, which took the first 28 forecast
+days (target weeks to 22--28 July 2018), the spread comes from its own training fit; for M3
+that is Prophet's fit, because XGBoost repeats its training errors almost exactly and would make
+the range far too narrow. Where past misses were no wider than a Poisson distribution allows, the
+forecast is Poisson. From each distribution we report the expected cases, the 90\% range (from its
+5th to its 95th percentile) and the probability that the count breaches the epidemic threshold.
+
+\paragraph{Epidemic threshold}
+A week's threshold is the mean plus two standard deviations of the same week's counts over up to
+the five most recent complete years before the target year, at least three, leaving out the
+COVID-19 years; week 53 uses week 52's threshold. A year counts as complete only once the guard
+lets a model see all its weeks. A week breaches when its final count is strictly greater than the
+threshold, and the breach probability follows the same rule. In the first week of 2018 the last
+week of 2017 was still hidden, leaving two reference years, so the backtest's first forecast day
+is the second week of 2018, forecasting the week of 14--20 January.
+
+\subsection{Layer 2: Barangay Prophylaxis Stock}\label{sec:layer2}
+
+\paragraph{From rain to exposed people}
+On observed rain, a storm's rain is its wettest three-day IMERG total over the catchments whose
+last day falls during the flood, set against IMERG return levels fitted on the 24 to 26 years
+before the storm's year. Graded exposure turns it into exposed residents per barangay and hazard
+level, which we split into three groups by each barangay's shares: children under 18, from the
+2020 census's age shares applied to 2024 totals; pregnant women, 0.75 times the city's 2024
+births to resident mothers (24,434 women), split among barangays by their share of women aged
+15--49; and adults, everyone else. Pregnant girls aged 15--17 move out of the child group, so no
+one is counted twice and the three groups add up to the barangay's exposed residents. Everyone
+living in a flooded zone counts as exposed, at any depth, and we report stock at full coverage, as
+if every exposed resident took prophylaxis; a health office scales the totals by the share it
+expects to reach.
+
+\paragraph{Risk tiers and stock}
+Following the risk tiers of DM~\mbox{2023-0309} \parencite{doh2023}, we treat a flood lasting
+two days or more as continuous exposure, which makes every exposed adult high risk. In a shorter flood, a share $w$
+of exposed adults, those with a wound or with floodwater in the eyes, nose or mouth, are moderate
+risk and the rest low risk; we report $w$ at 0, 0.5 and 1. Each tier's doxycycline regimen sets
+its stock in 100~mg capsules: 2 for a low-risk adult (200~mg once), 10 for a moderate-risk adult
+(200~mg a day for five days, the upper end of the memo's three to five) and 2 for each week of
+flooding for a high-risk adult (200~mg once a week, a part week counted whole). Each exposed child
+needs one course per week of flooding, at least one, which a pharmacy turns into tablets by
+weight, and each exposed pregnant woman 6 amoxicillin 500~mg tablets (twice a day for three days).
+These are stock-planning figures, not prescriptions: the memo requires a physician's consultation
+before any prophylaxis.
+
+\paragraph{Health centers}
+A barangay's need goes to its health center. A barangay with several centers splits its need by
+the residents who live nearest each, and one with none sends it to the nearest center, at most
+2.04~km away. Of the registry's 69 QC facilities, we treated the City Health Office as holding
+the city's stock rather than handing it out, left out a barangay health station registered 11~km
+from its own barangay, and counted once a center listed twice, which leaves 66 health centers.
+When stock is short, each pool (adult doxycycline, children's courses and amoxicillin) is shared
+high risk first, then moderate, then low: a tier is served in full while stock lasts, and the tier
+the remaining stock cannot cover is shared in proportion to need.
+
+\paragraph{Forecast-driven runs}
+In use, a rain forecast one to three days ahead would trigger the calculation. We replayed this on
+the archived ECMWF forecasts issued one, two and three days before a storm's three-day window.
+Each day of the window is taken from runs started that many days before the window began, so
+every hour of a lead's window comes from a forecast at least that old. For each lead we took the forecast's wettest
+three-day window among those ending on the storm's wettest days (Table~\ref{tab:storms}), and
+report the same lead's forecast for the observed run's window beside it. Forecast rain is set
+against return levels fitted the same way on ERA5's three-day totals over the same years, never
+against IMERG's: each product has its own scale, and ERA5 is made with an earlier version of
+ECMWF's forecast model \parencite{hersbach2020}. A forecast cannot know how long the flood will
+last, so each lead reports stock for a one-day flood, at each $w$, and for a seven-day flood.
+
+\subsection{Evaluation}\label{sec:evaluation}
+
+\paragraph{Weekly backtest}
+We tested Layer~1 in a rolling-origin backtest with one forecast day per week, from the second
+week of 2018 to the week of 13--19 September 2026: 454 one-week-ahead forecasts per model, for the
+weeks from 14--20 January 2018 to 20--26 September 2026. At every forecast day each model is
+refitted on what the guard lets it see. The run stops if any model fails to forecast or returns a
+missing value, so every model is scored on exactly the same weeks, against final counts. The
+return levels behind the exposure index are refitted at the first forecast day of each year, on
+the years before it.
+
+\paragraph{Scores}
+The primary endpoint, mean absolute error (MAE), needs no forecast spread, so it is scored over
+the 349 forecasts whose target weeks fall in 2018--2019 and 2022--2026, leaving out the COVID-19
+years. Root mean squared error, bias and the mean absolute scaled error (MASE) use the same weeks;
+MASE divides each model's MAE by the average miss of ``same week last year'' over the target
+weeks of 2016--2017, one fixed number for every model \parencite{hyndman2006}. Scores of the
+forecast distribution must wait out the spread's warm-up, so they use the 247 forecasts for 2022
+to 2026: the weighted interval score (WIS) over eleven central ranges and the median
+\parencite{bracher2021}, how often the 50\% and 90\% ranges held the count, and, for the breach
+probabilities, the Brier score \parencite{brier1950} and the Brier skill score against always
+quoting the usual breach rate, the share of non-COVID weeks from 2018 up to the guard's cutoff
+that breached. A reliability diagram drawn with the CORP method \parencite{dimitriadis2021} shows
+whether the breach probabilities match how often breaches happened. Every score is also computed
+over all 454 forecasts, COVID-19 years included, as a check (Section~\ref{sec:results-checks}).
+
+\paragraph{Primary endpoint and tests}
+For each week we take M4's absolute error minus M3's. The mean of these differences is the
+difference in MAE: below zero, M4 misses less. Misses come in runs during outbreaks, so the weeks
+are not independent, and we set a 95\% interval on the mean with a moving-block bootstrap
+\parencite{kunsch1989}, resampling blocks of eight consecutive weeks 2,000 times with a fixed
+seed, then again with 4- and 13-week blocks. Leaving out the COVID-19 years joins 2019's last
+week to 2022's first, once in 349 weeks. Beside the interval we report the two-sided
+Diebold--Mariano test \parencite{diebold1995}. The same bootstrap compares M4 with M4 without the
+flood index, the flood test, and with M1, the practical test. Because rain was never dropped, M4
+without the index is M4 minus one term on every forecast day; for such nested models the
+Diebold--Mariano test is not valid \parencite{clark2001}, so the flood test reports only the
+interval. The benchmark paper scored 18 forecast weeks with a one-sided test; we score 349 weekly
+forecasts with a two-sided interval, so the two sets of scores are not directly comparable.
+
+\paragraph{Alarms and outbreak episodes}
+An alarm is raised when a forecast's breach probability reaches a cut-off, chosen for the best F1
+score, the balance of precision and sensitivity, on the first half of the 2022--2026 forecasts and
+then tested on the second half. Breach weeks at most two weeks apart form one outbreak episode, and
+we report how many episodes were caught, with exact 95\% intervals \parencite{clopper1934}. An
+episode's lead time runs from the forecast day of its first alarm, for one of its breach weeks, to
+the week surveillance would have shown its first breach, which under the guard is two weeks after
+that breach week. An episode is caught in advance when its lead time is at least one week.
+
+\paragraph{Layer 2 storm runs}
+Each storm runs on observed rain with its reported flood duration, then again with the
+continuous-exposure cut-off at one and at three days, and with the duration one day shorter and
+one day longer (only longer for Kristine's one-day flood). A barangay is flagged when at least 25\% of its residents live in zones the rain
+floods; 50\% is also reported. We needed such a share because every barangay has some residents
+in the five-year zones, so any exposure at all would flag all 142 once the rain passed the floor
+\checkme{the team confirms the 25\% and 50\% rule, Notes.md 1.2}. For each run we report the share
+of flagged barangays that reports named as flooded, and the share of named barangays that were
+flagged. The reports are incomplete and we had no barangay case counts, so these comparisons show
+the chain at work; they do not validate it.
+
+\paragraph{Software and checks}
+Every step from the raw data files to each number and figure in this paper is a Python script in
+our code repository, run with one command each in the order its README gives
+\checkme{E10: the repository's public link}. Most downloads are scripted too, and every raw file
+has a note saying where and when it was obtained. Package versions are pinned, and every setting
+and assumption is held in one configuration file. Automated checks with answers known in advance guard
+the steps: for example, M4 must recover known coefficients from 50 simulated data sets of 400
+weeks, the Gumbel fit must recover known return levels, and the leakage check above must leave
+every forecast unchanged.

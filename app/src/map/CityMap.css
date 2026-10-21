@@ -11,6 +11,27 @@
 .city-map-canvas {
   position: absolute;
   inset: 0;
+  /* F13: around the globe, when the map is zoomed out to the whole world (MapLibre leaves it clear) */
+  background: var(--color-map-space);
+}
+
+/* F13: the sources' credits (MapLibre's attribution control): an "i" button bottom left, 24 px
+   in from the map's edges like the other controls, that opens the credits over the map. It is
+   MapLibre's element and cannot take the body-s class, so it copies body-s here. Opened, the
+   credits wrap within the map's visible part (MapLayout.css narrows it while the panel is open). */
+.city-map .maplibregl-ctrl-bottom-left {
+  right: 0;
+}
+
+.city-map .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib {
+  max-width: calc(100% - 2 * var(--space-5));
+  margin: 0 0 var(--space-5) var(--space-5);
+  color: var(--color-text-secondary);
+  font: 400 13px/18px var(--font-sans);
+}
+
+.city-map .maplibregl-ctrl-attrib a {
+  color: inherit;
 }
 
 /* F11: MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom); it fills the map,
@@ -65,6 +86,22 @@
 
 .city-map-label-cases {
   color: var(--color-text-secondary);
+}
+
+/* F13: on satellite imagery the names get a halo, so they read over dark ground */
+.city-map[data-base='satellite'] .city-map-label {
+  text-shadow:
+    0 0 3px var(--color-bg-surface),
+    0 0 3px var(--color-bg-surface);
+}
+
+/* F13: zoomed far out, the 17 names would pile up (basemap.ts, CITY_NAMES_ZOOM) */
+.city-map[data-far] .city-map-label {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--map-hover) linear,
+    visibility 0s linear var(--map-hover);
 }
 
 /* F11: the map's top left corner: the hint and the list of cities at level 1, the plan's list of

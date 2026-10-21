@@ -21,11 +21,12 @@ What runs and what does not:
     cases_weekly.csv if it was copied from the drive, and is skipped if not.
   - A step whose task is not built yet (its module is not in src/) is skipped, and so is
     B10 until A13's cases_weekly.csv exists and config.DATA_OPTION is set. B10's guard
-    reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5) waits for
-    B10's results/forecasts.csv; its --layer2 run (figures 4 and 5) does not.
+    reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5) and E6's
+    score tables wait for B10's results/forecasts.csv; D8's --layer2 run (figures 4 and
+    5) does not.
   - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
-    A13 is not run, B10 --simulate --option C (results/forecasts_simulated_C.csv, no
-    guard reruns), D8's figures 1-3 as previews from it (results/d8_preview_*, not for
+    A13 and E6 are not run, B10 --simulate --option C (results/forecasts_simulated_C.csv,
+    no guard reruns), D8's figures 1-3 as previews from it (results/d8_preview_*, not for
     the paper), and F2's city_forecast.json marked "simulated". Never the paper's results.
   - C5 and C6 are not steps: they only print. C8, C9 and D7 call their functions.
 
@@ -80,6 +81,7 @@ STEPS = [
     ("D7", "src.layer2_results", ()),
     ("D8", "src.paper_figures", ("--layer2",)),     # figures 4 and 5 (C8's files)
     ("D8", "src.paper_figures", ()),                # all five, once B10's forecasts.csv exists
+    ("E6", "src.score_tables", ()),                 # the score tables E6 quotes, from B10's forecasts
     ("F2", "src.app_data", ()),                     # the web app's data files, after C8, C9 and B10
 ]
 
@@ -92,6 +94,7 @@ SIMULATED = {
     ("B10", ("--g", "1")): None,
     ("B10", ("--g", "3")): None,
     ("D8", ()): ("--preview", config.FORECASTS_SIMULATED.relative_to(config.ROOT).as_posix()),
+    ("E6", ()): None,                               # reads only the real forecasts.csv
 }
 
 # Files someone saved by hand into data/raw/ (each has a note there saying where from),
@@ -130,6 +133,8 @@ def skip_reason(step, simulate=False):
                 f"(team drive only, rule 11); {have} {config.CASES_WEEKLY.name} from the drive")
     if task == "D8" and not args and not config.FORECASTS.exists():
         return f"figures 1-3 need B10's {config.FORECASTS.name} (the --layer2 step drew 4 and 5)"
+    if task == "E6" and not config.FORECASTS.exists():
+        return f"needs B10's {config.FORECASTS.name}"
     if task == "B10":
         if not config.CASES_WEEKLY.exists():
             return f"needs A13's {config.CASES_WEEKLY.name}"

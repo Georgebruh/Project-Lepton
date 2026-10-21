@@ -1731,6 +1731,88 @@ def f9_scores():
             f"{primary['low']:+.2f} to {primary['high']:+.2f}) equal d8_fig2_mae.csv")
 
 
+def e6_score_tables():
+    """D1-D6's score tables for E6 (src/score_tables.py) agree with B10's forecasts and D8's tables.
+
+    d1_scores.csv: each window holds as many target weeks as forecasts.csv has in its years;
+    each model's MAE over the MAE years equals its "MAE by model" row in d8_fig2_mae.csv;
+    M4's and M3's Brier scores over 2022-2026 equal those in d8_fig3_reliability.csv. The
+    all-years comparisons cover every target week. All files round to 4 decimals.
+    SKIP until B10's forecasts, D8's tables and the score tables are on this computer.
+    """
+    need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
+    need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
+    need_file(config.D8_FIG3_TABLE, "D8 (python -m src.paper_figures)")
+    for path in (config.D_SCORES, config.D_TESTS_ALL_YEARS):
+        need_file(path, "E6's score tables (python -m src.score_tables)")
+    rerun = "rerun python -m src.paper_figures and python -m src.score_tables on the same forecasts.csv"
+    tolerance = 1e-4   # one unit in the 4th decimal, the rounding of every file
+
+    forecasts = pd.read_csv(config.FORECASTS, usecols=["model", "week_index", "year"])
+    table = pd.read_csv(config.D_SCORES)
+    windows = {"MAE years": config.MAE_YEARS, "prob years": config.PROB_SCORE_YEARS, "all years": config.ALL_YEARS}
+    for window, years in windows.items():
+        expected = forecasts.loc[forecasts["year"].isin(years), "week_index"].nunique()
+        found = set(table.loc[table["window"] == window, "weeks"])
+        assert found == {expected}, f"{window}: d1_scores.csv has weeks {found}, forecasts.csv {expected}: {rerun}"
+
+    point = table[table["window"] == "MAE years"].set_index("model")["mae"]
+    fig2 = pd.read_csv(config.D8_FIG2_TABLE)
+    by_model = fig2[fig2["part"] == "MAE by model"].set_index("name")["value"]
+    assert set(point.index) == set(by_model.index), f"models differ from d8_fig2_mae.csv: {rerun}"
+    for model, mae in by_model.items():
+        assert abs(point[model] - mae) <= tolerance, f"{model}: MAE {point[model]}, d8_fig2_mae.csv {mae}: {rerun}"
+
+    brier = table[table["window"] == "prob years"].set_index("model")["brier"]
+    fig3 = pd.read_csv(config.D8_FIG3_TABLE).drop_duplicates("model").set_index("model")["brier"]
+    for model, value in fig3.items():
+        assert abs(brier[model] - value) <= tolerance, f"{model}: Brier {brier[model]}, d8_fig3_reliability.csv {value}: {rerun}"
+
+    all_years = pd.read_csv(config.D_TESTS_ALL_YEARS)
+    weeks_all = forecasts.loc[forecasts["year"].isin(config.ALL_YEARS), "week_index"].nunique()
+    assert set(all_years["weeks"]) == {weeks_all}, f"d5_d6_all_years.csv weeks {set(all_years['weeks'])}, not {weeks_all}: {rerun}"
+    return (f"{len(point)} models' MAE equal d8_fig2_mae.csv and {len(fig3)} Brier scores d8_fig3_reliability.csv; "
+            f"windows of {', '.join(str(int(table.loc[table['window'] == w, 'weeks'].iloc[0])) for w in windows)} weeks")
+def f13_noah_map():
+    """F13: the map's NOAH overlay (app/public/data/noah_<T>yr.json) still shows A8's flood maps.
+
+    F2 writes each of NOAH's three maps simplified for the browser (app_data.noah_overlay).
+    Each file must hold the three hazard levels (var 1-3) as polygons, carry today's settings
+    (config.APP_NOAH_MIN_M2 and APP_NOAH_SIMPLIFY_M, so a file left from older settings fails),
+    and keep a share of A8's flooded area within config.APP_NOAH_AREA_KEPT: the overlay drops
+    patches smaller than APP_NOAH_MIN_M2, so it shows a little less than the full map (C2 and
+    every number use the full map). Shapes are not checked for validity: rounding to
+    config.APP_COORD_DECIMALS can make a patch touch itself, which the map draws without trouble.
+    """
+    need_file(config.NOAH_FLOOD, "A8 (python -m src.noah)")
+    paths = {t: config.APP_DATA / config.APP_NOAH_FILE.format(return_period=t) for t in config.NOAH_RETURN_PERIODS}
+    for path in paths.values():
+        need_file(path, "F2 (python -m src.app_data)")
+
+    import geopandas as gpd
+
+    from src import app_data
+
+    # A8's file keeps each level's area (km2): no need to read its 2 million points
+    full_km2 = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard", ignore_geometry=True).groupby("return_period")["area_km2"].sum()
+    low, high = config.APP_NOAH_AREA_KEPT
+    rerun = "rerun python -m src.app_data"
+    kept = {}
+    for t, path in paths.items():
+        overlay = gpd.read_file(path)
+        assert sorted(overlay["var"]) == list(config.NOAH_HAZARD_LEVELS), (
+            f"{path.name} holds levels {sorted(overlay['var'])}, expected {list(config.NOAH_HAZARD_LEVELS)}")
+        for name, value in app_data.noah_settings().items():
+            assert name in overlay and (overlay[name] == value).all(), (
+                f"{path.name} was not made with {name} = {value}, today's setting in config: {rerun}")
+        assert overlay.geom_type.isin(["Polygon", "MultiPolygon"]).all() and not overlay.is_empty.any(), (
+            f"{path.name}: a hazard level without polygons")
+        kept[t] = overlay.to_crs(config.CRS_OVERLAY).area.sum() / 1e6 / full_km2[t]
+        assert low <= kept[t] <= high, (
+            f"{path.name} keeps {kept[t]:.1%} of A8's flooded area, outside {low:.0%} to {high:.1%}: {rerun}")
+    return ", ".join(f"{t}-year {share:.1%}" for t, share in kept.items()) + " of A8's flooded area"
+
+
 def not_built(task):
     """Make a placeholder check for a task that has not been done yet."""
     def check():
@@ -1766,6 +1848,8 @@ CHECKS = {
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
+    "E6 score tables": e6_score_tables,
+    "F13 NOAH map": f13_noah_map,
     "E10 package": e10_package,
 }
 
