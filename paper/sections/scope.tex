@@ -1,0 +1,192 @@
+% E4 (SCRUM-25): Scope and Limitations.
+% Scope = the core in lepton-plan.md's overview, as built: decision-tree row "QC weekly counts
+% by onset week", option C, g = 2 (Notes.md 1.5); Kristine added as a fourth storm (Notes.md
+% 1.1; confirmed for E4 on 2026-10-21). Limitations = every item the plan cut, plan corrections
+% 1, 2, 8 and 9, the assumptions table (tables/assumptions.tex), Notes.md sections 1-3 and the
+% decision tree's "say in the paper" line for option C.
+% Numbers: results/forecasts.csv (454 forecasts per model, 349 in the MAE window, M3's 1,065
+% for 2018 week 31, the 1.5-case threshold), results/c8_observed_runs.csv (Carina 120.0 mm,
+% R0 119.7 mm, 1,414 exposed), results/m3_reproduction.md, data/raw/qcesd.md (207 published,
+% 264 in the list, 17 days), data/raw/noah.md (11 barangays, 542 people), Notes.md 1.5
+% (83, 163, 176 and 775 cases), config.py.
+\section{Scope and Limitations}\label{sec:scope}
+
+\subsection{Scope}\label{sec:scope-scope}
+
+This study covers Quezon City only. QCESD shared a list of the city's leptospirosis cases with
+each case's date of onset, which supports weekly forecasting; the Cebu City surveillance data we
+obtained are annual, too coarse to follow a storm. Results may therefore not carry over to
+cities with different drainage, climate or reporting. We use QCESD's list only as weekly counts
+by week of onset (CDC/MMWR weeks), and no case-level record is published.
+
+\emph{Layer 1} forecasts next week's number of cases in QC by week of onset, with a 90\% range
+and the probability that the count exceeds the epidemic threshold, which we set at the same
+week's mean plus two standard deviations over up to five recent non-COVID years. We compare
+four models: two seasonal baselines, M0 (the count 52 weeks earlier) and M1 (the same week's
+average over the threshold's years); the published Prophet--XGBoost hybrid, M3
+\parencite{latigay2026}, which we first reproduced on its own national data
+\parencite{parreno2023}; and our negative binomial regression, M4, which we also refit without
+its flood exposure index to test whether flood exposure adds accuracy. In a weekly
+rolling-origin backtest every model made 454 one-week-ahead forecasts, for the weeks from
+14--20 January 2018 to 20--26 September 2026. The primary endpoint is M4's mean absolute error
+against M3's over the 349 forecasts outside the COVID-19 years 2020--2021, with a 95\%
+moving-block bootstrap interval \parencite{kunsch1989}.
+
+\emph{Layer 2} counts, for each of QC's 142 barangays, the residents in each hazard level of
+Project NOAH's 5-, 25- and 100-year flood maps \parencite{noah_nd}, from the WorldPop 2024
+population grid \parencite{bondarenko2025} fitted to the 2024 census
+\parencite{psa_census2024}. A storm's rain over the river catchments that drain into the city,
+set against that rain's return levels, decides how many of those residents it exposes. The
+exposed residents then become stock under DM~\mbox{2023-0309} \parencite{doh2023}: doxycycline 100~mg
+capsules for adults by risk tier, courses for children and amoxicillin 500~mg tablets for
+pregnant women, per barangay and per health center. These are stock-planning figures, not
+prescriptions.
+
+We ran Layer 2 on four storms: Typhoon Carina (July 2024), Severe Tropical Storm Kristine
+(October 2024), the July 2025 floods and the August 2026 habagat floods. Each ran on observed
+satellite rain from NASA's IMERG \parencite{huffman2024} and on ECMWF forecasts issued one, two
+and three days before its rain, from Open-Meteo's archive \parencite{zippenfenig2023}. Observed
+rain is set against IMERG's own return levels and forecast rain against ERA5's
+\parencite{hersbach2020}, because the two products differ in scale. Kristine was not in our
+proposal: we added it because IMERG puts Carina's rain at the no-flood floor
+(Section~\ref{sec:limitations}), so Carina alone could not show the chain at work. Each run is
+compared with the barangays that city and news reports named as flooded. LEPTON is meant as a
+decision-support tool for health offices, not a replacement for clinical judgment.
+
+\subsection{Limitations}\label{sec:limitations}
+
+We group the limitations by the part of the study they affect. Table~\ref{tab:assumptions}, in
+Appendix~\ref{app:assumptions}, lists every assumption behind them, with its value and how we
+tested it.
+
+\paragraph{Case data}
+QCESD's list gives each case's dates of onset and admission but not the date the case was
+reported, so we cannot rebuild what the office knew on each forecast day. We therefore forecast
+cases by week of onset from final counts and, at each forecast, hide the last two weeks of
+counts from every model, as if they had not been reported yet. Two weeks is our assumption,
+since QCESD's reporting delay is not known. The backtest therefore uses final counts with a
+two-week guard, and real-time accuracy may be lower. Counts published during a surge show the
+gap: QCESD's total for 1 January to 3 August 2025 was 207 cases \parencite{herriman2025}, while
+the final list holds 264 cases admitted by then. We call a week final once 17 days have passed
+since it ended, because 99\% of cases were admitted within 17 days of onset; the delay from
+admission to report is unknown, so this is a lower bound, and the weeks after 20--26 September
+2026 are left out as still filling in. Without report dates we also cannot nowcast those weeks,
+which a live system would need.
+
+Surveillance data likely undercount leptospirosis. QC's early years are also small: 83, 163 and
+176 cases in 2015--2017, against 775 in 2018. If fewer facilities reported then, the thresholds
+and M1 forecasts that average over those years are too low; the first threshold of 2018 is 1.5
+cases a week. The list's own morbidity-week column changes meaning between years, so we take
+every week from the date of onset. The COVID-19 years 2020--2021 carry an indicator in M4, are
+not threshold reference years and are left out of headline scores; all years are also scored,
+as a check \checkme{the all-years scores are not in results/ yet (E6)}. Leaving them out joins 2019 directly to 2022 in the block bootstrap, once in 349
+weeks. Finally, large surges are few, and the three largest came in the last three years, so no
+model has many outbreaks to learn from.
+
+\paragraph{Rain and flood exposure}
+Satellite rain under-reads typhoons. In five typhoon rain events in the Philippines, IMERG
+considerably underestimated the rain that gauges recorded \parencite{aryastana2022}, and
+calibrating it against Philippine gauges brings it closer to them \parencite{veloria2021}.
+Carina shows the cost: on
+IMERG, its wettest three days over the catchments total 120.0~mm, at the no-flood floor $R_0$
+of 119.7~mm, so its observed-rain run exposes about 1,400 residents and sizes almost no stock,
+even though QC's cases surged one to two weeks later. Gauge-calibrated products track
+Philippine typhoon rain more closely \parencite{bagtasa2022}, but switching would mean a new
+26-year download, and IMERG's Final run arrives about three and a half months late, too late
+for August 2026. ERA5, whose return levels judge the forecasts, also underestimates the highest
+observed totals, with its largest errors in the tropics \parencite{lavers2022}; because each product is
+judged on its own scale, this moves where a forecast falls but favors neither run.
+
+We measure a storm by its wettest three consecutive days of IMERG rain over the catchments,
+from the daily product on UTC days rather than a rolling 24-hour maximum, which would need
+about 440,000 half-hourly files. A single wettest day missed the long habagat floods of 2025
+and 2026, so we use three-day totals and keep the single day as a comparison. NOAH's maps do
+not state the duration of the rain they were drawn for, so neither choice can be tied to the
+maps. Return levels rest on 18 to 26 years of IMERG, depending on the year: in a simulation with
+25 years of annual maxima, 90\% of fitted 25-year levels fell between 16\% below and 14\% above
+the true value, which moves where a storm falls between the maps, and fewer years widen that
+range. Below the floor $R_0 = 0.5\,\hat{R}(5)$, half the five-year rain, nobody counts as
+exposed; it is a starting value we did not tune, because tuning needs floods that the city's
+disaster office has listed.
+
+The flood maps are static scenarios, not observed floods. NOAH's 100-year map is a later release
+whose flood shapes are thinner in places: in 11 barangays a rarer map puts fewer residents in
+flood zones than the five-year map does, by at most 542 people (San Jose, on the 100-year map).
+We used the maps as published. WorldPop's counts are modeled, from a release (R2025A) that
+WorldPop calls an alpha, and we apply the 2020 census's age shares to 2024 totals. The flood
+exposure index is therefore a proxy for exposure, not a measure of it.
+
+\paragraph{Models and evaluation}
+We could not reproduce the benchmark's published gain. On its own national data, our seasonal
+naive forecast matched all eight of the paper's published scores for it, so the data and the
+scored weeks agree, and our Prophet came within 4.4\% of its published mean absolute error
+(24.73 against 23.68). Our hybrid's error, however, was 24.60 against the published 16.72,
+about the same as Prophet alone, and none of the 75 XGBoost settings we tried came within 10\%.
+Training XGBoost also on the forecast weeks' own errors, which a real forecast cannot know,
+gives errors like the paper's; without the authors' code we cannot tell whether that happened.
+M4 is therefore compared with our reproduction of M3, and we do not quote 16.72 as M3's
+accuracy. Ported to QC, M3 is also fragile early in the backtest, when only 2015--2017 lie
+behind it: it forecast 1,065 cases for the week of 29 July--4 August 2018, which had 58.
+
+The epidemic threshold is our own choice, and QCESD's method may differ. We forecast one week
+ahead only. Interval and breach scores start in 2022, because each model's forecast spread is
+estimated from its own past forecasts, which need a warm-up.
+
+\paragraph{Prophylaxis stock}
+We size stock by the regimens of DM~\mbox{2023-0309} \parencite{doh2023}. Its moderate-risk group, adults with a wound or
+with floodwater in the eyes, nose or mouth, cannot be counted from any data we have, so for
+short floods we report the share $w$ of exposed adults in it at 0, 0.5 and 1; the first and
+last are bounds. A flood lasting two days or more makes every exposed adult high risk, our
+reading of continuous exposure, tested at one and three days. The memo makes doxycycline, 4~mg
+per kg up to 200~mg, the first-line regimen for every child, so children are counted in courses
+that a pharmacy turns into tablets by weight. Pregnant women's stock is amoxicillin 500~mg twice
+a day for three days, from section II.B.2.b of the memo; PhilHealth's 2012 recommendations give
+no prophylaxis regimen for pregnant women \parencite{philhealth2012}, so this regimen rests on
+the memo alone, and women allergic to penicillin, who take erythromycin instead, are not stocked
+separately. Lactating women are not counted apart from other adults: the census tables cannot
+count them, and the memo gives them no regimen.
+
+Pregnant women are estimated as 0.75 times the registered births to mothers living in QC, split
+among barangays by their share of women aged 15--49; the registrations are not adjusted for
+under-registration \parencite{psa_births2026}. We count every resident of a flooded zone as
+touching the water, at any depth, and report stock at full coverage; a health office scales the
+totals by the share of residents it expects to reach. Flood durations come from city and news
+reports and may be off by a day (tested at $\pm1$ day); Kristine's one-day flood rests on
+reports from 24 October only. A forecast cannot know how long the flood will last, so the
+forecast runs report a one-day and a seven-day flood. Stock goes to the 66 health centers that
+the national facility registry places inside their own barangays; the City Health Office is
+treated as holding the city's stock rather than handing it out.
+
+Finally, Layer 2 is checked against flood reports, not against cases. The reports name 8 to 17
+flooded barangays per storm and are incomplete, and we call a barangay flagged when at least
+25\% of its residents live in zones the rain floods (50\% is also reported), a line we chose
+because every barangay has some residents in the five-year zones \checkme{the team confirms
+the 25\% and 50\% flag rule, Notes.md 1.2}. The storm runs are therefore demonstrations, not
+validations: we used no barangay case counts, and four storms are too few to measure forecast
+error. LEPTON estimates stock needs, not supply chains, delivery or uptake, and every dose
+figure in this paper is a stock-planning figure, not a prescription: DM~\mbox{2023-0309} requires a
+physician's consultation before any prophylaxis.
+
+\subsection{Not Covered: Future Work}\label{sec:future}
+
+To finish within the competition's schedule we cut several parts of our original plan. We name
+them so that no result is read as covering them:
+\begin{itemize}
+  \item other cities, Cebu City first, each of which needs weekly case counts of its own;
+  \item running LEPTON live each week, which needs counts as they arrive and report dates to
+    nowcast the weeks still filling in;
+  \item forecasting two weeks ahead, and two more models: Prophet alone (M2) and an XGBoost
+    model (M5) \checkme{confirm that M2 is Prophet alone, from Implementation Plan v2};
+  \item Layer 1 forecasts that also use the rain forecast for the coming week, with observed
+    rain as their ceiling \checkme{confirm this reading of v2's ``forecast-weather and
+    observed-weather ceiling runs''};
+  \item other population and flood maps: Meta's population map and the LiDAR-based flood maps
+    on LiPAD;
+  \item the full sensitivity analysis, of which only the tests in Table~\ref{tab:assumptions}
+    were run;
+  \item tuning the no-flood floor $R_0$ on floods the city's disaster office has listed;
+  \item a distributed-lag non-linear model of rain and cases;
+  \item checking flagged barangays against satellite flood maps (Sentinel-1) and against
+    barangay case counts; and
+  \item forecasting hospital demand.
+\end{itemize}

@@ -1,0 +1,295 @@
+% References for the LEPTON paper, APA 7th edition through biblatex-apa (task E7 owns this
+% file; E4 added the works it cites). Titles are in sentence case, with proper nouns in braces
+% so biblatex-apa keeps their capitals. Each entry was checked against its source on
+% 2026-10-21 unless its comment says otherwise.
+
+% --- Health and disease ----------------------------------------------------------------
+
+@online{cdc2026,
+  author       = {{Centers for Disease Control and Prevention}},
+  title        = {About leptospirosis},
+  date         = {2026-02-10},
+  url          = {https://www.cdc.gov/leptospirosis/about/index.html},
+}
+% The proposal's URL (.../leptospirosis/index.html) now answers 404; this is the same page.
+
+@article{matsushita2018,
+  author       = {Matsushita, Naohiko and Ng, Chris Fook Sheng and Kim, Yoonhee and Suzuki, Motoi
+                  and Saito, Nobuo and Ariyoshi, Koya and Salva, Eumelia P. and Dimaano, Efren M.
+                  and Villarama, Jose B. and Go, Winston S. and Hashizume, Masahiro},
+  title        = {The non-linear and lagged short-term relationship between rainfall and
+                  leptospirosis and the intermediate role of floods in the {Philippines}},
+  journaltitle = {PLOS Neglected Tropical Diseases},
+  date         = {2018},
+  volume       = {12},
+  number       = {4},
+  eid          = {e0006331},
+  doi          = {10.1371/journal.pntd.0006331},
+}
+
+@article{interior2025,
+  author       = {Interior, Jasmine Soco and Bigay-Iringan, Kyrsten Jannae Jimenez
+                  and Bondad-Delson, Ria Nicole Dulaycan and Iringan, Remigo Angelo Argayoso
+                  and Calderon, Xiara Mei Sandoval and Castro, Anna Gabriele Perez},
+  title        = {Leptospirosis in the {Philippines}},
+  subtitle     = {Confronting the structural roots of a recurring threat},
+  journaltitle = {Pathogens},
+  date         = {2025},
+  volume       = {14},
+  number       = {10},
+  eid          = {963},
+  doi          = {10.3390/pathogens14100963},
+}
+% The proposal printed one author as "Iringan, R. a. A."; PMC12567350 gives Remigo Angelo
+% Argayoso Iringan.
+
+@report{doh2023,
+  author       = {{Department of Health}},
+  title        = {Guidelines on the prevention, control, management, and surveillance of
+                  leptospirosis},
+  type         = {Department Memorandum},
+  number       = {2023-0309},
+  date         = {2023-08-14},
+}
+% Full text received October 10, 2026 (lepton-plan.md, "Sources and papers to obtain").
+
+@report{philhealth2012,
+  author       = {{Philippine Health Insurance Corporation}},
+  title        = {{PhilHealth} policy recommendations on diagnosis, management and prevention
+                  of leptospirosis},
+  date         = {2012},
+  url          = {https://www.philhealth.gov.ph/partners/providers/pdf/Leptospirosis_Policy_Statements.pdf},
+}
+% The PDF is dated 31 August 2012 in its properties and cites the Leptospirosis CPG 2010.
+
+@online{herriman2025,
+  author       = {Herriman, Robert},
+  title        = {Philippines},
+  subtitle     = {Sharp rise in leptospirosis reported in {Quezon City}},
+  date         = {2025-08-08},
+  organization = {Outbreak News Today},
+  url          = {https://outbreaknewstoday.substack.com/p/philippines-sharp-rise-in-leptospirosis},
+}
+% Gives QCESD's 207 cases and 24 deaths, 1 January to 3 August 2025. The city's own release of
+% 3 August 2025 gives 178 cases to 30 July.
+
+@dataset{qcesd2026,
+  author       = {{Quezon City Health Department, Epidemiology and Surveillance Division}},
+  title        = {Leptospirosis case list, {Quezon City}, 2015--2026},
+  titleaddon   = {Unpublished raw data},
+  date         = {2026},
+}
+% Received by e-mail on October 20, 2026 (data/raw/qcesd.md); used as weekly counts only.
+
+% --- Forecasting -----------------------------------------------------------------------
+
+@incollection{latigay2026,
+  author       = {Latigay, J. G. and Gonzaga, A. C.},
+  title        = {A hybrid {Prophet-XGBoost} model for weekly leptospirosis forecasting in the
+                  {Philippines}},
+  booktitle    = {{2026 22nd IEEE International Colloquium on Signal Processing \& Its
+                  Applications (CSPA)}},
+  date         = {2026},
+  pages        = {148--153},
+  publisher    = {IEEE},
+  doi          = {10.1109/CSPA68262.2026.11517740},
+}
+% Authors' initials as in the submitted proposal. @incollection, not @inproceedings: with no
+% editor, biblatex-apa prints @inproceedings like a journal article; this keeps the
+% proposal's "In ... (pp. 148-153). IEEE." form, APA 7's form for proceedings in a book.
+
+@article{imai2015,
+  author       = {Imai, Chisato and Hashizume, Masahiro},
+  title        = {A systematic review of methodology},
+  subtitle     = {Time series regression analysis for environmental factors and infectious
+                  diseases},
+  journaltitle = {Tropical Medicine and Health},
+  date         = {2015},
+  volume       = {43},
+  number       = {1},
+  pages        = {1--9},
+  doi          = {10.2149/tmh.2014-21},
+}
+
+@article{kunsch1989,
+  author       = {Künsch, H. R.},
+  title        = {The jackknife and the bootstrap for general stationary observations},
+  journaltitle = {The Annals of Statistics},
+  date         = {1989},
+  volume       = {17},
+  number       = {3},
+  pages        = {1217--1241},
+  doi          = {10.1214/aos/1176347265},
+}
+% As in the submitted proposal.
+
+@dataset{parreno2023,
+  author       = {Parreño, S. J.},
+  title        = {Philippine epidemiological data},
+  titleaddon   = {Data set},
+  version      = {1},
+  date         = {2023},
+  publisher    = {Mendeley Data},
+  doi          = {10.17632/v98325dpxv.1},
+}
+
+% --- Rain ------------------------------------------------------------------------------
+
+@dataset{huffman2024,
+  author       = {Huffman, G. J. and Stocker, E. F. and Bolvin, D. T. and Nelkin, E. J.
+                  and Tan, J.},
+  title        = {{GPM IMERG Late Precipitation L3} 1 day 0.1 degree x 0.1 degree {V07}},
+  titleaddon   = {Data set},
+  date         = {2024},
+  publisher    = {{Goddard Earth Sciences Data and Information Services Center}},
+  doi          = {10.5067/GPM/IMERGDL/DAY/07},
+}
+
+@article{hersbach2020,
+  author       = {Hersbach, H. and Bell, B. and Berrisford, P. and Hirahara, S. and Horányi, A.
+                  and Muñoz-Sabater, J. and Nicolas, J. and Peubey, C. and Radu, R.
+                  and Schepers, D. and Simmons, A. and Soci, C. and Abdalla, S. and Abellan, X.
+                  and Balsamo, G. and Bechtold, P. and Biavati, G. and Bidlot, J. and Bonavita, M.
+                  and De Chiara, G. and Dahlgren, P. and Dee, D. and Diamantakis, M.
+                  and Dragani, R. and Flemming, J. and Forbes, R. and Fuentes, M. and Geer, A.
+                  and Haimberger, L. and Healy, S. and Hogan, R. J. and Hólm, E.
+                  and Janisková, M. and Keeley, S. and Laloyaux, P. and Lopez, P. and Lupu, C.
+                  and Radnoti, G. and de Rosnay, P. and Rozum, I. and Vamborg, F.
+                  and Villaume, S. and Thépaut, J.-N.},
+  title        = {The {ERA5} global reanalysis},
+  journaltitle = {Quarterly Journal of the Royal Meteorological Society},
+  date         = {2020},
+  volume       = {146},
+  number       = {730},
+  pages        = {1999--2049},
+  doi          = {10.1002/qj.3803},
+}
+% APA 7 prints the first 19 authors, an ellipsis and the last; those 20 match the proposal.
+% The 23 in between are not printed and were not checked.
+
+@software{zippenfenig2023,
+  author       = {Zippenfenig, P.},
+  title        = {{Open-Meteo.com Weather API}},
+  titleaddon   = {Computer software},
+  date         = {2023},
+  publisher    = {Zenodo},
+  doi          = {10.5281/ZENODO.7970649},
+}
+% The APA citation Open-Meteo's licence page gives (lepton-plan.md, sources opened October 12).
+
+@article{aryastana2022,
+  author       = {Aryastana, P. and Liu, C.-Y. and Jou, B. J.-D. and Cayanan, E. and Punay, J. P.
+                  and Chen, Y.-N.},
+  title        = {Assessment of satellite precipitation data sets for high variability and rapid
+                  evolution of typhoon precipitation events in the {Philippines}},
+  journaltitle = {Earth and Space Science},
+  date         = {2022},
+  volume       = {9},
+  number       = {9},
+  eid          = {e2022EA002382},
+  doi          = {10.1029/2022EA002382},
+}
+% Authors and details of this and the next three entries as in Notes.md section 3; their
+% abstracts were read on 2026-10-21 (Semantic Scholar), the full texts were not.
+
+@article{veloria2021,
+  author       = {Veloria, A. and Perez, G. J. and Tapang, G. and Comiso, J.},
+  title        = {Improved rainfall data in the {Philippines} through concurrent use of {GPM IMERG}
+                  and ground-based measurements},
+  journaltitle = {Remote Sensing},
+  date         = {2021},
+  volume       = {13},
+  number       = {15},
+  eid          = {2859},
+  doi          = {10.3390/rs13152859},
+}
+
+@article{bagtasa2022,
+  author       = {Bagtasa, G.},
+  title        = {Assessment of tropical cyclone rainfall from {GSMaP} and {GPM} products and their
+                  application to analog forecasting in the {Philippines}},
+  journaltitle = {Atmosphere},
+  date         = {2022},
+  volume       = {13},
+  number       = {9},
+  eid          = {1398},
+  doi          = {10.3390/atmos13091398},
+}
+
+@article{lavers2022,
+  author       = {Lavers, D. A. and Simmons, A. and Vamborg, F. and Rodwell, M. J.},
+  title        = {An evaluation of {ERA5} precipitation for climate monitoring},
+  journaltitle = {Quarterly Journal of the Royal Meteorological Society},
+  date         = {2022},
+  volume       = {148},
+  number       = {748},
+  pages        = {3152--3165},
+  doi          = {10.1002/qj.4351},
+}
+
+@online{pagasa_nd,
+  author       = {{Philippine Atmospheric, Geophysical and Astronomical Services Administration}},
+  shortauthor  = {PAGASA},
+  title        = {Tropical cyclone information},
+  url          = {https://www.pagasa.dost.gov.ph/climate/tropical-cyclone-information},
+  urldate      = {2026-10-12},
+}
+% As in the submitted proposal.
+
+% --- Place, maps and people -------------------------------------------------------------
+
+@article{abon2011,
+  author       = {Abon, C. C. and David, C. P. C. and Pellejera, N. E. B.},
+  title        = {Reconstructing the {Tropical Storm Ketsana} flood event in {Marikina River},
+                  {Philippines}},
+  journaltitle = {Hydrology and Earth System Sciences},
+  date         = {2011},
+  volume       = {15},
+  number       = {4},
+  pages        = {1283--1289},
+  doi          = {10.5194/hess-15-1283-2011},
+}
+
+@dataset{noah_nd,
+  author       = {{UP NOAH Center}},
+  title        = {Flood hazard maps of {Metro Manila}, 5-, 25- and 100-year rain return},
+  titleaddon   = {Data set},
+  publisher    = {University of the Philippines Resilience Institute},
+  url          = {https://noah.up.edu.ph},
+  urldate      = {2026-10-15},
+}
+% Downloaded through NOAH's "Downloads" link (data/raw/noah.md); ODbL.
+
+@dataset{bondarenko2025,
+  author       = {Bondarenko, M. and Priyatikanto, R. and Tejedor-Garavito, N. and Zhang, W.
+                  and McKeen, T. and Cunningham, A. and Woods, T. and Hilton, J. and Cihan, D.
+                  and Nosatiuk, B. and Brinkhoff, T. and Tatem, A. and Sorichetta, A.},
+  title        = {Constrained estimates of 2015--2030 total number of people per grid square at a
+                  resolution of 3 arc (approximately 100m at the equator)},
+  titleaddon   = {Data set},
+  version      = {R2025A v1},
+  date         = {2025},
+  publisher    = {WorldPop, University of Southampton},
+  doi          = {10.5258/SOTON/WP00839},
+}
+
+@dataset{psa_census2024,
+  author       = {{Philippine Statistics Authority}},
+  title        = {2024 {Census of Population}},
+  subtitle     = {Population by barangay, {National Capital Region}},
+  titleaddon   = {Data set},
+  url          = {https://psa.gov.ph/content/2024-census-population-popcen-population-counts-declared-official-president},
+  urldate      = {2026-10-15},
+}
+
+@dataset{psa_births2026,
+  author       = {{Philippine Statistics Authority}},
+  title        = {Number of registered live births by place of occurrence, usual residence of
+                  mother, sex of the child, and by region, province, and city/municipality,
+                  {Philippines}},
+  subtitle     = {2024},
+  titleaddon   = {Data set, {OpenSTAT} table {1A1ABIB8}},
+  date         = {2026},
+  url          = {https://openstat.psa.gov.ph},
+  urldate      = {2026-10-17},
+}

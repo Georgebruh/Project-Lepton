@@ -1,0 +1,42 @@
+% E4 (SCRUM-25): Background. Starts from the submitted proposal's Background (lepton-plan.md,
+% task E4). Every source was opened and checked on 2026-10-21.
+% Numbers: QC's cases are QCESD's weekly counts by onset week (results/forecasts.csv, column y,
+% weeks from epiweeks); 4,953 cases and the onset dates are in data/raw/qcesd.md; storm dates
+% are config.STORMS (data/raw/storm-facts.md); the census total is config.CENSUS_POP_QC.
+\section{Background}\label{sec:background}
+
+Leptospirosis is a bacterial disease that people catch from animals. The bacteria spread
+through the urine of infected animals, and people are infected through contact with water or
+soil that holds it; the risk is higher after typhoons, heavy rain and floods
+\parencite{cdc2026}. The Philippines has all three every year: an average of 20 tropical
+cyclones enter the Philippine Area of Responsibility, and 8 or 9 of them cross the country
+\parencite{pagasa_nd}. In Manila, weekly hospital admissions for leptospirosis from 2001 to
+2012 rose with rainfall and peaked two weeks after it, and floods explained part of that rise
+\parencite{matsushita2018}.
+
+Quezon City (QC) is the most populous city in the country, with 3,084,270 residents in the
+2024 census \parencite{psa_census2024}. Its low-lying barangays line the Marikina, San Juan
+and Tullahan rivers, and floods on the Marikina are driven by rain over its upper watershed,
+outside the city \parencite{abon2011}. The city's Epidemiology and Surveillance Division
+(QCESD) recorded 4,953 leptospirosis cases with dates of onset from January 2015 to
+mid-October 2026 \parencite{qcesd2026}. Its three largest surges each peaked one to two weeks
+after a flood: 125 cases had their onset in the week of 4--10 August 2024, after Typhoon Carina
+flooded the city on 23--25 July; 179 in the week of 27 July--2 August 2025, after the floods of
+19--24 July; and 223 in the week of 23--29 August 2026, after the habagat (southwest monsoon)
+floods of 8--11 August.
+
+Time-series regression is a common design for relating weather to infectious-disease counts
+over short lags \parencite{imai2015}. For leptospirosis in the Philippines,
+\textcite{latigay2026} combined Prophet with XGBoost on national weekly counts
+\parencite{parreno2023} and reported a lower forecast error than Prophet alone or a seasonal
+naive forecast. They also observed that standard statistical models over-smooth surveillance
+data: they capture the seasonal trend but miss the sharp peaks that define an outbreak.
+
+The Department of Health (DOH) also recommends doxycycline prophylaxis for people exposed to
+floodwater, sized to their exposure. Department Memorandum (DM) No.~\mbox{2023-0309} gives one dose after a
+single exposure with no break in the skin, a 3- to 5-day course after exposure with a wound or
+with floodwater in the eyes, nose or mouth, and a weekly dose while exposure is repeated or
+continuous; children and pregnant women have regimens of their own, and a physician must be
+consulted before any prophylaxis is given \parencite{doh2023}. Because each regimen follows
+from a person's exposure, the stock a health center needs after a flood follows from how many
+of its residents the flood reaches, and for how long.
