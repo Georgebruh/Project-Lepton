@@ -104,6 +104,7 @@ The paper's LaTeX source is in `paper/`; its README says how to build it (Overle
 | E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
 | E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table B1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
 | E6 | none: `sections/results.tex` in `paper/`, with D8's figures 1-4 copied into `paper/figures/`. Its numbers come from `results/`: B10's guard reruns (`python -m src.backtest --g 1`, `--g 3`), then `python -m src.score_tables` (D1–D6 tables) and `python -m src.paper_figures` (D8); build as for E4 | `paper/main.pdf` (not in git) |
+| E9 | none: `sections/summary.tex` in `paper/`, the executive summary under the title (under 250 words, with D5's primary result). Its numbers are E6's, from `results/forecasts.csv`, `d8_fig2_mae.csv`, `d1_scores.csv` and `c9_forecast_runs.csv`; build as for E4 | `paper/main.pdf` (not in git) |
 
 ## App (Workstream F)
 
