@@ -1,0 +1,276 @@
+import type {
+  FilterSpecification,
+  LayerSpecification,
+  SkySpecification,
+  StyleSpecification,
+} from '@maplibre/maplibre-gl-style-spec'
+import type { MultiPolygon } from 'geojson'
+import type { Map as MapLibreMap } from 'maplibre-gl'
+import { shapeParts } from '../exposed/nearest.ts'
+import { SLOTS } from './layerOrder.ts'
+import type { Cities } from './mapData.ts'
+
+/*
+ * F13: the street map under LEPTON's data, OpenFreeMap's "Positron" style: OpenStreetMap data
+ * in the OpenMapTiles schema, free and with no key. The /map route's loader fetches the style
+ * once (fetchBaseStyle); CityMap adapts it to the app before making the map (mapStyle):
+ *   - land, water and roads take the Figma map colors (map/land, bg/inset, map/boundary);
+ *   - the base map's own city and town names inside NCR are hidden where LEPTON writes the
+ *     cities' names itself (from CITY_NAMES_ZOOM in), in Figtree, with next week's cases;
+ *     zoomed further out, LEPTON's names hide and the base map's come back;
+ *   - the globe projection: zoomed out, the map is the whole Earth.
+ * If the style cannot be fetched, the map draws on the plain background it had before F13, so
+ * LEPTON's data always shows.
+ *
+ * The Layers panel offers three base maps (setBase): the street map; satellite imagery
+ * (Sentinel-2 cloudless 2024 by EOX, 10 m pixels), with the street map's roads and names kept
+ * over it; and terrain, the street map with hill shading from elevation tiles (Mapzen Terrain
+ * Tiles on AWS). Each is added the first time it is chosen, in the base slot (layerOrder.ts).
+ */
+
+/** The base maps the Layers panel offers, the street map first (the address leaves it out). */
+export const BASE_MAPS = ['map', 'satellite', 'terrain'] as const
+export type BaseMap = (typeof BASE_MAPS)[number]
+
+/** How opaque LEPTON's fills are on each base map: over imagery or shading they let it show through (Figma notes). */
+export const DATA_OPACITY: Record<BaseMap, number> = { map: 1, terrain: 0.75, satellite: 0.6 }
+
+/** Satellite imagery: EOX's Sentinel-2 cloudless mosaic of 2024 (CC BY-NC-SA 4.0), sharpest at zoom 14. */
+const SATELLITE = 'satellite'
+const SATELLITE_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg'
+
+/** The satellite choice's picture in the Layers panel: the imagery's tile over Metro Manila at zoom 11. */
+export const SATELLITE_PREVIEW = SATELLITE_TILES.replace('{z}/{y}/{x}', '11/940/1712')
+const SATELLITE_CREDIT =
+  '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless 2024</a> by EOX ' +
+  '(contains modified Copernicus Sentinel data 2024)'
+
+/** Elevation for the hill shading: Mapzen's Terrain Tiles on AWS (terrarium encoding, SRTM in the Philippines). */
+const HILLSHADE = 'hillshade'
+const ELEVATION = 'elevation-hillshade'
+const ELEVATION_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+const ELEVATION_CREDIT =
+  'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>'
+
+/** How strongly the hills are shaded, 0 to 1: Metro Manila is low, but Marikina's valley and the Sierra Madre's foothills show. */
+const HILLSHADE_STRENGTH = 0.5
+
+/** The street map's ground the satellite imagery replaces; its roads and names stay over the imagery. */
+const GROUND_SOURCE_LAYERS = ['landcover', 'landuse', 'park', 'water', 'building', 'aeroway']
+
+/** The sources' names, for the Layers panel's credits line (the map's own credits link them). */
+export const CREDITS = {
+  street: 'Street map © OpenStreetMap contributors, OpenFreeMap',
+  satellite: 'Satellite: Sentinel-2 cloudless 2024 by EOX',
+  terrain: 'Terrain: Mapzen Terrain Tiles',
+}
+
+/** Per map, the street map's ground layers the satellite imagery hides (shown before it hid them). */
+const hiddenGround = new WeakMap<MapLibreMap, string[]>()
+
+/** OpenFreeMap's Positron style (checked 2026-10-21: no key, open to other sites). */
+const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
+
+/**
+ * How long the loader waits for the style before drawing the map without it, in ms. The map
+ * waits for the style, so this is the most a slow or blocked street map can delay LEPTON's
+ * data; the style is small and cached for a day, so it usually comes in well under a second.
+ */
+const BASE_STYLE_TIMEOUT_MS = 2000
+
+/** The style's tile source, and the credit its tiles need (OpenFreeMap's style leaves it empty). */
+const BASE_SOURCE = 'openmaptiles'
+const BASE_ATTRIBUTION =
+  '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
+  '<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> ' +
+  'Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+
+/** The base map's place names that LEPTON writes itself inside NCR: its cities and Pateros. */
+const NCR_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
+
+/**
+ * From this zoom in, LEPTON writes the NCR cities' names (CityMap); further out the 17 names
+ * would pile up, so they hide and the base map's own names (Manila, Quezon City) show instead.
+ */
+export const CITY_NAMES_ZOOM = 8.5
+
+/** The glow around the globe, gone by the time the map shows a region (zoom 7). */
+const SKY: SkySpecification = { 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }
+
+/** Fetches the street map's style; null if it does not come within BASE_STYLE_TIMEOUT_MS or is not a style. */
+export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), BASE_STYLE_TIMEOUT_MS)
+  try {
+    const res = await fetch(BASE_STYLE_URL, { signal: controller.signal })
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`)
+    }
+    const style = (await res.json()) as StyleSpecification
+    if (style.version !== 8 || !Array.isArray(style.layers)) {
+      throw new Error('not a MapLibre style')
+    }
+    return style
+  } catch (error) {
+    console.warn(`The street map did not load (${error}); the map draws on a plain background.`)
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** The colors the base map is drawn in, read from tokens.css: MapLibre draws on a canvas and cannot read CSS variables. */
+function mapColors(element: HTMLElement) {
+  const style = getComputedStyle(element)
+  const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
+  return {
+    land: color('map-land'),
+    water: color('bg-inset'),
+    road: color('map-boundary'),
+    /** The hill shading's dark and light sides. */
+    shadow: color('text-primary'),
+    highlight: color('bg-surface'),
+  }
+}
+
+type MapColors = ReturnType<typeof mapColors>
+
+/** The cities' outlines as one shape, to hide the base map's names inside it. */
+function ncrOutline(cities: Cities): MultiPolygon {
+  return { type: 'MultiPolygon', coordinates: cities.features.flatMap(({ geometry }) => shapeParts(geometry)) }
+}
+
+function addSatellite(map: MapLibreMap) {
+  map.addSource(SATELLITE, {
+    type: 'raster',
+    tiles: [SATELLITE_TILES],
+    tileSize: 256,
+    maxzoom: 14,
+    attribution: SATELLITE_CREDIT,
+  })
+  map.addLayer({ id: SATELLITE, type: 'raster', source: SATELLITE }, SLOTS.base)
+}
+
+function addHillshade(map: MapLibreMap) {
+  const colors = mapColors(map.getContainer())
+  map.addSource(ELEVATION, {
+    type: 'raster-dem',
+    tiles: [ELEVATION_TILES],
+    tileSize: 256,
+    maxzoom: 15,
+    encoding: 'terrarium',
+    attribution: ELEVATION_CREDIT,
+  })
+  map.addLayer(
+    {
+      id: HILLSHADE,
+      type: 'hillshade',
+      source: ELEVATION,
+      paint: {
+        'hillshade-shadow-color': colors.shadow,
+        'hillshade-accent-color': colors.shadow,
+        'hillshade-highlight-color': colors.highlight,
+        'hillshade-exaggeration': HILLSHADE_STRENGTH,
+      },
+    },
+    SLOTS.base,
+  )
+}
+
+function show(map: MapLibreMap, layer: string, visible: boolean) {
+  if (map.getLayer(layer)) {
+    map.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none')
+  }
+}
+
+/** The street map's ground layers that are showing now: the ones the satellite imagery hides. */
+function groundShown(map: MapLibreMap): string[] {
+  return map.getLayersOrder().filter((id) => {
+    const layer = map.getLayer(id)
+    return (
+      layer?.type === 'fill' &&
+      GROUND_SOURCE_LAYERS.includes(layer.sourceLayer ?? '') &&
+      map.getLayoutProperty(id, 'visibility') !== 'none'
+    )
+  })
+}
+
+/**
+ * Shows the base map `base`: the street map alone, the satellite imagery under the street map's
+ * roads and names (its ground hidden), or the street map with hill shading. Leaving the imagery
+ * shows again exactly the ground it hid.
+ */
+export function setBase(map: MapLibreMap, base: BaseMap) {
+  if (base === 'satellite' && !map.getLayer(SATELLITE)) {
+    addSatellite(map)
+  }
+  if (base === 'terrain' && !map.getLayer(HILLSHADE)) {
+    addHillshade(map)
+  }
+  show(map, SATELLITE, base === 'satellite')
+  show(map, HILLSHADE, base === 'terrain')
+  const hidden = hiddenGround.get(map)
+  if (base === 'satellite' && !hidden) {
+    const ground = groundShown(map)
+    ground.forEach((id) => show(map, id, false))
+    hiddenGround.set(map, ground)
+  }
+  if (base !== 'satellite' && hidden) {
+    hidden.forEach((id) => show(map, id, true))
+    hiddenGround.delete(map)
+  }
+}
+
+/**
+ * One base map layer in the app's colors. A layer of names LEPTON writes itself becomes two: as
+ * it was up to CITY_NAMES_ZOOM, and from there on without the names inside NCR.
+ */
+function adaptLayer(layer: LayerSpecification, colors: MapColors, ncr: MultiPolygon): LayerSpecification[] {
+  if (layer.type === 'background') {
+    return [{ ...layer, paint: { ...layer.paint, 'background-color': colors.land } }]
+  }
+  if (layer.type === 'fill' && layer['source-layer'] === 'water') {
+    return [{ ...layer, paint: { ...layer.paint, 'fill-color': colors.water } }]
+  }
+  // Positron's roads are white on grey; on the app's lighter land they take the map's border color
+  if (layer.type === 'line' && layer['source-layer'] === 'transportation' && !layer.id.endsWith('dashline')) {
+    return [{ ...layer, paint: { ...layer.paint, 'line-color': colors.road } }]
+  }
+  if (layer.type === 'symbol' && NCR_NAME_LAYERS.includes(layer.id)) {
+    const outside = ['!', ['within', ncr]] as FilterSpecification
+    const near = {
+      ...layer,
+      id: `${layer.id}-outside-ncr`,
+      minzoom: Math.max(layer.minzoom ?? 0, CITY_NAMES_ZOOM),
+      filter: (layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification,
+    }
+    return [{ ...layer, maxzoom: Math.min(layer.maxzoom ?? CITY_NAMES_ZOOM, CITY_NAMES_ZOOM) }, near]
+  }
+  return [layer]
+}
+
+/**
+ * The style CityMap makes the map with: the street map adapted to the app, or, without one,
+ * the plain background the map had before F13 (bg/inset). Both are globes. `element` is the
+ * map's element, for the token colors.
+ */
+export function mapStyle(base: StyleSpecification | null, element: HTMLElement, cities: Cities): StyleSpecification {
+  const colors = mapColors(element)
+  const globe: Pick<StyleSpecification, 'projection' | 'sky'> = { projection: { type: 'globe' }, sky: SKY }
+  if (!base) {
+    return {
+      version: 8,
+      sources: {},
+      layers: [{ id: 'background', type: 'background', paint: { 'background-color': colors.water } }],
+      ...globe,
+    }
+  }
+  const ncr = ncrOutline(cities)
+  const sources = Object.fromEntries(
+    Object.entries(base.sources).map(([id, source]) => [
+      id,
+      id === BASE_SOURCE ? { ...source, attribution: BASE_ATTRIBUTION } : source,
+    ]),
+  )
+  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...globe }
+}

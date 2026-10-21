@@ -1,5 +1,5 @@
-import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
-import type { LngLatBoundsLike, Map as MapLibreMap, Marker, PaddingOptions } from 'maplibre-gl'
+import type { ExpressionSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec'
+import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { useEffect, useRef, useState, type CSSProperties, type Ref, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router'
@@ -7,23 +7,18 @@ import Badge from '../components/Badge.tsx'
 import Icon from '../components/Icon.tsx'
 import { shapeMiddle, shapeParts } from '../exposed/nearest.ts'
 import maplibregl from '../lib/maplibre.ts'
+import { barangayLayers } from './barangayLayers.ts'
+import { CITY_NAMES_ZOOM, DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
 import { CITY_LAYERS as LAYERS, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
 import MapList, { type MapListHandle, type MapListItem } from './MapList.tsx'
+import { SLOTS, addSlots } from './layerOrder.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
-import {
-  CAMERA_MS,
-  CROSSFADE_MS,
-  DIMMED_OPACITY,
-  HOVER_MS,
-  SHEET_BELOW,
-  easeInOut,
-  panelCover,
-  prefersReducedMotion,
-} from './motion.ts'
+import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, SHEET_BELOW, easeInOut, prefersReducedMotion } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
+import { viewFor } from './view.ts'
 import './CityMap.css'
 
 /*
@@ -39,20 +34,23 @@ import './CityMap.css'
  * MapLibre redraws a feature-state change at once: its paint transitions skip any value that
  * differs from city to city. So the hover's 150 ms fade is played frame by frame
  * (featureFades.ts), and the fade to 45% uses a layer-wide value, not a per-city one.
+ *
+ * F13: the cities sit on the street map (basemap.ts), and the reader may pan anywhere and zoom
+ * out to the whole globe. The fills go in over the street map's roads and under its names, the
+ * outlines on top (layerOrder.ts). Zoomed out past CITY_NAMES_ZOOM the cities' names hide, since they
+ * would pile up. The credits for the map's sources sit behind an "i" in its bottom left corner.
+ * On the satellite and terrain base maps (the Layers panel) the fills let the ground show through
+ * (DATA_OPACITY), and the cities' names get a halo.
  */
+
+/** How far out the reader may zoom: at 1 the map is the whole globe. */
+const MIN_ZOOM = 1
+
+/** The credit for the city outlines, shown with the street map's in the map's corner. */
+const BOUNDARIES_CREDIT = 'Boundaries: PSA and NAMRIA via OCHA HDX; faeldon/philippines-json-maps'
 
 /** Outline widths in px, from Figma: a city without data 1, with data 1.5, under the pointer 3, open 2.5. */
 const LINE = { noData: 1, data: 1.5, hover: 3, open: 2.5 }
-
-/** Space kept around what the camera fits, in px (Figma: 28 around Metro Manila, 32 around Quezon City). */
-const FIT_PADDING = { metro: 28, city: 32 }
-
-/**
- * How far past Metro Manila the reader may pan, in degrees (about 110 km). MapLibre keeps the
- * whole view inside this box, so it must stay wider than a wide screen's view of all of Metro
- * Manila (about 0.9 degrees across at 1440 px), or the first view could not fit the city.
- */
-const PAN_MARGIN_DEG = 1
 
 /** The tooltip's width in px (Figma), and the most it is tall. */
 const TOOLTIP_WIDTH = 256
@@ -71,7 +69,6 @@ function tokenColors(element: HTMLElement) {
   const style = getComputedStyle(element)
   const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
   return {
-    background: color('bg-inset'),
     noData: color('bg-raised'),
     hovered: color('bg-surface'),
     line: color('text-primary'),
@@ -101,47 +98,6 @@ function isOpen(psgc: string): ExpressionSpecification {
 
 function isNotOpen(psgc: string): ExpressionSpecification {
   return ['!=', ['get', 'psgc'], psgc]
-}
-
-/** The box around some cities' outlines: [[west, south], [east, north]]. */
-function boundsOf(features: Cities['features']): [[number, number], [number, number]] {
-  let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity]
-  for (const { geometry } of features) {
-    const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
-    for (const [lon, lat] of polygons.flat(2)) {
-      west = Math.min(west, lon)
-      east = Math.max(east, lon)
-      south = Math.min(south, lat)
-      north = Math.max(north, lat)
-    }
-  }
-  return [
-    [west, south],
-    [east, north],
-  ]
-}
-
-/**
- * What the camera shows at a level: all of Metro Manila at level 1; the open city at levels 2
- * and 3, kept clear of the panel by padding the side it covers: the right by the panel's width,
- * or on a phone the bottom by the sheet's height and by `controls`, the legend and zoom buttons
- * that stand on it (F11, panelCover). `container` is the map's element, at its size now.
- */
-function viewFor(
-  level: MapLevel,
-  cities: Cities,
-  container: HTMLElement,
-  controls: HTMLElement | null,
-): { bounds: LngLatBoundsLike; padding: PaddingOptions } {
-  if (level === 1) {
-    const pad = FIT_PADDING.metro
-    return { bounds: boundsOf(cities.features), padding: { top: pad, bottom: pad, left: pad, right: pad } }
-  }
-  const pad = FIT_PADDING.city
-  const open = cities.features.filter((feature) => feature.properties.psgc === QC_PSGC)
-  const cover = panelCover(container.clientWidth, container.clientHeight)
-  const bottom = cover.bottom > 0 ? cover.bottom + (controls?.offsetHeight ?? 0) : 0
-  return { bounds: boundsOf(open), padding: { top: pad, bottom: pad + bottom, left: pad, right: pad + cover.right } }
 }
 
 /**
@@ -202,6 +158,10 @@ type LabelSpot = { city: CityProperties; element: HTMLElement }
 type CityMapProps = {
   cities: Cities
   forecast: CityForecast
+  /** F13: the street map's style from the loader, or null to draw on a plain background. */
+  baseStyle: StyleSpecification | null
+  /** F13: the base map chosen in the Layers panel. */
+  base: BaseMap
   /** The week after the chosen date, or undefined if the backtest has no forecast for it. */
   week: ForecastWeek | undefined
   /** The open level: 1 Metro Manila, 2 Quezon City, 3 its prophylaxis plan. */
@@ -225,7 +185,18 @@ type CityMapProps = {
  * city reached thickens and shows its tooltip, as under the pointer, and Enter opens a city with
  * a forecast. The prophylaxis plan puts its list of barangays in the same corner (onListSlot).
  */
-export default function CityMap({ cities, forecast, week, level, onMap, controls, listRef, onListSlot }: CityMapProps) {
+export default function CityMap({
+  cities,
+  forecast,
+  baseStyle,
+  base,
+  week,
+  level,
+  onMap,
+  controls,
+  listRef,
+  onListSlot,
+}: CityMapProps) {
   const navigate = useNavigate()
   const { search } = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -237,6 +208,9 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
   const [loaded, setLoaded] = useState(false)
   const [spots, setSpots] = useState<LabelSpot[]>([])
   const [pointer, setPointer] = useState<Pointer | null>(null)
+  const [farOut, setFarOut] = useState(false) // F13: zoomed out past CITY_NAMES_ZOOM
+  const readerMoved = useRef(false) // F13: the reader has panned or zoomed since the camera last fit the level
+  const fillOpacity = useRef(DATA_OPACITY[base]) // F13: how opaque the fills are on the base map shown
 
   // The click handler opens a city with the latest navigate and date
   useEffect(() => {
@@ -249,25 +223,34 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
     const container = containerRef.current!
     const colors = tokenColors(container)
     const start = viewFor(shownLevel.current, cities, container, controls.current)
-    const [[west, south], [east, north]] = boundsOf(cities.features)
     const map = new maplibregl.Map({
       container,
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: 'background', type: 'background', paint: { 'background-color': colors.background } }],
-      },
+      style: mapStyle(baseStyle, container, cities),
       bounds: start.bounds,
       fitBoundsOptions: { padding: start.padding },
-      maxBounds: [
-        [west - PAN_MARGIN_DEG, south - PAN_MARGIN_DEG],
-        [east + PAN_MARGIN_DEG, north + PAN_MARGIN_DEG],
-      ],
+      minZoom: MIN_ZOOM,
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
       renderWorldCopies: false,
+    })
+    // F13: the sources' credits, bottom left, folded behind an "i" button: written out, they are
+    // wide enough to run into the legend on a laptop with the panel open
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
+    // MapLibre opens them when they first arrive and closes them on the first drag; here they start closed
+    const closeCredits = () => {
+      const credits = container.querySelector('.maplibregl-ctrl-attrib')
+      if (credits?.classList.contains('maplibregl-compact')) {
+        credits.classList.remove('maplibregl-compact-show')
+        map.off('sourcedata', closeCredits)
+      }
+    }
+    map.on('sourcedata', closeCredits)
+    map.on('zoom', () => setFarOut(map.getZoom() < CITY_NAMES_ZOOM))
+    // A move the reader makes comes with their event; the camera's own fits (a level, the pin) do not
+    map.on('movestart', (event) => {
+      readerMoved.current = Boolean(event.originalEvent)
     })
     map.touchZoomRotate.disableRotation()
     map.keyboard.disableRotation()
@@ -276,17 +259,23 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
     mapRef.current = map
     faderRef.current = fader
 
-    map.on('load', () => {
+    // F13: as soon as the style is ready, not on "load", which also waits for the street map's
+    // first tiles: a slow tile server must not hold back LEPTON's data
+    map.once('style.load', () => {
       const open = shownLevel.current > 1 ? QC_PSGC : ''
       const opacity = shownLevel.current > 1 ? DIMMED_OPACITY : 1
-      map.addSource(SOURCE, { type: 'geojson', data: cities, promoteId: 'psgc' })
-      map.addLayer({
-        id: LAYERS.fill,
-        type: 'fill',
-        source: SOURCE,
-        filter: isNotOpen(open),
-        paint: { 'fill-color': fillColor(colors), 'fill-opacity': opacity },
-      })
+      addSlots(map)
+      map.addSource(SOURCE, { type: 'geojson', data: cities, promoteId: 'psgc', attribution: BOUNDARIES_CREDIT })
+      map.addLayer(
+        {
+          id: LAYERS.fill,
+          type: 'fill',
+          source: SOURCE,
+          filter: isNotOpen(open),
+          paint: { 'fill-color': fillColor(colors), 'fill-opacity': opacity * fillOpacity.current },
+        },
+        SLOTS.fills,
+      )
       map.addLayer({
         id: LAYERS.line,
         type: 'line',
@@ -295,13 +284,16 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
         layout: { 'line-join': 'round' },
         paint: { 'line-color': colors.line, 'line-width': LINE_WIDTH, 'line-opacity': opacity },
       })
-      map.addLayer({
-        id: LAYERS.openFill,
-        type: 'fill',
-        source: SOURCE,
-        filter: isOpen(open),
-        paint: { 'fill-color': fillColor(colors) },
-      })
+      map.addLayer(
+        {
+          id: LAYERS.openFill,
+          type: 'fill',
+          source: SOURCE,
+          filter: isOpen(open),
+          paint: { 'fill-color': fillColor(colors), 'fill-opacity': fillOpacity.current },
+        },
+        SLOTS.fills,
+      )
       map.addLayer({
         id: LAYERS.openLine,
         type: 'line',
@@ -322,6 +314,7 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
         labelSpots.push({ city, element })
       }
       setSpots(labelSpots)
+      setFarOut(map.getZoom() < CITY_NAMES_ZOOM) // a short map can start zoomed out that far
       setLoaded(true)
       // Only now, so a level that draws its own layers (F5) finds the cities' layers in place
       onMap(map)
@@ -350,8 +343,12 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
         openRef.current.navigate(path + openRef.current.search)
       }
     })
-    // A new map size: show the level's view again
+    // A new map size: show the level's view again, unless the reader has moved away from it
+    // (F13: a phone's address bar that shows or hides must not undo their panning)
     map.on('resize', () => {
+      if (readerMoved.current) {
+        return
+      }
       const view = viewFor(shownLevel.current, cities, container, controls.current)
       map.fitBounds(view.bounds, { padding: view.padding, duration: 0 })
     })
@@ -367,7 +364,22 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
       setLoaded(false)
       onMap(null)
     }
-  }, [cities, onMap, controls])
+  }, [cities, baseStyle, onMap, controls])
+
+  // F13: the base map chosen in the Layers panel, and the fills' opacity over it (a 150 ms
+  // crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded) {
+      return
+    }
+    setBase(map, base)
+    fillOpacity.current = DATA_OPACITY[base]
+    const fade = { duration: CROSSFADE_MS, delay: 0 }
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity', (shownLevel.current > 1 ? DIMMED_OPACITY : 1) * fillOpacity.current)
+    barangayLayers(map).setFillOpacity(fillOpacity.current)
+  }, [base, loaded])
 
   // Color the city with data by its outbreak level for the chosen week
   useEffect(() => {
@@ -394,7 +406,7 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
     const fade = { duration: prefersReducedMotion() ? CROSSFADE_MS : CAMERA_MS, delay: 0 }
     const opacity = level > 1 ? DIMMED_OPACITY : 1
     map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
-    map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity)
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity * fillOpacity.current)
     map.setPaintProperty(LAYERS.line, 'line-opacity-transition', fade)
     map.setPaintProperty(LAYERS.line, 'line-opacity', opacity)
     // Not marked essential, so MapLibre skips the camera move when the reader asks for reduced motion
@@ -434,7 +446,7 @@ export default function CityMap({ cities, forecast, week, level, onMap, controls
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
   return (
-    <div className="city-map" data-level={level}>
+    <div className="city-map" data-level={level} data-far={farOut || undefined} data-base={base}>
       <div ref={containerRef} className="city-map-canvas" />
       <div className="city-map-corner">
         <p className="city-map-hint body-s">

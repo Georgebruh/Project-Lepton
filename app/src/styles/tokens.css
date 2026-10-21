@@ -12,7 +12,7 @@
  */
 
 /*
- * Theme collection: 30 colors in three modes (themes).
+ * Theme collection: 34 colors in three modes (themes).
  *   Clinic   light, warm paper: daytime use, printing and projecting in a city health
  *            office. The app's theme, on :root.
  *   Monsoon  dark, cool: night operations during a storm. <html data-theme="monsoon">
@@ -58,9 +58,14 @@
   --color-data-ramp-4: #2f8f80;
   --color-data-ramp-5: #0b4e48;
 
-  /* Map */
+  /* Map: land and borders; F13: NOAH's flood hazard, one blue from low to high (checked with the
+     dataviz palette validator against map/land), and the space around the globe */
   --color-map-land: #fbfaf7;
   --color-map-boundary: #d3cec4;
+  --color-map-hazard-low: #82b3e3;
+  --color-map-hazard-medium: #3f86cf;
+  --color-map-hazard-high: #1b4a8a;
+  --color-map-space: #121a24;
 
   /* Models: one chart color each */
   --color-chart-m0: #a9aeb5;
@@ -106,6 +111,10 @@
 
   --color-map-land: #141b23;
   --color-map-boundary: #2a3644;
+  --color-map-hazard-low: #2f5d92;
+  --color-map-hazard-medium: #4f8fd6;
+  --color-map-hazard-high: #a3cbf3;
+  --color-map-space: #05080c;
 
   --color-chart-m0: #5d6b7a;
   --color-chart-m1: #8b97a6;
@@ -149,6 +158,10 @@
 
   --color-map-land: #1c1815;
   --color-map-boundary: #3a2f27;
+  --color-map-hazard-low: #2f5d92;
+  --color-map-hazard-medium: #4f8fd6;
+  --color-map-hazard-high: #a3cbf3;
+  --color-map-space: #0b0908;
 
   --color-chart-m0: #6e6258;
   --color-chart-m1: #9c8e80;
