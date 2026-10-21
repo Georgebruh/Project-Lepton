@@ -9,7 +9,8 @@ From the 2026 PJDSC Event Primer (pages 8–15), read on October 18, 2026. The p
 dates may change: check PJDSC's Facebook page before the deadline.
 
 **Due Saturday, October 24, 2026, 11:59 PM** (not October 23), through
-bit.ly/pjdsc2026FinalProjectSubmission. There is no written paper. The final submission is:
+bit.ly/pjdsc2026FinalProjectSubmission. The primer asks for no written paper (the team's paper in
+`paper/` is extra, not a required item). The final submission is:
 
 | Item | Limit | Penalty for going over |
 | --- | --- | --- |
