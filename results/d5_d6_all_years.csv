@@ -1,0 +1,10 @@
+comparison,block_weeks,weeks,mean_diff,low,high,verdict,dm_stat,dm_p
+M4 vs M3,8,454,-7.2519,-16.5154,-1.7679,M4 misses less,-2.9014,0.0039
+M4 vs M3,4,454,-7.2519,-14.4389,-2.2798,M4 misses less,-2.9014,0.0039
+M4 vs M3,13,454,-7.2519,-16.8073,-1.4138,M4 misses less,-2.9014,0.0039
+M4 vs M4_no_EI2,8,454,-0.1202,-0.4051,0.161,no clear difference,,
+M4 vs M4_no_EI2,4,454,-0.1202,-0.3956,0.1603,no clear difference,,
+M4 vs M4_no_EI2,13,454,-0.1202,-0.3869,0.1367,no clear difference,,
+M4 vs M1,8,454,-2.2181,-3.4548,-0.7669,M4 misses less,-5.2894,0.0
+M4 vs M1,4,454,-2.2181,-3.3985,-0.9886,M4 misses less,-5.2894,0.0
+M4 vs M1,13,454,-2.2181,-3.4574,-0.607,M4 misses less,-5.2894,0.0

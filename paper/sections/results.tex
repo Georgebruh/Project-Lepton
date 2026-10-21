@@ -1,6 +1,285 @@
 % E6 (SCRUM-57): Results: D5's primary result in one sentence with its interval, the score
 % table, the flood test, the storm runs (observed and forecast) and D8's figures
-% (lepton-plan.md, E6). Every number from results/.
+% (lepton-plan.md, E6). Every result was rerun from data/raw on 2026-10-21 and reproduced
+% byte for byte. Numbers:
+%   results/d8_fig2_mae.csv: MAEs; D5 and D6 with 8-, 4- and 13-week blocks; the DM tests.
+%   results/d1_scores.csv (Table 2, and the all-years scores), d1_mae_by_year.csv,
+%     d3_alarms.csv, d3_precision_recall.csv, d5_d6_all_years.csv, d5_guard_reruns.csv
+%     (Table 3): python -m src.score_tables, after python -m src.backtest (--g 1, --g 3).
+%   results/d8_fig3_reliability.csv (reliability steps); results/forecasts.csv (M3's 1,065
+%     cases for the week of 29 Jul-4 Aug 2018, which had 58; 223 cases in 2026 week 34;
+%     breach weeks: 9 in 2022 to 2024 week 19, 29 after; week index 488 = 2024 week 20,
+%     the week of 12 May 2024).
+%   Table 4: results/c9_forecast_runs.csv (rain, position, EI), d7_flags.csv (25% line),
+%     d7_forecast_vs_observed.csv (exposed and units), checked against d8_fig5_doses.csv;
+%     units rounded up to whole units and people to the nearest person, as D8 rounds them
+%     (the app rounds units to the nearest, so it shows Kristine's 3,174,170).
+%   results/c8_observed_runs.csv (return periods, R0 119.7 mm), d7_tests.csv (cut-off and
+%     D +/- 1 tests), c9_forecast_runs.csv (ERA5 levels); results/m3_reproduction.csv.
+%   Cases per year (163, 176; 366 to 1,033 from 2023): python -m src.cases, Notes.md 1.5.
+% Figures 1-4: results/d8_fig1-4 (python -m src.paper_figures), copied into figures/.
+% Dose figures are stock planning, not prescriptions (rule 10).
 \section{Results}\label{sec:results}
 
-\checkme{E6: the results (lepton-plan.md, E6).}
+We report the city forecast first and the storm runs second. Every model forecast every one of
+the 454 weeks of the backtest, so all models are scored on exactly the same weeks.
+
+\subsection{Layer 1: City Forecast}\label{sec:results-layer1}
+
+\paragraph{Primary endpoint}
+Over the 349 forecast weeks outside the COVID-19 years, M4 missed the weekly count by 8.88
+fewer cases than M3 on average (mean absolute errors of 6.70 and 15.59 cases a week; 95\%
+moving-block bootstrap interval of the difference $-19.93$ to $-1.88$), so M4 is more accurate
+than the benchmark. The interval stays below zero with 4-week blocks ($-18.40$ to $-2.50$) and
+13-week blocks ($-20.94$ to $-1.31$), and the two-sided Diebold--Mariano test agrees
+($p = 0.007$). Figure~\ref{fig:forecasts} shows both models' forecasts against the counts, and
+Figure~\ref{fig:mae} each model's error with its interval.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/d8_fig1_forecasts.png}
+\caption{QC's weekly leptospirosis cases (dots) with M4's and M3's one-week-ahead forecasts and
+M4's 90\% forecast range, for every target week of the backtest. The COVID-19 years
+(shaded) were forecast but left out of the headline scores.}\label{fig:forecasts}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/d8_fig2_mae.png}
+\caption{Left, each model's mean absolute error over the 349 scored weeks, with a 95\%
+moving-block bootstrap interval. Right, the comparisons we tested: the mean of M4's absolute
+error minus the other model's, week by week; below zero, M4 misses less.}\label{fig:mae}
+\end{figure*}
+
+\begin{table*}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{5pt}
+\caption{Scores of the one-week-ahead forecasts. Point scores cover the 349 target weeks of
+2018--2019 and 2022--2026; scores of the forecast distribution cover the 247 weeks of
+2022--2026, after the forecast spread's warm-up. Lower is better for every score except
+coverage, which should match its range (50\% or 90\%), and the Brier skill score, where above
+zero beats always quoting the usual breach rate.}\label{tab:scores}
+\begin{tabular}{@{}l rrrr rrrrr@{}}
+\toprule
+ & \multicolumn{4}{c}{\textbf{Point forecast, 349 weeks}}
+ & \multicolumn{5}{c}{\textbf{Forecast distribution, 247 weeks}} \\
+\cmidrule(lr){2-5}\cmidrule(l){6-10}
+\textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{Bias} & \textbf{MASE}
+ & \textbf{WIS} & \textbf{50\% range} & \textbf{90\% range} & \textbf{Brier} & \textbf{Brier skill} \\
+ & & & & & & \textbf{held (\%)} & \textbf{held (\%)} & & \\
+\midrule
+M0, last year & 9.30 & 24.9 & $-$3.81 & 3.57 & 7.13 & 48 & 73 & 0.148 & 0.03 \\
+M1, seasonal average & 8.55 & 23.2 & $-$5.28 & 3.28 & 6.46 & 60 & 94 & 0.127 & 0.17 \\
+M3, benchmark & 15.59 & 65.2 & 4.82 & 5.98 & 6.74 & 62 & 87 & 0.135 & 0.11 \\
+M4, ours & 6.70 & 19.4 & $-$3.91 & 2.57 & 5.61 & 70 & 96 & 0.101 & 0.34 \\
+M4 without flood index & 6.86 & 19.4 & $-$3.87 & 2.63 & 5.55 & 69 & 96 & 0.101 & 0.34 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Scores}
+M4 has the lowest mean absolute error, root mean squared error and MASE of the four models
+(Table~\ref{tab:scores}), and shares the lowest weighted interval score and Brier score with M4
+without the flood index. Every model's MASE is above 1 because MASE divides by the error of ``same week
+last year'' in 2016--2017, when QC recorded only 163 and 176 cases a year, against 366 to 1,033
+a year from 2023 on; MASE therefore ranks the models but does not mean they lose to that naive
+forecast in the scored years, where M4's error is below M0's. All models except M3 forecast too
+low on average, by 3.8 to 5.3 cases a week, since a forecast made three weeks after the newest
+count it sees lags behind each surge; M3's positive bias comes from its overshoots in 2018. M4's
+ranges were wider than they needed to be: its 90\% range held the count in 96\% of weeks and
+its 50\% range in 70\%, so they err on the side of caution. M0's 90\% range was too narrow,
+holding the count in only 73\% of weeks.
+
+\paragraph{Where the difference comes from}
+Much of M3's error comes from 2018, when only 2015--2017 lay behind it: as the July outbreak
+began, it forecast 1,065 cases for the week of 29~July to 4~August, which had 58
+(Figure~\ref{fig:forecasts}), and its mean absolute error for 2018 was 50.4 cases a week against
+M4's 7.4. This is why the interval is wide. M4 also missed less than M3 in five of the other six
+scored years, by 0.7 to 11.9 cases a week; M3 missed less only in 2022 (2.6 against 2.9). M4 was
+not the best model every year: among the four, it had the lowest error in 2018, 2019, 2023 and
+2026, M0 in 2024 and 2025, and M3 in 2022. The hardest year was 2026, with the backtest's largest
+weekly count (223 cases) and every model's highest error but M3's.
+
+\paragraph{The flood test}
+Adding the flood exposure index did not make M4 more accurate: the mean difference in absolute
+error between M4 and M4 without the index was $-0.15$ cases a week, with a 95\% interval of
+$-0.50$ to $0.21$, and the 4- and 13-week blocks agree. The scores of the forecast distribution
+say the same (Table~\ref{tab:scores}). Over these years, then, the flood maps earn their place in
+Layer~2, not in the city forecast. M4 did beat M1, the same-week average a health office can
+compute by hand, by 1.84 cases a week ($-3.28$ to $-0.25$; Diebold--Mariano $p < 0.001$).
+
+\begin{table*}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{The three comparisons under each check: the mean of M4's absolute error minus the
+other model's, in cases a week, with its 95\% moving-block bootstrap interval in brackets.
+Below zero, M4 misses less. The guard reruns hide the last one or three weeks of counts instead
+of two; the all-years check adds the COVID-19 years 2020--2021.}\label{tab:robustness}
+\begin{tabular}{@{}l r ccc@{}}
+\toprule
+\textbf{Check} & \textbf{Weeks} & \textbf{M4 vs M3} & \textbf{M4 vs M4 without flood index}
+ & \textbf{M4 vs M1} \\
+\midrule
+Main run, 8-week blocks & 349 & $-$8.88 ($-$19.93 to $-$1.88) & $-$0.15 ($-$0.50 to 0.21) & $-$1.84 ($-$3.28 to $-$0.25) \\
+4-week blocks & 349 & $-$8.88 ($-$18.40 to $-$2.50) & $-$0.15 ($-$0.51 to 0.20) & $-$1.84 ($-$3.19 to $-$0.38) \\
+13-week blocks & 349 & $-$8.88 ($-$20.94 to $-$1.31) & $-$0.15 ($-$0.51 to 0.17) & $-$1.84 ($-$3.14 to $-$0.20) \\
+Guard of 1 week & 350 & $-$6.79 ($-$13.27 to $-$1.97) & 0.01 ($-$0.31 to 0.30) & $-$2.36 ($-$3.99 to $-$0.46) \\
+Guard of 3 weeks & 348 & $-$10.64 ($-$25.51 to $-$1.93) & $-$0.15 ($-$0.57 to 0.25) & $-$1.70 ($-$3.17 to $-$0.25) \\
+All years, 2018--2026 & 454 & $-$7.25 ($-$16.52 to $-$1.77) & $-$0.12 ($-$0.41 to 0.16) & $-$2.22 ($-$3.45 to $-$0.77) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Checks}\label{sec:results-checks}
+All three findings survive every check in Table~\ref{tab:robustness}. With a one-week guard M4's
+lead over M3 shrinks to 6.79 cases a week, and with a three-week guard it grows to 10.64,
+because M3's error grows faster with the guard (12.96, 15.59 and 17.51 cases a week at one, two
+and three weeks) than M4's (6.17, 6.70 and 6.87). Scored over all 454 weeks, COVID-19 years
+included, M4's mean absolute error is 5.65 against M3's 12.90, and M4 and M4 without the index
+again have the lowest weighted interval and Brier scores.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/d8_fig3_reliability.png}
+\caption{Reliability of M4's and M3's breach probabilities over 2022--2026, drawn with the CORP
+method. Each step pools forecasts of similar probability and shows the share of those weeks that
+breached the epidemic threshold; the bars below count the forecasts in each step. A reliable
+forecast's steps sit on the diagonal.}\label{fig:reliability}
+\end{figure*}
+
+\paragraph{Breach probabilities}
+Of the 247 weeks of 2022--2026, 38 breached the epidemic threshold. M4's breach probabilities
+had the lowest Brier score (0.101, a skill of 0.34 over always quoting the usual breach rate),
+against 0.135 for M3, 0.127 for M1 and 0.148 for M0 (Table~\ref{tab:scores}). They were also the
+more reliable (Figure~\ref{fig:reliability}): M4's steps lie close to the diagonal, and the weeks
+it gave a 27\% to 55\% chance breached 17 times in 35, while the weeks M3 gave a 36\% to 84\%
+chance breached only 11 times in 34.
+
+Turned into alarms, M4's probabilities were precise but missed most outbreaks. The cut-off with
+the best F1 score on the first half of 2022--2026 was a 33\% chance; on the second half, from
+the week of 12~May 2024, M4 raised 11 alarms, 8 of them in breach weeks, but these covered only 8
+of the 29 breach weeks and 4 of the 14 outbreak episodes (95\% interval 8\% to 58\%), each before
+surveillance would have shown it, by a median of 2.5 weeks. M1 and M3 caught 9 episodes each,
+and M0 13, with four to eight times as many alarms (48 to 87), about one in four of them right.
+The cut-off was chosen when breaches were rare, 9 in the first 123 weeks, and proved too strict
+for the larger outbreaks from mid-2024 on, with 29 in the next 124. The full precision--recall
+curve shows the trade-off: over all of 2022--2026, a 20\% cut-off would have flagged 74\% of the
+breach weeks with 41\% of M4's alarms right, and M4's best possible F1 score, 0.56, is above M1's
+(0.41) and M3's (0.34). That best cut-off is chosen in hindsight, so these figures describe the
+curve rather than a forecast's performance.
+
+\subsection{Layer 2: Barangay Prophylaxis Stock}\label{sec:results-layer2}
+
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3.4pt}
+\caption{Each storm on observed IMERG rain, and on ECMWF forecasts issued one to three days
+before its three-day window. Observed rain is placed on IMERG's return levels and forecast rain
+on ERA5's (floor = $R_0$, half the five-year rain). EI: residents in zones the rain floods, as a
+share of QC's. Flagged: barangays with at least 25\% of residents in such zones, with the number
+of them that reports named as flooded in brackets. Stock at full coverage; units rounded up.
+Doxycycline: 2 capsules for each exposed adult, which is every adult's need in a flood of two to
+seven days (all high risk) and in a one-day flood with $w = 0$; the next column is a one-day
+flood with $w = 0.5$. A forecast cannot know the flood's duration, so its rows give a one-day
+flood; a seven-day flood needs the same stock as the one-day flood with $w = 0$. These are
+stock-planning figures, not prescriptions: DM~\mbox{2023-0309} requires a physician's
+consultation before any prophylaxis.}\label{tab:layer2}
+\newcommand{\twoline}[2]{\begin{tabular}[b]{@{}c@{}}#1\\#2\end{tabular}}%
+\newcommand{\stormrow}[1]{\multicolumn{11}{@{}l}{\textbf{#1}}\\}%
+\begin{tabular}{@{}l c r c r r r rr r r@{}}
+\toprule
+ & & & & & & & \multicolumn{2}{c}{\textbf{Doxycycline 100 mg}} & & \\
+\cmidrule(lr){8-9}
+\textbf{Run} & \textbf{Window} & \twoline{\textbf{Rain}}{\textbf{(mm)}} & \twoline{\textbf{Where}}{\textbf{it falls}}
+ & \twoline{\textbf{EI}}{\textbf{(\%)}} & \textbf{Flagged} & \textbf{Exposed} & \twoline{\textbf{2 per}}{\textbf{adult}}
+ & \twoline{\textbf{1 day,}}{\textbf{$w = 0.5$}} & \twoline{\textbf{Child}}{\textbf{courses}}
+ & \twoline{\textbf{Amoxicillin}}{\textbf{500 mg}} \\
+\midrule
+\stormrow{Typhoon Carina, 2024}
+Observed, $D = 3$ & 22--24 Jul & 120.0 & floor to 5-yr & 0.05 & 0 (0) & 1,414 & 1,893 & -- & 457 & 67 \\
+1 day ahead & 22--24 Jul & 224.4 & 5- to 25-yr & 24.6 & 70 (9) & 758,591 & 1,016,170 & 3,048,510 & 244,521 & 35,913 \\
+2 days ahead & 22--24 Jul & 176.5 & floor to 5-yr & 16.5 & 30 (8) & 509,518 & 682,064 & 2,046,192 & 164,467 & 24,118 \\
+3 days ahead & 23--25 Jul & 130.4 & floor to 5-yr & 6.5 & 1 (0) & 199,975 & 267,697 & 803,089 & 64,550 & 9,466 \\
+\addlinespace
+\stormrow{Severe Tropical Storm Kristine, 2024}
+Observed, $D = 1$ & 22--24 Oct & 195.1 & floor to 5-yr & 13.8 & 17 (3) & 425,192 & 569,182 & 1,707,544 & 137,248 & 20,126 \\
+1 day ahead & 22--24 Oct & 233.1 & 5- to 25-yr & 25.6 & 72 (5) & 789,689 & 1,058,057 & 3,174,171 & 254,430 & 37,387 \\
+2 days ahead & 22--24 Oct & 170.2 & floor to 5-yr & 15.2 & 21 (4) & 467,598 & 625,947 & 1,877,841 & 150,936 & 22,134 \\
+3 days ahead & 21--23 Oct & 160.6 & floor to 5-yr & 13.1 & 17 (3) & 402,991 & 539,462 & 1,618,386 & 130,082 & 19,076 \\
+\addlinespace
+\stormrow{July 2025 floods}
+Observed, $D = 6$ & 17--19 Jul & 191.0 & floor to 5-yr & 13.1 & 17 (5) & 404,966 & 542,106 & -- & 130,719 & 19,169 \\
+1 day ahead & 17--19 Jul & 127.6 & floor to 5-yr & 4.7 & 0 (0) & 146,390 & 195,964 & 587,892 & 47,253 & 6,930 \\
+2 days ahead & 17--19 Jul & 110.6 & floor to 5-yr & 1.2 & 0 (0) & 36,318 & 48,617 & 145,851 & 11,724 & 1,720 \\
+3 days ahead & 17--19 Jul & 93.2 & below floor & 0.0 & 0 (0) & 0 & 0 & 0 & 0 & 0 \\
+\addlinespace
+\stormrow{August 2026 habagat floods}
+Observed, $D = 4$ & 7--9 Aug & 141.0 & floor to 5-yr & 4.0 & 0 (0) & 124,765 & 167,017 & -- & 40,273 & 5,906 \\
+1 day ahead & 8--10 Aug & 139.4 & floor to 5-yr & 7.4 & 2 (1) & 228,034 & 305,257 & 915,770 & 73,607 & 10,794 \\
+2 days ahead & 7--9 Aug & 142.3 & floor to 5-yr & 8.0 & 3 (1) & 247,007 & 330,655 & 991,965 & 79,732 & 11,692 \\
+3 days ahead & 7--9 Aug & 123.0 & floor to 5-yr & 4.0 & 0 (0) & 121,999 & 163,314 & 489,940 & 39,380 & 5,775 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Observed rain}
+On IMERG, none of the four storms reached the five-year rain (Table~\ref{tab:layer2}): each fell
+between the no-flood floor and the five-year level, at return periods of 1.0 to 2.2 years.
+Kristine, 195.1~mm in three days, and the July 2025 floods, 191.0~mm, put 13.8\% and 13.1\% of
+QC's residents in flooded zones, 425,192 and 404,966 people. The August 2026 habagat exposed 124,765
+(4.0\%), and Carina 1,414: its 120.0~mm sat on the floor of 119.7~mm, the satellite
+under-reading discussed in Section~\ref{sec:limitations}. Figure~\ref{fig:map} maps the two 2024
+storms. At full coverage, the six-day July 2025 flood needs 542,106 doxycycline capsules, 130,719
+children's courses and 19,169 amoxicillin tablets. For Kristine's one-day flood the doxycycline
+need depends on the share $w$ of exposed adults with a wound or mucosal exposure: 569,182
+capsules at $w = 0$, 1,707,544 at 0.5 and 2,845,907 at 1. These are stock-planning figures, not
+prescriptions.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/d8_fig4_exposure_map.png}
+\caption{Share of each barangay's residents in zones the observed rain floods, for Typhoon
+Carina and Severe Tropical Storm Kristine (2024), on the same classes. Barangays with 25\% or
+more are flagged; outlined barangays were named as flooded in city and news
+reports.}\label{fig:map}
+\end{figure*}
+
+\paragraph{Flagged barangays}
+At the 25\% line, the July 2025 floods flagged 17 barangays, 5 of which reports named as flooded
+(29\%), and so flagged 5 of the 14 named (36\%). Kristine flagged 17, 3 of them named (18\%),
+and 3 of the 8 named (38\%). Carina and the August 2026 floods flagged none, though reports named
+12 and 17. At the 50\% line only one barangay was flagged for July 2025 and two for Kristine.
+
+\paragraph{Cut-off and duration tests}
+Moving the continuous-exposure cut-off to one or three days, or the flood's duration by a day,
+changed no storm's stock except Kristine's. With a one-day cut-off, or a two-day flood, all of
+Kristine's exposed adults become high risk, and its doxycycline need is the $w = 0$ figure,
+569,182 capsules. The other floods last three to six days, so their adults stay high risk at any
+of these settings, and a flood of up to seven days needs one weekly dose per adult.
+
+\paragraph{Forecast rain}
+A day ahead, the forecasts put Carina and Kristine between ERA5's five- and 25-year rain, 224.4
+and 233.1~mm, exposing 25\% and 26\% of residents, far more than their observed-rain runs (0.05\%
+and 13.8\%). For Carina the gap more likely reflects the satellite under-reading the storm
+(Section~\ref{sec:limitations}) than the forecast overshooting. A one-day forecast would thus have prepared Carina's
+stock, about 1.0~million capsules for a long flood and 3.0~million for a one-day flood at
+$w = 0.5$, but for many more barangays than reports named: of the 70 it flagged, 9 were named, 9
+of the 12 named. Two and three days ahead the forecasts were smaller: three days ahead,
+Carina's exposed 6.5\% of residents. For the July 2025 floods every lead fell short of the
+observed run: 127.6~mm a day ahead (4.7\%), and three days ahead 93.2~mm, below ERA5's floor, so
+no one. For the August 2026 habagat all three leads came close to the observed run (4.0\% to
+8.0\% against 4.0\%).
+
+\subsection{Comparison with the Benchmark}\label{sec:results-benchmark}
+
+On the benchmark's own national data, our seasonal naive forecast matched all eight of its
+published scores, and our Prophet came within 4.4\% of the published mean absolute error (24.73
+against 23.68), but our hybrid did not reproduce the published gain: its error was 24.60 against
+16.72, and its one-sided Diebold--Mariano test against Prophet gave $p = 0.49$ against the
+published 0.043 \parencite{latigay2026}. The two evaluations also differ in kind. The benchmark
+scored 18 national forecasts, two weeks ahead from nine rolling origins, and tested the hybrid
+against Prophet with a one-sided test; we scored 349 weekly one-week-ahead forecasts of QC's
+cases and set a two-sided 95\% interval on the difference in mean absolute error. QC's weekly
+counts are also far smaller than the national ones, so our errors cannot be set beside the
+paper's. Our result compares M4 with our reproduction of M3, refitted every week on what the
+guard lets it see, not with the published accuracy.
