@@ -7,7 +7,8 @@ import Badge from '../components/Badge.tsx'
 import Icon from '../components/Icon.tsx'
 import { shapeMiddle, shapeParts } from '../exposed/nearest.ts'
 import maplibregl from '../lib/maplibre.ts'
-import { CITY_NAMES_ZOOM, mapStyle } from './basemap.ts'
+import { barangayLayers } from './barangayLayers.ts'
+import { CITY_NAMES_ZOOM, DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
 import { CITY_LAYERS as LAYERS, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
@@ -38,6 +39,8 @@ import './CityMap.css'
  * out to the whole globe. The fills go in over the street map's roads and under its names, the
  * outlines on top (layerOrder.ts). Zoomed out past CITY_NAMES_ZOOM the cities' names hide, since they
  * would pile up. The credits for the map's sources sit behind an "i" in its bottom left corner.
+ * On the satellite and terrain base maps (the Layers panel) the fills let the ground show through
+ * (DATA_OPACITY), and the cities' names get a halo.
  */
 
 /** How far out the reader may zoom: at 1 the map is the whole globe. */
@@ -157,6 +160,8 @@ type CityMapProps = {
   forecast: CityForecast
   /** F13: the street map's style from the loader, or null to draw on a plain background. */
   baseStyle: StyleSpecification | null
+  /** F13: the base map chosen in the Layers panel. */
+  base: BaseMap
   /** The week after the chosen date, or undefined if the backtest has no forecast for it. */
   week: ForecastWeek | undefined
   /** The open level: 1 Metro Manila, 2 Quezon City, 3 its prophylaxis plan. */
@@ -184,6 +189,7 @@ export default function CityMap({
   cities,
   forecast,
   baseStyle,
+  base,
   week,
   level,
   onMap,
@@ -204,6 +210,7 @@ export default function CityMap({
   const [pointer, setPointer] = useState<Pointer | null>(null)
   const [farOut, setFarOut] = useState(false) // F13: zoomed out past CITY_NAMES_ZOOM
   const readerMoved = useRef(false) // F13: the reader has panned or zoomed since the camera last fit the level
+  const fillOpacity = useRef(DATA_OPACITY[base]) // F13: how opaque the fills are on the base map shown
 
   // The click handler opens a city with the latest navigate and date
   useEffect(() => {
@@ -265,7 +272,7 @@ export default function CityMap({
           type: 'fill',
           source: SOURCE,
           filter: isNotOpen(open),
-          paint: { 'fill-color': fillColor(colors), 'fill-opacity': opacity },
+          paint: { 'fill-color': fillColor(colors), 'fill-opacity': opacity * fillOpacity.current },
         },
         SLOTS.fills,
       )
@@ -283,7 +290,7 @@ export default function CityMap({
           type: 'fill',
           source: SOURCE,
           filter: isOpen(open),
-          paint: { 'fill-color': fillColor(colors) },
+          paint: { 'fill-color': fillColor(colors), 'fill-opacity': fillOpacity.current },
         },
         SLOTS.fills,
       )
@@ -359,6 +366,21 @@ export default function CityMap({
     }
   }, [cities, baseStyle, onMap, controls])
 
+  // F13: the base map chosen in the Layers panel, and the fills' opacity over it (a 150 ms
+  // crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded) {
+      return
+    }
+    setBase(map, base)
+    fillOpacity.current = DATA_OPACITY[base]
+    const fade = { duration: CROSSFADE_MS, delay: 0 }
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity', (shownLevel.current > 1 ? DIMMED_OPACITY : 1) * fillOpacity.current)
+    barangayLayers(map).setFillOpacity(fillOpacity.current)
+  }, [base, loaded])
+
   // Color the city with data by its outbreak level for the chosen week
   useEffect(() => {
     const map = mapRef.current
@@ -384,7 +406,7 @@ export default function CityMap({
     const fade = { duration: prefersReducedMotion() ? CROSSFADE_MS : CAMERA_MS, delay: 0 }
     const opacity = level > 1 ? DIMMED_OPACITY : 1
     map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
-    map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity)
+    map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity * fillOpacity.current)
     map.setPaintProperty(LAYERS.line, 'line-opacity-transition', fade)
     map.setPaintProperty(LAYERS.line, 'line-opacity', opacity)
     // Not marked essential, so MapLibre skips the camera move when the reader asks for reduced motion
@@ -424,7 +446,7 @@ export default function CityMap({
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
   return (
-    <div className="city-map" data-level={level} data-far={farOut || undefined}>
+    <div className="city-map" data-level={level} data-far={farOut || undefined} data-base={base}>
       <div ref={containerRef} className="city-map-canvas" />
       <div className="city-map-corner">
         <p className="city-map-hint body-s">

@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { BaseMap } from '../map/basemap.ts'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Outlet, useLoaderData, useSearchParams } from 'react-router'
 import AppBar from '../components/AppBar.tsx'
@@ -6,6 +7,8 @@ import CityMap from '../map/CityMap.tsx'
 import { chosenDate, dateRange, forecastFor } from '../map/forecast.ts'
 import MapBreadcrumb from '../map/MapBreadcrumb.tsx'
 import MapButton from '../map/MapButton.tsx'
+import { baseOf, setBaseParam } from '../map/layerParams.ts'
+import MapLayers from '../map/MapLayers.tsx'
 import type { MapListHandle } from '../map/MapList.tsx'
 import type { MapContext } from '../map/mapContext.ts'
 import type { MapData } from '../map/mapData.ts'
@@ -56,7 +59,9 @@ const MOTION = {
  * from the keyboard; the plan puts its list there through the context (listSlot).
  *
  * F13: the map lies on a street map of the whole world, and the reader may pan away from Metro
- * Manila; the pin button above Zoom brings the open level back into view.
+ * Manila; the pin button above Zoom brings the open level back into view. The Layers button
+ * opens the Layers panel (map/MapLayers.tsx); its choices live in the address (?base=,
+ * map/layerParams.ts), so a link opens the same map.
  */
 export default function MapLayout() {
   // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
@@ -68,12 +73,15 @@ export default function MapLayout() {
   const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
   const [listSlot, setListSlot] = useState<HTMLElement | null>(null)
+  const [layersOpen, setLayersOpen] = useState(false)
+  const layersButton = useRef<HTMLButtonElement>(null)
   const controls = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLElement>(null)
   const cityList = useRef<MapListHandle>(null)
   const shownLevel = useRef(level)
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
+  const base = baseOf(searchParams)
   const { first, last } = dateRange(forecast)
 
   // F11: the link or button that changed the level has gone, or slid away with the panel, so the
@@ -108,6 +116,17 @@ export default function MapLayout() {
     )
   }
 
+  /** F13: a base map chosen in the Layers panel replaces the address's (no new history entry). */
+  function changeBase(next: BaseMap) {
+    setSearchParams((params) => setBaseParam(params, next), { replace: true, preventScrollReset: true })
+  }
+
+  /** F13: closing the Layers panel gives the keyboard back to its button. */
+  function closeLayers() {
+    setLayersOpen(false)
+    layersButton.current?.focus()
+  }
+
   /** F13: the pin button: the camera goes back to the open level's view, as when the level opened. */
   function showLevel() {
     if (!map) {
@@ -119,7 +138,12 @@ export default function MapLayout() {
 
   const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
   return (
-    <div className="map-layout" data-panel={level > 1 ? 'open' : 'closed'} style={MOTION}>
+    <div
+      className="map-layout"
+      data-panel={level > 1 ? 'open' : 'closed'}
+      data-layers={layersOpen ? 'open' : undefined}
+      style={MOTION}
+    >
       <AppBar />
       <MapBreadcrumb level={level} date={date} first={first} last={last} onDateChange={changeDate} />
       <main className="map-layout-main">
@@ -128,6 +152,7 @@ export default function MapLayout() {
           cities={cities}
           forecast={forecast}
           baseStyle={baseStyle}
+          base={base}
           week={week}
           level={level}
           onMap={setMap}
@@ -143,6 +168,14 @@ export default function MapLayout() {
           <div ref={setLegendSlot} className="map-layout-legend" />
           <div className="map-layout-buttons">
             <MapButton icon="pin" label={`Back to ${LEVEL_PLACES[level]}`} onClick={showLevel} />
+            <MapButton
+              ref={layersButton}
+              icon="layers"
+              label="Map layers"
+              open={layersOpen}
+              controls="map-layers"
+              onClick={() => setLayersOpen((open) => !open)}
+            />
             <MapZoom map={map} />
           </div>
         </div>
@@ -150,6 +183,15 @@ export default function MapLayout() {
         <aside ref={panel} className="map-layout-panel" aria-label="Quezon City" inert={level === 1}>
           <Outlet context={context} />
         </aside>
+        {layersOpen && (
+          <MapLayers
+            id="map-layers"
+            base={base}
+            onBase={changeBase}
+            hasStreetMap={baseStyle !== null}
+            onClose={closeLayers}
+          />
+        )}
       </main>
     </div>
   )

@@ -198,6 +198,14 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   colors, with the cities' fills over its roads and under its names; zoomed out the map is a
   globe, and the pin button above Zoom brings the open level back. The drawing order lives in
   `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
+- **The Layers panel (F13).** The Layers button above Zoom opens `map/MapLayers.tsx` (Figma
+  "Layers panel"): it opens up from the button and covers the legends; on a phone it is a sheet
+  like the city panel's. Escape or Close gives the keyboard back to the button. The base map is
+  a group of radio buttons: Map (the street map), Satellite (Sentinel-2 cloudless 2024 by EOX,
+  under the street map's roads and names) or Terrain (hill shading from Mapzen's Terrain Tiles),
+  added on first use by `setBase` in `map/basemap.ts`. Over imagery or shading the city and
+  barangay fills drop to 60% (terrain 75%, `DATA_OPACITY`). The choice lives in the address,
+  `?base=satellite` or `?base=terrain` (`map/layerParams.ts`), and links between the levels keep it.
 
 ### The prophylaxis plan (F5)
 

@@ -88,6 +88,13 @@
   color: var(--color-text-secondary);
 }
 
+/* F13: on satellite imagery the names get a halo, so they read over dark ground */
+.city-map[data-base='satellite'] .city-map-label {
+  text-shadow:
+    0 0 3px var(--color-bg-surface),
+    0 0 3px var(--color-bg-surface);
+}
+
 /* F13: zoomed far out, the 17 names would pile up (basemap.ts, CITY_NAMES_ZOOM) */
 .city-map[data-far] .city-map-label {
   opacity: 0;

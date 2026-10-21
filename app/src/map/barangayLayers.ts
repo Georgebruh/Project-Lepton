@@ -31,6 +31,7 @@ import type { MapPointer } from './tooltip.ts'
  * run and close() when it leaves. The layers outlive that component, so that close() can play
  * the reverse before removing them: barangayLayers(map) gives the same object for the same map
  * every time. F11: highlight() shows a barangay from the plan's list as the pointer would.
+ * F13: setFillOpacity() lets the satellite or terrain base map show through the fills.
  */
 
 /** What the map shows of a run: each barangay's class and the order the wave reaches them. */
@@ -119,6 +120,7 @@ function makeBarangayLayers(map: MapLibreMap) {
   let riseTimer = 0
   let removeTimer = 0
   let removed = false
+  let fillOpacity = 1 // F13: the most a fill shows, on the base map chosen (basemap.ts, DATA_OPACITY)
 
   // Once CityMap removes the map, nothing may touch it again
   map.once('remove', () => {
@@ -213,7 +215,7 @@ function makeBarangayLayers(map: MapLibreMap) {
         source: SOURCE,
         paint: {
           'fill-color': ['interpolate', ['linear'], T, 0, classColor(colors, FROM), 1, classColor(colors, TO)],
-          'fill-opacity': RISE,
+          'fill-opacity': ['*', RISE, fillOpacity],
         },
       },
       SLOTS.fills, // above the open city's fill, which fades out under them
@@ -348,7 +350,7 @@ function makeBarangayLayers(map: MapLibreMap) {
       paint(CITY_LAYERS.line, 'line-color', colors.cities, lines)
       removeTimer = window.setTimeout(removeLayers, lines)
     }
-    paint(CITY_LAYERS.openFill, 'fill-opacity', 1, wave)
+    paint(CITY_LAYERS.openFill, 'fill-opacity', fillOpacity, wave)
     const order = [...(view?.order ?? rise.keys())].reverse()
     const sink = (psgc: string, p: number) => setRise(psgc, Math.min(rise.get(psgc) ?? 0, 1 - p))
     // With reduced motion the lines fade out with the fills, in one crossfade
@@ -363,5 +365,22 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener = next
   }
 
-  return { open, show, close, onHover, highlight }
+  /**
+   * F13: the most a fill shows (1 on the street map, less over imagery), now and for later opens.
+   * The open city's fill takes it too, unless the barangays have risen over it.
+   */
+  function setFillOpacity(opacity: number) {
+    fillOpacity = opacity
+    if (removed) {
+      return
+    }
+    if (map.getLayer(LAYERS.fill)) {
+      map.setPaintProperty(LAYERS.fill, 'fill-opacity', ['*', RISE, opacity])
+    }
+    if (stage !== 'open' || !risen) {
+      paint(CITY_LAYERS.openFill, 'fill-opacity', opacity, CROSSFADE_MS)
+    }
+  }
+
+  return { open, show, close, onHover, highlight, setFillOpacity }
 }

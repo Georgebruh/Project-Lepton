@@ -5,7 +5,9 @@ import type {
   StyleSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { MultiPolygon } from 'geojson'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { shapeParts } from '../exposed/nearest.ts'
+import { SLOTS } from './layerOrder.ts'
 import type { Cities } from './mapData.ts'
 
 /*
@@ -19,7 +21,52 @@ import type { Cities } from './mapData.ts'
  *   - the globe projection: zoomed out, the map is the whole Earth.
  * If the style cannot be fetched, the map draws on the plain background it had before F13, so
  * LEPTON's data always shows.
+ *
+ * The Layers panel offers three base maps (setBase): the street map; satellite imagery
+ * (Sentinel-2 cloudless 2024 by EOX, 10 m pixels), with the street map's roads and names kept
+ * over it; and terrain, the street map with hill shading from elevation tiles (Mapzen Terrain
+ * Tiles on AWS). Each is added the first time it is chosen, in the base slot (layerOrder.ts).
  */
+
+/** The base maps the Layers panel offers, the street map first (the address leaves it out). */
+export const BASE_MAPS = ['map', 'satellite', 'terrain'] as const
+export type BaseMap = (typeof BASE_MAPS)[number]
+
+/** How opaque LEPTON's fills are on each base map: over imagery or shading they let it show through (Figma notes). */
+export const DATA_OPACITY: Record<BaseMap, number> = { map: 1, terrain: 0.75, satellite: 0.6 }
+
+/** Satellite imagery: EOX's Sentinel-2 cloudless mosaic of 2024 (CC BY-NC-SA 4.0), sharpest at zoom 14. */
+const SATELLITE = 'satellite'
+const SATELLITE_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg'
+
+/** The satellite choice's picture in the Layers panel: the imagery's tile over Metro Manila at zoom 11. */
+export const SATELLITE_PREVIEW = SATELLITE_TILES.replace('{z}/{y}/{x}', '11/940/1712')
+const SATELLITE_CREDIT =
+  '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless 2024</a> by EOX ' +
+  '(contains modified Copernicus Sentinel data 2024)'
+
+/** Elevation for the hill shading: Mapzen's Terrain Tiles on AWS (terrarium encoding, SRTM in the Philippines). */
+const HILLSHADE = 'hillshade'
+const ELEVATION = 'elevation-hillshade'
+const ELEVATION_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+const ELEVATION_CREDIT =
+  'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>'
+
+/** How strongly the hills are shaded, 0 to 1: Metro Manila is low, but Marikina's valley and the Sierra Madre's foothills show. */
+const HILLSHADE_STRENGTH = 0.5
+
+/** The street map's ground the satellite imagery replaces; its roads and names stay over the imagery. */
+const GROUND_SOURCE_LAYERS = ['landcover', 'landuse', 'park', 'water', 'building', 'aeroway']
+
+/** The sources' names, for the Layers panel's credits line (the map's own credits link them). */
+export const CREDITS = {
+  street: 'Street map © OpenStreetMap contributors, OpenFreeMap',
+  satellite: 'Satellite: Sentinel-2 cloudless 2024 by EOX',
+  terrain: 'Terrain: Mapzen Terrain Tiles',
+}
+
+/** Per map, the street map's ground layers the satellite imagery hides (shown before it hid them). */
+const hiddenGround = new WeakMap<MapLibreMap, string[]>()
 
 /** OpenFreeMap's Positron style (checked 2026-10-21: no key, open to other sites). */
 const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
@@ -76,7 +123,14 @@ export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
 function mapColors(element: HTMLElement) {
   const style = getComputedStyle(element)
   const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
-  return { land: color('map-land'), water: color('bg-inset'), road: color('map-boundary') }
+  return {
+    land: color('map-land'),
+    water: color('bg-inset'),
+    road: color('map-boundary'),
+    /** The hill shading's dark and light sides. */
+    shadow: color('text-primary'),
+    highlight: color('bg-surface'),
+  }
 }
 
 type MapColors = ReturnType<typeof mapColors>
@@ -84,6 +138,87 @@ type MapColors = ReturnType<typeof mapColors>
 /** The cities' outlines as one shape, to hide the base map's names inside it. */
 function ncrOutline(cities: Cities): MultiPolygon {
   return { type: 'MultiPolygon', coordinates: cities.features.flatMap(({ geometry }) => shapeParts(geometry)) }
+}
+
+function addSatellite(map: MapLibreMap) {
+  map.addSource(SATELLITE, {
+    type: 'raster',
+    tiles: [SATELLITE_TILES],
+    tileSize: 256,
+    maxzoom: 14,
+    attribution: SATELLITE_CREDIT,
+  })
+  map.addLayer({ id: SATELLITE, type: 'raster', source: SATELLITE }, SLOTS.base)
+}
+
+function addHillshade(map: MapLibreMap) {
+  const colors = mapColors(map.getContainer())
+  map.addSource(ELEVATION, {
+    type: 'raster-dem',
+    tiles: [ELEVATION_TILES],
+    tileSize: 256,
+    maxzoom: 15,
+    encoding: 'terrarium',
+    attribution: ELEVATION_CREDIT,
+  })
+  map.addLayer(
+    {
+      id: HILLSHADE,
+      type: 'hillshade',
+      source: ELEVATION,
+      paint: {
+        'hillshade-shadow-color': colors.shadow,
+        'hillshade-accent-color': colors.shadow,
+        'hillshade-highlight-color': colors.highlight,
+        'hillshade-exaggeration': HILLSHADE_STRENGTH,
+      },
+    },
+    SLOTS.base,
+  )
+}
+
+function show(map: MapLibreMap, layer: string, visible: boolean) {
+  if (map.getLayer(layer)) {
+    map.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none')
+  }
+}
+
+/** The street map's ground layers that are showing now: the ones the satellite imagery hides. */
+function groundShown(map: MapLibreMap): string[] {
+  return map.getLayersOrder().filter((id) => {
+    const layer = map.getLayer(id)
+    return (
+      layer?.type === 'fill' &&
+      GROUND_SOURCE_LAYERS.includes(layer.sourceLayer ?? '') &&
+      map.getLayoutProperty(id, 'visibility') !== 'none'
+    )
+  })
+}
+
+/**
+ * Shows the base map `base`: the street map alone, the satellite imagery under the street map's
+ * roads and names (its ground hidden), or the street map with hill shading. Leaving the imagery
+ * shows again exactly the ground it hid.
+ */
+export function setBase(map: MapLibreMap, base: BaseMap) {
+  if (base === 'satellite' && !map.getLayer(SATELLITE)) {
+    addSatellite(map)
+  }
+  if (base === 'terrain' && !map.getLayer(HILLSHADE)) {
+    addHillshade(map)
+  }
+  show(map, SATELLITE, base === 'satellite')
+  show(map, HILLSHADE, base === 'terrain')
+  const hidden = hiddenGround.get(map)
+  if (base === 'satellite' && !hidden) {
+    const ground = groundShown(map)
+    ground.forEach((id) => show(map, id, false))
+    hiddenGround.set(map, ground)
+  }
+  if (base !== 'satellite' && hidden) {
+    hidden.forEach((id) => show(map, id, true))
+    hiddenGround.delete(map)
+  }
 }
 
 /**

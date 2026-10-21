@@ -9,6 +9,8 @@
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  /* F13: the map buttons' width: an 18 px icon, 8 px padding each side and a 1 px border (MapButton.css) */
+  --map-buttons-width: 36px;
   /* What moves with the camera; with reduced motion it is a crossfade instead */
   --map-move: var(--map-camera);
 }
@@ -50,6 +52,18 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* F13: the Layers panel (map/MapLayers.css) moves left with the city panel, as the buttons do, and
+   draws over it on a phone */
+.map-layers {
+  z-index: 1;
+  transition: transform var(--map-camera) var(--map-ease);
+}
+
+.map-layout[data-panel='open'] .map-layers {
+  max-width: calc(100% - var(--map-panel-width) - 2 * var(--space-5) - var(--map-buttons-width) - var(--space-3));
+  transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
 /* F13: opened credits wrap within the map's visible part, left of the panel */
@@ -125,8 +139,30 @@
     transition: bottom var(--map-camera) var(--map-ease);
   }
 
-  .map-layout[data-panel='open'] .maplibregl-ctrl-bottom-left {
+  .map-layout[data-panel='open'] .maplibregl-ctrl-bottom-left,
+  .map-layout[data-layers='open'] .maplibregl-ctrl-bottom-left {
     bottom: var(--map-sheet-share);
+  }
+
+  /* F13: the Layers panel is a sheet over the map's lower part, as tall as the city panel's, and
+     the legend and buttons stand on it */
+  .map-layers,
+  .map-layout[data-panel='open'] .map-layers {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    height: var(--map-sheet-share);
+    max-height: none;
+    border-width: 1px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: none;
+  }
+
+  .map-layout[data-layers='open'] .map-layout-controls {
+    bottom: calc(var(--map-sheet-share) + var(--space-4));
+    max-width: calc(100% - 2 * var(--space-4) - var(--space-6));
   }
 
   .map-layout-panel {
@@ -145,9 +181,10 @@
   }
 }
 
-/* Reduced motion: the panel crossfades in place, and the controls move without sliding */
+/* Reduced motion: the panel crossfades in place, and the controls (F13: and the Layers panel) move without sliding */
 @media (prefers-reduced-motion: reduce) {
-  .map-layout-controls {
+  .map-layout-controls,
+  .map-layers {
     transition: none;
   }
 
