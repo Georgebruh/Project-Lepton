@@ -582,3 +582,13 @@ APP_LEVELS = (("low", 0.0), ("watch", 0.10), ("high", 0.50))   # each level and 
 # Assumption: a city smaller than this gets no name written on the map, as in Figma (only
 # Pateros, 1.6 km2; the next smallest, San Juan, is 5.8 km2). Its name still shows on hover.
 APP_LABEL_MIN_KM2 = 3
+
+# The map's NOAH overlay (F13): A8's flood maps, made light enough for a browser. For looking at
+# only; C2 and every LEPTON number use the full maps. Assumptions: a flood patch smaller than a
+# 20 m square is dropped (most are one to four of NOAH's grid cells, under a pixel at the city's
+# view), and a point of an outline goes when the triangle it makes with its two neighbours is
+# smaller than about APP_NOAH_SIMPLIFY_M squared (as MAP_SIMPLIFY_M; a few px at street level).
+APP_NOAH_MIN_M2 = 400
+APP_NOAH_SIMPLIFY_M = 25
+APP_NOAH_FILE = "noah_{return_period}yr.json"  # .json, not .geojson, so the web host sends it compressed
+APP_NOAH_AREA_KEPT = (0.85, 1.005)             # check "F13 NOAH map": each map keeps this share of A8's flooded area

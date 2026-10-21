@@ -15,6 +15,10 @@ Files written to app/public/data/ (config.APP_DATA), which the app fetches as /d
                         lines up when it drills down (map_shapes). Also label_lon and
                         label_lat, where the map writes the city's name (F4, label_points)
   qc_barangays.geojson  A5's 142 barangays: psgc and name
+  noah_<T>yr.json       F13: NOAH's 5-, 25- and 100-year flood maps (A8), one row per hazard
+                        level (var 1-3), simplified for the map's overlay (noah_overlay). For
+                        looking at only; every number uses A8's full maps. Written again only
+                        when A8's file or the overlay's settings change (it takes most of a minute)
   storms.json           C9's runs of each storm: the rain that fell (observed, IMERG) and
                         the forecasts 1, 2 and 3 days ahead (ECMWF). Each run gives its
                         3-day window, rain, where the rain falls against the return levels,
@@ -51,7 +55,7 @@ The words behind the numbers:
 Every file with doses carries doses.LABEL: stock-planning figures, not prescriptions (rule 10).
 
 Run from the repository root after C8 and C9 (and B10, or its --simulate run, for
-city_forecast.json); a few seconds:
+city_forecast.json); a few seconds, and about a minute more when NOAH's maps must be written again:
     python -m src.app_data
 It downloads the NCR outlines once into data/raw/ncr_cities/. Commit app/public/data/
 afterwards, so the deployed app gets the new files. Check: python -m src.checks ("F2 app data").
@@ -254,6 +258,77 @@ def write_geojson(shapes, path):
     shapes.to_file(part, driver="GeoJSON", layer=path.stem, RFC7946="YES",
                    COORDINATE_PRECISION=config.APP_COORD_DECIMALS)
     part.replace(path)
+
+
+# ---------------------------------------------------------------------------
+# NOAH's flood zones, the map's overlay (F13)
+# ---------------------------------------------------------------------------
+
+def noah_settings():
+    """The overlay's settings, written into each of its files so that a stale file can be told apart."""
+    return {"min_m2": config.APP_NOAH_MIN_M2, "simplify_m": config.APP_NOAH_SIMPLIFY_M}
+
+
+def noah_path(return_period):
+    """The app's file of one NOAH map: app/public/data/noah_<T>yr.json."""
+    return config.APP_DATA / config.APP_NOAH_FILE.format(return_period=return_period)
+
+
+def noah_overlay(flood, return_period):
+    """One NOAH map made light enough for a browser: one row per hazard level (var), in metres.
+
+    A8's map (config.NOAH_FLOOD, EPSG:32651) holds about 2 million points in 126,000 to 142,000
+    separate flood patches, most of them one to four of NOAH's grid cells. For the overlay:
+      1. each patch becomes a row of its own;
+      2. a patch smaller than config.APP_NOAH_MIN_M2 is dropped;
+      3. the patches of all three levels are simplified together (GeoPandas simplify_coverage,
+         as map_shapes does): a point goes when the triangle it makes with its two neighbours is
+         smaller than about config.APP_NOAH_SIMPLIFY_M squared, and a border two patches share
+         is simplified once, so the levels still meet without gaps or overlaps;
+      4. a level's patches are listed together as one MultiPolygon (they never overlap, so
+         nothing needs joining).
+    The rows also carry noah_settings(). Only for looking at: C2 and every number in the app
+    use A8's full maps.
+    """
+    patches = flood.loc[flood["return_period"] == return_period, ["var", "geometry"]].explode(index_parts=False)
+    patches = patches[patches.area >= config.APP_NOAH_MIN_M2].copy()
+    patches["geometry"] = patches.geometry.simplify_coverage(config.APP_NOAH_SIMPLIFY_M).values
+    patches = patches[~patches.is_empty]
+    levels = sorted(patches["var"].unique())
+    shapes = [shapely.multipolygons(patches.geometry[patches["var"] == var].values) for var in levels]
+    return gpd.GeoDataFrame({"var": levels, **noah_settings()}, geometry=shapes, crs=flood.crs)
+
+
+def noah_is_current(path):
+    """Whether an overlay file is newer than A8's map and was made with today's settings."""
+    if not path.exists() or path.stat().st_mtime < config.NOAH_FLOOD.stat().st_mtime:
+        return False
+    written = gpd.read_file(path, ignore_geometry=True)
+    return all(name in written and (written[name] == value).all() for name, value in noah_settings().items())
+
+
+def write_noah_files():
+    """Write the overlay of each NOAH map that is missing or stale; returns a line per map for the report.
+
+    Without A8's map on this computer the files are left as they were: the rest of the
+    export does not need them.
+    """
+    if not config.NOAH_FLOOD.exists():
+        return [f"noah_*.json left as they were: {config.NOAH_FLOOD.name} not on this computer (A8: python -m src.noah)"]
+    flood = None   # A8's 2 million points are read only when a file must be written again
+    lines = []
+    for return_period in config.NOAH_RETURN_PERIODS:
+        path = noah_path(return_period)
+        if noah_is_current(path):
+            lines.append(f"{path.name} left as it was: up to date with A8 and config")
+            continue
+        if flood is None:
+            flood = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard")
+        overlay = noah_overlay(flood, return_period)
+        kept = overlay.area.sum() / flood.loc[flood["return_period"] == return_period].area.sum()
+        write_geojson(overlay.to_crs(config.CRS_LONLAT), path)
+        lines.append(f"{path.name}: {kept:.1%} of the map's flooded area, {path.stat().st_size / 1e6:.1f} MB")
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -615,7 +690,7 @@ def write_layer1():
     return f"city_forecast.json and scores.json from {path.name}"
 
 
-def report(storms, layer1):
+def report(storms, layer1, noah):
     """Print each run's flags and QC totals as the app shows them, the files written, and the label."""
     for storm in storms["storms"]:
         print(f"\n{storm['name']}:")
@@ -626,6 +701,7 @@ def report(storms, layer1):
     written = sorted(path for path in config.APP_DATA.rglob("*") if path.is_file())
     size = sum(path.stat().st_size for path in written) / 1024
     print(f"\n{layer1}")
+    print("\n".join(noah))
     print(f"{len(written)} files in {config.APP_DATA.relative_to(config.ROOT)} ({size:,.0f} KB); "
           f"commit them so the deployed app gets them")
     print(doses.LABEL)
@@ -641,7 +717,9 @@ def main():
     for name, content in files.items():
         write_json(content, config.APP_DATA / name)
     remove_stale_runs(files)
-    report(files["storms.json"], write_layer1())
+    layer1 = write_layer1()
+    noah = write_noah_files()
+    report(files["storms.json"], layer1, noah)
 
 
 if __name__ == "__main__":
