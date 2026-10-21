@@ -236,8 +236,18 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   and a badge saying they are now, not the map's date. `map/WeatherLegend.tsx` draws each layer's
   colors as its provider does (GIBS's colormaps, RainViewer's Universal Blue), so they are not
   tokens. A failed source says so in the panel, with Try again; a date NASA has no picture of
-  says that. The tile servers see the reader's address and the part of the world in view, as
-  for the street map; the Exposure guide loads none of them.
+  says that.
+- **The address (F13).** Every map layer is a setting in the address, left out at its default,
+  so a link opens the same map and the links between the levels keep it (`map/layerParams.ts`):
+  `?base=satellite|terrain`, `?flood=5|25|100`, `?view=3d`,
+  `?wx=clouds|radar|rain|rain-day|photo-day`. For example
+  `/map/quezon-city?date=2024-07-24&base=satellite&flood=25&wx=rain-day&view=3d` opens Quezon City
+  on the day of Typhoon Carina, over imagery, in 3D, with NOAH's 25-year zones and that day's rain.
+- **Privacy (F13).** The map now loads tiles from other servers: OpenFreeMap (always, unless it
+  is blocked), and EOX, AWS, NASA GIBS and RainViewer when their layers are chosen. Each sees
+  the reader's IP address and which part of the world is in view, as any web map's tile server
+  does; none gets a cookie or anything LEPTON knows. The Exposure guide (F8) and Home's maps are
+  SVG drawn from LEPTON's own files and load none of them.
 - **The camera and the levels (F13).** A level's view (`map/view.ts`) is reached with
   `moveToLevel` (`levelCamera` and `easeTo`), not `fitBounds`: the zoom is the flat map's fit,
   and the level's padding (the panel, the sheet) becomes the camera's own, so the camera tilts,
