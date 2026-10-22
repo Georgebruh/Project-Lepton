@@ -85,5 +85,7 @@ Checked on October 22 with TinyTeX (TeX Live 2026) and latexmk, as LaTeX Worksho
   Add each new work to `references.bib` in sentence case, with proper nouns in braces, e.g.
   `{Quezon City}`, so their capitals survive.
 - **No formulas in the main text** (E5); they go in an appendix.
+- **No first person.** This is a research paper: write "this study", "the proposed model" (M4)
+  or the passive ("cases were counted by week of onset"), never "we", "our" or "us".
 - **No case-level records**, in the text or in a table (rule 11): weekly counts only.
 - Build files go to the folder you compile in; `.gitignore` here keeps them out of git.
