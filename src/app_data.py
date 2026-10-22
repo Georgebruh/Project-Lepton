@@ -61,6 +61,7 @@ It downloads the NCR outlines once into data/raw/ncr_cities/. Commit app/public/
 afterwards, so the deployed app gets the new files. Check: python -m src.checks ("F2 app data").
 """
 
+import hashlib
 import json
 from datetime import timedelta
 
@@ -264,9 +265,29 @@ def write_geojson(shapes, path):
 # NOAH's flood zones, the map's overlay (F13)
 # ---------------------------------------------------------------------------
 
+def noah_fingerprint():
+    """A fingerprint of A8's maps' content: the first 16 hex digits of the SHA-256 of each map
+    level's area (A8's area_km2, to the square metre), read without the 2 million points.
+
+    Any change to NOAH's maps changes their areas. The file's bytes would not do: a GeoPackage
+    made again from the same inputs records a new time, so a teammate who ran A8 themselves
+    would get another fingerprint for the same maps.
+    """
+    rows = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard", ignore_geometry=True)
+    rows = rows.sort_values(["return_period", "var"])
+    text = ";".join(f"{t},{v},{a:.6f}" for t, v, a in zip(rows["return_period"], rows["var"], rows["area_km2"]))
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 def noah_settings():
-    """The overlay's settings, written into each of its files so that a stale file can be told apart."""
-    return {"min_m2": config.APP_NOAH_MIN_M2, "simplify_m": config.APP_NOAH_SIMPLIFY_M}
+    """What an overlay was made from, written into each of its files so that a stale file can be told apart:
+    the settings that shape it and A8's file's fingerprint."""
+    return {
+        "min_m2": config.APP_NOAH_MIN_M2,
+        "simplify_m": config.APP_NOAH_SIMPLIFY_M,
+        "coord_decimals": config.APP_COORD_DECIMALS,
+        "a8_fingerprint": noah_fingerprint(),
+    }
 
 
 def noah_path(return_period):
@@ -300,8 +321,8 @@ def noah_overlay(flood, return_period):
 
 
 def noah_is_current(path):
-    """Whether an overlay file is newer than A8's map and was made with today's settings."""
-    if not path.exists() or path.stat().st_mtime < config.NOAH_FLOOD.stat().st_mtime:
+    """Whether an overlay file was made from today's A8 file and settings (noah_settings), whatever the files' dates."""
+    if not path.exists():
         return False
     written = gpd.read_file(path, ignore_geometry=True)
     return all(name in written and (written[name] == value).all() for name, value in noah_settings().items())
