@@ -81,12 +81,11 @@ export const READER_MOVE = { readerMove: true }
 
 /**
  * F13: the camera, for easeTo, that shows a level's view tilted by `pitch` (0 flat), facing north:
- * the zoom at which the box just fits in the map left in sight, as fitBounds finds it for the flat
- * map (at a city's size the globe draws it the same), and the box's middle in the middle of the
- * map left in sight. The padding goes to the camera, which keeps that middle there at any tilt.
- * fitBounds' own way of shifting the middle holds only while the map stays flat (on a phone, a
- * tilt would throw the city off the top of the strip above the sheet), and MapLibre's globe gets
- * the zoom wrong when the padding is the camera's. Heights down the flat map are MapLibre's
+ * the zoom at which the box just fits in the map left in sight, as fitBounds finds it, and the
+ * box's middle in the middle of the map left in sight. The padding goes to the camera, which
+ * keeps that middle there at any tilt. fitBounds' own way of shifting the middle holds only while
+ * the map is not tilted (on a phone, a tilt would throw the city off the top of the strip above
+ * the sheet). Heights down the flat map are MapLibre's
  * MercatorCoordinate y, 0 at the world's top to 1 at its bottom. Null if the map is too small
  * to fit the box.
  */

@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { BASE_SOURCE, ELEVATION_SOURCE } from './basemap.ts'
 import { SLOTS } from './layerOrder.ts'
+import { tokenColor } from './tokens.ts'
 
 /*
  * F13: the 3D view, from the Layers panel's switch (?view=3d). The ground rises with its
@@ -30,9 +31,9 @@ const BUILDINGS_ZOOM = 14
 /** How opaque the buildings are: the city, barangay and flood colors under them show through. */
 const BUILDINGS_OPACITY = 0.7
 
-/** The buildings, in the raised surface color (bg/raised), read from tokens.css; MapLibre shades their sides. */
+/** The buildings, in the raised surface color (bg/raised); MapLibre shades their sides. */
 function addBuildings(map: MapLibreMap) {
-  const color = getComputedStyle(map.getContainer()).getPropertyValue('--color-bg-raised').trim()
+  const color = tokenColor(map.getContainer(), 'bg-raised')
   map.addLayer(
     {
       id: BUILDINGS,
@@ -62,9 +63,6 @@ export function set3D(map: MapLibreMap, on: boolean) {
   if (on && !map.getLayer(BUILDINGS) && map.getSource(BASE_SOURCE)) {
     addBuildings(map)
   }
-  // MapLibre does not fully support raised ground on the globe (zoomed out, tiles went missing in
-  // tests), so the 3D view lays the world flat; at a city's size the two look the same
-  map.setProjection({ type: on ? 'mercator' : 'globe' })
   map.setTerrain(on ? { source: DEM, exaggeration: EXAGGERATION } : null)
   if (map.getLayer(BUILDINGS)) {
     map.setLayoutProperty(BUILDINGS, 'visibility', on ? 'visible' : 'none')

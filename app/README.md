@@ -197,9 +197,11 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   Sans, from OpenFreeMap) leave out NCR's cities while LEPTON writes them (from zoom 8.5);
   zoomed further out, LEPTON's names hide and the street map's come back (`map/basemap.ts`).
 - **The street map (F13).** OpenFreeMap's Positron style under LEPTON's data, in the Figma map
-  colors, with the cities' fills over its roads and under its names; zoomed out the map is a
-  globe, and the pin button above Zoom brings the open level back. The drawing order lives in
-  `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
+  colors, with the cities' fills over its roads and under its names; zoomed out it shows the
+  whole world, and the pin button above Zoom brings the open level back. The drawing order lives
+  in `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
+  The map is flat (Mercator), not a globe, and names appear without a fade (`fadeDuration: 0`):
+  see "Keeping the map smooth" below.
 - **The Layers panel (F13).** The Layers button above Zoom opens `map/MapLayers.tsx` (Figma
   "Layers panel"): it opens up from the button and covers the legends; on a phone it is a sheet
   like the city panel's. Escape or Close gives the keyboard back to the button. The base map is
@@ -222,8 +224,7 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   (`map/terrain.ts`). The ground rises with Mapzen's Terrain Tiles (heights doubled: Metro
   Manila is low), the street map gets the hill shading, and its buildings stand up from zoom 14.
   The camera tilts 60°; the reader can turn and tilt it with a right-button drag, two fingers,
-  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north. In 3D
-  the world is laid flat (Mercator): MapLibre does not fully support raised ground on the globe.
+  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north.
 - **Weather (F13).** The panel's Weather rows show one layer at a time, `?wx=` in the address
   (`map/weather.ts`): live clouds (Himawari-9 infrared, JMA, through NASA GIBS; the last 3 hours),
   live radar (RainViewer, the past 2 hours), live rain (NASA IMERG, the last 6 hours), and the
@@ -258,6 +259,25 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   level's view carry `LEVEL_FIT`. The reader's own moves (a drag, a pinch, a key, the wheel, the
   zoom buttons with `READER_MOVE`) mark the map as moved: then a resize no longer refits the
   level, and 3D tilts where the reader is. MapLibre's own moves (a resize) mark nothing.
+- **Keeping the map smooth (F13).** The map's lag was freezes, not slow frames. MapLibre
+  compiles a WebGL shader the first time it draws each kind of layer, and on an integrated GPU
+  each compile holds the page for 0.1 to 0.35 s. The street map brought many kinds of layer, and a
+  globe compiles each shader twice (round, then flat as you zoom in). Measured on 22 October 2026
+  (AMD Radeon integrated, headless Edge, panning and zooming each level):
+
+  | | shaders at levels 1 / 2 / 3 | page frozen compiling | worst frame |
+  | --- | --- | --- | --- |
+  | before F13 | 6 / 7 / 10 | 0.15 to 0.28 s | 17 ms |
+  | F13 with the globe | 13 / 25 / 31 | 0.75 to 1.57 s | 83 to 483 ms |
+  | F13 flat, no label fade | 12 / 12 / 10 | 0.08 to 0.41 s | 17 ms |
+
+  So the map is flat (Mercator) at every zoom, and names appear without a fade
+  (`fadeDuration: 0`), which also stops MapLibre redrawing for 300 ms after every change of
+  which names fit. Every layer but 3D now keeps a steady 60 frames a second; 3D runs at about
+  55. Before adding a layer, mind what it costs: a new layer type (fill-extrusion, hillshade,
+  heatmap), a dashed or patterned line, or a paint property that varies by feature where others
+  are constant each mean another shader. The browser keeps compiled shaders while the tab is
+  open, so each one freezes the page once.
 
 ### The prophylaxis plan (F5)
 

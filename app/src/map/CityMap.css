@@ -11,12 +11,12 @@
 .city-map-canvas {
   position: absolute;
   inset: 0;
-  /* F13: around the globe, when the map is zoomed out to the whole world (MapLibre leaves it clear) */
+  /* F13: beyond the world's edges, when the map is zoomed out to all of it (MapLibre leaves it clear) */
   background: var(--color-map-space);
 }
 
-/* F13: the 3D view lays the world flat (terrain.ts); past its far edge, where tiles have not come
-   yet, the land's color, not the dark around the globe */
+/* F13: in the 3D view, past the tilted map's far edge, where tiles have not come yet: the land's
+   color, not the dark beyond the world */
 .city-map[data-view='3d'] .city-map-canvas {
   background: var(--color-map-land);
 }
@@ -66,11 +66,15 @@
   pointer-events: none;
 }
 
-/* A city's name, grey; dark while the city is under the pointer (Figma 1a) */
+/* A city's name, grey; dark while the city is under the pointer (Figma 1a). F13: with a halo, so
+   it reads where an outline, a road, satellite imagery or NOAH's flood zones run under it */
 .city-map-label {
   display: block;
   color: var(--color-text-tertiary);
   white-space: nowrap;
+  text-shadow:
+    0 0 3px var(--color-bg-surface),
+    0 0 3px var(--color-bg-surface);
   transition:
     color var(--map-hover) linear,
     opacity var(--map-move) var(--map-ease),
@@ -94,13 +98,6 @@
   color: var(--color-text-secondary);
 }
 
-/* F13: on satellite imagery the names get a halo, so they read over dark ground */
-.city-map[data-base='satellite'] .city-map-label {
-  text-shadow:
-    0 0 3px var(--color-bg-surface),
-    0 0 3px var(--color-bg-surface);
-}
-
 /* F13: zoomed far out, the 17 names would pile up (basemap.ts, CITY_NAMES_ZOOM) */
 .city-map[data-far] .city-map-label {
   opacity: 0;
@@ -111,7 +108,15 @@
 }
 
 /* F11: the map's top left corner: the hint and the list of cities at level 1, the plan's list of
-   barangays at level 3. Kept inside the map; the pointer passes through its empty part. */
+   barangays at level 3. Kept inside the map; the pointer passes through its empty part.
+   It spans the map's width (its boxes keep their own widths), so the hint and the list of cities
+   keep theirs when they leave its column at level 3 (below); sized to its boxes, it would shrink
+   as they left and squeeze them to a word a line while they fade. It stops above the credits' "i" button (24 px, MapLibre's), so a
+   long list's last rows do not run under it. */
+.city-map {
+  --city-map-credits-room: calc(24px + var(--space-3));
+}
+
 .city-map-corner {
   position: absolute;
   top: var(--space-5);
@@ -120,8 +125,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
-  max-width: calc(100% - 2 * var(--space-5));
-  max-height: calc(100% - 2 * var(--space-5));
+  width: calc(100% - 2 * var(--space-5));
+  max-height: calc(100% - 2 * var(--space-5) - var(--city-map-credits-room));
   pointer-events: none;
 }
 
@@ -161,9 +166,10 @@
 }
 
 /* The names and the hint belong to Metro Manila: they fade with the camera when a city opens.
-   F11: so does the list of cities, and the hint and the list leave the corner's column as they
-   go, so the plan's list of barangays takes the top (hidden, the list is out of the keyboard's
-   reach too) */
+   F11: so does the list of cities (hidden, it is out of the keyboard's reach too). At the plan
+   (level 3) the hint and the list leave the corner's column, so the plan's list of barangays
+   takes the top. F13: only there, not as they fade out at level 2, where both jumping to the top
+   left put the hint under the list for the length of the camera's move. */
 .city-map:not([data-level='1']) .city-map-label,
 .city-map:not([data-level='1']) .city-map-hint,
 .city-map:not([data-level='1']) .city-map-cities {
@@ -174,8 +180,8 @@
     visibility 0s linear var(--map-move);
 }
 
-.city-map:not([data-level='1']) .city-map-hint,
-.city-map:not([data-level='1']) .city-map-cities {
+.city-map[data-level='3'] .city-map-hint,
+.city-map[data-level='3'] .city-map-cities {
   position: absolute;
   top: 0;
   left: 0;
@@ -187,12 +193,12 @@
   .city-map-corner {
     top: var(--space-4);
     left: var(--space-4);
-    max-width: calc(100% - 2 * var(--space-4));
-    max-height: calc(100% - 2 * var(--space-4));
+    width: calc(100% - 2 * var(--space-4));
+    max-height: calc(100% - 2 * var(--space-4) - var(--city-map-credits-room));
   }
 
   .city-map:not([data-level='1']) .city-map-corner {
-    max-height: calc(100% - var(--map-sheet-share) - 2 * var(--space-4));
+    max-height: calc(100% - var(--map-sheet-share) - 2 * var(--space-4) - var(--city-map-credits-room));
   }
 }
 

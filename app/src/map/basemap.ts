@@ -2,7 +2,6 @@ import type {
   FilterSpecification,
   LayerSpecification,
   RasterDEMSourceSpecification,
-  SkySpecification,
   StyleSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { MultiPolygon } from 'geojson'
@@ -10,6 +9,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { shapeParts } from '../exposed/nearest.ts'
 import { SLOTS } from './layerOrder.ts'
 import type { Cities } from './mapData.ts'
+import { tokenColor } from './tokens.ts'
 
 /*
  * F13: the street map under LEPTON's data, OpenFreeMap's "Positron" style: OpenStreetMap data
@@ -19,7 +19,11 @@ import type { Cities } from './mapData.ts'
  *   - the base map's own city and town names inside NCR are hidden where LEPTON writes the
  *     cities' names itself (from CITY_NAMES_ZOOM in), in Figtree, with next week's cases;
  *     zoomed further out, LEPTON's names hide and the base map's come back;
- *   - the globe projection: zoomed out, the map is the whole Earth.
+ *   - the flat (Mercator) map of the whole world: zoomed out, it shows every continent. A globe
+ *     looked better zoomed out but cost a freeze: MapLibre compiles each of its shaders twice
+ *     for a globe (once round, once flat for close up), and on an integrated GPU each compile
+ *     holds the page up to a third of a second (measured 22 October 2026: 31 shaders and 1.6 s
+ *     frozen at the plan level, against 10 and 0.3 s before F13).
  * If the style cannot be fetched, the map draws on the plain background it had before F13, so
  * LEPTON's data always shows.
  *
@@ -107,8 +111,6 @@ const NCR_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
  */
 export const CITY_NAMES_ZOOM = 8.5
 
-/** The glow around the globe, gone by the time the map shows a region (zoom 7). */
-const SKY: SkySpecification = { 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }
 
 /** Fetches the street map's style; null if it does not come within BASE_STYLE_TIMEOUT_MS or is not a style. */
 export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
@@ -132,10 +134,9 @@ export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
   }
 }
 
-/** The colors the base map is drawn in, read from tokens.css: MapLibre draws on a canvas and cannot read CSS variables. */
+/** The colors the base map is drawn in, from tokens.css. */
 function mapColors(element: HTMLElement) {
-  const style = getComputedStyle(element)
-  const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
+  const color = (token: string) => tokenColor(element, token)
   return {
     land: color('map-land'),
     water: color('bg-inset'),
@@ -258,18 +259,18 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, ncr: MultiPoly
 
 /**
  * The style CityMap makes the map with: the street map adapted to the app, or, without one,
- * the plain background the map had before F13 (bg/inset). Both are globes. `element` is the
- * map's element, for the token colors.
+ * the plain background the map had before F13 (bg/inset). Both are flat (Mercator) maps.
+ * `element` is the map's element, for the token colors.
  */
 export function mapStyle(base: StyleSpecification | null, element: HTMLElement, cities: Cities): StyleSpecification {
   const colors = mapColors(element)
-  const globe: Pick<StyleSpecification, 'projection' | 'sky'> = { projection: { type: 'globe' }, sky: SKY }
+  const flat: Pick<StyleSpecification, 'projection'> = { projection: { type: 'mercator' } }
   if (!base) {
     return {
       version: 8,
       sources: {},
       layers: [{ id: 'background', type: 'background', paint: { 'background-color': colors.water } }],
-      ...globe,
+      ...flat,
     }
   }
   const ncr = ncrOutline(cities)
@@ -279,5 +280,5 @@ export function mapStyle(base: StyleSpecification | null, element: HTMLElement, 
       id === BASE_SOURCE ? { ...source, attribution: BASE_ATTRIBUTION } : source,
     ]),
   )
-  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...globe }
+  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...flat }
 }

@@ -11,6 +11,8 @@
   height: 100dvh;
   /* F13: the map buttons' width: an 18 px icon, 8 px padding each side and a 1 px border (MapButton.css) */
   --map-buttons-width: 36px;
+  /* F13: the Layers panel's width (Figma "Layers panel", map/MapLayers.css) */
+  --map-layers-width: 320px;
   /* What moves with the camera; with reduced motion it is a crossfade instead */
   --map-move: var(--map-camera);
 }
@@ -105,14 +107,6 @@
   bottom: calc(var(--map-timeline-height) + var(--space-3));
 }
 
-/* F13: over NOAH's flood zones the cities' names get the halo they have on satellite (CityMap.css),
-   so they read over the blues */
-.map-layout[data-flood] .city-map-label {
-  text-shadow:
-    0 0 3px var(--color-bg-surface),
-    0 0 3px var(--color-bg-surface);
-}
-
 /* F13: opened credits wrap within the map's visible part, left of the panel */
 .map-layout[data-panel='open'] .city-map .maplibregl-ctrl-attrib {
   max-width: calc(100% - var(--map-panel-width) - 2 * var(--space-5));
@@ -126,6 +120,14 @@
   align-items: flex-end;
   gap: var(--space-2);
   min-width: 0;
+  transition: margin-right var(--map-hover) linear;
+}
+
+/* F13: the Layers panel opens where the legends stand; they step left of it, so the flood zones'
+   legend stays in sight while its map is chosen (behind the panel, a wide legend peeked out from
+   under it half cut off). A phone hides them instead (below). */
+.map-layout[data-layers='open'] .map-layout-legends {
+  margin-right: calc(var(--map-layers-width) + var(--space-3));
 }
 
 /* F5: where a level puts its own legend. Its legend sits in the legends' column as if this box
@@ -212,8 +214,10 @@
   }
 
   /* F13: with the city's sheet up, the strip of map above it is short: the weather legend goes
-     (the timeline and the Layers panel still name the layer) */
-  .map-layout[data-panel='open'] .weather-legend {
+     (the timeline and the Layers panel still name the layer), and so does the outbreak legend,
+     which covered half the strip for the one city's color (the sheet names its level) */
+  .map-layout[data-panel='open'] .weather-legend,
+  .map-layout[data-panel='open'] .outbreak-legend {
     display: none;
   }
 
