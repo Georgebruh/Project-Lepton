@@ -1604,6 +1604,88 @@ def f2_app_data():
             f"get stock, {left_out} left out and listed; {layer1}")
 
 
+PERSON_COLUMNS = {   # E10: columns of a person's record; no tracked table may have one
+    # Not a bare "name": results tables use it for a model's or a comparison's name (D8's d8_fig2_mae.csv)
+    "full_name", "first_name", "last_name", "patient", "patient_name", "patient_id",
+    "case_id", "age", "sex", "gender", "address", "birthdate", "birth_date", "date_of_birth",
+    "onset", "onset_date", "date_onset", "contact", "phone",
+    # A13: QCESD's case list (config.QCESD_COLUMNS), lower-cased; District and Barangay are left out
+    # because aggregated tables use them too
+    "year_of_onset", "date_of_onset", "morbidity_week", "date_of_admission", "admission_date",
+}
+
+
+def e10_package():
+    """E10 (no S number): what the code package ships.
+
+    1. requirements.txt pins every package with == and this computer has exactly those
+       versions (the check pass values were confirmed with them).
+    2. Every package that src/ and config.py import is in requirements.txt, unless it
+       comes with Python.
+    3. git tracks nothing under data/ except the per-file notes (.md) and .gitkeep: data
+       go through the team drive, and case records never ship (rule 11).
+    4. No tracked .csv has a column of a person's record (PERSON_COLUMNS: full name, age,
+       sex, address, onset date, QCESD's case-list columns, ...): results hold aggregates only.
+    Parts 3 and 4 need git; in a copy without it they are not checked.
+    """
+    import ast
+    import re
+    import subprocess
+    from importlib import metadata
+
+    def norm(name):
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    pins, bad = {}, []
+    for line in (config.ROOT / "requirements.txt").read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if not line:
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9_.-]+)==(\S+)", line)
+        if not match:
+            bad.append(f"not pinned with ==: {line}")
+            continue
+        pins[norm(match[1])] = match[2]
+        try:
+            installed = metadata.version(match[1])
+        except metadata.PackageNotFoundError:
+            installed = "not installed"
+        if installed != match[2]:
+            bad.append(f"{match[1]}: requirements.txt pins {match[2]}, this computer has {installed}")
+
+    # Read the import statements themselves (ast), so a docstring line starting "from ..." is not one
+    sources = sorted((config.ROOT / "src").glob("*.py")) + [config.ROOT / "config.py"]
+    imported = set()
+    for path in sources:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name.split(".")[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                imported.add(node.module.split(".")[0])
+    by_import = metadata.packages_distributions()
+    for name in sorted(imported - set(sys.stdlib_module_names) - {"src", "config"}):
+        dists = [norm(dist) for dist in by_import.get(name, [])]
+        if not any(dist in pins for dist in dists):
+            bad.append(f"src/ imports {name}, which is not in requirements.txt"
+                       + ("" if dists else " (not installed either)"))
+    assert not bad, "; ".join(bad) + ". Fix: pip install -r requirements.txt, or pin the package"
+
+    listed = subprocess.run(["git", "ls-files"], cwd=config.ROOT, capture_output=True, text=True)
+    if listed.returncode != 0:
+        return f"{len(pins)} packages pinned and installed; not a git checkout, so tracked files not checked"
+    tracked = listed.stdout.splitlines()
+    data_files = [path for path in tracked if path.startswith("data/")
+                  and not path.endswith(".md") and not path.endswith(".gitkeep")]
+    assert not data_files, f"git tracks data files (share them through the team drive): {data_files}"
+    tables = [path for path in tracked if path.endswith(".csv")]
+    for path in tables:
+        columns = {str(col).strip().lower() for col in pd.read_csv(config.ROOT / path, nrows=0).columns}
+        person = sorted(columns & PERSON_COLUMNS)
+        assert not person, f"{path} has columns of a person's record: {person} (rule 11)"
+    return (f"{len(pins)} packages pinned and installed; {len(tracked)} tracked files, none under data/ "
+            f"but notes; {len(tables)} tracked tables, no person columns")
+
+
 def f9_scores():
     """F9: the scores Compare models shows (scores.json) equal D8's figure 2 table.
 
@@ -1649,6 +1731,48 @@ def f9_scores():
             f"{primary['low']:+.2f} to {primary['high']:+.2f}) equal d8_fig2_mae.csv")
 
 
+def e6_score_tables():
+    """D1-D6's score tables for E6 (src/score_tables.py) agree with B10's forecasts and D8's tables.
+
+    d1_scores.csv: each window holds as many target weeks as forecasts.csv has in its years;
+    each model's MAE over the MAE years equals its "MAE by model" row in d8_fig2_mae.csv;
+    M4's and M3's Brier scores over 2022-2026 equal those in d8_fig3_reliability.csv. The
+    all-years comparisons cover every target week. All files round to 4 decimals.
+    SKIP until B10's forecasts, D8's tables and the score tables are on this computer.
+    """
+    need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
+    need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
+    need_file(config.D8_FIG3_TABLE, "D8 (python -m src.paper_figures)")
+    for path in (config.D_SCORES, config.D_TESTS_ALL_YEARS):
+        need_file(path, "E6's score tables (python -m src.score_tables)")
+    rerun = "rerun python -m src.paper_figures and python -m src.score_tables on the same forecasts.csv"
+    tolerance = 1e-4   # one unit in the 4th decimal, the rounding of every file
+
+    forecasts = pd.read_csv(config.FORECASTS, usecols=["model", "week_index", "year"])
+    table = pd.read_csv(config.D_SCORES)
+    windows = {"MAE years": config.MAE_YEARS, "prob years": config.PROB_SCORE_YEARS, "all years": config.ALL_YEARS}
+    for window, years in windows.items():
+        expected = forecasts.loc[forecasts["year"].isin(years), "week_index"].nunique()
+        found = set(table.loc[table["window"] == window, "weeks"])
+        assert found == {expected}, f"{window}: d1_scores.csv has weeks {found}, forecasts.csv {expected}: {rerun}"
+
+    point = table[table["window"] == "MAE years"].set_index("model")["mae"]
+    fig2 = pd.read_csv(config.D8_FIG2_TABLE)
+    by_model = fig2[fig2["part"] == "MAE by model"].set_index("name")["value"]
+    assert set(point.index) == set(by_model.index), f"models differ from d8_fig2_mae.csv: {rerun}"
+    for model, mae in by_model.items():
+        assert abs(point[model] - mae) <= tolerance, f"{model}: MAE {point[model]}, d8_fig2_mae.csv {mae}: {rerun}"
+
+    brier = table[table["window"] == "prob years"].set_index("model")["brier"]
+    fig3 = pd.read_csv(config.D8_FIG3_TABLE).drop_duplicates("model").set_index("model")["brier"]
+    for model, value in fig3.items():
+        assert abs(brier[model] - value) <= tolerance, f"{model}: Brier {brier[model]}, d8_fig3_reliability.csv {value}: {rerun}"
+
+    all_years = pd.read_csv(config.D_TESTS_ALL_YEARS)
+    weeks_all = forecasts.loc[forecasts["year"].isin(config.ALL_YEARS), "week_index"].nunique()
+    assert set(all_years["weeks"]) == {weeks_all}, f"d5_d6_all_years.csv weeks {set(all_years['weeks'])}, not {weeks_all}: {rerun}"
+    return (f"{len(point)} models' MAE equal d8_fig2_mae.csv and {len(fig3)} Brier scores d8_fig3_reliability.csv; "
+            f"windows of {', '.join(str(int(table.loc[table['window'] == w, 'weeks'].iloc[0])) for w in windows)} weeks")
 def f13_noah_map():
     """F13: the map's NOAH overlay (app/public/data/noah_<T>yr.json) still shows A8's flood maps.
 
@@ -1724,7 +1848,9 @@ CHECKS = {
     "S11 leakage": s11_leakage,
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
+    "E6 score tables": e6_score_tables,
     "F13 NOAH map": f13_noah_map,
+    "E10 package": e10_package,
 }
 
 

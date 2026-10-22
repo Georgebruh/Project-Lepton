@@ -40,6 +40,14 @@ D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flood
 D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
 D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
 D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
+# D1-D6: the score tables the paper's results quote (E6), written by src/score_tables.py from
+# B10's forecasts. D8's figure 2 table (below) holds the headline MAEs and comparisons.
+D_SCORES = RESULTS / "d1_scores.csv"                  # D1-D3: every score per window and model
+D_MAE_BY_YEAR = RESULTS / "d1_mae_by_year.csv"        # D1: each model's MAE in each target year
+D_ALARMS = RESULTS / "d3_alarms.csv"                  # D3, D4: alarm cut-off p*, precision, sensitivity, episodes, lead time
+D_PRECISION_RECALL = RESULTS / "d3_precision_recall.csv"  # D3: the precision-recall curve behind p*, 2022-2026
+D_TESTS_ALL_YEARS = RESULTS / "d5_d6_all_years.csv"   # D5, D6 over 2018-2026, COVID years in: the all-years check
+D_GUARD_RERUNS = RESULTS / "d5_guard_reruns.csv"      # B2, D5, D6: MAE and the three comparisons with g = 1, 2 and 3
 # D8: the paper's five figures, drawn by src/paper_figures.py from the files above. Each chart
 # has a CSV beside it holding the numbers it shows. Stock planning, not prescriptions.
 D8_FIG1_FORECASTS = RESULTS / "d8_fig1_forecasts.png"      # D8 (1): weekly cases, M4 and M3, M4's 90% range
@@ -89,6 +97,7 @@ DAYS_PER_WEEK = 7                          # UTC days in one complete morbidity 
 # Scoring windows (Workstream D)
 MAE_YEARS = (2018, 2019, 2022, 2023, 2024, 2025, 2026)
 PROB_SCORE_YEARS = (2022, 2023, 2024, 2025, 2026)
+ALL_YEARS = tuple(range(BACKTEST_FIRST_YEAR, BACKTEST_LAST_YEAR + 1))   # every score again, COVID years in: a check (D)
 MASE_DENOM_YEARS = (2016, 2017)            # fixed denominator, D2
 
 # Gates

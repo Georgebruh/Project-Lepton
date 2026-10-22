@@ -28,8 +28,8 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | Path | What |
 | --- | --- |
 | `src/router.tsx` | The routes: which screen each address shows |
-| `src/screens/` | One file per screen. Each is a placeholder until its task builds it |
-| `src/components/` | The shared components (F3), shown together at `/kit` |
+| `src/screens/` | One file per screen |
+| `src/components/` | The shared components (F3), shown together at `/kit` in `npm run dev` |
 | `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
 | `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the route's loader |
 | `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every city and barangay from the keyboard |
@@ -39,6 +39,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/styles/global.css` | Page-wide base styles |
 | `src/lib/maplibre.ts` | MapLibre, set up for Vite; map code imports it from here |
 | `public/data/` | F2's data files, fetched as `/data/<file>` |
+| `public/favicon.svg`, `public/robots.txt` | The browser tab's icon, the logo's mark, and the note for search engines (F12); served as they are |
 | `vercel.json` | Sends every screen's address to the app on Vercel |
 | `vite.config.ts` | Vite's settings; a missing `/data/` file answers 404 here too, as on Vercel |
 
@@ -58,9 +59,8 @@ drills down; each level's own content shows inside it. Figma node ids are in eac
 | `/compare` | Compare models | `CompareModels.tsx` | F9 |
 | `/how-it-works` | How it works | `HowItWorks.tsx` | F10 |
 
-Any other address, and any error while drawing a screen, shows `ErrorPage.tsx`. When a screen
-is built, it stops using `Placeholder.tsx`; delete that file (and `Placeholder.css`) when no
-screen uses it.
+Any other address, and any error while drawing a screen, shows `ErrorPage.tsx`. Every screen is
+built, so F1's placeholder screen is gone (F12).
 
 A setting kept in the address's query should change with
 `setSearchParams(next, { preventScrollReset: true })`; otherwise the page jumps to the top.
@@ -75,7 +75,9 @@ models keeps its period there: `/compare?period=2024` (F9).
 `src/components/` holds the pieces every screen shares, built from the Figma Components page
 (F3). Use them instead of drawing your own button or badge, so the screens stay alike. Open
 http://localhost:5173/kit to see each one in every variant; choose Monsoon there to compare
-them with the Figma page, which is drawn in that theme.
+them with the Figma page, which is drawn in that theme. The kit is in `npm run dev` only: its
+sample text and buttons that do nothing must not ship (check U7), so the built site answers
+`/kit` with the page-not-found screen (F12).
 
 | Component | Use | Figma |
 | --- | --- | --- |
@@ -88,7 +90,7 @@ them with the Figma page, which is drawn in that theme.
 | `PanelHeader` | A side-panel section's title that opens and closes it | Panel header, 4:17 |
 | `SiteHeader` | The header of Home, Leptospirosis and How it works; the open page's link is darker (F6). Below 1024 px the links wrap on a row of their own | Site header, 4:21 |
 | `AppBar` | The header of the map screens and Compare models | Map frame, 55:319 |
-| `Footer` | The footer, with the stock-planning note; `credits` adds the page's own credits under it (F6: Home's photos) | Home frame, 20:364 |
+| `Footer` | The footer, with the stock-planning note and the credits of the app's data and fonts, each with its licence (F12, check U8); `credits` adds the page's own under them (F6: Home's photos) | Home frame, 20:364 |
 | `Logo` | The logo; the headers and the footer already include it | Logo, 3:47 |
 | `Icon` | `<Icon name="calendar" size={16} />`, any of the 18 Figma icons, in the text color | icon/…, Components page |
 
@@ -456,10 +458,10 @@ files.
   M4), from lepton-plan.md B5, B7 and B8, in `src/howItWorks/formulas.tsx`; none is in the
   main text.
 - **Not as Figma:** the pipeline section draws no numbers. Its stat cards, weekly chart and
-  score table are the map's and Compare models' (F9), so it links to both. The Cases input
-  carries the amber badge until QCESD's counts arrive. The limits list every limit the plan
-  and Notes.md state (Figma shows five), and Sources credits every data set, map and font
-  (check U8).
+  score table are the map's and Compare models' (F9), so it links to both. An input still
+  awaited carries the amber badge; none is, since QCESD's counts arrived. The limits list every
+  limit the plan and Notes.md state (Figma shows five), and Sources credits every data set, map,
+  font and photo, QCESD's counts among them (check U8; F12 added the photos and QCESD).
 
 ## Motion, accessibility and small screens (F11)
 
@@ -496,6 +498,38 @@ the map on a phone; both use the existing components and tokens.
   keyboard alone, with reduced motion on, at 1440 and 390 px, in a scripted browser. F11's Done
   when still asks one teammate to do that flow by hand.
 
+## Deploy and checks (F12)
+
+F12 rebuilds the site from the latest results, puts it on Vercel (next section) and runs the
+app plan's eight checks, U1 to U8, fixing every failure. After gate F (Thursday, October 22),
+change only what a failed check needs.
+
+- **Latest results.** On October 21, on `main` with B10's real run and F11 (`e4df763`),
+  `python -m src.app_data` wrote the same 22 files that are committed; `python -m src.checks`
+  passed "F2 app data" and "F9 scores"; `npm run build` and `npm run lint` passed.
+- **The checks**, on `npm run preview` in a scripted Chrome, October 21:
+
+| Check | How it was checked | Result |
+| --- | --- | --- |
+| U1 Numbers | F2's check, then each number on screen against F2's files: Kristine 1 day ahead (72 of 142 flagged, 789,689 exposed, 3,174,170 capsules, 254,430 courses, 37,386 tablets), each lead chip's own run, the top 4 health centers and the exported stock list (Quezon City's totals as on the panel); Tatalon's tooltip (36,809 of 58,286, 63%; 138,400, 13,463, 1,680); the city panel at the latest date and at 22 Oct 2024; Compare models' scores and primary result (−8.88, 95% interval −19.93 to −1.88); Home's preview and stock figures | Pass |
+| U2 Labels | Every screen, the barangay list and tooltip, the exported stock list: each dose sits under "Stock planning, not prescriptions" | Pass. On B10's real run no "Simulated until QCESD data" badge is left |
+| U3 Joins | F2's check: 17 of 17 cities, 142 of 142 barangays; 66 health centers get stock, and the 2 left out are listed with why | Pass |
+| U4 Motion | Open Quezon City, Back from the plan, open the plan, comparing frames. Reduced motion off: frames still change midway and settle after the 700 ms camera and the 300 + 600 ms wave. On: the same frame from 350 ms, no camera move, the panel a 150 ms crossfade | Pass |
+| U5 Access | Lighthouse: accessibility 100 on all eight routes, desktop and mobile (best practices and SEO 100 too). The map flow by keyboard only, reduced motion on: "Cities · 17", Quezon City, Prophylaxis plan, a lead chip, "Barangays · 142", Back, Back, with the focus ring at each step | Pass |
+| U6 Screens | Every route at 1440, 1024 and 390 px: no sideways scroll, no console error; the guide's step 3 with location allowed and denied | Pass |
+| U7 Nothing fake | The build searched for "sample", "placeholder" and "AI" (only MapLibre's own code matches); every button has a handler, and every link goes to a route, an anchor on its page or a live site | Failed on `/kit`: Figma's sample text and 8 buttons that do nothing. Fixed: the kit is in `npm run dev` only |
+| U8 Credits | The footer and How it works' Sources | Failed: the footer credited only Home's photos, and Sources had neither the photos nor QCESD's counts. Fixed: the footer names every source of the data and fonts with its licence, and Sources lists the photos and QCESD |
+
+- **Also for the deploy:** a favicon, the logo's mark (`public/favicon.svg`: browsers asked for
+  `/favicon.ico`, which does not exist), and `public/robots.txt` (without it `/robots.txt`
+  answers with the page).
+- **Still by hand**, by a teammate who did not build the screen: open the production link on two
+  phones and two laptops (F12's Done when); the guide on two real phones, location allowed and
+  denied (U6); the map flow by keyboard only with reduced motion on (U5, F11); the flow by eye
+  with reduced motion off, then on (U4); and the six links whose sites refuse scripts, so only a
+  person can open them (doh.gov.ph three times, pia.gov.ph, psa.gov.ph, openstat.psa.gov.ph).
+  Then send the link to whoever writes E6 and E11.
+
 ## Deploy (Vercel)
 
 The app is hosted on Vercel's free plan, built from this repository with `app/` as the root
@@ -505,7 +539,8 @@ directory. One-time setup, by the owner of the GitHub repository:
 2. Add New, then Project, then import `Project-Lepton`.
 3. Set Root Directory to `app`. Vercel detects Vite: build command `npm run build`, output
    directory `dist`. Deploy.
-4. Share the production link with the team.
+4. Put the production link at the top of the repository's README (F12, for E10) and share it
+   with the team.
 
 After that, every push to `main` updates the production link, and every pull request gets its
 own preview link. `vercel.json` sends every address except `/data/` and `/assets/` files to

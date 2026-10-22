@@ -3,6 +3,41 @@ Leptospirosis Exposure Prediction &amp; Targeting Operational Network
 
 A few days’ warning before a storm lets health offices send doxycycline to the barangays most likely to flood, and a week’s warning lets hospitals prepare for the cases that follow. Project LEPTON will give Local Government Units both warnings. Standard forecasting models smooth over the sharp post-typhoon spikes that define leptospirosis outbreaks, so health offices cannot position prophylaxis where needed. Project LEPTON will run on one shared flood computation combining NASA IMERG rainfall, Project NOAH flood hazard maps and WorldPop population data to estimate how many residents of each barangay a storm exposes. Layer 1, a negative binomial regression on season, recent cases, two weeks of rainfall and a flood exposure index, will forecast next week’s city-level cases with a 90% range and the probability of crossing the epidemic threshold. Layer 2 will convert 1- to 3-day rain forecasts into barangay-level prophylaxis stock under DOH Memorandum 2023-0309, serving the high-risk tier first when supplies run short. Layer 1 will be tested in a weekly rolling-origin backtest (2018 to 2026) against two seasonal baselines and the published Prophet-XGBoost hybrid, with mean absolute error as the primary endpoint. Layer 2 will be tested on Typhoon Carina (2024) and the 2025 and 2026 floods against flood reports.
 
+## Submission rules (task E1)
+
+From the 2026 PJDSC Event Primer (pages 8–15), read on October 18, 2026. The primer says exact
+dates may change: check PJDSC's Facebook page before the deadline.
+
+**Due Saturday, October 24, 2026, 11:59 PM** (not October 23), through
+bit.ly/pjdsc2026FinalProjectSubmission. The primer asks for no written paper (the team's paper in
+`paper/` is extra, not a required item). The final submission is:
+
+| Item | Limit | Penalty for going over |
+| --- | --- | --- |
+| Slide deck, PDF | 20 slides, counting the title slide, references and appendices | 1 point for every 1–2 slides over, at most 10 |
+| Recorded demonstration video | 3 minutes | 1 point for every 15 seconds over, at most 10 |
+| Link to the complete code repository | none given | none |
+
+Results are expected: "Findings and Analysis" is a judging criterion. The judging criteria:
+
+- **Project rationale and design:** problem statement and motivation; data sources and acquisition; methodology and approach.
+- **Execution and impact:** findings and analysis; challenges and mitigation strategies; future directions and real-world application.
+- **Code repository:** code structure and documentation; functional execution and reproducibility; dependencies and data management.
+- **Demonstration video:** communication quality and clarity; technical content and functional showcase; how much it helps the audience understand.
+- **Technical rigor and innovation:** validity and appropriateness of techniques; novelty and creativity; analytical depth.
+- **Sources:** reliable, up to date, APA 7th edition.
+
+After the deadline:
+
+- The top 10 teams are announced on November 4, 2026. Finalists present on November 14, 2026, in
+  Quezon City: a live demonstration of the working product, a 10-minute talk (stopped at 10
+  minutes) and 10 minutes of questions. Finals are judged on functionality and technical
+  robustness (including code quality and reproducibility), real-world impact, user experience and
+  design, presentation, and sources.
+- **The whole project, "including the code and datasets," is published on UP Data Science
+  Society's GitHub.** Anything in this repository at submission time should be fit to publish:
+  no case-level records (rule 11), and weekly case counts only if their source allows it.
+
 Read `Notes.md` first: the open decisions, the changes from the plan, and what the paper
 must say about them.
 
@@ -27,6 +62,37 @@ must say about them.
 
    Each check prints PASS, SKIP (its task is not built yet, or its data file is not on this
    computer) or FAIL. A FAIL stops work until it is fixed. Rerun the checks after any change.
+
+## Rebuild everything (task E10)
+
+One command reruns every task below in order, from the files in `data/raw/`, then the checks:
+
+```
+python -m src.run_all --list          # the steps, and which are skipped and why
+python -m src.run_all                 # run them all, then python -m src.checks
+python -m src.run_all --from C3       # resume at a task after fixing a failed step
+python -m src.run_all --only B3 D7    # just these tasks
+python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, without QC's case data
+```
+
+- It stops at the first failed step and says how to resume. Before the first step it checks
+  the files saved by hand (HydroBASINS, the census files, the Mendeley file, PSA births) and
+  `data/raw/imerg_daily.nc`, and lists any that are missing: copy them from the team drive.
+- Downloads: A6, A8, A10, A14 and A15 fetch only files not already in `data/raw/`. A4
+  (IMERG) always fetches up to today and needs an Earthdata login, so it runs only with
+  `--fetch-imerg`.
+- QC's case data: A13 runs only when QCESD's case list is in `data/raw/qcesd/`. The list is
+  case-level and stays on the team drive (rule 11), so in any other copy A13 is skipped, not
+  stopped. B10 then runs on `data/clean/cases_weekly.csv` if it was copied from the drive, and
+  is skipped if not; its guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4
+  and 5 every run, and all five once B10's `results/forecasts.csv` exists; E6's score tables
+  (`python -m src.score_tables`) wait for it too. A task not built yet is skipped.
+- `--simulate` skips A13 and E6 and runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
+  previews from them (`results/d8_preview_*`) and F2's `city_forecast.json` marked
+  `"simulated": true`. It tests the whole chain; none of it is a result.
+- The check "E10 package" confirms what the repository ships: every package pinned in
+  `requirements.txt` and installed at that version, nothing tracked under `data/` but the
+  notes, and no tracked table with a person's columns (rule 11).
 
 ## Rebuilding the data (Workstream A)
 
@@ -54,6 +120,7 @@ catchments; A10 checks its facilities against A5's barangays):
 | Task | Command | Writes |
 | --- | --- | --- |
 | B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
+| B4 | `python -m src.features` | `data/clean/imerg_weights_qc.csv` (WorldPop QC weights per IMERG cell), `rain_weekly.csv` (weekly QC rain R and Rcum2), `features_weekly.csv` (R, Rcum2, EI and EI2 per fit year, read by B10); needs A3, A4, A5, A6 and C3's file |
 | B2 | none: `cutoff`, `visible`, `training_rows` and `prediction_row` in `src/view.py`, used by B5, B9 and B10. Set `config.DATA_OPTION` from A13's row first: option B sees every week up to forecast day T, option C up to T − g (`config.DELAY_GUARD_G`) | nothing; check "B2 view" in `python -m src.checks` |
 | B7 | none: functions in `src/thresholds.py` (and `forecast_dist` in `src/forecast_range.py`), used by B8 and B10 | nothing; check S7 in `python -m src.checks` |
 | B8 | none: functions in `src/baselines.py`, used by B10 | nothing; check "B8 M0 and M1" in `python -m src.checks` |
@@ -91,7 +158,20 @@ Run after Workstream A, in this order:
 | D7 | `python -m src.layer2_results` | `results/d7_map_<storm>.png` (one per storm, C8's main run: share of each barangay's residents in flood zones, and doxycycline capsules; A11's flooded barangays outlined), `d7_centers.csv` (doses per health center, whole units), `d7_flags.csv` (flagged versus flooded, observed run and each lead), `d7_tests.csv` (the cut-off test and D ± 1), `d7_forecast_vs_observed.csv` (C9's doses at each lead beside C8's observed doses); reads C8's and C9's results files and A5's `barangays_qc.gpkg`, and stops if C8's main run and C9's observed run disagree; a few seconds. No validation regression: no barangay case counts. Stock planning, not prescriptions |
 | D5 | none: `primary_endpoint(table)` in `src/compare.py` (M4 vs M3 over the MAE window: mean of \|error M4\| − \|error M3\|, 95% moving-block bootstrap interval with 8-, 4- and 13-week blocks, and the Diebold–Mariano test), on B10's forecasts (columns model, week_index, year, y, mu) | nothing; check "D5 primary endpoint" in `python -m src.checks` |
 | D6 | none: `flood_and_practical_tests(table)` and `flood_finding(result)` in `src/compare.py` (M4 vs M4 without EI2, no Diebold–Mariano since the models are nested; M4 vs M1 with it; same bootstrap as D5) | nothing; check "D6 flood test" in `python -m src.checks` |
+| D1–D6 tables | `python -m src.score_tables` (after B10; also reads B10's guard reruns `forecasts_g1.csv` and `forecasts_g3.csv` when they are there). D1–D6's functions applied to `results/forecasts.csv`, so every score the paper's results (E6) quote is in `results/` | `results/d1_scores.csv` (each model's MAE, RMSE, bias, MASE, WIS, 50% and 90% coverage, Brier and Brier skill score, over the MAE years, 2022–2026 and all years), `d1_mae_by_year.csv`, `d3_alarms.csv` (D3's p*, precision and sensitivity on each half; D4's episodes caught and lead time), `d3_precision_recall.csv` (the full curve behind p*), `d5_d6_all_years.csv` (D5 and D6 over 2018–2026, COVID years in), `d5_guard_reruns.csv` (MAE and D5/D6 with g = 1, 2 and 3); seconds. Check "E6 score tables" in `python -m src.checks` |
 | D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Now, before A13: `--layer2` (figures 4 and 5). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
+
+## Paper (Workstream E)
+
+The paper's LaTeX source is in `paper/`; its README says how to build it (Overleaf, or
+`latexmk -pdf main.tex` in `paper/`) and which file holds which task.
+
+| Task | Command | Writes |
+| --- | --- | --- |
+| E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
+| E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table B1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
+| E6 | none: `sections/results.tex` in `paper/`, with D8's figures 1-4 copied into `paper/figures/`. Its numbers come from `results/`: B10's guard reruns (`python -m src.backtest --g 1`, `--g 3`), then `python -m src.score_tables` (D1–D6 tables) and `python -m src.paper_figures` (D8); build as for E4 | `paper/main.pdf` (not in git) |
+| E9 | none: `sections/summary.tex` in `paper/`, the executive summary under the title (under 250 words, with D5's primary result). Its numbers are E6's, from `results/forecasts.csv`, `d8_fig2_mae.csv`, `d1_scores.csv` and `c9_forecast_runs.csv`; build as for E4 | `paper/main.pdf` (not in git) |
 
 ## App (Workstream F)
 
@@ -100,7 +180,7 @@ and the Vercel setup.
 
 | Task | Command | Writes |
 | --- | --- | --- |
-| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). The eight screens are placeholders until their tasks build them; `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
+| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
 | F2 | `python -m src.app_data` (repository root, after C8 and C9; downloads NCR's city outlines once into `data/raw/ncr_cities/`). For the city forecast before A13: `python -m src.backtest --simulate --option C` first | `app/public/data/`: `ncr_cities.geojson`, `qc_barangays.geojson`, `storms.json`, `barangays/<storm>_<run>.json` (one per run), `centers.json`, `city_forecast.json` (B10's `forecasts.csv`, or until it exists the made-up-count run, marked `"simulated": true`) and, beside a real run only, `scores.json`. Commit them: Vercel builds from git. Needs C8, C9, A5 and A10; seconds. Stock planning, not prescriptions. Check "F2 app data" in `python -m src.checks` |
 | F4 | none: the map's first two levels in `app/` (`npm run dev`, then http://localhost:5173/map and `/map/quezon-city`). They read F2's files: `ncr_cities.geojson` now carries each city's label point (`config.APP_LABEL_MIN_KM2`), and `city_forecast.json` the map's model and outbreak levels (`config.APP_LEVEL_MODEL`, `config.APP_LEVELS`); rerun `python -m src.app_data` after changing them | nothing; check "F2 app data" in `python -m src.checks` also checks the label points and the levels |
 | F5 | none: the map's level 3, the prophylaxis plan, in `app/` (`npm run dev`, then http://localhost:5173/map/quezon-city/prophylaxis?date=2024-10-22). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson` and one `barangays/<storm>_<run>.json` per forecast shown | nothing; its Export stock list button saves `lepton-stock-list_<storm>_lead<n>.csv` in the browser. Stock planning, not prescriptions |
@@ -110,3 +190,4 @@ and the Vercel setup.
 | F9 | none: Compare models in `app/` (`npm run dev`, then http://localhost:5173/compare; `?period=12w`, `?period=2024` or `?period=all`). It reads F2's `city_forecast.json` and `storms.json`, and `scores.json` beside B10's real run only; until then every score shows "—" | nothing; check "F9 scores" in `python -m src.checks`: after B10's real run, the page's scores (`scores.json`) equal D8's `d8_fig2_mae.csv` |
 | F10 | none: the How it works page in `app/` (`npm run dev`, then http://localhost:5173/how-it-works). Text only, in `app/src/howItWorks/content.ts`: the pipeline, models (formulas behind "Show the formula"), testing, limits and sources; check it against the paper's final text (E4, E5, E7) | nothing |
 | F11 | none: motion, accessibility and small screens across `app/` (its README, "Motion, accessibility and small screens"): the map's keyboard lists, one focus ring, live updates, text contrast to WCAG AA, and layouts at 1440, 1024 and 390 px (the map panel a bottom sheet on a phone) | nothing; Lighthouse accessibility 100 on every route. Figma's Theme collection needs the three darker Clinic colors in `app/src/styles/tokens.css` |
+| F12 | `python -m src.app_data` on the latest results, then in `app/`: `npm run build`, `npm run preview` and the app checks U1–U8 (`app/README.md`, "Deploy and checks"); Vercel deploys `main` | the production link, at the top of this README once Vercel is set up (`app/README.md`, "Deploy (Vercel)"). Checked October 21 on B10's real run: U1–U8 pass after two fixes (U7: `/kit` in `npm run dev` only; U8: the footer and How it works credit every source); still by hand: two phones and two laptops, a teammate's keyboard run |

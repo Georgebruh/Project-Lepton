@@ -1,0 +1,184 @@
+% E5 (SCRUM-56): the formulas behind the methodology, which keeps none in its text
+% (lepton-plan.md, E5). One row per step, in the methodology's order; under each step, the file
+% in src/ that computes it, whose docstring gives the same formula in plain words. Symbols as in
+% those docstrings, except the interpolation anchors (lo, hi), renamed so that b is always a
+% barangay. Values (0.75, 52.18, 50, 104, 26, 11 ranges, 8-week blocks) are config.py's.
+{\footnotesize
+\renewcommand{\arraystretch}{1.4}
+\setlength{\lineskiplimit}{1pt}% stacked sub- and superscripts on two lines of a cell
+\setlength{\lineskip}{3pt}%      never touch: TeX puts 3pt between them instead
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.19\textwidth}
+                    >{\raggedright\arraybackslash}p{0.43\textwidth}
+                    >{\raggedright\arraybackslash}p{0.32\textwidth}@{}}
+\caption{The formula behind each step of the methodology (Section~\ref{sec:methodology}), in
+its order. The file in the repository's \texttt{src/} folder that computes it is named in small
+type under each step.}\label{tab:formulas}\\
+\toprule
+\textbf{Step} & \textbf{Formula} & \textbf{In plain words} \\
+\midrule
+\endfirsthead
+\multicolumn{3}{@{}l}{\textit{Table~\thetable, continued}}\\
+\toprule
+\textbf{Step} & \textbf{Formula} & \textbf{In plain words} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{@{}r}{\textit{Continued on the next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+%
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Shared flood computation}}\\
+Population map fitted to the census \cfg{rescale.py}
+  & $p'_i = p_i \, P_b \big/ \sum_j f_j(b)\, p_j$
+  & The census sets how many live in barangay $b$ ($P_b$, 2024); WorldPop sets where ($p_i$ in
+    pixel $i$); $f_j(b)$ is the share of pixel $j$ inside $b$ \\
+Residents per flood zone \cfg{overlay.py}
+  & $\mathrm{Pop}_{b,k,T} = \sum_i f_i(b \cap H_{k,T})\, p'_i$
+  & Residents of $b$ in hazard level $k$ of the $T$-year map; a pixel half inside the zone
+    counts half its people \\
+Catchment rain \cfg{flood_exposure.py}
+  & $R^{24}_d = \sum_g a_g\, R_{g,d}$, \quad $R^{3}_d = R^{24}_{d-2} + R^{24}_{d-1} + R^{24}_d$
+  & IMERG's rain on UTC day $d$, each cell $g$ weighted by its share $a_g$ of the catchment
+    area; a storm is its wettest three-day total \\
+Return levels \cfg{flood_exposure.py}
+  & $\hat{R}(T) = \mu - \beta \ln\!\left[-\ln\left(1 - 1/T\right)\right]$, \quad
+    $R_0 = 0.5\,\hat{R}(5)$
+  & Gumbel curve fitted by maximum likelihood to each year's wettest three-day total, on years
+    before the forecast or storm year only \\
+A storm's return period \cfg{observed_run.py}
+  & $T_{\mathrm{storm}} = 1 \big/ \left[1 - F(R)\right]$
+  & $F$ is the fitted curve's cumulative probability: rain this heavy comes about once in
+    $T_{\mathrm{storm}}$ years \\
+Graded exposure \cfg{flood_exposure.py}
+  & $N_{b,k} = \mathrm{Pop}^{\mathrm{lo}}_{b,k} + \dfrac{R - R^{\mathrm{lo}}}{R^{\mathrm{hi}} -
+    R^{\mathrm{lo}}} \left(\mathrm{Pop}^{\mathrm{hi}}_{b,k} - \mathrm{Pop}^{\mathrm{lo}}_{b,k}\right)$
+  & Between the two anchors that bracket the rain $R$: $(R_0, 0)$, $(\hat{R}(5),
+    \mathrm{Pop}_5)$, $(\hat{R}(25), \mathrm{Pop}_{25})$, $(\hat{R}(100), \mathrm{Pop}_{100})$;
+    nobody below $R_0$, the 100-year map above $\hat{R}(100)$ \\
+Flood exposure index \cfg{flood_exposure.py}
+  & $\mathrm{EI}(t) = 100 \times \sum_b \sum_k N_{b,k}\!\left(R^{\max}_t\right) \big/
+    P^{2024}_{\mathrm{QC}}$
+  & Percent of QC's residents in zones that week $t$'s wettest three-day total $R^{\max}_t$
+    would flood; over QC's 2024 total, never that week's population \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Layer 1: city forecast}}\\
+Population each week \cfg{population.py}
+  & $P(t) = P_0 \left(P_1 / P_0\right)^{(t - t_0)/(t_1 - t_0)}$
+  & Constant-percentage growth between the 2015, 2020 and 2024 censuses ($t$ in decimal years);
+    the 2020--2024 rate after mid-2024 \\
+Rain over QC \cfg{features.py}
+  & $R_d = \sum_g v_g\, R_{g,d} \big/ \sum_g v_g$, \quad $R(t) = \sum_{d \in t} R_d$ \newline
+    $\mathrm{Rcum2}(t) = R(t-1) + R(t)$, \quad
+    $\mathrm{EI2}(t) = \max\left[\mathrm{EI}(t-1), \mathrm{EI}(t)\right]$
+  & Each IMERG cell weighted by the residents $v_g$ it holds inside QC; a week's rain is the sum
+    of its seven UTC days \\
+What a model may see \cfg{view.py}
+  & cutoff $= T - g$, \quad $\tilde{y}_{T+1} = y_{T-g} + y_{T-g-1}$ \newline
+    training row for target week $s$: \ $\tilde{y}_s = y_{s-1-g} + y_{s-2-g}$
+  & At forecast day $T$ the delay guard $g = 2$ hides the two newest weeks' counts; every
+    training row keeps the same gap \\
+M0 and M1 \cfg{baselines.py}
+  & $\mu^{\mathrm{M0}}_s = y_{s-52}$, \quad $\mu^{\mathrm{M1}}_s = \bar{y}_{w(s)}$
+  & M0: the count 52 weeks earlier. M1: the mean of the same week of the year over the
+    threshold's reference years \\
+M3 \cfg{m3.py, m3_port.py}
+  & $\mu^{\mathrm{M3}} = \max\left(0,\ \hat{y} + \hat{r}\right)$
+  & $\hat{y}$: Prophet's forecast; $\hat{r}$: XGBoost's forecast of Prophet's error, from
+    $\hat{y}$ and the ISO week number \\
+M4 \cfg{m4.py}
+  & $\log \mu_{T+1} = \log P_T + \beta_0 + \sum_{k=1}^{3} \left(\alpha_k s_k + \gamma_k c_k\right)$
+    \newline
+    $\phantom{\log \mu_{T+1}} + \rho \log\left(1 + \tilde{y}_{T+1}\right) + \beta_1\,
+    \mathrm{Rcum2}(T)/50$ \newline
+    $\phantom{\log \mu_{T+1}} + \beta_2\, \mathrm{EI2}(T) + \delta\, \mathrm{COVID}_{T+1}$ \newline
+    $s_k = \sin(2\pi k t/52.18)$, \quad $c_k = \cos(2\pi k t/52.18)$ \newline
+    $Y \sim \mathrm{NB}$, \quad $\mathrm{Var}(Y) = \mu + \alpha \mu^2$
+  & Expected cases = population $\times$ base rate $\times$ season, momentum, rain, flood and
+    COVID-19 multipliers; $t$ is the target week's index. M4 without EI2 drops $\beta_2$ \\
+Forecast distribution \cfg{forecast_range.py}
+  & $Y \sim \mathrm{NB}(\mu, \theta)$, \quad $\mathrm{Var}(Y) = \mu + \mu^2/\theta$ \newline
+    $\hat{\theta} = \sum_t \mu_t^2 \Big/ \sum_t \left[(y_t - \mu_t)^2 - \mu_t\right]$
+  & Over the model's last 104 non-COVID past forecasts the guard lets it score; fewer than 26:
+    the training fit's $\theta$ (M4: $1/\alpha$); a denominator $\le 0$: Poisson \\
+Threshold, breach and range \cfg{thresholds.py}
+  & $T_w = \bar{y}_w + 2 s_w$ \newline
+    $\Pr(\text{breach}) = \Pr(Y > T_w) = 1 - F\left(\lfloor T_w \rfloor\right)$ \newline
+    90\% range: $F^{-1}(0.05)$ to $F^{-1}(0.95)$
+  & $\bar{y}_w$, $s_w$: mean and sample standard deviation of week $w$ over up to five recent
+    complete non-COVID years (at least three); a breach is a final count strictly above $T_w$ \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Layer 2: barangay prophylaxis stock}}\\
+Group shares \cfg{shares.py}
+  & $\mathrm{preg}_b = 0.75\, B_{\mathrm{QC}}\, W_b / W_{\mathrm{QC}}$, \quad
+    $s^{\mathrm{preg}}_b = \mathrm{preg}_b / P^{2024}_b$ \newline
+    $s^{\mathrm{child}}_b = C_b / P^{2020}_b - s^{\mathrm{preg}}_b\, G_b / W_b$ \newline
+    $s^{\mathrm{adult}}_b = 1 - s^{\mathrm{child}}_b - s^{\mathrm{preg}}_b$
+  & $B_{\mathrm{QC}}$: 2024 births to mothers living in QC; $C_b$: children under 18; $W_b$,
+    $G_b$: women aged 15--49 and 15--17 (2020 census) \\
+Exposed people and risk tiers \cfg{exposed.py}
+  & $E_{b,g} = q \sum_k r_k\, N_{b,k}\, s^{g}_b$ \newline
+    $D \ge 2$: \ $\mathrm{High}_b = E_{b,\mathrm{adult}}$ \newline
+    $D < 2$: \ $\mathrm{Mod}_b = w\, E_{b,\mathrm{adult}}$, \newline
+    $\phantom{D < 2{:}\ }\ \mathrm{Low}_b = (1 - w)\, E_{b,\mathrm{adult}}$
+  & $q = r_k = 1$: everyone in a flooded zone, at any depth; $D$: flood duration in days; $w$:
+    the share of adults with a wound or mucosal exposure \\
+Drug units \cfg{doses.py}
+  & $\mathrm{Doxy100}_b = u \left[2\,\mathrm{Low}_b + 10\,\mathrm{Mod}_b +
+    2 \lceil D/7 \rceil\, \mathrm{High}_b\right]$ \newline
+    $\mathrm{Courses}_b = u \max\left(1, \lceil D/7 \rceil\right) E_{b,\mathrm{child}}$ \newline
+    $\mathrm{Amox500}_b = 6\, u\, E_{b,\mathrm{preg}}$
+  & Doxycycline 100~mg capsules, children's courses and amoxicillin 500~mg tablets at full
+    uptake ($u = 1$). Stock-planning figures, not prescriptions \\
+Need per health center \cfg{allocation.py}
+  & $\mathrm{need}_c = \sum_b \mathrm{share}_{b,c}\, \mathrm{need}_b$
+  & share: 1 for a barangay's only center, or for the nearest center of a barangay with none;
+    split by the residents nearest each of several \\
+Allocation when stock is short \cfg{allocation.py}
+  & $\mathrm{served}_{c,\ell} = \mathrm{need}_{c,\ell} \times \min\!\left(1,\
+    \dfrac{\text{stock left}}{\sum_{c'} \mathrm{need}_{c',\ell}}\right)$
+  & Tiers $\ell$ served in turn, high, moderate, then low, separately in each of the three
+    pools \\
+Forecast rain at lead $L$ \cfg{forecast_run.py}
+  & $R_L = \sum_{i=0}^{2} \sum_g a_g\, F^{(L+i)}_{g,\,d_0+i}$
+  & $F^{(N)}_{g,d}$: the forecast for cell $g$ and UTC day $d$ from runs started at least $N$
+    days earlier; $d_0$: the window's first day \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{\color{leptonnavy}Evaluation}}\\
+Point scores \cfg{scores.py}
+  & $\mathrm{MAE} = \frac{1}{n} \sum_t |y_t - \mu_t|$, \quad
+    $\mathrm{RMSE} = \sqrt{\frac{1}{n} \sum_t (y_t - \mu_t)^2}$ \newline
+    $\mathrm{Bias} = \frac{1}{n} \sum_t (\mu_t - y_t)$ \newline
+    $\mathrm{MASE} = \mathrm{MAE} \Big/ \frac{1}{104} \sum_{t \in 2016\text{--}2017}
+    |y_t - y_{t-52}|$
+  & The average miss; big misses weigh more; leaning high ($+$) or low ($-$); MAE against
+    ``same week last year'' in the burn-in years \\
+Range scores \cfg{scores.py}
+  & $\mathrm{Coverage}_{90} = \frac{1}{n} \sum_t \mathbf{1}\{q_{0.05} \le y_t \le q_{0.95}\}$
+    \newline
+    $\mathrm{WIS} = \left[\tfrac{1}{2}|y - m| + \sum_{j=1}^{11} \tfrac{\alpha_j}{2}\,
+    \mathrm{IS}_{\alpha_j}\right] \Big/ 11.5$ \newline
+    $\mathrm{IS}_{\alpha} = (u - l) + \tfrac{2}{\alpha}(l - y)\,\mathbf{1}\{y < l\} +
+    \tfrac{2}{\alpha}(y - u)\,\mathbf{1}\{y > u\}$
+  & $m$: the median; $l$, $u$: the $\alpha/2$ and $1 - \alpha/2$ quantiles, for $\alpha$ =
+    0.02, 0.05, 0.1, 0.2, \ldots, 0.9: each range's width plus a penalty when the count falls
+    outside it \\
+Breach scores \cfg{breach_scores.py}
+  & $\mathrm{BS} = \frac{1}{n} \sum_t (p_t - o_t)^2$ \newline
+    $\mathrm{BSS} = 1 - \mathrm{BS} \Big/ \frac{1}{n} \sum_t (\bar{o}_t - o_t)^2$ \newline
+    $\mathrm{F1} = 2PS/(P + S)$
+  & $o_t = 1$ when the count is strictly above $T_w$; $\bar{o}_t$: the share of non-COVID weeks
+    from 2018 to the cutoff that breached; $P$, $S$: precision and sensitivity of alarms
+    $p_t \ge p^{*}$ \\
+Lead time \cfg{breach_scores.py}
+  & lead $=$ (first breach week $+\ g$) $-$ (forecast day of the first alarm)
+  & The breach shows in surveillance $g$ weeks after its week; an episode is caught in advance
+    if its lead is at least one week \\
+Comparing two models \cfg{compare.py}
+  & $d_t = |y_t - \mu^{a}_t| - |y_t - \mu^{b}_t|$, \quad
+    $\bar{d} = \mathrm{MAE}_a - \mathrm{MAE}_b$ \newline
+    $\mathrm{DM} = \bar{d} \big/ \left(s_d / \sqrt{n}\right)$
+  & Below 0, model $a$ misses less. 95\% interval of $\bar{d}$ by moving-block bootstrap (8-week
+    blocks, 2,000 resamples); DM two-sided, $t$ with $n - 1$ degrees of freedom \\
+\end{longtable}
+}
