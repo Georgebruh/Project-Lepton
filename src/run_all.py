@@ -3,9 +3,9 @@
 Each step is one task's script, run as `python -m <module>` in its own process, so a
 script runs exactly as it does by hand. The steps follow the README's tables: Workstream
 A, then B1, Layer 2's flood core and doses (C1-C4, C7), B4's weekly features, Layer 1
-(B3, B10), the storm runs (C8, C9) and D7. The sanity checks (python -m src.checks) run
-last. The run stops at the first step that fails (exit code not 0), and so does a FAIL
-in the checks.
+(B3, B10, then B5's residual check on B10's run), the storm runs (C8, C9) and D7. The
+sanity checks (python -m src.checks) run last. The run stops at the first step that
+fails (exit code not 0), and so does a FAIL in the checks.
 
 What runs and what does not:
   - Downloads. A6, A8, A10, A14 and A15 download only the files not yet in data/raw/
@@ -21,13 +21,14 @@ What runs and what does not:
     cases_weekly.csv if it was copied from the drive, and is skipped if not.
   - A step whose task is not built yet (its module is not in src/) is skipped, and so is
     B10 until A13's cases_weekly.csv exists and config.DATA_OPTION is set. B10's guard
-    reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5) and E6's
-    score tables wait for B10's results/forecasts.csv; D8's --layer2 run (figures 4 and
-    5) does not.
+    reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5), B5's residual
+    check and E6's score tables wait for B10's results/forecasts.csv; D8's --layer2 run
+    (figures 4 and 5) does not.
   - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
-    A13 and E6 are not run, B10 --simulate --option C (results/forecasts_simulated_C.csv,
-    no guard reruns), D8's figures 1-3 as previews from it (results/d8_preview_*, not for
-    the paper), and F2's city_forecast.json marked "simulated". Never the paper's results.
+    A13, B5's residual check and E6 are not run, B10 --simulate --option C
+    (results/forecasts_simulated_C.csv, no guard reruns), D8's figures 1-3 as previews
+    from it (results/d8_preview_*, not for the paper), and F2's city_forecast.json marked
+    "simulated". Never the paper's results.
   - C5 and C6 are not steps: they only print. C8, C9 and D7 call their functions.
 
 Run from the repository root:
@@ -76,6 +77,7 @@ STEPS = [
     ("B10", "src.backtest", ()),
     ("B10", "src.backtest", ("--g", "1")),          # guard rerun, option C only
     ("B10", "src.backtest", ("--g", "3")),          # guard rerun, option C only
+    ("B5", "src.m4", ()),                           # v2's residual check, on B10's last forecast day
     ("C8", "src.observed_run", ()),
     ("C9", "src.forecast_run", ()),
     ("D7", "src.layer2_results", ()),
@@ -93,6 +95,7 @@ SIMULATED = {
     ("B10", ()): ("--simulate", "--option", "C"),
     ("B10", ("--g", "1")): None,
     ("B10", ("--g", "3")): None,
+    ("B5", ()): None,                               # reads only the real forecasts.csv
     ("D8", ()): ("--preview", config.FORECASTS_SIMULATED.relative_to(config.ROOT).as_posix()),
     ("E6", ()): None,                               # reads only the real forecasts.csv
 }
@@ -119,8 +122,8 @@ def skip_reason(step, simulate=False):
 
     A task not built yet (its module is not in src/); A13 without QCESD's case list;
     B10 before A13's cases file and config.DATA_OPTION; B10's guard reruns outside
-    option C; D8's full run before B10's forecasts.csv. With --simulate, B10 and D8 need
-    none of these.
+    option C; D8's full run, B5 and E6 before B10's forecasts.csv. With --simulate, B10
+    and D8 need none of these.
     """
     task, module, args = step
     if not (config.ROOT / (module.replace(".", "/") + ".py")).exists():
@@ -133,7 +136,7 @@ def skip_reason(step, simulate=False):
                 f"(team drive only, rule 11); {have} {config.CASES_WEEKLY.name} from the drive")
     if task == "D8" and not args and not config.FORECASTS.exists():
         return f"figures 1-3 need B10's {config.FORECASTS.name} (the --layer2 step drew 4 and 5)"
-    if task == "E6" and not config.FORECASTS.exists():
+    if task in ("B5", "E6") and not config.FORECASTS.exists():
         return f"needs B10's {config.FORECASTS.name}"
     if task == "B10":
         if not config.CASES_WEEKLY.exists():
