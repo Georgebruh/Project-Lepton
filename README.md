@@ -168,6 +168,7 @@ The paper's LaTeX source is in `paper/`; its README says how to build it (Overle
 
 | Task | Command | Writes |
 | --- | --- | --- |
+| E3 | none: `sections/objectives.tex` in `paper/`, the proposal's four objectives worded as they were tested (the last is D5's primary endpoint, M4 against M3); build as for E4 | `paper/main.pdf` (not in git) |
 | E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
 | E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table B1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
 | E6 | none: `sections/results.tex` in `paper/`, with D8's figures 1-4 copied into `paper/figures/`. Its numbers come from `results/`: B10's guard reruns (`python -m src.backtest --g 1`, `--g 3`), then `python -m src.score_tables` (D1–D6 tables) and `python -m src.paper_figures` (D8); build as for E4 | `paper/main.pdf` (not in git) |
