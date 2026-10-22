@@ -44,9 +44,9 @@ Each chart has a CSV beside it with the numbers it shows (config.D8_FIG*_TABLE),
 paper's text can quote them and E11 can check them. Figure 1's numbers are B10's
 forecasts.csv itself, and figure 4's are C8's c8_observed_barangays.csv.
 
-Inputs. Figures 1-3 need B10's results/forecasts.csv, which needs A13's case data; until it
-exists the default run stops and says so. Two flags:
-    --layer2          figures 4 and 5 only (C8's files and A5's shapes; ready now)
+Inputs. Figures 1-3 need B10's results/forecasts.csv, which needs A13's case data; without
+it the default run stops and says so. Two flags:
+    --layer2          figures 4 and 5 only (C8's files and A5's shapes; no case data needed)
     --preview FILE    figures 1-3 from another B10 file, such as its made-up-count run
                       (python -m src.backtest --simulate --option C writes
                       results/forecasts_simulated_C.csv). The files are named d8_preview_*,
