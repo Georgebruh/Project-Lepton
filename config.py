@@ -104,7 +104,7 @@ MASE_DENOM_YEARS = (2016, 2017)            # fixed denominator, D2
 GATE_A = date(2026, 10, 16)
 GATE_BC = date(2026, 10, 19)
 GATE_D = date(2026, 10, 21)
-SUBMIT = date(2026, 10, 24)
+SUBMIT = date(2026, 10, 24)                # E1: Sat, Oct 24, 11:59 PM (README)
 
 # ---------------------------------------------------------------------------
 # Data products
