@@ -324,7 +324,6 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://earthdata.nasa.gov/gibs',
   },
   {
-    text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange.',
     text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange. From NAMRIA and PSA. CC BY-IGO.',
     url: 'https://data.humdata.org/dataset/cod-ab-phl',
   },
@@ -353,9 +352,11 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://openstat.psa.gov.ph',
   },
   {
+    text: 'Quezon City Epidemiology and Surveillance Division. (2026). Leptospirosis cases in Quezon City by date of onset, 2015–2026 [Unpublished data, shared on request]. The app and its code hold weekly totals only.',
+  },
+  {
     text: 'RainViewer. (2026). Weather Maps API: radar composites, past 2 hours [Web map tiles]. Free for personal and educational use. The map’s live radar (F13).',
     url: 'https://www.rainviewer.com/api.html',
-    text: 'Quezon City Epidemiology and Surveillance Division. (2026). Leptospirosis cases in Quezon City by date of onset, 2015–2026 [Unpublished data, shared on request]. The app and its code hold weekly totals only.',
   },
   {
     text: 'UP Resilience Institute & NOAH Center. (n.d.). Project NOAH flood hazard maps, 5-, 25- and 100-year rain return, Metro Manila [Data set]. ODbL.',
