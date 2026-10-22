@@ -241,7 +241,9 @@ RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
 M4_FIT_METHODS = ("newton", "bfgs")
 M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
 M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
+M4_RESIDUAL_ACF_TABLE = RESULTS / "m4_residual_acf.csv"  # B5: the numbers in that plot, one row per lag
 M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
+M4_ACF_ALPHA = 0.05                        # B5: the plot's shaded band holds 95% of the autocorrelations of independent weeks
 
 # M3 benchmark (B3), read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)

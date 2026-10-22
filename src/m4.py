@@ -42,7 +42,10 @@ Rules this file follows:
 
 Inputs come as tables (model_rows): B2's rows, B4's weekly rain and exposure, B1's
 population. B10 calls model_rows, fit_m4 (M4 and M4 without EI2) and predict_m4 at
-every forecast day; plot_residual_acf draws v2's residual check once case data exist.
+every forecast day. v2's residual check runs once, after B10, on M4's fit at the run's
+last forecast day:
+
+    python -m src.m4      # results/m4_residual_acf.png and m4_residual_acf.csv
 
 Check: python -m src.checks (S5: 50 made-up datasets of 400 weeks recover the true values).
 """
@@ -50,6 +53,7 @@ Check: python -m src.checks (S5: 50 made-up datasets of 400 weeks recover the tr
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from statsmodels.tsa.stattools import acf
 
 import config
 
@@ -59,6 +63,7 @@ RAIN = "rcum2_50"       # Rcum2 / 50: coefficient b1
 EI = "ei2"              # EI2: coefficient b2
 COVID = "covid"         # coefficient delta
 ALL_TERMS = [*SEASON, RECENT, RAIN, EI, COVID]
+SHOW_LAGS = 3           # lags main() prints; the plot and its table hold config.M4_ACF_LAGS
 
 
 def season_terms(week_index):
@@ -205,7 +210,7 @@ def plot_residual_acf(fit, path=config.M4_RESIDUAL_ACF, lags=config.M4_ACF_LAGS)
     from statsmodels.graphics.tsaplots import plot_acf
 
     fig, ax = plt.subplots(figsize=(7, 3.5))
-    plot_acf(pearson_residuals(fit), lags=lags, ax=ax,
+    plot_acf(pearson_residuals(fit), lags=lags, ax=ax, alpha=config.M4_ACF_ALPHA,
              title=f"M4{'' if fit['with_ei'] else ' without EI2'}: residual autocorrelation ({fit['rows']} weeks)")
     ax.set_xlabel("lag (weeks)")
     part = path.with_suffix(".part")
@@ -213,3 +218,56 @@ def plot_residual_acf(fit, path=config.M4_RESIDUAL_ACF, lags=config.M4_ACF_LAGS)
     plt.close(fig)
     part.replace(path)
     return path
+
+
+def residual_acf(fit, lags=config.M4_ACF_LAGS):
+    """The numbers plot_residual_acf draws: the residuals' autocorrelation at lags 1..lags.
+
+    Columns lag, autocorrelation and band. In plain words: autocorrelation is how much one
+    week's miss says about the miss `lag` weeks later (0: nothing, 1: the same miss), and
+    band is half the width of the plot's shaded range around 0, where 95% of them would
+    fall if the weeks' misses were independent (config.M4_ACF_ALPHA). The band widens a
+    little with the lag (Bartlett's formula, as plot_acf draws it).
+    """
+    values, interval = acf(pearson_residuals(fit), nlags=lags, alpha=config.M4_ACF_ALPHA, result_object=False)
+    return pd.DataFrame({"lag": np.arange(1, lags + 1), "autocorrelation": values[1:],
+                         "band": interval[1:, 1] - values[1:]})
+
+
+def main():
+    """v2's residual check (B5) on the real counts: M4's fit at the last forecast day of B10's run.
+
+    Refits M4 there on the rows B2 lets it see, with the run's own data option and g and
+    that day's rain and EI (its fit year, C3), as B10 did; the fit has no random draws, so
+    it is the run's own fit. Saves the plot (config.M4_RESIDUAL_ACF) and its numbers
+    (config.M4_RESIDUAL_ACF_TABLE, via a .part file) and prints the first lags. Needs
+    B10's results/forecasts.csv.
+    """
+    from src import backtest, view, weeks   # backtest imports this file, so it is imported here, not at the top
+
+    if not config.FORECASTS.exists():
+        raise FileNotFoundError(f"{config.FORECASTS} not found: run B10 first (python -m src.backtest)")
+    run = pd.read_csv(config.FORECASTS, usecols=["option", "g", "forecast_week"])
+    if len(run[["option", "g"]].drop_duplicates()) != 1:
+        raise ValueError(f"{config.FORECASTS.name} holds more than one data option or guard: one run per file")
+    option, g, T = run["option"].iloc[0], int(run["g"].iloc[0]), int(run["forecast_week"].max())
+    cases, features, pop = backtest.load_cases(), backtest.load_features(), backtest.load_population()
+    rain = backtest.features_for(features, weeks.year_week(T)[0])
+    fit = fit_m4(model_rows(view.training_rows(cases, T, option, g), rain, pop))
+
+    picture = plot_residual_acf(fit)
+    table = residual_acf(fit)
+    part = config.M4_RESIDUAL_ACF_TABLE.with_suffix(".part")
+    table.round(4).to_csv(part, index=False)
+    part.replace(config.M4_RESIDUAL_ACF_TABLE)
+
+    shown = table.head(SHOW_LAGS)
+    print(f"M4 at the last forecast day of {config.FORECASTS.name}, {weeks.year_week(T)} (year, week), option "
+          f"{option}" + (f", g = {g}" if option == "C" else "") + f": {fit['rows']} training weeks")
+    print("residual autocorrelation: " + ", ".join(f"lag {row.lag} {row.autocorrelation:.2f}" for row in shown.itertuples())
+          + f"; independent weeks stay within +/-{shown['band'].iloc[0]:.2f} at lag 1 (95%)")
+    print(f"wrote {picture} and {config.M4_RESIDUAL_ACF_TABLE}")
+
+
+if __name__ == "__main__":
+    main()
