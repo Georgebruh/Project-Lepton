@@ -10,7 +10,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  width: 320px;
+  width: var(--map-layers-width);
   max-width: calc(100% - 2 * var(--space-5) - var(--map-buttons-width) - var(--space-3));
   max-height: calc(100% - 2 * var(--space-5));
   overflow-y: auto;
@@ -122,6 +122,101 @@
 /* Terrain: light and shade across the land */
 .map-layers-preview-terrain {
   background: linear-gradient(135deg, var(--color-border-strong), var(--color-map-land) 50%, var(--color-bg-raised));
+}
+
+/* Flood hazard: the switch, the map's chips and what they mean (Figma's 8 px apart) */
+.map-layers-flood {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* As in Figma, an outlined chip's 1 px border adds to its size (24 px tall, the selected one 22),
+   so the chips line up at the top */
+.map-layers-chips {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* A chip (Figma "Chip"): outlined; the chosen one dark, with light text */
+.map-layers-chip {
+  /* Figma's 3 px by 8 px, between the spacing steps */
+  padding: 3px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.map-layers-chip[aria-pressed='true'] {
+  border: 0;
+  background: var(--color-text-primary);
+  color: var(--color-bg-surface);
+}
+
+.map-layers-about {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.map-layers-failed {
+  margin: 0;
+  color: var(--color-status-alert);
+}
+
+/* Try again: a link-like button at the end of the line */
+.map-layers-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Weather: Figma's "Radio row", a 16 px round button and a label with a caption, 6 px above and below */
+.map-layers-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 6px 0;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* The round button: a 1.5 px outline, or a 5 px accent ring when chosen (Figma's Off and On) */
+.map-layers-radio-input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  /* the label's first line is 22 px tall: the button sits in its middle */
+  margin: 3px 0 0;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  cursor: pointer;
+  appearance: none;
+}
+
+.map-layers-radio-input:checked {
+  border: 5px solid var(--color-accent-primary);
+}
+
+.map-layers-radio-input:focus-visible {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.map-layers-radio-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-layers-radio-caption {
+  color: var(--color-text-secondary);
 }
 
 .map-layers-credits {

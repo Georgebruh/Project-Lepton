@@ -7,6 +7,7 @@ import { SLOTS } from './layerOrder.ts'
 import { CROSSFADE_MS, HOVER_MS, LINES_MS, RISE_MS, WAVE_MS, prefersReducedMotion } from './motion.ts'
 import type { BarangayShapes } from './planData.ts'
 import type { MapPointer } from './tooltip.ts'
+import { tokenColor } from './tokens.ts'
 
 /*
  * F5: Quezon City's barangays on the map, at level 3, the prophylaxis plan (Figma frames 3 and
@@ -68,8 +69,7 @@ const HOVER: ExpressionSpecification = ['number', ['feature-state', 'hover'], 0]
  * cannot read CSS variables.
  */
 function tokenColors(element: HTMLElement) {
-  const style = getComputedStyle(element)
-  const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
+  const color = (token: string) => tokenColor(element, token)
   return {
     ramp: [1, 2, 3, 4, 5].map((step) => color(`data-ramp-${step}`)),
     noData: color('bg-raised'),

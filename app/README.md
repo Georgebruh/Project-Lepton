@@ -112,7 +112,7 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 | --- | --- | --- |
 | `ncr_cities.geojson` | NCR's 17 cities: `psgc`, `name`, `has_data` (Quezon City only), and `label_lon`, `label_lat`, where the map writes the name (empty for Pateros, too small) | Map |
 | `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
-| `noah_5yr.json`, `noah_25yr.json`, `noah_100yr.json` | F13: NOAH's flood maps (A8) for the map's flood overlay, one MultiPolygon per hazard level: `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), and the settings they were made with (`min_m2`, `simplify_m`). Simplified for the browser (`config.APP_NOAH_*`: patches under 400 m² dropped, the three levels' outlines simplified together, so they still meet without gaps), they show 90–93% of NOAH's flooded area; every number uses A8's full maps. Written again only when A8's file or those settings change. ODbL, as NOAH's maps are. Named `.json`, not `.geojson`, so Vercel sends them compressed (7.6–9.0 MB each, 1.3–1.5 MB sent) | Map (F13; not drawn yet) |
+| `noah_5yr.json`, `noah_25yr.json`, `noah_100yr.json` | F13: NOAH's flood maps (A8) for the map's flood overlay, one MultiPolygon per hazard level: `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), and the settings they were made with (`min_m2`, `simplify_m`). Simplified for the browser (`config.APP_NOAH_*`: patches under 400 m² dropped, the three levels' outlines simplified together, so they still meet without gaps), they show 90–93% of NOAH's flooded area; every number uses A8's full maps. Written again only when A8's file or those settings change. ODbL, as NOAH's maps are. Named `.json`, not `.geojson`, so Vercel sends them compressed (7.6–9.0 MB each, 1.3–1.5 MB sent) | Map's flood zones (F13), fetched when first turned on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes` | Prophylaxis plan |
 | `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
 | `centers.json` | Health centers (`lat`, `lon`, `barangay`; `left_out` says why one gets no stock) and `needs[storm][run][flood][facility_code]` | Prophylaxis plan, Exposure guide |
@@ -197,9 +197,11 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   Sans, from OpenFreeMap) leave out NCR's cities while LEPTON writes them (from zoom 8.5);
   zoomed further out, LEPTON's names hide and the street map's come back (`map/basemap.ts`).
 - **The street map (F13).** OpenFreeMap's Positron style under LEPTON's data, in the Figma map
-  colors, with the cities' fills over its roads and under its names; zoomed out the map is a
-  globe, and the pin button above Zoom brings the open level back. The drawing order lives in
-  `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
+  colors, with the cities' fills over its roads and under its names; zoomed out it shows the
+  whole world, and the pin button above Zoom brings the open level back. The drawing order lives
+  in `map/layerOrder.ts`; the sources' credits sit behind the "i" in the map's bottom left corner.
+  The map is flat (Mercator), not a globe, and names appear without a fade (`fadeDuration: 0`):
+  see "Keeping the map smooth" below.
 - **The Layers panel (F13).** The Layers button above Zoom opens `map/MapLayers.tsx` (Figma
   "Layers panel"): it opens up from the button and covers the legends; on a phone it is a sheet
   like the city panel's. Escape or Close gives the keyboard back to the button. The base map is
@@ -208,6 +210,74 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   added on first use by `setBase` in `map/basemap.ts`. Over imagery or shading the city and
   barangay fills drop to 60% (terrain 75%, `DATA_OPACITY`). The choice lives in the address,
   `?base=satellite` or `?base=terrain` (`map/layerParams.ts`), and links between the levels keep it.
+- **NOAH's flood zones (F13).** The panel's Flood hazard switch draws one of NOAH's maps
+  (`map/floodLayer.ts`), the 25-year one first; while it is on, chips pick the 5-, 25- or
+  100-year map, `?flood=25` in the address. Each map is fetched the first time it is chosen:
+  MapLibre loads the file and cuts it into tiles in its worker, then keeps it. The zones go
+  over LEPTON's fills and under the street map's names, in the `map/hazard-*` blues at 80%,
+  and the cities' names get a halo. Their legend (`map/FloodLegend.tsx`) stands above the
+  map's own; on a phone it shows only the levels' names (the depths are read out) and leaves
+  the credit to the map's corner. While a file loads the panel says so; if it fails, the panel
+  says that with a Try again button, and the legend goes. A failed map is removed, so choosing
+  it later fetches it again.
+- **The 3D view (F13).** The panel's "3D view" switch, `?view=3d` in the address
+  (`map/terrain.ts`). The ground rises with Mapzen's Terrain Tiles (heights doubled: Metro
+  Manila is low), the street map gets the hill shading, and its buildings stand up from zoom 14.
+  The camera tilts 60°; the reader can turn and tilt it with a right-button drag, two fingers,
+  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north.
+- **Weather (F13).** The panel's Weather rows show one layer at a time, `?wx=` in the address
+  (`map/weather.ts`): live clouds (Himawari-9 infrared, JMA, through NASA GIBS; the last 3 hours),
+  live radar (RainViewer, the past 2 hours), live rain (NASA IMERG, the last 6 hours), and the
+  map's date's rain (IMERG, one UTC day, 8 AM to 8 AM Philippine time) and satellite photo (NASA
+  VIIRS). Each frame is a raster source and layer in the weather slot (`map/layerOrder.ts`), at
+  opacity 0 but the one shown, so the animation does not flicker; frames are added newest first,
+  one after another (RainViewer allows 100 requests a minute). GIBS can list a time before its
+  tiles exist, and MapLibre draws a missing tile as nothing, so each GIBS frame is checked first
+  with one headers-only request for its world tile. The live layers play 500 ms a frame, pausing on
+  the newest, once every frame is in (not with reduced motion), and are fetched again every 10
+  minutes; `map/WeatherTimeline.tsx` plays, pauses and steps them, with times in Philippine time
+  and a badge saying they are now, not the map's date. `map/WeatherLegend.tsx` draws each layer's
+  colors as its provider does (GIBS's colormaps, RainViewer's Universal Blue), so they are not
+  tokens. A failed source says so in the panel, with Try again; a date NASA has no picture of
+  says that.
+- **The address (F13).** Every map layer is a setting in the address, left out at its default,
+  so a link opens the same map and the links between the levels keep it (`map/layerParams.ts`):
+  `?base=satellite|terrain`, `?flood=5|25|100`, `?view=3d`,
+  `?wx=clouds|radar|rain|rain-day|photo-day`. For example
+  `/map/quezon-city?date=2024-07-24&base=satellite&flood=25&wx=rain-day&view=3d` opens Quezon City
+  on the day of Typhoon Carina, over imagery, in 3D, with NOAH's 25-year zones and that day's rain.
+- **Privacy (F13).** The map now loads tiles from other servers: OpenFreeMap (always, unless it
+  is blocked), and EOX, AWS, NASA GIBS and RainViewer when their layers are chosen. Each sees
+  the reader's IP address and which part of the world is in view, as any web map's tile server
+  does; none gets a cookie or anything LEPTON knows. The Exposure guide (F8) and Home's maps are
+  SVG drawn from LEPTON's own files and load none of them.
+- **The camera and the levels (F13).** A level's view (`map/view.ts`) is reached with
+  `moveToLevel` (`levelCamera` and `easeTo`), not `fitBounds`: the zoom is the flat map's fit,
+  and the level's padding (the panel, the sheet) becomes the camera's own, so the camera tilts,
+  turns and zooms about the middle of the map left in sight. `fitBounds` shifts the middle only
+  for a flat map, and on a phone a tilt threw the city off the strip above the sheet. Moves to a
+  level's view carry `LEVEL_FIT`. The reader's own moves (a drag, a pinch, a key, the wheel, the
+  zoom buttons with `READER_MOVE`) mark the map as moved: then a resize no longer refits the
+  level, and 3D tilts where the reader is. MapLibre's own moves (a resize) mark nothing.
+- **Keeping the map smooth (F13).** The map's lag was freezes, not slow frames. MapLibre
+  compiles a WebGL shader the first time it draws each kind of layer, and on an integrated GPU
+  each compile holds the page for 0.1 to 0.35 s. The street map brought many kinds of layer, and a
+  globe compiles each shader twice (round, then flat as you zoom in). Measured on 22 October 2026
+  (AMD Radeon integrated, headless Edge, panning and zooming each level):
+
+  | | shaders at levels 1 / 2 / 3 | page frozen compiling | worst frame |
+  | --- | --- | --- | --- |
+  | before F13 | 6 / 7 / 10 | 0.15 to 0.28 s | 17 ms |
+  | F13 with the globe | 13 / 25 / 31 | 0.75 to 1.57 s | 83 to 483 ms |
+  | F13 flat, no label fade | 12 / 12 / 10 | 0.08 to 0.41 s | 17 ms |
+
+  So the map is flat (Mercator) at every zoom, and names appear without a fade
+  (`fadeDuration: 0`), which also stops MapLibre redrawing for 300 ms after every change of
+  which names fit. Every layer but 3D now keeps a steady 60 frames a second; 3D runs at about
+  55. Before adding a layer, mind what it costs: a new layer type (fill-extrusion, hillshade,
+  heatmap), a dashed or patterned line, or a paint property that varies by feature where others
+  are constant each mean another shader. The browser keeps compiled shaders while the tab is
+  open, so each one freezes the page once.
 
 ### The prophylaxis plan (F5)
 

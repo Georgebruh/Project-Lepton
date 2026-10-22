@@ -6,6 +6,9 @@
  */
 export const CITY_SOURCE = 'cities'
 
+/** F13: the cities' label points, for the room their names keep (CityMap's addNameRoom). */
+export const CITY_NAMES_SOURCE = 'city-names'
+
 export const CITY_LAYERS = {
   /** Every city but the open one: its fill and its outline. */
   fill: 'cities-fill',
@@ -13,4 +16,6 @@ export const CITY_LAYERS = {
   /** The open city (Quezon City, at levels 2 and 3): its fill and its outline. */
   openFill: 'city-open-fill',
   openLine: 'city-open-line',
+  /** F13: an invisible copy of the cities' names, on top, that keeps the street map's names off them. */
+  names: 'city-names-room',
 }

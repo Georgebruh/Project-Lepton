@@ -9,8 +9,9 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
  *                     over the roads, which would clutter the barangay colors (as in Figma);
  *   5. SLOTS.flood    NOAH's flood zones;
  *   6. SLOTS.weather  clouds, radar and rain;
- *   7. the base map's names, so places and streets stay readable over everything;
- *   8. LEPTON's outlines, on top of everything.
+ *   7. SLOTS.buildings the buildings standing up in the 3D view (terrain.ts);
+ *   8. the base map's names, so places and streets stay readable over everything;
+ *   9. LEPTON's outlines, on top of everything.
  * A slot is an empty layer that draws nothing. A module adds its layers just below its slot
  * (map.addLayer(layer, SLOTS.fills)), so they land in this order whatever order they are added in.
  */
@@ -19,6 +20,7 @@ export const SLOTS = {
   fills: 'slot-fills',
   flood: 'slot-flood',
   weather: 'slot-weather',
+  buildings: 'slot-buildings',
 } as const
 
 /**
@@ -35,4 +37,5 @@ export function addSlots(map: MapLibreMap) {
   slot(SLOTS.fills, firstName)
   slot(SLOTS.flood, firstName)
   slot(SLOTS.weather, firstName)
+  slot(SLOTS.buildings, firstName)
 }

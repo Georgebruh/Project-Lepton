@@ -1,0 +1,132 @@
+/* F13: the live weather layer's timeline (WeatherTimeline.tsx), Figma "Weather timeline". */
+.weather-timeline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  height: 56px;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+/* Play or pause: a 36 px outlined square, like the map buttons */
+.weather-timeline-play {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* The previous and next frame: 34 px squares without a border, 2 px apart (Figma) */
+.weather-timeline-steps {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.weather-timeline-step {
+  display: flex;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* The slider: a 4 px track, accent up to the frame shown (--weather-timeline-played), and a
+   16 px round thumb with a 2 px accent ring */
+.weather-timeline-slider {
+  flex: 1 1 240px;
+  min-width: 60px;
+  height: 16px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+.weather-timeline-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(
+    to right,
+    var(--color-accent-primary) var(--weather-timeline-played),
+    var(--color-border-strong) var(--weather-timeline-played)
+  );
+}
+
+.weather-timeline-slider::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(
+    to right,
+    var(--color-accent-primary) var(--weather-timeline-played),
+    var(--color-border-strong) var(--weather-timeline-played)
+  );
+}
+
+.weather-timeline-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  appearance: none;
+}
+
+.weather-timeline-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+}
+
+.weather-timeline-when {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.weather-timeline-age {
+  color: var(--color-text-secondary);
+}
+
+.weather-timeline-live {
+  flex-shrink: 0;
+}
+
+.weather-timeline-live-short {
+  display: none;
+}
+
+/* A narrow map (a phone, or a laptop with the city panel open): the badge says only "Live" */
+@media (max-width: 1100px) {
+  .weather-timeline-live-long {
+    display: none;
+  }
+
+  .weather-timeline-live-short {
+    display: inline;
+  }
+}
+
+/* F11's phone width: the slider steps through the frames, so the step buttons and the frame count go */
+@media (max-width: 599px) {
+  .weather-timeline-steps,
+  .weather-timeline-age {
+    display: none;
+  }
+}

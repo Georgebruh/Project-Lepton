@@ -1,4 +1,9 @@
-import type { ExpressionSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec'
+import type {
+  ExpressionSpecification,
+  StyleSpecification,
+  SymbolLayerSpecification,
+} from '@maplibre/maplibre-gl-style-spec'
+import type { FeatureCollection, Point } from 'geojson'
 import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { useEffect, useRef, useState, type CSSProperties, type Ref, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
@@ -9,16 +14,18 @@ import { shapeMiddle, shapeParts } from '../exposed/nearest.ts'
 import maplibregl from '../lib/maplibre.ts'
 import { barangayLayers } from './barangayLayers.ts'
 import { CITY_NAMES_ZOOM, DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
-import { CITY_LAYERS as LAYERS, CITY_SOURCE as SOURCE } from './cityLayers.ts'
+import { CITY_LAYERS as LAYERS, CITY_NAMES_SOURCE as NAMES_SOURCE, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
 import MapList, { type MapListHandle, type MapListItem } from './MapList.tsx'
 import { SLOTS, addSlots } from './layerOrder.ts'
+import { TILT, set3D } from './terrain.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
 import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, SHEET_BELOW, easeInOut, prefersReducedMotion } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
+import { tokenColor } from './tokens.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
-import { viewFor } from './view.ts'
+import { levelCamera, moveToLevel, viewFor } from './view.ts'
 import './CityMap.css'
 
 /*
@@ -36,14 +43,16 @@ import './CityMap.css'
  * (featureFades.ts), and the fade to 45% uses a layer-wide value, not a per-city one.
  *
  * F13: the cities sit on the street map (basemap.ts), and the reader may pan anywhere and zoom
- * out to the whole globe. The fills go in over the street map's roads and under its names, the
+ * out to the whole world. The fills go in over the street map's roads and under its names, the
  * outlines on top (layerOrder.ts). Zoomed out past CITY_NAMES_ZOOM the cities' names hide, since they
  * would pile up. The credits for the map's sources sit behind an "i" in its bottom left corner.
  * On the satellite and terrain base maps (the Layers panel) the fills let the ground show through
- * (DATA_OPACITY), and the cities' names get a halo.
+ * (DATA_OPACITY). The cities' names have a halo, and keep the street map's names off them
+ * (addNameRoom). In the 3D view (terrain.ts) the camera tilts,
+ * and a level's view keeps the tilt and faces north (view.ts, moveToLevel).
  */
 
-/** How far out the reader may zoom: at 1 the map is the whole globe. */
+/** How far out the reader may zoom: at 1 the map is the whole world. */
 const MIN_ZOOM = 1
 
 /** The credit for the city outlines, shown with the street map's in the map's corner. */
@@ -64,10 +73,9 @@ const REST_WIDTH: ExpressionSpecification = ['case', HAS_DATA, LINE.data, LINE.n
 /** A city's outline: its resting width, growing to LINE.hover as its hover goes from 0 to 1. */
 const LINE_WIDTH: ExpressionSpecification = ['+', REST_WIDTH, ['*', HOVER, ['-', LINE.hover, REST_WIDTH]]]
 
-/** The colors the map paints with, read from tokens.css: MapLibre draws on a canvas and cannot read CSS variables. */
+/** The colors the map paints with, read from tokens.css (tokens.ts). */
 function tokenColors(element: HTMLElement) {
-  const style = getComputedStyle(element)
-  const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
+  const color = (token: string) => tokenColor(element, token)
   return {
     noData: color('bg-raised'),
     hovered: color('bg-surface'),
@@ -125,6 +133,69 @@ function moveHover(fader: ReturnType<typeof hoverFader>, hovered: { current: str
   hovered.current = psgc
 }
 
+/** A stand-in for a city's cases line in addNameRoom, as wide as a three-digit count. */
+const CASES_ROOM = '000 cases next week'
+
+/**
+ * F13: keeps the street map's names off the cities' names. LEPTON's names are HTML over the map
+ * (links, for the keyboard), which MapLibre's own labels cannot see, so a town just outside NCR
+ * printed over Quezon City's cases (San Mateo). This adds an invisible copy of each name, and of
+ * the cases line for a city with data, at its label point and on top of every layer: MapLibre
+ * places the top layer's labels first, always places these (allow-overlap), and drops any street
+ * map name that would run into them. It shows where the HTML names do: at level 1 (setNameRoom),
+ * from CITY_NAMES_ZOOM in. It needs the street map's fonts; without the street map (it did not
+ * load) there are no names to keep off, and it is not added.
+ */
+function addNameRoom(map: MapLibreMap, cities: Cities, level: MapLevel) {
+  const style = map.getStyle()
+  const named = style.layers.find(
+    (layer): layer is SymbolLayerSpecification => layer.type === 'symbol' && layer.layout?.['text-font'] !== undefined,
+  )
+  if (!style.glyphs || !named) {
+    return
+  }
+  const points: FeatureCollection<Point> = {
+    type: 'FeatureCollection',
+    features: cities.features.flatMap(({ properties: city }) =>
+      city.label_lon === null || city.label_lat === null
+        ? []
+        : [
+            {
+              type: 'Feature' as const,
+              geometry: { type: 'Point' as const, coordinates: [city.label_lon, city.label_lat] },
+              properties: { text: CITY_PATHS[city.psgc] ? `${shortName(city)}\n${CASES_ROOM}` : shortName(city) },
+            },
+          ],
+    ),
+  }
+  map.addSource(NAMES_SOURCE, { type: 'geojson', data: points })
+  map.addLayer({
+    id: LAYERS.names,
+    type: 'symbol',
+    source: NAMES_SOURCE,
+    minzoom: CITY_NAMES_ZOOM,
+    layout: {
+      visibility: level === 1 ? 'visible' : 'none',
+      'text-field': ['get', 'text'],
+      'text-font': named.layout!['text-font'],
+      // Label/UI's 14 px on 20 px lines, as the HTML names (CityMap.css); one line each, never wrapped
+      'text-size': 14,
+      'text-line-height': 20 / 14,
+      'text-max-width': 100,
+      'text-padding': 4,
+      'text-allow-overlap': true,
+    },
+    paint: { 'text-opacity': 0 },
+  })
+}
+
+/** F13: the room the cities' names keep (addNameRoom), only at level 1, where the names show. */
+function setNameRoom(map: MapLibreMap, level: MapLevel) {
+  if (map.getLayer(LAYERS.names)) {
+    map.setLayoutProperty(LAYERS.names, 'visibility', level === 1 ? 'visible' : 'none')
+  }
+}
+
 /** F11: the list's rows, the cities with a forecast first, then the others by name. */
 function cityItems(cities: Cities, forecast: CityForecast, week: ForecastWeek | undefined): MapListItem[] {
   const model = week?.forecasts[forecast.map_model]
@@ -162,6 +233,8 @@ type CityMapProps = {
   baseStyle: StyleSpecification | null
   /** F13: the base map chosen in the Layers panel. */
   base: BaseMap
+  /** F13: whether the Layers panel's 3D view is on. */
+  view3d: boolean
   /** The week after the chosen date, or undefined if the backtest has no forecast for it. */
   week: ForecastWeek | undefined
   /** The open level: 1 Metro Manila, 2 Quezon City, 3 its prophylaxis plan. */
@@ -190,6 +263,7 @@ export default function CityMap({
   forecast,
   baseStyle,
   base,
+  view3d,
   week,
   level,
   onMap,
@@ -209,8 +283,9 @@ export default function CityMap({
   const [spots, setSpots] = useState<LabelSpot[]>([])
   const [pointer, setPointer] = useState<Pointer | null>(null)
   const [farOut, setFarOut] = useState(false) // F13: zoomed out past CITY_NAMES_ZOOM
-  const readerMoved = useRef(false) // F13: the reader has panned or zoomed since the camera last fit the level
+  const readerMoved = useRef(false) // F13: the reader has panned, zoomed or turned the map since the camera last fit the level
   const fillOpacity = useRef(DATA_OPACITY[base]) // F13: how opaque the fills are on the base map shown
+  const shown3D = useRef<boolean | null>(null) // F13: whether the map is drawn in 3D; null until first set
 
   // The click handler opens a city with the latest navigate and date
   useEffect(() => {
@@ -222,19 +297,30 @@ export default function CityMap({
   useEffect(() => {
     const container = containerRef.current!
     const colors = tokenColors(container)
-    const start = viewFor(shownLevel.current, cities, container, controls.current)
+    const view = viewFor(shownLevel.current, cities, container, controls.current)
+    const start = levelCamera(view, container, 0)
     const map = new maplibregl.Map({
       container,
       style: mapStyle(baseStyle, container, cities),
-      bounds: start.bounds,
-      fitBoundsOptions: { padding: start.padding },
+      // A map with no room yet starts on MapLibre's own fit; the first resize then shows the level
+      ...(start ? { center: start.center, zoom: start.zoom } : { bounds: view.bounds }),
       minZoom: MIN_ZOOM,
       attributionControl: false,
+      // Flat: no turning or tilting. F13: the 3D view turns both on (terrain.ts), and with
+      // pitchWithRotate a mouse drag that turns the map tilts it too
       dragRotate: false,
-      pitchWithRotate: false,
+      pitchWithRotate: true,
       touchPitch: false,
       renderWorldCopies: false,
+      // F13: names appear at once instead of fading in. A fade redraws the map for 300 ms after
+      // every change of which names fit, and on the street map's thousands of names that kept
+      // the map drawing through most of a pan
+      fadeDuration: 0,
     })
+    // F13: the level's padding is the camera's own from the start (view.ts, levelCamera)
+    if (start) {
+      map.setPadding(view.padding)
+    }
     // F13: the sources' credits, bottom left, folded behind an "i" button: written out, they are
     // wide enough to run into the legend on a laptop with the panel open
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
@@ -248,9 +334,19 @@ export default function CityMap({
     }
     map.on('sourcedata', closeCredits)
     map.on('zoom', () => setFarOut(map.getZoom() < CITY_NAMES_ZOOM))
-    // A move the reader makes comes with their event; the camera's own fits (a level, the pin) do not
+    // A move the reader makes comes with their event (a drag, a pinch, a key) or, F13, is the zoom
+    // buttons' (READER_MOVE); a wheel zoom says so through its own event. A move to the level's
+    // view (a level, the pin) carries LEVEL_FIT. MapLibre's own moves, such as a resize or the 3D
+    // view's tilt, change nothing (view.ts)
     map.on('movestart', (event) => {
-      readerMoved.current = Boolean(event.originalEvent)
+      if (event.originalEvent || 'readerMove' in event) {
+        readerMoved.current = true
+      } else if ('levelFit' in event) {
+        readerMoved.current = false
+      }
+    })
+    map.on('wheel', () => {
+      readerMoved.current = true
     })
     map.touchZoomRotate.disableRotation()
     map.keyboard.disableRotation()
@@ -313,6 +409,7 @@ export default function CityMap({
         markers.push(new maplibregl.Marker({ element }).setLngLat([city.label_lon, city.label_lat]).addTo(map))
         labelSpots.push({ city, element })
       }
+      addNameRoom(map, cities, shownLevel.current)
       setSpots(labelSpots)
       setFarOut(map.getZoom() < CITY_NAMES_ZOOM) // a short map can start zoomed out that far
       setLoaded(true)
@@ -350,7 +447,7 @@ export default function CityMap({
         return
       }
       const view = viewFor(shownLevel.current, cities, container, controls.current)
-      map.fitBounds(view.bounds, { padding: view.padding, duration: 0 })
+      moveToLevel(map, view, shown3D.current ? TILT : 0, { duration: 0 })
     })
 
     return () => {
@@ -360,26 +457,54 @@ export default function CityMap({
       mapRef.current = null
       faderRef.current = null
       hoveredRef.current = null
+      // F13: a new map starts flat, on the level's view
+      shown3D.current = null
+      readerMoved.current = false
       setSpots([])
       setLoaded(false)
       onMap(null)
     }
   }, [cities, baseStyle, onMap, controls])
 
-  // F13: the base map chosen in the Layers panel, and the fills' opacity over it (a 150 ms
-  // crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
+  // F13: the base map chosen in the Layers panel (shaded in 3D), and the fills' opacity over it (a
+  // 150 ms crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !loaded) {
       return
     }
-    setBase(map, base)
+    setBase(map, base, view3d)
     fillOpacity.current = DATA_OPACITY[base]
     const fade = { duration: CROSSFADE_MS, delay: 0 }
     map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
     map.setPaintProperty(LAYERS.fill, 'fill-opacity', (shownLevel.current > 1 ? DIMMED_OPACITY : 1) * fillOpacity.current)
     barangayLayers(map).setFillOpacity(fillOpacity.current)
-  }, [base, loaded])
+  }, [base, view3d, loaded])
+
+  // F13: the 3D view: the ground rises and the camera tilts, on the level's view if the reader has
+  // not moved from it, or else where it is, so a neighbourhood they zoomed into stands up (700 ms;
+  // with reduced motion MapLibre jumps). Leaving it, the map turns flat and faces north. A page
+  // that opens in 3D starts tilted.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded || shown3D.current === view3d) {
+      return
+    }
+    const first = shown3D.current === null
+    shown3D.current = view3d
+    set3D(map, view3d)
+    if (first && !view3d) {
+      return
+    }
+    const pitch = view3d ? TILT : 0
+    const motion = { duration: first ? 0 : CAMERA_MS, easing: easeInOut }
+    // On the level's view the camera fits it again, tilted or flat; moved away from it (or with no
+    // room to fit it), it tilts where it is
+    const view = viewFor(shownLevel.current, cities, map.getContainer(), controls.current)
+    if (readerMoved.current || !moveToLevel(map, view, pitch, motion)) {
+      map.easeTo({ pitch, bearing: view3d ? map.getBearing() : 0, ...motion })
+    }
+  }, [view3d, loaded, cities, controls])
 
   // Color the city with data by its outbreak level for the chosen week
   useEffect(() => {
@@ -409,15 +534,19 @@ export default function CityMap({
     map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity * fillOpacity.current)
     map.setPaintProperty(LAYERS.line, 'line-opacity-transition', fade)
     map.setPaintProperty(LAYERS.line, 'line-opacity', opacity)
-    // Not marked essential, so MapLibre skips the camera move when the reader asks for reduced motion
-    const view = viewFor(level, cities, map.getContainer(), controls.current)
-    map.fitBounds(view.bounds, { padding: view.padding, duration: CAMERA_MS, easing: easeInOut })
+    setNameRoom(map, level)
+    // With reduced motion the camera jumps. F13: the view keeps the 3D view's tilt (its target,
+    // should the tilt still be under way)
+    moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current), view3d ? TILT : 0, {
+      duration: CAMERA_MS,
+      easing: easeInOut,
+    })
     if (level > 1 && faderRef.current) {
       moveHover(faderRef.current, hoveredRef, null)
       map.getCanvas().style.cursor = ''
       setPointer(null)
     }
-  }, [level, loaded, cities, controls])
+  }, [level, loaded, cities, controls, view3d])
 
   /**
    * F11: shows a city from the list as the pointer would: its outline thickens and its tooltip
@@ -446,7 +575,13 @@ export default function CityMap({
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
   return (
-    <div className="city-map" data-level={level} data-far={farOut || undefined} data-base={base}>
+    <div
+      className="city-map"
+      data-level={level}
+      data-far={farOut || undefined}
+      data-base={base}
+      data-view={view3d ? '3d' : undefined}
+    >
       <div ref={containerRef} className="city-map-canvas" />
       <div className="city-map-corner">
         <p className="city-map-hint body-s">

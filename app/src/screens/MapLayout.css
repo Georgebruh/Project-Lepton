@@ -11,6 +11,8 @@
   height: 100dvh;
   /* F13: the map buttons' width: an 18 px icon, 8 px padding each side and a 1 px border (MapButton.css) */
   --map-buttons-width: 36px;
+  /* F13: the Layers panel's width (Figma "Layers panel", map/MapLayers.css) */
+  --map-layers-width: 320px;
   /* What moves with the camera; with reduced motion it is a crossfade instead */
   --map-move: var(--map-camera);
 }
@@ -66,13 +68,70 @@
   transform: translateX(calc(-1 * var(--map-panel-width)));
 }
 
+/* F13: the legends and the map buttons, side by side; the legends narrow and wrap their levels
+   before the buttons would move */
+.map-layout-controls-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* F13: a live weather layer's timeline (map/WeatherTimeline.tsx) stands at the bottom left of the
+   map in sight (Figma "Map · L2 Satellite and live radar"), beside the legends and buttons; where
+   the map in sight is too narrow for both, it spans the bottom and they stand above it. The
+   controls then span the map in sight, and the credits' "i" rises above the timeline. */
+.map-layout {
+  --map-timeline-height: 56px;
+}
+
+.map-layout[data-timeline] .map-layout-controls {
+  width: calc(100% - 2 * var(--space-5));
+  max-width: none;
+  flex-wrap: wrap-reverse;
+}
+
+.map-layout[data-timeline][data-panel='open'] .map-layout-controls {
+  width: calc(100% - var(--map-panel-width) - 2 * var(--space-5));
+  max-width: none;
+}
+
+/* Figma's 788 px at most; 420 px at least beside the legends, or it takes the bottom line */
+.map-layout-controls .weather-timeline {
+  flex: 1 1 420px;
+  max-width: 788px;
+}
+
+.map-layout[data-timeline] .city-map .maplibregl-ctrl-bottom-left {
+  bottom: calc(var(--map-timeline-height) + var(--space-3));
+}
+
 /* F13: opened credits wrap within the map's visible part, left of the panel */
 .map-layout[data-panel='open'] .city-map .maplibregl-ctrl-attrib {
   max-width: calc(100% - var(--map-panel-width) - 2 * var(--space-5));
 }
 
-/* F5: where a level puts its own legend. Its legend sits in the controls' row as if this box were
-   not there, and an empty slot takes no room and adds no gap. */
+/* F13: the legends, one above the other at the right, left of the map buttons: the flood zones'
+   (map/FloodLegend.tsx) over the map's own. Narrowed, each wraps its levels. */
+.map-layout-legends {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  transition: margin-right var(--map-hover) linear;
+}
+
+/* F13: the Layers panel opens where the legends stand; they step left of it, so the flood zones'
+   legend stays in sight while its map is chosen (behind the panel, a wide legend peeked out from
+   under it half cut off). A phone hides them instead (below). */
+.map-layout[data-layers='open'] .map-layout-legends {
+  margin-right: calc(var(--map-layers-width) + var(--space-3));
+}
+
+/* F5: where a level puts its own legend. Its legend sits in the legends' column as if this box
+   were not there, and an empty slot takes no room and adds no gap. */
 .map-layout-legend {
   display: contents;
 }
@@ -144,6 +203,29 @@
     bottom: var(--map-sheet-share);
   }
 
+  /* F13: the weather timeline spans the phone's map, and the credits rise above it */
+  .map-layout[data-timeline] .map-layout-controls,
+  .map-layout[data-timeline][data-panel='open'] .map-layout-controls {
+    width: calc(100% - 2 * var(--space-4));
+  }
+
+  .map-layout-controls .weather-timeline {
+    max-width: none;
+  }
+
+  /* F13: with the city's sheet up, the strip of map above it is short: the weather legend goes
+     (the timeline and the Layers panel still name the layer), and so does the outbreak legend,
+     which covered half the strip for the one city's color (the sheet names its level) */
+  .map-layout[data-panel='open'] .weather-legend,
+  .map-layout[data-panel='open'] .outbreak-legend {
+    display: none;
+  }
+
+  .map-layout[data-timeline][data-panel='open'] .city-map .maplibregl-ctrl-bottom-left,
+  .map-layout[data-timeline][data-layers='open'] .city-map .maplibregl-ctrl-bottom-left {
+    bottom: calc(var(--map-sheet-share) + var(--map-timeline-height) + var(--space-3));
+  }
+
   /* F13: the Layers panel is a sheet over the map's lower part, as tall as the city panel's, and
      the legend and buttons stand on it */
   .map-layers,
@@ -163,6 +245,13 @@
   .map-layout[data-layers='open'] .map-layout-controls {
     bottom: calc(var(--map-sheet-share) + var(--space-4));
     max-width: calc(100% - 2 * var(--space-4) - var(--space-6));
+  }
+
+  /* Only the buttons stand on the Layers sheet (Figma "Map · Layers, phone"): the legends, which
+     it covers on a wider screen, would cover the map left above it. Gone, not just hidden, so the
+     camera (map/view.ts) leaves room for the buttons alone. */
+  .map-layout[data-layers='open'] .map-layout-legends {
+    display: none;
   }
 
   .map-layout-panel {

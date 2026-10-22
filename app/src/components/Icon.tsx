@@ -12,7 +12,7 @@ type IconProps = {
 }
 
 /**
- * F3: one of the 18 icons from the Figma Components page, `size` px square, in the current
+ * F3: one of the 19 icons from the Figma Components page, `size` px square, in the current
  * text color. Lines keep their Figma width (1.5, 1.75 or 2 px) at every size, as they do when
  * an icon is resized in Figma (Icon.css). The icon is decoration, hidden from screen readers:
  * the button or link around it carries the words.

@@ -1,0 +1,77 @@
+/* F13: the flood zones' legend (FloodLegend.tsx), Figma "Flood legend" (Components page). */
+.flood-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Figma's 12 px by 14 px, between the spacing steps */
+  padding: var(--space-3) 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.flood-legend-title {
+  color: var(--color-text-secondary);
+}
+
+.flood-legend-levels {
+  display: flex;
+  /* On a narrow map a level moves to the next line whole */
+  flex-wrap: wrap;
+  /* Figma's 12 px between the levels, 6 px between a swatch and its name */
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-primary);
+}
+
+.flood-legend-levels li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* A 14 px square in the level's blue on the map */
+.flood-legend-swatch {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xs);
+}
+
+.flood-legend-swatch-1 {
+  background: var(--color-map-hazard-low);
+}
+
+.flood-legend-swatch-2 {
+  background: var(--color-map-hazard-medium);
+}
+
+.flood-legend-swatch-3 {
+  background: var(--color-map-hazard-high);
+}
+
+.flood-legend-credit {
+  color: var(--color-text-tertiary);
+}
+
+/* F11's phone width (motion.ts's SHEET_BELOW): the map left above a sheet is short, so the legend
+   keeps to two lines. The levels' depths are only read out (as .visually-hidden does), and the
+   credit is left to the map's own credits (the "i" in its corner names UP NOAH Center and the
+   licence). */
+@media (max-width: 599px) {
+  .flood-legend-depth {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .flood-legend-credit {
+    display: none;
+  }
+}

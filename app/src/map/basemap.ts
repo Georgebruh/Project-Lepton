@@ -1,7 +1,7 @@
 import type {
   FilterSpecification,
   LayerSpecification,
-  SkySpecification,
+  RasterDEMSourceSpecification,
   StyleSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { MultiPolygon } from 'geojson'
@@ -9,6 +9,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { shapeParts } from '../exposed/nearest.ts'
 import { SLOTS } from './layerOrder.ts'
 import type { Cities } from './mapData.ts'
+import { tokenColor } from './tokens.ts'
 
 /*
  * F13: the street map under LEPTON's data, OpenFreeMap's "Positron" style: OpenStreetMap data
@@ -18,7 +19,11 @@ import type { Cities } from './mapData.ts'
  *   - the base map's own city and town names inside NCR are hidden where LEPTON writes the
  *     cities' names itself (from CITY_NAMES_ZOOM in), in Figtree, with next week's cases;
  *     zoomed further out, LEPTON's names hide and the base map's come back;
- *   - the globe projection: zoomed out, the map is the whole Earth.
+ *   - the flat (Mercator) map of the whole world: zoomed out, it shows every continent. A globe
+ *     looked better zoomed out but cost a freeze: MapLibre compiles each of its shaders twice
+ *     for a globe (once round, once flat for close up), and on an integrated GPU each compile
+ *     holds the page up to a third of a second (measured 22 October 2026: 31 shaders and 1.6 s
+ *     frozen at the plan level, against 10 and 0.3 s before F13).
  * If the style cannot be fetched, the map draws on the plain background it had before F13, so
  * LEPTON's data always shows.
  *
@@ -26,6 +31,8 @@ import type { Cities } from './mapData.ts'
  * (Sentinel-2 cloudless 2024 by EOX, 10 m pixels), with the street map's roads and names kept
  * over it; and terrain, the street map with hill shading from elevation tiles (Mapzen Terrain
  * Tiles on AWS). Each is added the first time it is chosen, in the base slot (layerOrder.ts).
+ * In the 3D view the street map gets the hill shading too: MapLibre does not light the ground
+ * it raises, so without shading the relief would show only at its edges.
  */
 
 /** The base maps the Layers panel offers, the street map first (the address leaves it out). */
@@ -45,12 +52,22 @@ const SATELLITE_CREDIT =
   '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless 2024</a> by EOX ' +
   '(contains modified Copernicus Sentinel data 2024)'
 
-/** Elevation for the hill shading: Mapzen's Terrain Tiles on AWS (terrarium encoding, SRTM in the Philippines). */
+/**
+ * Elevation for the hill shading and the 3D view (terrain.ts): Mapzen's Terrain Tiles on AWS
+ * (terrarium encoding, SRTM in the Philippines). Each makes its own source from it, as MapLibre
+ * advises for hill shading and terrain.
+ */
+export const ELEVATION_SOURCE: RasterDEMSourceSpecification = {
+  type: 'raster-dem',
+  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  tileSize: 256,
+  maxzoom: 15,
+  encoding: 'terrarium',
+  attribution:
+    'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>',
+}
 const HILLSHADE = 'hillshade'
 const ELEVATION = 'elevation-hillshade'
-const ELEVATION_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
-const ELEVATION_CREDIT =
-  'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen Terrain Tiles</a>'
 
 /** How strongly the hills are shaded, 0 to 1: Metro Manila is low, but Marikina's valley and the Sierra Madre's foothills show. */
 const HILLSHADE_STRENGTH = 0.5
@@ -62,7 +79,7 @@ const GROUND_SOURCE_LAYERS = ['landcover', 'landuse', 'park', 'water', 'building
 export const CREDITS = {
   street: 'Street map © OpenStreetMap contributors, OpenFreeMap',
   satellite: 'Satellite: Sentinel-2 cloudless 2024 by EOX',
-  terrain: 'Terrain: Mapzen Terrain Tiles',
+  terrain: 'Terrain and 3D: Mapzen Terrain Tiles',
 }
 
 /** Per map, the street map's ground layers the satellite imagery hides (shown before it hid them). */
@@ -78,8 +95,8 @@ const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
  */
 const BASE_STYLE_TIMEOUT_MS = 2000
 
-/** The style's tile source, and the credit its tiles need (OpenFreeMap's style leaves it empty). */
-const BASE_SOURCE = 'openmaptiles'
+/** The style's tile source (terrain.ts raises its buildings), and the credit its tiles need (OpenFreeMap's style leaves it empty). */
+export const BASE_SOURCE = 'openmaptiles'
 const BASE_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
   '<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> ' +
@@ -94,8 +111,6 @@ const NCR_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
  */
 export const CITY_NAMES_ZOOM = 8.5
 
-/** The glow around the globe, gone by the time the map shows a region (zoom 7). */
-const SKY: SkySpecification = { 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }
 
 /** Fetches the street map's style; null if it does not come within BASE_STYLE_TIMEOUT_MS or is not a style. */
 export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
@@ -119,10 +134,9 @@ export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
   }
 }
 
-/** The colors the base map is drawn in, read from tokens.css: MapLibre draws on a canvas and cannot read CSS variables. */
+/** The colors the base map is drawn in, from tokens.css. */
 function mapColors(element: HTMLElement) {
-  const style = getComputedStyle(element)
-  const color = (token: string) => style.getPropertyValue(`--color-${token}`).trim()
+  const color = (token: string) => tokenColor(element, token)
   return {
     land: color('map-land'),
     water: color('bg-inset'),
@@ -153,14 +167,7 @@ function addSatellite(map: MapLibreMap) {
 
 function addHillshade(map: MapLibreMap) {
   const colors = mapColors(map.getContainer())
-  map.addSource(ELEVATION, {
-    type: 'raster-dem',
-    tiles: [ELEVATION_TILES],
-    tileSize: 256,
-    maxzoom: 15,
-    encoding: 'terrarium',
-    attribution: ELEVATION_CREDIT,
-  })
+  map.addSource(ELEVATION, ELEVATION_SOURCE)
   map.addLayer(
     {
       id: HILLSHADE,
@@ -198,17 +205,18 @@ function groundShown(map: MapLibreMap): string[] {
 /**
  * Shows the base map `base`: the street map alone, the satellite imagery under the street map's
  * roads and names (its ground hidden), or the street map with hill shading. Leaving the imagery
- * shows again exactly the ground it hid.
+ * shows again exactly the ground it hid. In the 3D view (`view3d`) the street map is shaded too.
  */
-export function setBase(map: MapLibreMap, base: BaseMap) {
+export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
+  const shaded = base === 'terrain' || (base === 'map' && view3d)
   if (base === 'satellite' && !map.getLayer(SATELLITE)) {
     addSatellite(map)
   }
-  if (base === 'terrain' && !map.getLayer(HILLSHADE)) {
+  if (shaded && !map.getLayer(HILLSHADE)) {
     addHillshade(map)
   }
   show(map, SATELLITE, base === 'satellite')
-  show(map, HILLSHADE, base === 'terrain')
+  show(map, HILLSHADE, shaded)
   const hidden = hiddenGround.get(map)
   if (base === 'satellite' && !hidden) {
     const ground = groundShown(map)
@@ -251,18 +259,18 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, ncr: MultiPoly
 
 /**
  * The style CityMap makes the map with: the street map adapted to the app, or, without one,
- * the plain background the map had before F13 (bg/inset). Both are globes. `element` is the
- * map's element, for the token colors.
+ * the plain background the map had before F13 (bg/inset). Both are flat (Mercator) maps.
+ * `element` is the map's element, for the token colors.
  */
 export function mapStyle(base: StyleSpecification | null, element: HTMLElement, cities: Cities): StyleSpecification {
   const colors = mapColors(element)
-  const globe: Pick<StyleSpecification, 'projection' | 'sky'> = { projection: { type: 'globe' }, sky: SKY }
+  const flat: Pick<StyleSpecification, 'projection'> = { projection: { type: 'mercator' } }
   if (!base) {
     return {
       version: 8,
       sources: {},
       layers: [{ id: 'background', type: 'background', paint: { 'background-color': colors.water } }],
-      ...globe,
+      ...flat,
     }
   }
   const ncr = ncrOutline(cities)
@@ -272,5 +280,5 @@ export function mapStyle(base: StyleSpecification | null, element: HTMLElement, 
       id === BASE_SOURCE ? { ...source, attribution: BASE_ATTRIBUTION } : source,
     ]),
   )
-  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...globe }
+  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...flat }
 }

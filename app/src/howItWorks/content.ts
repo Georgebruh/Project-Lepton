@@ -292,6 +292,10 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://nhfr.doh.gov.ph',
   },
   {
+    text: 'EOX IT Services. (2025). Sentinel-2 cloudless 2024 [Data set]. Contains modified Copernicus Sentinel data 2024. CC BY-NC-SA 4.0. The map’s satellite base map (F13).',
+    url: 'https://s2maps.eu',
+  },
+  {
     text: 'Faeldon, J. (2024). philippines-json-maps: PSGC 2023 city and municipality outlines [Computer software]. MIT License.',
     url: 'https://github.com/faeldon/philippines-json-maps',
   },
@@ -304,16 +308,37 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://doi.org/10.5067/GPM/IMERGDL/DAY/07',
   },
   {
+    text: 'Japan Meteorological Agency. (2026). Himawari-9 AHI band 13 clean infrared imagery, served by NASA Global Imagery Browse Services (GIBS) [Web map tiles]. The map’s live clouds (F13).',
+    url: 'https://earthdata.nasa.gov/gibs',
+  },
+  {
     text: 'Lehner, B., & Grill, G. (2013). Global river hydrography and network routing: Baseline data and new approaches to study the world’s large river systems (HydroBASINS). Hydrological Processes, 27(15), 2171–2186.',
     url: 'https://doi.org/10.1002/hyp.9740',
   },
   {
+    text: 'Mapzen. (2017). Terrain Tiles: global elevation from SRTM and other sources [Data set]. Registry of Open Data on AWS. The map’s terrain shading and 3D view (F13).',
+    url: 'https://registry.opendata.aws/terrain-tiles/',
+  },
+  {
+    text: 'NASA Global Imagery Browse Services. (2026). GPM IMERG precipitation rate (30-minute and daily) and VIIRS SNPP corrected reflectance (true color) imagery [Web map tiles]. NASA EOSDIS. The map’s rain and satellite photo layers (F13).',
+    url: 'https://earthdata.nasa.gov/gibs',
+  },
+  {
+    text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange.',
     text: 'OCHA Philippines. (2025). Philippines subnational administrative boundaries (COD-AB, v03) [Data set]. Humanitarian Data Exchange. From NAMRIA and PSA. CC BY-IGO.',
     url: 'https://data.humdata.org/dataset/cod-ab-phl',
   },
   {
     text: 'OCHA Philippines. (n.d.). Philippines population by single-year age, sex and barangay, 2020 census [Data set]. Humanitarian Data Exchange. From PSA. CC BY.',
     url: 'https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020',
+  },
+  {
+    text: 'OpenFreeMap. (2026). Positron map style and vector tiles, in the OpenMapTiles schema [Web map]. Map data © OpenStreetMap contributors, ODbL. The map’s street map (F13).',
+    url: 'https://openfreemap.org',
+  },
+  {
+    text: 'OpenStreetMap contributors. (2026). OpenStreetMap [Data set]. Open Database License (ODbL).',
+    url: 'https://www.openstreetmap.org/copyright',
   },
   {
     text: 'Parreño, S. J. (2023). Philippine epidemiological data (Version 1) [Data set]. Mendeley Data.',
@@ -328,6 +353,8 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://openstat.psa.gov.ph',
   },
   {
+    text: 'RainViewer. (2026). Weather Maps API: radar composites, past 2 hours [Web map tiles]. Free for personal and educational use. The map’s live radar (F13).',
+    url: 'https://www.rainviewer.com/api.html',
     text: 'Quezon City Epidemiology and Surveillance Division. (2026). Leptospirosis cases in Quezon City by date of onset, 2015–2026 [Unpublished data, shared on request]. The app and its code hold weekly totals only.',
   },
   {

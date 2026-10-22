@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 
-/** The 18 icons' names, as on the Figma Components page without "icon/" (icon/play is 'play'). */
+/** The 19 icons' names, as on the Figma Components page without "icon/" (icon/play is 'play'). */
 export const ICON_NAMES = [
   'play',
+  'pause',
   'chevron-left',
   'chevron-right',
   'chevron-down',
@@ -33,6 +34,8 @@ export type IconName = (typeof ICON_NAMES)[number]
 export const ICON_SHAPES: Record<IconName, ReactNode> = {
   // icon/play, 3:6
   play: <path d="M8 5.5V18.5L18.5 12L8 5.5Z" fill="currentColor" />,
+  // icon/pause, 141:445 (F13, the weather timeline)
+  pause: <path d="M9 6V18M15 6V18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />,
   // icon/chevron-left, 3:9
   'chevron-left': (
     <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="square" />
