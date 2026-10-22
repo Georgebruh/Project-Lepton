@@ -34,7 +34,8 @@ table (results/d8_fig2_mae.csv) already holds the headline MAEs and D5's and D6'
    on its own forecast days.
 
 Rule 5: every table is built from forecasts that D8's loader has checked (every model on the
-same weeks, nothing missing), and every table is built before any file is written.
+same weeks, nothing missing), with the three columns only these tables read checked too
+(load_run), and every table is built before any file is written.
 
 Run from the repository root, after B10 (and, if wanted, its guard reruns); seconds:
     python -m src.score_tables
@@ -50,6 +51,9 @@ from src.paper_figures import figure2_table, load_forecasts, ordered_models
 WINDOWS = {"MAE years": config.MAE_YEARS, "prob years": config.PROB_SCORE_YEARS, "all years": config.ALL_YEARS}
 SCORE_COLUMNS = ["window", "model", "weeks", "mae", "rmse", "bias", "mase", "wis", "coverage_50", "coverage_90",
                  "breaches", "brier", "bss", "bss_weeks"]
+# Columns these tables read beyond the ones D8's loader checks: D3's usual breach rate needs
+# each forecast's cutoff, and D4's lead time the run's option and g.
+RUN_COLUMNS = ["cutoff", "option", "g"]
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +208,23 @@ def guard_table(paths):
 # Running it
 # ---------------------------------------------------------------------------
 
+def load_run(path):
+    """B10's forecasts, checked as D8 checks them, and then the three columns only these tables read (rule 5).
+
+    D8's loader (paper_figures.load_forecasts) checks the columns D8 reads. These tables also
+    read each forecast's cutoff (D3's usual breach rate) and the run's option and g (D4's lead
+    time). A missing cutoff would read as "no week visible yet" in usual_rates and drop that
+    forecast from the Brier skill score without a word, so a missing column or value stops.
+    """
+    table = load_forecasts(path)
+    absent = [col for col in RUN_COLUMNS if col not in table]
+    if absent:
+        raise ValueError(f"{path.name} has no columns {absent}: is it B10's forecasts table?")
+    if table[RUN_COLUMNS].isna().any().any():
+        raise ValueError(f"{path.name} has missing values in {RUN_COLUMNS}: rerun B10 (rule 5)")
+    return table
+
+
 def report(tables):
     """Print every table written, rounded for the eye (the files keep 4 decimals)."""
     for path, table in tables.items():
@@ -212,7 +233,7 @@ def report(tables):
 
 
 def main():
-    table = load_forecasts(config.FORECASTS)
+    table = load_run(config.FORECASTS)
     if str(table["option"].iloc[0]) != config.DATA_OPTION or int(table["g"].iloc[0]) != config.DELAY_GUARD_G:
         raise ValueError(f"{config.FORECASTS.name} is option {table['option'].iloc[0]}, g = {table['g'].iloc[0]}; "
                          f"config says {config.DATA_OPTION}, g = {config.DELAY_GUARD_G}: rerun python -m src.backtest")
