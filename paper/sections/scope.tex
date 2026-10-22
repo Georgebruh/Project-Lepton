@@ -8,7 +8,8 @@
 % for 2018 week 31, the 1.5-case threshold), results/c8_observed_runs.csv (Carina 120.0 mm,
 % R0 119.7 mm, 1,414 exposed), results/m3_reproduction.md, data/raw/qcesd.md (207 published,
 % 264 in the list, 17 days), data/raw/noah.md (11 barangays, 542 people), Notes.md 1.5
-% (83, 163, 176 and 775 cases), config.py.
+% (83, 163, 176 and 775 cases), results/m4_residual_acf.csv (M4's misses 1 and 2 weeks apart:
+% 0.41 and 0.15, 95% band 0.08 and 0.09; python -m src.m4), config.py.
 \section{Scope and Limitations}\label{sec:scope}
 
 \subsection{Scope}\label{sec:scope-scope}
@@ -129,7 +130,11 @@ M3's accuracy. Ported to QC, M3 is also fragile early in the backtest, when only
 behind it: it forecast 1,065 cases for the week of 29 July--4 August 2018, which had 58.
 
 The epidemic threshold is a choice made for this study, and QCESD's method may differ. Only
-one-week-ahead forecasts are made. Interval and breach scores start in 2022, because each model's forecast spread is
+one-week-ahead forecasts are made. M4's misses come in runs: in its fit on the last forecast day,
+one week's miss is correlated with the next week's (0.41) and with the one after (0.15), both
+outside the 95\% range expected if weeks were independent ($\pm0.08$ and $\pm0.09$), consistent
+with the newest count M4 can read being three to four weeks older than the week it forecasts; the
+moving-block bootstrap allows for such runs. Interval and breach scores start in 2022, because each model's forecast spread is
 estimated from its own past forecasts, which need a warm-up.
 
 \paragraph{Prophylaxis stock}
