@@ -45,7 +45,8 @@ Outputs in results/ (no case data):
                                and their share of the barangay, flagged or not, listed
                                flooded or not, exposed people, tiers and units (D7's maps)
     c8_observed_centers.csv    the main run, need per health center and pool, by tier
-Every unit figure is stock planning, not a prescription (rule 10).
+Every unit figure is stock planning, not a prescription (rule 10); each file says so in
+its label column.
 
 Run from the repository root (needs A4's imerg_daily.nc, A7's catchments_qc.gpkg, A5's
 census_qc.csv, C2's overlay_qc.csv, C4's shares_qc.csv and C7's center_shares_qc.csv);
@@ -298,8 +299,8 @@ def main():
             part.extend(rows)
 
     runs = pd.DataFrame(tables[0])
-    barangays = pd.concat(tables[1], ignore_index=True)[BARANGAY_COLUMNS]
-    centers = pd.concat(tables[2], ignore_index=True)[CENTER_COLUMNS]
+    barangays = pd.concat(tables[1], ignore_index=True)[BARANGAY_COLUMNS].assign(label=doses.LABEL)   # rule 10
+    centers = pd.concat(tables[2], ignore_index=True)[CENTER_COLUMNS].assign(label=doses.LABEL)
     report(runs, barangays, centers)
     forecast_run.write(runs.round(4), config.C8_RUNS)
     forecast_run.write(barangays.round(2).assign(share_in_flood_zones=barangays["share_in_flood_zones"].round(4)),
