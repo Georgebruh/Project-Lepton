@@ -39,7 +39,8 @@ Outputs in results/ (no case data):
                                exposed people and units
     c9_forecast_barangays.csv  the same runs, one row per barangay
     c9_forecast_centers.csv    the same runs, need per health center and pool, by tier
-Every unit figure is stock planning, not a prescription (rule 10).
+Every unit figure is stock planning, not a prescription (rule 10); each file says so in
+its label column.
 
 Run from the repository root (needs A4's imerg_daily.nc, A7, A14's era5_daily.csv, A15's
 forecasts_storms.csv, A5's census_qc.csv, C2's overlay_qc.csv, C4's shares_qc.csv and
@@ -263,8 +264,10 @@ def main():
             part.extend(rows)
 
     runs = pd.DataFrame(tables[0])
-    barangays = pd.concat(tables[1], ignore_index=True)[[*KEYS, "psgc", "residents", *UNIT_COLUMNS]]
-    centers = pd.concat(tables[2], ignore_index=True)[[*KEYS, "pool", "facility_code", *exposed.TIERS]]
+    barangays = pd.concat(tables[1], ignore_index=True)[[*KEYS, "psgc", "residents", *UNIT_COLUMNS]].assign(
+        label=doses.LABEL)    # rule 10
+    centers = pd.concat(tables[2], ignore_index=True)[[*KEYS, "pool", "facility_code", *exposed.TIERS]].assign(
+        label=doses.LABEL)
     report(runs)
     write(runs.round(4), config.C9_RUNS)
     write(barangays.round(2), config.C9_BARANGAYS)
