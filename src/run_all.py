@@ -3,8 +3,9 @@
 Each step is one task's script, run as `python -m <module>` in its own process, so a
 script runs exactly as it does by hand. The steps follow the README's tables: Workstream
 A, then B1, Layer 2's flood core and doses (C1-C4, C7), B4's weekly features, Layer 1
-(B3, B10, then B5's residual check on B10's run), the storm runs (C8, C9) and D7. The
-sanity checks (python -m src.checks) run last. The run stops at the first step that
+(B3, B10, then B5's residual check on B10's run), the storm runs (C8, C9), D7, the
+paper's figures (D8), the score tables (E6) and the app's data files (F2). The sanity
+checks (python -m src.checks) run last. The run stops at the first step that
 fails (exit code not 0), and so does a FAIL in the checks.
 
 What runs and what does not:
@@ -27,8 +28,9 @@ What runs and what does not:
     F2 leaves city_forecast.json and scores.json as they were.
   - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
     A13, B5's residual check and E6 are not run, B10 --simulate --option C
-    (results/forecasts_simulated_C.csv, no guard reruns), D8's figures 1-3 as previews
-    from it (results/d8_preview_*, not for the paper), and F2's city_forecast.json marked
+    (results/forecasts_simulated_C.csv, no guard reruns) and D8's figures 1-3 as previews
+    from it (results/d8_preview_*, not for the paper). F2 still exports the committed
+    results/forecasts.csv; only a copy without that file gets a city_forecast.json marked
     "simulated". Never the paper's results.
   - C5 and C6 are not steps: they only print. C8, C9 and D7 call their functions.
 
