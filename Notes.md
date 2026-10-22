@@ -162,8 +162,10 @@ final list.
    centers splits its need by who lives nearest each center; one with none sends it to the
    nearest center (at most 2.04 km away). The registry has two "Bago Bantay Health Center"
    entries in barangay Alicia: DOH000000000001842 (Bukidnon St., with coordinates) gets
-   Alicia's need; DOH000000000008298 (84 Sto. Niño St., no coordinates) is left out. Check
-   whether the second is a separate center or a duplicate entry.
+   Alicia's need; DOH000000000008298 (84 Sto. Niño St., no coordinates) is left out. They
+   are one center (A10, checked October 18): QC's own directory lists a single Bago Bantay
+   Health Center, at 8298's address, so 1842 is its older entry, and leaving 8298 out
+   changes no barangay's need (`data/raw/nhfr.md`).
 9. **C9's forecast run** (`python -m src.forecast_run`, results in `results/c9_*.csv`).
    Each lead's doses use that lead's own wettest 3-day window ending on one of the storm's
    wettest days (the plan's "each lead time's wettest forecast UTC day"). The same lead's
