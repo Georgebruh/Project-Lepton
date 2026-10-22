@@ -1,4 +1,37 @@
-% E3 (SCRUM-24): Objectives, from the submitted proposal (lepton-plan.md, E3).
+% E3 (SCRUM-24): Objectives (lepton-plan.md, E3). The four objectives of the submitted proposal
+% (its Objectives section; the 12 and 21 October versions differ only in "tested" against "to be
+% tested" in objective 2), reworded to what was built and tested:
+%   - The proposal has no "Phase 2b" and no objective of its own for M3 (E3's first step was
+%     written against Implementation Plan v2), so nothing was dropped. M3's reproduction (B3) is
+%     named in objective 4, the one that uses it.
+%   - Objective 4 is D5's primary endpoint: M4's mean absolute error against M3's, with a 95%
+%     moving-block bootstrap interval; WIS and the Brier scores are secondary (D1, D3).
+%   - Objective 3, the 90% coverage objective, is kept; D1 measures it.
+%   - Objective 2 names what C8 and C9 ran: four storms (Kristine added, scope.tex), observed rain
+%     beside the forecasts, flagged barangays against reports (demonstrations, not validations).
+% Numbers: config.FORECAST_HORIZON_WEEKS (one week ahead), RANGE_LOW_Q and RANGE_HIGH_Q (the 90%
+% range), COVERAGE_LEVELS, FORECAST_LEADS_DAYS (one to three days), STORMS (four),
+% PRIMARY_COMPARISON (M4, M3), BOOT_INTERVAL (95%). Section 6 (results.tex) answers each one.
+% Stock is for stock planning, not prescriptions (rule 10): objective 2 says so.
 \section{Objectives}\label{sec:objectives}
 
-\checkme{E3: the objectives (lepton-plan.md, E3).}
+This study keeps the four objectives of the project proposal, worded here as they were tested.
+\begin{enumerate}
+  \item To forecast next week's number of leptospirosis cases in QC for hospitals and health
+    offices, as the expected cases, a 90\% range and the probability of crossing the epidemic
+    threshold.
+  \item To estimate, from rain forecast one to three days before a storm, the prophylaxis stock
+    that each barangay and health center needs under DM~\mbox{2023-0309}, as stock-planning
+    figures, not prescriptions; and to run this on archived forecasts and on observed rain for
+    four past storms, comparing the barangays it flags with those that reports named as flooded.
+  \item To size every model's forecast range from its own past misses, so that its 90\% range
+    holds the observed count in about 90\% of weeks.
+  \item To test whether the proposed negative binomial regression, M4, forecasts more accurately
+    than the published Philippine benchmark, M3, a Prophet--XGBoost hybrid
+    \parencite{latigay2026} that is first reproduced on its authors' own data. In a weekly
+    rolling-origin backtest, the primary endpoint is the difference between M4's and M3's mean
+    absolute errors, with a 95\% moving-block bootstrap interval; the weighted interval score and
+    the Brier and Brier skill scores are secondary measures.
+\end{enumerate}
+Section~\ref{sec:results-layer1} reports on objectives 1, 3 and 4, and
+Section~\ref{sec:results-layer2} on objective 2.
