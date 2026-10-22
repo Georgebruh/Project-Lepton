@@ -12,9 +12,17 @@ data/clean/*
 !data/clean/*.md
 !data/**/.gitkeep
 
-# D8 previews (python -m src.paper_figures --preview): drawn from test files such as B10's
-# made-up counts, never the paper's results.
+# D8 previews (python -m src.paper_figures --preview) and B10's made-up-count runs
+# (python -m src.backtest --simulate): test files, never the paper's results.
 results/d8_preview_*
+results/forecasts_simulated_*.csv
+
+# Secrets: the Earthdata token and netrc live in your home folder, never here
+earthdata_token.txt
+.netrc
+_netrc
+*.pem
+*.key
 
 # Python
 __pycache__/

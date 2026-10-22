@@ -41,6 +41,31 @@ After the deadline:
 Read `Notes.md` first: the open decisions, the changes from the plan, and what the paper
 must say about them.
 
+## Data sources and licenses
+
+The code is under the [LICENSE](LICENSE) file's terms (MIT). The data keep their sources'
+licenses. Files in `data/` are not in git (share them through the team drive); each has a note
+in `data/raw/<file>.md` with its source, date and citation. Files the repository does ship that
+are built from these sources (in `results/` and `app/public/data/`) keep the same terms.
+
+| Data | Source | License | Credit |
+| --- | --- | --- | --- |
+| Flood hazard maps, 5-, 25- and 100-year, Metro Manila | [Project NOAH](https://noah.up.edu.ph), UP Resilience Institute | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) | UP Resilience Institute / NOAH Center. `app/public/data/noah_*yr.json` are derived from these maps and shared under the ODbL |
+| Population, 100 m, 2024 (R2025A) | [WorldPop](https://hub.worldpop.org) | CC BY 4.0 | Bondarenko et al. (2025), WorldPop, University of Southampton |
+| Barangay boundaries (COD-AB v03) | NAMRIA and PSA via [OCHA on HDX](https://data.humdata.org/dataset/cod-ab-phl) | CC BY-IGO | OCHA Philippines, from NAMRIA and PSA |
+| Population by single-year age and sex, 2020 census | PSA via [OCHA on HDX](https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020) | CC BY | OCHA Philippines, from PSA |
+| Barangay population, 2024 census | [Philippine Statistics Authority](https://psa.gov.ph) | PSA terms of use | Philippine Statistics Authority, 2024 Census of Population |
+| Registered live births, 2024 | [PSA OpenSTAT](https://openstat.psa.gov.ph) | CC BY ([OpenSTAT terms](https://openstat.psa.gov.ph/Terms)) | Philippine Statistics Authority |
+| Health facilities | [DOH National Health Facility Registry](https://nhfr.doh.gov.ph) | No license stated (public registry) | Department of Health. Only facility names, codes and coordinates are kept; the registry's staff names and e-mails are not |
+| Daily rain, IMERG Late V07 | [NASA GES DISC](https://doi.org/10.5067/GPM/IMERGDL/DAY/07) | NASA open data, no restrictions | Huffman et al. (2024), NASA/GSFC, archived at GES DISC |
+| ERA5 hourly rain | ECMWF via the [Open-Meteo](https://open-meteo.com) Historical Weather API | CC BY 4.0 | Weather data by Open-Meteo.com (Zippenfenig, 2023); contains modified Copernicus Climate Change Service information (Hersbach et al., 2020) |
+| ECMWF IFS archived forecasts | ECMWF via the [Open-Meteo](https://open-meteo.com) Previous Runs API | CC BY 4.0 | Weather data by Open-Meteo.com; ECMWF IFS open data |
+| Sub-basins (HydroBASINS v1c, level 12) | [HydroSHEDS](https://www.hydrosheds.org) | HydroSHEDS license: free for scientific, educational and commercial use | Lehner & Grill (2013), Hydrological Processes 27(15) |
+| National weekly cases, 2019–2023 | [Parreño (2023), Mendeley Data](https://doi.org/10.17632/v98325dpxv.1) | CC BY 4.0 | S. J. Parreño, Philippine Epidemiological Data, v1 |
+| NCR city outlines | [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) | MIT | (c) James Faeldon |
+| QC leptospirosis cases, 2015–2026 | Quezon City Epidemiology and Surveillance Division (shared on request) | Not public | The case list never enters this repository (rule 11). Only weekly city totals are published, with QCESD's permission |
+| App base maps | OpenFreeMap / OpenStreetMap; EOX Sentinel-2 cloudless 2024 | ODbL; CC BY-NC-SA 4.0 | © OpenStreetMap contributors; EOX IT Services, contains modified Copernicus Sentinel data |
+
 ## Setup
 
 1. Install Python 3.13, the version `requirements.txt` is pinned for.
