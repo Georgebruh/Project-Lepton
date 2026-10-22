@@ -1429,6 +1429,10 @@ def s11_leakage():
         so in option C the last g of them cannot be scored yet), so theta comes from past
         misses (theta_from "past");
       - with no past forecasts, so theta comes from each training fit (theta_from "fit").
+    Then, when A13's cases_weekly.csv is on this computer, the same test on the real counts
+    at the forecast days config.S11_REAL_DAYS, option C, at g = 2 and at each guard rerun's
+    g (1 and 3), with the past forecasts from that run's results file (forecasts.csv,
+    forecasts_g1.csv, forecasts_g3.csv) when it is here, else none.
     Then every results/forecasts*.csv on this computer: every model on exactly the same
     target weeks, one forecast each, and no NaN anywhere (theta may be infinity: Poisson).
     """
@@ -1453,6 +1457,7 @@ def s11_leakage():
             assert (seen["theta_from"] == label).all(), f"option {option}: theta from {list(seen['theta_from'])}"
             assert seen.equals(blind), (f"option {option}, theta from {label}: a forecast changed with the counts "
                                         f"after the cutoff hidden:\n{seen.compare(blind)}")
+    real = s11_real_counts(features, pop) if config.CASES_WEEKLY.exists() else "real counts not here (A13), not tested"
     runs = sorted(config.RESULTS.glob("forecasts*.csv"))
     for path in runs:
         table = pd.read_csv(path)
@@ -1461,8 +1466,39 @@ def s11_leakage():
         numbers = table.select_dtypes("number")
         assert not numbers.isna().any().any(), f"{path.name}: NaN in {list(numbers.columns[numbers.isna().any()])}"
     return (f"forecast day 2023 week 30, options B and C, theta from past misses and from the fit: "
-            f"{len(backtest.MODELS)} models unchanged with later counts set to {config.S11_HIDDEN_COUNT}; "
+            f"{len(backtest.MODELS)} models unchanged with later counts set to {config.S11_HIDDEN_COUNT}; {real}; "
             f"{len(runs)} run file(s) complete" + (f" ({', '.join(p.name for p in runs)})" if runs else ""))
+
+
+def s11_real_counts(features, pop):
+    """S11's hiding test on A13's real counts: config.S11_REAL_DAYS, option C, g = 2, 1 and 3.
+
+    At each forecast day T and guard g, every count after T - g is overwritten with -999
+    and every model's forecast row must not change. The past forecasts (for theta) are
+    the ones before T in that g's results file, as in the real run; without the file,
+    none (theta from the fit).
+    """
+    from src import backtest
+
+    cases = backtest.load_cases()
+    tested = []
+    for g in (config.DELAY_GUARD_G, *config.DELAY_GUARD_G_TESTS):
+        path = backtest.output_path(False, "C", g, partial=False)
+        run = pd.read_csv(path) if path.exists() else None
+        for year, week in config.S11_REAL_DAYS:
+            T = weeks.week_index_of(year, week)
+            none = pd.DataFrame({"week_index": pd.Series(dtype=int), "mu": pd.Series(dtype=float)})
+            past = {model: none if run is None else
+                    run.loc[(run["forecast_week"] < T) & (run["model"] == model), ["week_index", "mu"]].reset_index(drop=True)
+                    for model in backtest.MODELS}
+            hidden = hide_after(cases, view.cutoff(T, "C", g))
+            seen = backtest.forecast_day(T, cases, features, pop, past, "C", g)
+            blind = backtest.forecast_day(T, hidden, features, pop, past, "C", g)
+            assert seen.equals(blind), (f"real counts, {year} week {week}, g = {g}: a forecast changed with the "
+                                        f"counts after the cutoff hidden:\n{seen.compare(blind)}")
+        tested.append(f"g = {g}" + ("" if run is not None else f" (no {path.name}: theta from the fit)"))
+    days = ", ".join(f"{year} week {week}" for year, week in config.S11_REAL_DAYS)
+    return f"real counts at {days}, option C, {', '.join(tested)}: unchanged"
 
 
 def f2_app_data():

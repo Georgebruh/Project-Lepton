@@ -515,6 +515,7 @@ S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
 S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
 S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
+S11_REAL_DAYS = ((2018, 30), (2023, 30))   # S11 on A13's real counts: forecast days (year, week), each at g = 2, 1 and 3
 
 # ---------------------------------------------------------------------------
 # Evaluation (D1, D3, D5, D6)
