@@ -217,7 +217,7 @@ export default function MapLayout() {
               label={WEATHER_NAMES[weather].label}
               frames={wx.frames}
               index={wx.index}
-              fetched={wx.fetched}
+              now={wx.now}
               playing={wx.playing}
               onPlay={wx.play}
               onFrame={wx.showFrame}

@@ -3,6 +3,8 @@ import type { MapEventType, Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useState } from 'react'
 import { SLOTS } from './layerOrder.ts'
 import { CROSSFADE_MS } from './motion.ts'
+import { isSourceError, whenSourceReady } from './sourceReady.ts'
+import { tokenColor } from './tokens.ts'
 
 /*
  * F13: NOAH's flood zones on the map, from the Layers panel: the flood hazard map for a 5-,
@@ -46,16 +48,10 @@ function floodId(period: FloodPeriod) {
   return `noah-${period}yr`
 }
 
-/** A zone's fill: its hazard level's blue, read from tokens.css (MapLibre draws on a canvas and cannot read CSS variables). */
+/** A zone's fill: its hazard level's blue, from tokens.css. */
 function fillColor(element: HTMLElement): ExpressionSpecification {
-  const style = getComputedStyle(element)
-  const [low, medium, high] = FLOOD_LEVELS.map(({ token }) => style.getPropertyValue(`--color-${token}`).trim())
+  const [low, medium, high] = FLOOD_LEVELS.map(({ token }) => tokenColor(element, token))
   return ['match', ['get', 'var'], 1, low, 2, medium, high]
-}
-
-/** Whether an error MapLibre raised came from the source `id` (it adds the id to its sources' errors; weather.ts uses it too). */
-export function isSourceError(event: MapEventType['error'], id: string) {
-  return 'sourceId' in event && event.sourceId === id
 }
 
 /**
@@ -109,37 +105,14 @@ function showFlood(map: MapLibreMap, period: FloodPeriod | null, onStatus: (stat
   if (!shown) {
     return () => {}
   }
-
-  // Shown once the tiles where the map is now are cut. Checked as each tile arrives, and after the
-  // next frame (by then MapLibre has asked for the tiles it needs, so a map shown before may be
-  // ready); not as the file arrives, when no tile is asked for yet and MapLibre says it is loaded.
-  const check = () => {
-    if (map.getSource(shown) && map.isSourceLoaded(shown)) {
-      stop()
-      onStatus('shown')
-    }
-  }
-  const onData = (event: MapEventType['sourcedata']) => {
-    if (event.sourceId === shown && event.tile) {
-      check()
-    }
-  }
-  const onError = (event: MapEventType['error']) => {
-    if (isSourceError(event, shown)) {
-      stop()
-      onStatus('failed')
-    }
-  }
-  function stop() {
-    map.off('sourcedata', onData)
-    map.off('render', check)
-    map.off('error', onError)
-  }
+  // Shown once the tiles where the map is now are cut (sourceReady.ts)
   onStatus('loading')
-  map.on('sourcedata', onData)
-  map.once('render', check)
-  map.on('error', onError)
-  return stop
+  return whenSourceReady(
+    map,
+    shown,
+    () => onStatus('shown'),
+    () => onStatus('failed'),
+  )
 }
 
 /**

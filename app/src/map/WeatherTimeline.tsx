@@ -11,8 +11,8 @@ type WeatherTimelineProps = {
   frames: Frame[]
   /** The frame shown. */
   index: number
-  /** When the frames' list came (ms), for the frames' ages. */
-  fetched: number
+  /** Now (ms), for the frames' ages. */
+  now: number
   playing: boolean
   onPlay: (on: boolean) => void
   onFrame: (index: number) => void
@@ -25,7 +25,7 @@ type WeatherTimelineProps = {
  * bottom left of the map in sight (MapLayout). The slider is a native range input, so the arrow
  * keys move it and screen readers hear each frame's time.
  */
-export default function WeatherTimeline({ label, frames, index, fetched, playing, onPlay, onFrame }: WeatherTimelineProps) {
+export default function WeatherTimeline({ label, frames, index, now, playing, onPlay, onFrame }: WeatherTimelineProps) {
   const last = frames.length - 1
   const time = frames[index].time
   const played = { '--weather-timeline-played': `${last > 0 ? (index / last) * 100 : 100}%` } as CSSProperties
@@ -71,7 +71,7 @@ export default function WeatherTimeline({ label, frames, index, fetched, playing
       <p className="weather-timeline-when">
         <span className="label-ui">{phtTime(time)}</span>
         <span className="weather-timeline-age body-s">
-          Frame {index + 1} of {frames.length} · {ageOf(time, fetched)}
+          Frame {index + 1} of {frames.length} · {ageOf(time, now)}
         </span>
       </p>
       <Badge tone="accent" className="weather-timeline-live">

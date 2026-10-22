@@ -1,8 +1,8 @@
-import type { MapEventType, Map as MapLibreMap } from 'maplibre-gl'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useRef, useState } from 'react'
-import { isSourceError } from './floodLayer.ts'
 import { SLOTS } from './layerOrder.ts'
 import { prefersReducedMotion } from './motion.ts'
+import { whenSourceReady } from './sourceReady.ts'
 
 /*
  * F13: weather on the map, like Zoom Earth, one layer at a time (the Layers panel, ?wx=):
@@ -20,7 +20,8 @@ import { prefersReducedMotion } from './motion.ts'
  * before it is shown and the animation does not flicker. The frames are added one after another,
  * newest first: the newest shows at once, and RainViewer's free tiles stay under their 100
  * requests a minute. A live layer's list is fetched again every 10 minutes while the page is in
- * view: the frames already on the map stay, new ones are added, old ones go. The tiles are drawn
+ * view, and when the reader comes back to it after that: the frames already on the map stay, new
+ * ones are added, old ones go. The timeline offers only the frames whose tiles are in. The tiles are drawn
  * in the providers' own colors, so the legends (WEATHER_LEGENDS) use those colors too, not the
  * app's tokens.
  */
@@ -194,10 +195,15 @@ const RADAR_CREDIT = 'Radar: <a href="https://www.rainviewer.com" target="_blank
 const LIVE_LOOK_BACK_MS = { clouds: 6 * 3600_000, rain: 18 * 3600_000 }
 const LIVE_FRAMES = { clouds: 18, rain: 12 }
 
-/** Playback: 500 ms a frame and a 1.5 s pause on the newest (Figma notes); live frames fetched again every 10 minutes. */
+/**
+ * Playback: 500 ms a frame and a 1.5 s pause on the newest (Figma notes). Live frames are fetched
+ * again every 10 minutes (checked each minute, and when the page comes back into view), and the
+ * frames' ages counted again each minute.
+ */
 const FRAME_MS = 500
 const NEWEST_MS = 1500
 const REFRESH_MS = 10 * 60_000
+const MINUTE_MS = 60_000
 
 /** A time as GIBS writes it: "2026-10-21T09:10:00Z". */
 function gibsTime(time: number): string {
@@ -251,11 +257,15 @@ function gibsTiles(gibs: GibsLayer, time: string): string {
  * The frames whose pictures GIBS has made. Its list of times can name a picture before its tiles
  * are made (the newest Himawari frame, often), and MapLibre draws a missing tile as nothing, without
  * an error; so each frame's one tile of the whole world is asked for, headers only. A frame
- * whose answer does not come is left out, not the layer.
+ * whose answer does not come is left out, not the layer. Frames already on the map (`known`,
+ * by time) are not asked about again.
  */
-async function madeFrames(frames: Frame[], signal: AbortSignal): Promise<Frame[]> {
+async function madeFrames(frames: Frame[], signal: AbortSignal, known: Set<number>): Promise<Frame[]> {
   const made = await Promise.all(
     frames.map(async (frame) => {
+      if (known.has(frame.time)) {
+        return true
+      }
       const world = frame.tiles.replace('{z}/{y}/{x}', '0/0/0')
       try {
         return (await fetch(world, { method: 'HEAD', signal })).ok
@@ -267,8 +277,11 @@ async function madeFrames(frames: Frame[], signal: AbortSignal): Promise<Frame[]
   return frames.filter((_, i) => made[i])
 }
 
-/** A layer's frames, oldest first: the newest live ones, or the map's date's one picture (none if NASA has none). */
-async function framesFor(kind: Weather, day: string, signal: AbortSignal): Promise<Frame[]> {
+/**
+ * A layer's frames, oldest first: the newest live ones, or the map's date's one picture (none if
+ * NASA has none). `known` holds the times of the frames already on the map.
+ */
+async function framesFor(kind: Weather, day: string, signal: AbortSignal, known: Set<number>): Promise<Frame[]> {
   if (kind === 'radar') {
     const res = await fetch(RAINVIEWER, { signal })
     if (!res.ok) {
@@ -283,11 +296,11 @@ async function framesFor(kind: Weather, day: string, signal: AbortSignal): Promi
     const times = await gibsTimes(gibs, end - LIVE_LOOK_BACK_MS[kind], end, signal)
     // a few more than shown, in case the newest are not made yet
     const listed = times.slice(-LIVE_FRAMES[kind] - 3).map((time) => ({ time, tiles: gibsTiles(gibs, gibsTime(time)) }))
-    return (await madeFrames(listed, signal)).slice(-LIVE_FRAMES[kind])
+    return (await madeFrames(listed, signal, known)).slice(-LIVE_FRAMES[kind])
   }
   const start = Date.parse(`${day}T00:00:00Z`)
   const times = await gibsTimes(gibs, start, start + 24 * 3600_000 - 1000, signal)
-  return madeFrames(times.includes(start) ? [{ time: start, tiles: gibsTiles(gibs, day) }] : [], signal)
+  return madeFrames(times.includes(start) ? [{ time: start, tiles: gibsTiles(gibs, day) }] : [], signal, known)
 }
 
 /** A frame's source and layer (they share the id), named by its time, so a refresh keeps the frames it has. */
@@ -317,7 +330,7 @@ function addFrame(map: MapLibreMap, kind: Weather, frame: Frame) {
   )
 }
 
-/** Shows the frame `shown` at `opacity` and the other frames at 0. */
+/** Shows the frame `shown` at `opacity` and the other frames at 0 (a frame still loading is at 0 already). */
 function showFrame(map: MapLibreMap, frames: Frame[], shown: Frame | undefined, opacity: number) {
   for (const frame of frames) {
     const id = frameId(frame)
@@ -342,68 +355,85 @@ function removeFrames(map: MapLibreMap, which: (id: string) => boolean = () => t
 /** No frames: one list for every render, so the effects that depend on the frames do not rerun. */
 const NO_FRAMES: Frame[] = []
 
-/** What loading a layer reports: its frames, how many have their tiles, its status, and when its list came. */
-type Run = { key: string; status: WeatherStatus; frames: Frame[]; loaded: number; fetched: number }
+/** What loading a layer reports: the frames whose tiles are in, how many are listed, and its status. */
+type Run = { key: string; status: WeatherStatus; frames: Frame[]; listed: number }
 
 /**
  * Fetches `kind`'s frames and adds them to `map`, newest first, each once the one before has its
- * tiles where the map is now. A live layer's list is fetched again every REFRESH_MS while the
- * page is in view: frames already on the map stay, new ones are added, and those no longer listed
- * go. A frame whose tiles fail is dropped; if no frame has its tiles yet, the layer fails.
- * Reports to `report` as it goes; the returned function stops it and removes the frames.
+ * tiles where the map is now. Reports the frames whose tiles are in, so the timeline offers only
+ * those. A live layer's list is fetched again every REFRESH_MS while the page is in view, and when
+ * the reader comes back to it after that: frames already on the map stay, new ones are added, and
+ * those no longer listed go. A frame whose tiles fail is dropped and the next one tried; the layer
+ * fails when none is left, or when two fail in a row before any has loaded (the tile server is
+ * taken to be down). The returned function stops it and removes the frames.
  */
 function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news: Partial<Run>) => void): () => void {
   const controller = new AbortController()
-  let frames: Frame[] = []
+  let frames: Frame[] = [] // the frames listed, oldest first
   const ready = new Set<string>() // the frames whose tiles are in
   let waiting: Frame | null = null // the frame being added, until its tiles are in
+  let unwatch = () => {}
+  let fetchedAt = 0 // when the list last came
+  let fetching = false
+  let failedInARow = 0
+  let told: Frame[] = NO_FRAMES // the ready frames last reported
   let stopped = false
 
-  const loaded = () => frames.filter((frame) => ready.has(frameId(frame))).length
+  // Reports the ready frames as the same list while they are the same, so playback runs on undisturbed
+  function tell(news: Partial<Run> = {}) {
+    const now = frames.filter((frame) => ready.has(frameId(frame)))
+    const same = now.length === told.length && now.every((frame, i) => frameId(frame) === frameId(told[i]))
+    told = same ? told : now
+    report({ frames: told, listed: frames.length, ...news })
+  }
 
   function addNext() {
+    unwatch()
     waiting = frames.findLast((frame) => !ready.has(frameId(frame))) ?? null
-    if (waiting && !map.getLayer(frameId(waiting))) {
-      addFrame(map, kind, waiting)
-    }
-  }
-  // A frame's tiles are in once MapLibre has asked for them (it does as it draws, before 'render')
-  // and all have come. One listener for every frame, so none is left over to count the next too soon
-  function check() {
-    if (!stopped && waiting && map.getSource(frameId(waiting)) && map.isSourceLoaded(frameId(waiting))) {
-      ready.add(frameId(waiting))
-      report({ loaded: loaded(), status: 'shown' })
-      addNext()
-    }
-  }
-  const onData = (event: MapEventType['sourcedata']) => {
-    if (waiting && event.sourceId === frameId(waiting) && event.tile) {
-      check()
-    }
-  }
-  const onError = (event: MapEventType['error']) => {
-    if (!waiting || !isSourceError(event, frameId(waiting))) {
+    if (!waiting) {
       return
     }
-    const failed = frameId(waiting)
-    removeFrames(map, (id) => id === failed)
-    frames = frames.filter((frame) => frameId(frame) !== failed)
-    waiting = null
-    if (loaded() === 0) {
-      stop()
-      report({ status: 'failed', frames: NO_FRAMES, loaded: 0 })
-      return
+    const frame = waiting
+    const id = frameId(frame)
+    if (!map.getLayer(id)) {
+      addFrame(map, kind, frame)
     }
-    report({ frames, loaded: loaded() })
-    addNext()
+    unwatch = whenSourceReady(
+      map,
+      id,
+      () => {
+        ready.add(id)
+        failedInARow = 0
+        tell({ status: 'shown' })
+        addNext()
+      },
+      () => {
+        // By id: a refresh may have listed the frame again as a new object
+        removeFrames(map, (other) => other === id)
+        frames = frames.filter((other) => frameId(other) !== id)
+        failedInARow += 1
+        if (frames.length === 0 || (ready.size === 0 && failedInARow >= 2)) {
+          stop()
+          report({ status: 'failed', frames: NO_FRAMES, listed: 0 })
+          return
+        }
+        tell()
+        addNext()
+      },
+    )
   }
 
   async function fetchList() {
+    if (fetching) {
+      return
+    }
+    fetching = true
     try {
-      const list = await framesFor(kind, day, controller.signal)
+      const list = await framesFor(kind, day, controller.signal, new Set(frames.map((frame) => frame.time)))
       if (stopped) {
         return
       }
+      fetchedAt = Date.now() // only a list that came counts: a failed one is tried again within a minute
       if (list.length === 0) {
         if (frames.length === 0) {
           report({ status: 'missing' })
@@ -413,12 +443,10 @@ function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news
       const listed = new Set(list.map(frameId))
       removeFrames(map, (id) => !listed.has(id))
       ready.forEach((id) => listed.has(id) || ready.delete(id))
-      if (waiting && !listed.has(frameId(waiting))) {
-        waiting = null
-      }
+      const keepWaiting = waiting !== null && listed.has(frameId(waiting))
       frames = list
-      report({ frames, loaded: loaded(), fetched: Date.now() })
-      if (!waiting) {
+      tell()
+      if (!keepWaiting) {
         addNext()
       }
     } catch {
@@ -426,22 +454,30 @@ function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news
       if (!stopped && frames.length === 0) {
         report({ status: 'failed' })
       }
+    } finally {
+      fetching = false
     }
   }
 
-  const timer = isLive(kind) ? setInterval(() => document.hidden || fetchList(), REFRESH_MS) : undefined
+  // Live layers: fetch the list again once it is REFRESH_MS old, while the page is in view
+  const refreshIfDue = () => {
+    if (!document.hidden && Date.now() - fetchedAt >= REFRESH_MS) {
+      fetchList()
+    }
+  }
+  const live = isLive(kind)
+  const timer = live ? setInterval(refreshIfDue, MINUTE_MS) : undefined
+  if (live) {
+    document.addEventListener('visibilitychange', refreshIfDue)
+  }
   function stop() {
     stopped = true
     controller.abort()
     clearInterval(timer)
-    map.off('sourcedata', onData)
-    map.off('error', onError)
-    map.off('render', check)
+    document.removeEventListener('visibilitychange', refreshIfDue)
+    unwatch()
     removeFrames(map)
   }
-  map.on('sourcedata', onData)
-  map.on('error', onError)
-  map.on('render', check)
   fetchList()
   return stop
 }
@@ -449,14 +485,12 @@ function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news
 /** What MapLayout shows of the weather layer: the panel's status line, the legend and the timeline. */
 export type WeatherView = {
   status: WeatherStatus
-  /** The layer's frames, oldest first (empty while loading). */
+  /** The frames whose tiles are in, oldest first (empty while loading). */
   frames: Frame[]
   /** The frame shown. */
   index: number
-  /** How many frames have their tiles. */
-  loaded: number
-  /** When the frames' list came (ms), for the frames' ages. */
-  fetched: number
+  /** Now (ms), counted again each minute while a live layer is on, for the frames' ages. */
+  now: number
   playing: boolean
   play: (on: boolean) => void
   showFrame: (index: number) => void
@@ -466,15 +500,17 @@ export type WeatherView = {
 /**
  * Shows the weather layer `kind` on `map` (null: none), for the map's date `day` if it is not
  * live. A live layer plays once all its frames are in, unless the reader asks for reduced motion
- * or has stepped through the frames themselves. When a refresh changes the list, the frame shown
- * stays (the newest stays the newest).
+ * or has stepped through the frames themselves. When the frames change (one more loaded, or a
+ * refresh), the frame shown stays (the newest stays the newest).
  */
 export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: string): WeatherView {
-  const dayKey = kind && !isLive(kind) ? day : ''
+  const live = kind !== null && isLive(kind)
+  const dayKey = kind && !live ? day : ''
   const [attempt, setAttempt] = useState(0)
   const [run, setRun] = useState<Run | null>(null)
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const readerStepped = useRef(false) // the reader paused or chose a frame of this layer: no autoplay
   const shownKind = useRef<Weather | null>(null)
   const shownFrames = useRef<Frame[]>(NO_FRAMES) // the frames the index counts in
@@ -490,9 +526,10 @@ export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: s
       readerStepped.current = false
     }
     shownFrames.current = NO_FRAMES
-    const fresh: Run = { key, status: 'loading', frames: NO_FRAMES, loaded: 0, fetched: 0 }
+    const fresh: Run = { key, status: 'loading', frames: NO_FRAMES, listed: 0 }
     return loadWeather(map, kind, dayKey, (news) => {
-      setRun((now) => ({ ...(now?.key === key ? now : fresh), ...news }))
+      setRun((current) => ({ ...(current?.key === key ? current : fresh), ...news }))
+      setNow(Date.now())
       if (news.frames) {
         const before = shownFrames.current
         const after = news.frames
@@ -508,10 +545,19 @@ export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: s
     })
   }, [map, kind, dayKey, key])
 
+  // Live layers: count the frames' ages again each minute
+  useEffect(() => {
+    if (!live) {
+      return
+    }
+    const timer = setInterval(() => setNow(Date.now()), MINUTE_MS)
+    return () => clearInterval(timer)
+  }, [live])
+
   const current = run?.key === key ? run : null
   const frames = current?.frames ?? NO_FRAMES
   const shown = Math.min(index, Math.max(frames.length - 1, 0))
-  const allIn = frames.length > 1 && current?.loaded === frames.length
+  const allIn = frames.length > 1 && frames.length === current?.listed
 
   // Autoplay once every frame is in
   useEffect(() => {
@@ -525,7 +571,7 @@ export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: s
     if (map && kind && frames.length > 0) {
       showFrame(map, frames, frames[shown], WEATHER_OPACITY[kind])
     }
-  }, [map, kind, frames, shown, current?.loaded])
+  }, [map, kind, frames, shown])
 
   // Play: the next frame every FRAME_MS, pausing on the newest
   useEffect(() => {
@@ -541,8 +587,7 @@ export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: s
     status: kind === null ? 'off' : (current?.status ?? 'loading'),
     frames,
     index: shown,
-    loaded: current?.loaded ?? 0,
-    fetched: current?.fetched ?? 0,
+    now,
     playing,
     play: (on) => {
       readerStepped.current = !on
