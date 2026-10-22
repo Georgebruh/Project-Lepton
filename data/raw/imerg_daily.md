@@ -13,7 +13,10 @@ Notes: Made by `python -m src.imerg` (task A4). Box lon 120.7-121.5, lat 14.4-15
   Variables: precipitation (mm/day, one UTC day = 8 AM-8 AM Philippine time) and
   precipitation_cnt (valid half-hours behind each value, out of 48). Values are NASA's,
   unchanged; the dates come from NASA's catalogue, not from the files' time variable.
-  data/raw/imerg_daily/ holds the one-file-per-day subsets the script stacks.
+  data/raw/imerg_daily/ holds the one-file-per-day subsets the script stacks, and two small
+  files it fetches again on every run before the days: grid_axes.nc4 (IMERG's lon and lat
+  axes, to find the box's cells) and grid_order.nc4 (one cell of each rain variable, which
+  gives the order of their dimensions, so every request is built by name: rule 8).
   NASA's catalogue lists Late daily files back to 1998-01-01; the plan starts in June 2000.
 Cite: Huffman, G.J., E.F. Stocker, D.T. Bolvin, E.J. Nelkin, J. Tan (2024), GPM IMERG Late
   Precipitation L3 1 day 0.1 degree x 0.1 degree V07, Greenbelt, MD, Goddard Earth Sciences
