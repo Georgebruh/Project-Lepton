@@ -162,8 +162,10 @@ final list.
    centers splits its need by who lives nearest each center; one with none sends it to the
    nearest center (at most 2.04 km away). The registry has two "Bago Bantay Health Center"
    entries in barangay Alicia: DOH000000000001842 (Bukidnon St., with coordinates) gets
-   Alicia's need; DOH000000000008298 (84 Sto. Niño St., no coordinates) is left out. Check
-   whether the second is a separate center or a duplicate entry.
+   Alicia's need; DOH000000000008298 (84 Sto. Niño St., no coordinates) is left out. They
+   are one center (A10, checked October 18): QC's own directory lists a single Bago Bantay
+   Health Center, at 8298's address, so 1842 is its older entry, and leaving 8298 out
+   changes no barangay's need (`data/raw/nhfr.md`).
 9. **C9's forecast run** (`python -m src.forecast_run`, results in `results/c9_*.csv`).
    Each lead's doses use that lead's own wettest 3-day window ending on one of the storm's
    wettest days (the plan's "each lead time's wettest forecast UTC day"). The same lead's
@@ -326,8 +328,11 @@ References:
   `cases_weekly.csv` on the computer). S8 lists 11 barangays whose
   exposed count falls from the 5-year map to a rarer one (Bayanihan, Malaya, Marilag,
   Pag-ibig Sa Nayon, Sacred Heart, San Jose, San Martin de Porres, Sikatuna Village,
-  Teachers Village West, Villa Maria Clara, Batasan Hills); the plan asks someone to look at
-  them on the map.
+  Teachers Village West, Villa Maria Clara, Batasan Hills). A8 looked at them on the map on
+  October 18 (`data/raw/noah.md`): in the first 10, the 100-year map, a later NOAH release
+  with thinner flood shapes, puts fewer residents in flood zones than the 5-year map (at most
+  542 fewer, San Jose); Batasan Hills dips 0.2% on the 25-year map. The maps are used as
+  published, and the paper names this as a limitation.
 - **Windows setup:** install Python 3.13 and make the `.venv` in the repository root, as the
   README says. A virtual environment in a very deep folder fails with "DLL load failed ...
   The filename or extension is too long" (Windows' 260-character path limit) when importing
