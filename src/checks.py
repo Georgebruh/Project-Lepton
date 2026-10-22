@@ -1,13 +1,13 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs three checks with no S number: A11's storm facts, B8's hand check of
-M0 and M1, and D2's hand check of the MASE denominator.
-M0 and M1, and B9's hand check of M3.
-M0 and M1, and B2's hand check of what a model may see.
+Also runs 13 checks with no S number, named by their task:
+  A11 storm facts; B2 what a model may see; B8 M0 and M1; B9 M3;
+  D2 MASE denominator; D4 lead time; D5 primary endpoint; D6 flood test;
+  F2 app data; F9 scores; E6 score tables; F13 NOAH map; E10 package.
 
 Run from the repository root:  python -m src.checks
-A check that is not built yet, or whose data file is not on this computer, is
-reported as SKIP. Any FAIL stops work: the script exits with code 1.
+A check whose data file is not on this computer is reported as SKIP.
+Any FAIL stops work: the script exits with code 1.
 A check may return a short text, printed after PASS.
 """
 
@@ -47,14 +47,16 @@ def s1_calendar():
     assert wk.enddate() == date(2026, 8, 15), wk.enddate()
     for year in (2020, 2025):
         assert Year(year).totalweeks() == 53, f"{year} has {Year(year).totalweeks()} weeks"
-    assert Week(2015, 1).startdate() == config.FIRST_WEEK_START
+    assert Week(2015, 1).startdate() == config.FIRST_WEEK_START, (
+        f"2015 week 1 starts {Week(2015, 1).startdate()}, expected {config.FIRST_WEEK_START}")
 
     # The A3 table: the same answers, plus a gap-free week index.
     table = weeks.build_calendar()
     row = table.set_index("date").loc[date(2026, 8, 9)]
     assert (row["year"], row["week"]) == (2026, 32), f"got {row['year']} week {row['week']}"
-    assert table["date"].iloc[0] == config.FIRST_WEEK_START
-    assert table["week_index"].iloc[0] == 0
+    assert table["date"].iloc[0] == config.FIRST_WEEK_START, (
+        f"the calendar starts {table['date'].iloc[0]}, expected {config.FIRST_WEEK_START}")
+    assert table["week_index"].iloc[0] == 0, f"the week index starts at {table['week_index'].iloc[0]}, expected 0"
     per_week = table.groupby("week_index").size()
     assert (per_week == 7).all(), "every week index must cover exactly 7 days"
     assert (per_week.index == range(len(per_week))).all(), "week index has a gap"
@@ -63,7 +65,8 @@ def s1_calendar():
         assert n == 53, f"{year} has {n} weeks in the table"
         wk53 = table[(table["year"] == year) & (table["week"] == 53)]
         assert (wk53["week_of_year"] == 52).all(), f"{year} week 53 not mapped to 52"
-    assert table["week_of_year"].max() == config.MAX_WEEK
+    assert table["week_of_year"].max() == config.MAX_WEEK, (
+        f"largest week_of_year is {table['week_of_year'].max()}, expected {config.MAX_WEEK}")
 
 
 def s3_census():
@@ -461,7 +464,8 @@ def s7_breach():
     assert np.isclose(p, 1 - dist.cdf(12)), "Pr(breach) at 12.4 must be P(Y >= 13)"
     assert thresholds.breach_probability(dist, 200) < 1e-9, "Pr(breach) at 200 must be about 0"
     assert thresholds.breach_probability(dist, 12.0) == p, "at 12.0 a breach is also Y >= 13"
-    assert thresholds.breached(13, 12.4) and not thresholds.breached(12, 12.4)
+    assert thresholds.breached(13, 12.4) and not thresholds.breached(12, 12.4), (
+        "with threshold 12.4, a count of 13 must be a breach and 12 must not")
     assert not thresholds.breached(12, 12.0), "a count equal to the threshold is not a breach"
 
     cases = toy_cases(2024)
@@ -508,20 +512,26 @@ def s7_scores():
     dist = forecast_range.forecast_dist(20, 5)
     w20, w60 = scores.wis(20, dist), scores.wis(60, dist)
     assert round(w20, 2) == 2.12 and round(w60, 1) == 32.0, f"WIS at 20 = {w20:.3f}, at 60 = {w60:.3f}"
-    assert breach_scores.episodes([3, 4, 6, 10, 11]) == [[3, 4, 6], [10, 11]]
+    assert breach_scores.episodes([3, 4, 6, 10, 11]) == [[3, 4, 6], [10, 11]], (
+        f"episodes of weeks 3, 4, 6, 10, 11: {breach_scores.episodes([3, 4, 6, 10, 11])}, expected [[3, 4, 6], [10, 11]]")
     assert breach_scores.episodes([]) == [], "no breach weeks must give no episodes"
     ci = breach_scores.caught_share(5, 6)
     assert (round(ci["low"], 3), round(ci["high"], 3)) == (0.359, 0.996), f"5 of 6: {ci}"
 
     s = scores.point_scores([10, 20], [12, 17])
     assert np.isclose(s["mae"], 2.5) and np.isclose(s["rmse"], np.sqrt(6.5)) and np.isclose(s["bias"], -0.5), s
-    assert scores.covered(20, dist, 0.9) and not scores.covered(60, dist, 0.9)
-    assert np.isclose(breach_scores.brier([0.9, 0.2], [1, 0]), 0.025)
-    assert np.isclose(breach_scores.brier_skill_score([0.9, 0.2], [1, 0], [0.5, 0.5]), 0.9)
+    assert scores.covered(20, dist, 0.9) and not scores.covered(60, dist, 0.9), (
+        "the 90% range for mu = 20, theta = 5 must cover 20 and not 60")
+    brier = breach_scores.brier([0.9, 0.2], [1, 0])
+    assert np.isclose(brier, 0.025), f"Brier of 0.9, 0.2 on outcomes 1, 0 is {brier}, expected 0.025"
+    skill = breach_scores.brier_skill_score([0.9, 0.2], [1, 0], [0.5, 0.5])
+    assert np.isclose(skill, 0.9), f"Brier skill against 0.5, 0.5 is {skill}, expected 0.9"
     steps = breach_scores.reliability([0.1, 0.2, 0.3, 0.4], [0, 1, 0, 1])
     assert list(steps["observed"]) == [0, 0.5, 1] and list(steps["forecasts"]) == [1, 2, 1], steps
-    assert breach_scores.best_p_star([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1]) == 0.6
-    assert breach_scores.alarm_scores([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1], 0.6)["f1"] == 1
+    p_star = breach_scores.best_p_star([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1])
+    assert p_star == 0.6, f"best p* is {p_star}, expected 0.6"
+    assert breach_scores.alarm_scores([0.1, 0.4, 0.6, 0.9], [0, 0, 1, 1], 0.6)["f1"] == 1, (
+        "alarms at p* = 0.6 must catch both breaches with no false alarm (F1 = 1)")
     outcomes = pd.DataFrame({"week_index": [100, 160, 161, 270], "year": [2017, 2018, 2018, 2020],
                              "breached": [True, True, False, True]})
     assert breach_scores.base_rate(outcomes, 300) == 0.5, "only 2018-on, non-COVID weeks count"
@@ -618,7 +628,7 @@ def d2_mase():
 
     swapped = changed(2015, 10, "week_index", weeks.week_index_of(2015, 11))   # 2015 weeks 10 and 11
     swapped.loc[(swapped["year"] == 2015) & (swapped["week"] == 11), "week_index"] = weeks.week_index_of(2015, 10)
-    twice =pd.concat([cases, cases[(cases["year"] == 2017) & (cases["week"] == 20)]])
+    twice = pd.concat([cases, cases[(cases["year"] == 2017) & (cases["week"] == 20)]])
     absent = cases[~((cases["year"] == 2017) & (cases["week"] == 20))]
     mase = scores.mase_denominator
     assert stops_with("is missing", mase, changed(2016, 10, "cases", np.nan)), "a missing 2016 count must stop"
@@ -893,6 +903,8 @@ def b9_m3():
     assert low <= fit_theta <= high, f"M3's fit_theta on counts with theta 5 is {fit_theta:.2f}, expected {low}-{high}"
     return (f"gap fills match the hand answers at 2 cutoffs; forecasts {' and '.join(forecasts)} (true 60) "
             f"unchanged with later counts hidden; fit_theta {fit_theta:.2f} (true 5); bad tables stop")
+
+
 def b2_view():
     """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
 
@@ -930,12 +942,14 @@ def b2_view():
         row = view.prediction_row(cases, day, option, g, h)
         assert row["recent"].iloc[0] == answer, f"{label}: y~ = {row['recent'].iloc[0]}, by hand {answer}"
         assert row["week_index"].iloc[0] == day + h and row["forecast_week"].iloc[0] == day, f"{label}: wrong target"
-        assert weeks.year_week(row["week_index"].iloc[0]) == (row["year"].iloc[0], row["week"].iloc[0])
+        assert weeks.year_week(row["week_index"].iloc[0]) == (row["year"].iloc[0], row["week"].iloc[0]), (
+            f"{label}: the target's year and week do not match its week index")
         train = view.training_rows(cases, day, option, g, h)
         last = train.iloc[-1]
         assert (last["year"], last["week"], last["recent"]) == (last_year, last_week, last_recent), (
             f"{label}: last training row {last['year']} week {last['week']}, y~ {last['recent']}")
-        assert (train["week_index"] <= cut).all() and len(train) == (cases["week_index"] <= cut).sum()
+        assert (train["week_index"] <= cut).all() and len(train) == (cases["week_index"] <= cut).sum(), (
+            f"{label}: training rows must be every week up to the cutoff and none after it")
         assert (train["forecast_week"] == train["week_index"] - h).all(), f"{label}: forecast_week is not target - h"
         hidden = hide_after(cases, cut)
         assert view.training_rows(hidden, day, option, g, h).equals(train), f"{label}: training rows read a hidden count"
@@ -1068,8 +1082,6 @@ def s9_return_levels():
     n-day totals (config.RAIN_ACCUM_DAYS): daily rain 10, 20, 30, 0, 5 gives 3-day totals
     60, 50, 35 on days 3-5; 1 day returns the rain unchanged; a missing day stops.
     """
-    from scipy import stats
-
     from src import flood_exposure as fe
 
     true = [round(fe.gumbel_level(100, 30, t), 1) for t in config.NOAH_RETURN_PERIODS]
@@ -1438,7 +1450,7 @@ def s11_leakage():
     """
     from src import backtest
 
-    need_file(config.FEATURES_WEEKLY, "B4")
+    need_file(config.FEATURES_WEEKLY, "B4 (python -m src.features)")
     features, pop = backtest.load_features(), backtest.load_population()
     cases = backtest.simulated_cases(features, pop)
     T = weeks.week_index_of(2023, 30)
@@ -1448,7 +1460,8 @@ def s11_leakage():
     for option in ("B", "C"):
         cut = view.cutoff(T, option, config.DELAY_GUARD_G)
         hidden = hide_after(cases, cut)
-        assert (hidden["cases"] == config.S11_HIDDEN_COUNT).sum() == (cases["week_index"] > cut).sum() > 0
+        assert (hidden["cases"] == config.S11_HIDDEN_COUNT).sum() == (cases["week_index"] > cut).sum() > 0, (
+            f"option {option}: every count after the cutoff must be hidden, and there must be some")
         for label, past_mu in (("past", made_up), ("fit", made_up.iloc[:0])):
             past = {model: past_mu for model in backtest.MODELS}
             seen = backtest.forecast_day(T, cases, features, pop, past, option, config.DELAY_GUARD_G)
@@ -1622,7 +1635,7 @@ def f2_app_data():
         assert on_disk == export, f"city_forecast.json differs from a fresh export of {path.name}: {rerun}"
         if not simulated:
             from src import backtest
-            need_file(config.CASES_WEEKLY, "A13")   # MASE's denominator needs the counts
+            need_file(config.CASES_WEEKLY, "A13 (python -m src.cases)")   # MASE's denominator needs the counts
             assert read("scores.json") == as_written(app_data.scores_file(table, backtest.load_cases())), (
                 f"scores.json differs from a fresh export of {path.name}: {rerun}")
     if forecast_path.exists():
@@ -1809,6 +1822,8 @@ def e6_score_tables():
     assert set(all_years["weeks"]) == {weeks_all}, f"d5_d6_all_years.csv weeks {set(all_years['weeks'])}, not {weeks_all}: {rerun}"
     return (f"{len(point)} models' MAE equal d8_fig2_mae.csv and {len(fig3)} Brier scores d8_fig3_reliability.csv; "
             f"windows of {', '.join(str(int(table.loc[table['window'] == w, 'weeks'].iloc[0])) for w in windows)} weeks")
+
+
 def f13_noah_map():
     """F13: the map's NOAH overlay (app/public/data/noah_<T>yr.json) still shows A8's flood maps.
 
@@ -1851,13 +1866,6 @@ def f13_noah_map():
     return ", ".join(f"{t}-year {share:.1%}" for t, share in kept.items()) + " of A8's flooded area"
 
 
-def not_built(task):
-    """Make a placeholder check for a task that has not been done yet."""
-    def check():
-        raise NotBuilt(f"needs task {task}")
-    return check
-
-
 CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": s2_rain_file,
@@ -1894,6 +1902,8 @@ CHECKS = {
 
 def main():
     """Run every check, print PASS / SKIP / FAIL, and return the exit code."""
+    if not __debug__:   # python -O strips every assert, so each check would pass without testing anything
+        sys.exit("run the checks without -O: they are asserts")
     failed = 0
     for name, check in CHECKS.items():
         try:
