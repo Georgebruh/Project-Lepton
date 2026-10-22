@@ -23,7 +23,8 @@ What runs and what does not:
     B10 until A13's cases_weekly.csv exists and config.DATA_OPTION is set. B10's guard
     reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5), B5's residual
     check and E6's score tables wait for B10's results/forecasts.csv; D8's --layer2 run
-    (figures 4 and 5) does not.
+    (figures 4 and 5) does not. B5 and E6 also wait for cases_weekly.csv, and without it
+    F2 leaves city_forecast.json and scores.json as they were.
   - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
     A13, B5's residual check and E6 are not run, B10 --simulate --option C
     (results/forecasts_simulated_C.csv, no guard reruns), D8's figures 1-3 as previews
@@ -122,8 +123,9 @@ def skip_reason(step, simulate=False):
 
     A task not built yet (its module is not in src/); A13 without QCESD's case list;
     B10 before A13's cases file and config.DATA_OPTION; B10's guard reruns outside
-    option C; D8's full run, B5 and E6 before B10's forecasts.csv. With --simulate, B10
-    and D8 need none of these.
+    option C; D8's full run before B10's forecasts.csv; B5 and E6 before B10's forecasts.csv
+    and A13's cases file (B5 refits M4 on the counts, E6 needs MASE's denominator). With
+    --simulate, B10 and D8 need none of these.
     """
     task, module, args = step
     if not (config.ROOT / (module.replace(".", "/") + ".py")).exists():
@@ -138,6 +140,10 @@ def skip_reason(step, simulate=False):
         return f"figures 1-3 need B10's {config.FORECASTS.name} (the --layer2 step drew 4 and 5)"
     if task in ("B5", "E6") and not config.FORECASTS.exists():
         return f"needs B10's {config.FORECASTS.name}"
+    if task == "B5" and not config.CASES_WEEKLY.exists():
+        return f"needs A13's {config.CASES_WEEKLY.name} (M4 refits on the counts); the residual check in results/ stays as it was"
+    if task == "E6" and not config.CASES_WEEKLY.exists():
+        return f"needs A13's {config.CASES_WEEKLY.name} (MASE); the score tables in results/ stay as they were"
     if task == "B10":
         if not config.CASES_WEEKLY.exists():
             return f"needs A13's {config.CASES_WEEKLY.name}"

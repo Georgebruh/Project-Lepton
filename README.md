@@ -86,7 +86,8 @@ python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, without
   stopped. B10 then runs on `data/clean/cases_weekly.csv` if it was copied from the drive, and
   is skipped if not; its guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4
   and 5 every run, and all five once B10's `results/forecasts.csv` exists; B5's residual check
-  (`python -m src.m4`) and E6's score tables (`python -m src.score_tables`) wait for it too. A
+  (`python -m src.m4`) and E6's score tables (`python -m src.score_tables`) wait for it and for
+  `cases_weekly.csv`, and F2 then leaves `city_forecast.json` and `scores.json` as they were. A
   task not built yet is skipped.
 - `--simulate` skips A13, B5's residual check and E6 and runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
   previews from them (`results/d8_preview_*`) and F2's `city_forecast.json` marked
