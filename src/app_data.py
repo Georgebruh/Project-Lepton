@@ -695,11 +695,16 @@ def write_layer1():
     """city_forecast.json from B10's forecasts, and scores.json beside the real run only; returns what it did.
 
     Both files are made before either is written, so a failure leaves the old pair as it was.
+    Without A13's cases_weekly.csv (scores.json's MASE needs it) both are left as they were:
+    a copy without QC's case data still runs (E10).
     """
     table, simulated, path = load_forecasts()
     if table is None:
         return ("city_forecast.json left as it was: no B10 forecasts on this computer (results/forecasts.csv, "
                 "or run python -m src.backtest --simulate --option C)")
+    if not simulated and not config.CASES_WEEKLY.exists():
+        return (f"city_forecast.json and scores.json left as they were: scores.json's MASE needs "
+                f"{config.CASES_WEEKLY.name} (run task A13, python -m src.cases, or copy the file from the team drive)")
     forecast = city_forecast(table, simulated, path)
     scores_content = None if simulated else scores_file(table, backtest.load_cases())
     write_json(forecast, config.APP_DATA / "city_forecast.json")
