@@ -328,8 +328,11 @@ References:
   `cases_weekly.csv` on the computer). S8 lists 11 barangays whose
   exposed count falls from the 5-year map to a rarer one (Bayanihan, Malaya, Marilag,
   Pag-ibig Sa Nayon, Sacred Heart, San Jose, San Martin de Porres, Sikatuna Village,
-  Teachers Village West, Villa Maria Clara, Batasan Hills); the plan asks someone to look at
-  them on the map.
+  Teachers Village West, Villa Maria Clara, Batasan Hills). A8 looked at them on the map on
+  October 18 (`data/raw/noah.md`): in the first 10, the 100-year map, a later NOAH release
+  with thinner flood shapes, puts fewer residents in flood zones than the 5-year map (at most
+  542 fewer, San Jose); Batasan Hills dips 0.2% on the 25-year map. The maps are used as
+  published, and the paper names this as a limitation.
 - **Windows setup:** install Python 3.13 and make the `.venv` in the repository root, as the
   README says. A virtual environment in a very deep folder fails with "DLL load failed ...
   The filename or extension is too long" (Windows' 260-character path limit) when importing
