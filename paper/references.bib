@@ -2,6 +2,11 @@
 % file; E4 and E5 added the works they cite). Titles are in sentence case, with proper nouns in
 % braces so biblatex-apa keeps their capitals. Each entry was checked against its source on
 % 2026-10-21 unless its comment says otherwise.
+% E7 check, 2026-10-23: every work the plan names is here, every entry is cited and every
+% citation has an entry (40 of 40). Every DOI was looked up again in Crossref
+% (api.crossref.org/works/<doi>) or, for data sets, DataCite (api.datacite.org/dois/<doi>):
+% authors, year, title, volume, issue and pages match, except where a comment says why not.
+% Every URL was opened; psa.gov.ph blocks scripts (HTTP 403), as its data notes say.
 
 % --- Health and disease ----------------------------------------------------------------
 
@@ -71,7 +76,8 @@
   url          = {https://outbreaknewstoday.substack.com/p/philippines-sharp-rise-in-leptospirosis},
 }
 % Gives QCESD's 207 cases and 24 deaths, 1 January to 3 August 2025. The city's own release of
-% 3 August 2025 gives 178 cases to 30 July.
+% 3 August 2025 gives 178 cases to 30 July. On 2026-10-23 Substack reset the connection from
+% our network; a web search still finds the post at this URL with this title and figures.
 
 @dataset{qcesd2026,
   author       = {{Quezon City Health Department, Epidemiology and Surveillance Division}},
@@ -94,7 +100,8 @@
   publisher    = {IEEE},
   doi          = {10.1109/CSPA68262.2026.11517740},
 }
-% Authors' initials as in the submitted proposal. @incollection, not @inproceedings: with no
+% Crossref gives the authors as Jaymart G. Latigay and Alex C. Gonzaga, so the initials are
+% right (APA prints initials only). @incollection, not @inproceedings: with no
 % editor, biblatex-apa prints @inproceedings like a journal article; this keeps the
 % proposal's "In ... (pp. 148-153). IEEE." form, APA 7's form for proceedings in a book.
 
@@ -121,7 +128,7 @@
   pages        = {1217--1241},
   doi          = {10.1214/aos/1176347265},
 }
-% As in the submitted proposal.
+% As in the submitted proposal; matches Crossref, which drops the umlaut (Kunsch, Hans R.).
 
 @dataset{parreno2023,
   author       = {Parreño, S. J.},
@@ -217,7 +224,7 @@
   eid          = {e1008618},
   doi          = {10.1371/journal.pcbi.1008618},
 }
-% As in the submitted proposal.
+% As in the submitted proposal; matches Crossref.
 
 @article{brier1950,
   author       = {Brier, Glenn W.},
@@ -288,6 +295,8 @@
   publisher    = {{Goddard Earth Sciences Data and Information Services Center}},
   doi          = {10.5067/GPM/IMERGDL/DAY/07},
 }
+% 2024, as GES DISC cites it (data/raw/imerg_daily.md): NASA's CMR record gives the V07 release
+% as 2024-06-07. DataCite's record of the DOI says 2023.
 
 @article{hersbach2020,
   author       = {Hersbach, H. and Bell, B. and Berrisford, P. and Hirahara, S. and Horányi, A.
@@ -309,7 +318,7 @@
   doi          = {10.1002/qj.3803},
 }
 % APA 7 prints the first 19 authors, an ellipsis and the last; those 20 match the proposal.
-% The 23 in between are not printed and were not checked.
+% All 43 match Crossref, in order (checked 2026-10-23).
 
 @software{zippenfenig2023,
   author       = {Zippenfenig, P.},
@@ -320,6 +329,8 @@
   doi          = {10.5281/ZENODO.7970649},
 }
 % The APA citation Open-Meteo's licence page gives (lepton-plan.md, sources opened October 12).
+% The DOI is Zenodo's all-versions record, so DataCite now shows the latest version (1.4.0,
+% 2024); the year stays as Open-Meteo asks to be cited.
 
 @article{aryastana2022,
   author       = {Aryastana, P. and Liu, C.-Y. and Jou, B. J.-D. and Cayanan, E. and Punay, J. P.
@@ -334,7 +345,8 @@
   doi          = {10.1029/2022EA002382},
 }
 % Authors and details of this and the next three entries as in Notes.md section 3; their
-% abstracts were read on 2026-10-21 (Semantic Scholar), the full texts were not.
+% abstracts were read on 2026-10-21 (Semantic Scholar), the full texts were not. All four
+% match Crossref (2026-10-23).
 
 @article{veloria2021,
   author       = {Veloria, A. and Perez, G. J. and Tapang, G. and Comiso, J.},
@@ -387,7 +399,8 @@
   url          = {https://www.pagasa.dost.gov.ph/climate/tropical-cyclone-information},
   urldate      = {2026-10-12},
 }
-% As in the submitted proposal.
+% As in the submitted proposal; the page still opens (2026-10-23). It has no date, so APA
+% prints "n.d.", as for noah_nd and doh_nhfr.
 
 % --- Place, maps and people -------------------------------------------------------------
 
@@ -444,9 +457,13 @@
   title        = {2024 {Census of Population}},
   subtitle     = {Population by barangay, {National Capital Region}},
   titleaddon   = {Data set},
+  date         = {2025},
   url          = {https://psa.gov.ph/content/2024-census-population-popcen-population-counts-declared-official-president},
   urldate      = {2026-10-15},
 }
+% The counts were declared official by Proclamation No. 973 of 11 July 2025, so PSA released
+% them in 2025; without a date, APA printed "n.d." (data/raw/NCR - Table C - Population by
+% Barangay.xlsx.md).
 
 @dataset{psa_age2020,
   author       = {{Philippine Statistics Authority}},
