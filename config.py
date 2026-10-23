@@ -59,6 +59,9 @@ D8_FIG4_MAP = RESULTS / "d8_fig4_exposure_map.png"         # D8 (4): share of re
 D8_FIG5_DOSES = RESULTS / "d8_fig5_doses.png"              # D8 (5): the doses table as a picture
 D8_FIG5_TABLE = RESULTS / "d8_fig5_doses.csv"              # D8 (5): the doses table
 D8_PREVIEW_PREFIX = "d8_preview_"                          # D8 --preview: figures 1-3 from another B10 file; not for the paper
+# E8: the paper's two design diagrams (Appendix A), drawn by src/diagrams.py from config.py alone
+E8_FIG_DESIGN = RESULTS / "e8_fig_design.png"              # E8: the study design, one flood computation, two layers
+E8_FIG_LAYER1 = RESULTS / "e8_fig_layer1.png"              # E8: the six steps behind every Layer 1 forecast
 
 # Benchmark data (A9)
 PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
