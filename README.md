@@ -41,6 +41,31 @@ After the deadline:
 Read `Notes.md` first: the open decisions, the changes from the plan, and what the paper
 must say about them.
 
+## Data sources and licenses
+
+The code is under the [LICENSE](LICENSE) file's terms (MIT). The data keep their sources'
+licenses. Files in `data/` are not in git (share them through the team drive); each has a note
+in `data/raw/<file>.md` with its source, date and citation. Files the repository does ship that
+are built from these sources (in `results/` and `app/public/data/`) keep the same terms.
+
+| Data | Source | License | Credit |
+| --- | --- | --- | --- |
+| Flood hazard maps, 5-, 25- and 100-year, Metro Manila | [Project NOAH](https://noah.up.edu.ph), UP Resilience Institute | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) | UP Resilience Institute / NOAH Center. `app/public/data/noah_*yr.json` are derived from these maps and shared under the ODbL |
+| Population, 100 m, 2024 (R2025A) | [WorldPop](https://hub.worldpop.org) | CC BY 4.0 | Bondarenko et al. (2025), WorldPop, University of Southampton |
+| Barangay boundaries (COD-AB v03) | NAMRIA and PSA via [OCHA on HDX](https://data.humdata.org/dataset/cod-ab-phl) | CC BY-IGO | OCHA Philippines, from NAMRIA and PSA |
+| Population by single-year age and sex, 2020 census | PSA via [OCHA on HDX](https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020) | CC BY | OCHA Philippines, from PSA |
+| Barangay population, 2024 census | [Philippine Statistics Authority](https://psa.gov.ph) | PSA terms of use | Philippine Statistics Authority, 2024 Census of Population |
+| Registered live births, 2024 | [PSA OpenSTAT](https://openstat.psa.gov.ph) | CC BY ([OpenSTAT terms](https://openstat.psa.gov.ph/Terms)) | Philippine Statistics Authority |
+| Health facilities | [DOH National Health Facility Registry](https://nhfr.doh.gov.ph) | No license stated (public registry) | Department of Health. Only facility names, codes and coordinates are kept; the registry's staff names and e-mails are not |
+| Daily rain, IMERG Late V07 | [NASA GES DISC](https://doi.org/10.5067/GPM/IMERGDL/DAY/07) | NASA open data, no restrictions | Huffman et al. (2024), NASA/GSFC, archived at GES DISC |
+| ERA5 hourly rain | ECMWF via the [Open-Meteo](https://open-meteo.com) Historical Weather API | CC BY 4.0 | Weather data by Open-Meteo.com (Zippenfenig, 2023); contains modified Copernicus Climate Change Service information (Hersbach et al., 2020) |
+| ECMWF IFS archived forecasts | ECMWF via the [Open-Meteo](https://open-meteo.com) Previous Runs API | CC BY 4.0 | Weather data by Open-Meteo.com; ECMWF IFS open data |
+| Sub-basins (HydroBASINS v1c, level 12) | [HydroSHEDS](https://www.hydrosheds.org) | HydroSHEDS license: free for scientific, educational and commercial use | Lehner & Grill (2013), Hydrological Processes 27(15) |
+| National weekly cases, 2019–2023 | [Parreño (2023), Mendeley Data](https://doi.org/10.17632/v98325dpxv.1) | CC BY 4.0 | S. J. Parreño, Philippine Epidemiological Data, v1 |
+| NCR city outlines | [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) | MIT | (c) James Faeldon |
+| QC leptospirosis cases, 2015–2026 | Quezon City Epidemiology and Surveillance Division (shared on request) | Not public | The case list never enters this repository (rule 11). Only weekly city totals are published, with QCESD's permission |
+| App base maps | OpenFreeMap / OpenStreetMap; EOX Sentinel-2 cloudless 2024 | ODbL; CC BY-NC-SA 4.0 | © OpenStreetMap contributors; EOX IT Services, contains modified Copernicus Sentinel data |
+
 ## Setup
 
 1. Install Python 3.13, the version `requirements.txt` is pinned for.
@@ -85,10 +110,13 @@ python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, without
   case-level and stays on the team drive (rule 11), so in any other copy A13 is skipped, not
   stopped. B10 then runs on `data/clean/cases_weekly.csv` if it was copied from the drive, and
   is skipped if not; its guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4
-  and 5 every run, and all five once B10's `results/forecasts.csv` exists; E6's score tables
-  (`python -m src.score_tables`) wait for it too. A task not built yet is skipped.
-- `--simulate` skips A13 and E6 and runs B10 on its made-up counts (`--simulate --option C`), D8's figures 1–3 as
-  previews from them (`results/d8_preview_*`) and F2's `city_forecast.json` marked
+  and 5 every run, and all five once B10's `results/forecasts.csv` exists; B5's residual check
+  (`python -m src.m4`) and E6's score tables (`python -m src.score_tables`) wait for it and for
+  `cases_weekly.csv`, and F2 then leaves `city_forecast.json` and `scores.json` as they were. A
+  task not built yet is skipped.
+- `--simulate` skips A13, B5's residual check and E6 and runs B10 on its made-up counts (`--simulate --option C`) and D8's figures 1–3 as
+  previews from them (`results/d8_preview_*`). F2 still exports the committed
+  `results/forecasts.csv`; only a copy without that file gets a `city_forecast.json` marked
   `"simulated": true`. It tests the whole chain; none of it is a result.
 - The check "E10 package" confirms what the repository ships: every package pinned in
   `requirements.txt` and installed at that version, nothing tracked under `data/` but the
@@ -127,8 +155,8 @@ catchments; A10 checks its facilities against A5's barangays):
 | B6 | none: `estimate_theta` and `theta_for` in `src/forecast_range.py`, used by B10 for every model's 90% range and breach probability | nothing; check S6 in `python -m src.checks` |
 | B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
 | B9 | none: `m3_forecast` in `src/m3_port.py`, used by B10 (M3 refitted on the weeks it may see, about 0.5 s a forecast day) | nothing; check "B9 M3" in `python -m src.checks` |
-| B5 | none: `model_rows`, `fit_m4` (M4, and M4 without EI2 with `with_ei=False`) and `predict_m4` in `src/m4.py`, used by B10 at every forecast day; `plot_residual_acf` draws v2's residual check once case data exist (`results/m4_residual_acf.png`). Inputs: B2's rows, B4's weekly `rcum2` and `ei2`, B1's population | nothing; check S5 in `python -m src.checks` (50 made-up datasets, a few seconds) |
-| B10 | `python -m src.backtest` (option from `config.DATA_OPTION`, or `--option B`/`C`; `--g 1` and `--g 3` for the guard reruns). Before A13: `python -m src.backtest --simulate --option C` on made-up QC-shaped counts | `results/forecasts.csv`: one row per model (M0, M1, M3, M4, M4_no_EI2) and forecast day, 2018 week 1 on, with mu, theta, the 23 WIS quantiles, the threshold, Pr(breach), y and breached. Guard reruns write `forecasts_g1.csv`, simulated runs `forecasts_simulated_B.csv` / `_C.csv`. Needs B1, B4 (`features_weekly.csv`) and A13; about 12 minutes (M3 refits Prophet every week). Check S11 in `python -m src.checks` |
+| B5 | `python -m src.m4` (after B10): v2's residual check, on M4's fit at the last forecast day of B10's run (its data option, g and rows). `model_rows`, `fit_m4` (M4, and M4 without EI2 with `with_ei=False`) and `predict_m4` in `src/m4.py` are used by B10 at every forecast day. Inputs: B2's rows, B4's weekly `rcum2` and `ei2`, B1's population | `results/m4_residual_acf.png` and `m4_residual_acf.csv` (how much one week's miss says about the miss 1 to 26 weeks later, with the 95% band for independent weeks); seconds. Check S5 in `python -m src.checks` (50 made-up datasets, a few seconds) |
+| B10 | `python -m src.backtest` (option from `config.DATA_OPTION`, or `--option B`/`C`; `--g 1` and `--g 3` for the guard reruns). To test without QC's counts: `python -m src.backtest --simulate --option C` on made-up QC-shaped counts | `results/forecasts.csv`: one row per model (M0, M1, M3, M4, M4_no_EI2) and forecast day, 2018 week 1 on, with mu, theta, the 23 WIS quantiles, the threshold, Pr(breach), y and breached. Guard reruns write `forecasts_g1.csv`, simulated runs `forecasts_simulated_B.csv` / `_C.csv`. Needs B1, B4 (`features_weekly.csv`) and A13; about 12 minutes (M3 refits Prophet every week). Check S11 in `python -m src.checks` |
 
 ## Layer 2: barangay doses (Workstream C)
 
@@ -159,7 +187,7 @@ Run after Workstream A, in this order:
 | D5 | none: `primary_endpoint(table)` in `src/compare.py` (M4 vs M3 over the MAE window: mean of \|error M4\| − \|error M3\|, 95% moving-block bootstrap interval with 8-, 4- and 13-week blocks, and the Diebold–Mariano test), on B10's forecasts (columns model, week_index, year, y, mu) | nothing; check "D5 primary endpoint" in `python -m src.checks` |
 | D6 | none: `flood_and_practical_tests(table)` and `flood_finding(result)` in `src/compare.py` (M4 vs M4 without EI2, no Diebold–Mariano since the models are nested; M4 vs M1 with it; same bootstrap as D5) | nothing; check "D6 flood test" in `python -m src.checks` |
 | D1–D6 tables | `python -m src.score_tables` (after B10; also reads B10's guard reruns `forecasts_g1.csv` and `forecasts_g3.csv` when they are there). D1–D6's functions applied to `results/forecasts.csv`, so every score the paper's results (E6) quote is in `results/` | `results/d1_scores.csv` (each model's MAE, RMSE, bias, MASE, WIS, 50% and 90% coverage, Brier and Brier skill score, over the MAE years, 2022–2026 and all years), `d1_mae_by_year.csv`, `d3_alarms.csv` (D3's p*, precision and sensitivity on each half; D4's episodes caught and lead time), `d3_precision_recall.csv` (the full curve behind p*), `d5_d6_all_years.csv` (D5 and D6 over 2018–2026, COVID years in), `d5_guard_reruns.csv` (MAE and D5/D6 with g = 1, 2 and 3); seconds. Check "E6 score tables" in `python -m src.checks` |
-| D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Now, before A13: `--layer2` (figures 4 and 5). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
+| D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Without B10's run: `--layer2` (figures 4 and 5 only). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
 
 ## Paper (Workstream E)
 
@@ -168,6 +196,7 @@ The paper's LaTeX source is in `paper/`; its README says how to build it (Overle
 
 | Task | Command | Writes |
 | --- | --- | --- |
+| E3 | none: `sections/objectives.tex` in `paper/`, the proposal's four objectives worded as they were tested (the last is D5's primary endpoint, M4 against M3); build as for E4 | `paper/main.pdf` (not in git) |
 | E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
 | E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table B1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
 | E6 | none: `sections/results.tex` in `paper/`, with D8's figures 1-4 copied into `paper/figures/`. Its numbers come from `results/`: B10's guard reruns (`python -m src.backtest --g 1`, `--g 3`), then `python -m src.score_tables` (D1–D6 tables) and `python -m src.paper_figures` (D8); build as for E4 | `paper/main.pdf` (not in git) |
@@ -181,7 +210,7 @@ and the Vercel setup.
 | Task | Command | Writes |
 | --- | --- | --- |
 | F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
-| F2 | `python -m src.app_data` (repository root, after C8 and C9; downloads NCR's city outlines once into `data/raw/ncr_cities/`). For the city forecast before A13: `python -m src.backtest --simulate --option C` first | `app/public/data/`: `ph_cities.json` (F14; it was `ncr_cities.geojson`), `qc_barangays.geojson`, `storms.json`, `barangays/<storm>_<run>.json` (one per run), `centers.json`, `city_forecast.json` (B10's `forecasts.csv`, or until it exists the made-up-count run, marked `"simulated": true`) and, beside a real run only, `scores.json`. Commit them: Vercel builds from git. Needs C8, C9, A5 and A10; seconds. Stock planning, not prescriptions. Check "F2 app data" in `python -m src.checks` |
+| F2 | `python -m src.app_data` (repository root, after C8 and C9; downloads NCR's city outlines once into `data/raw/ncr_cities/`). In a copy without `results/forecasts.csv`, run `python -m src.backtest --simulate --option C` first to test the city forecast on made-up counts | `app/public/data/`: `ph_cities.json` and `ph_islands.json` (F14; they replace `ncr_cities.geojson`), `qc_barangays.geojson`, `storms.json`, `barangays/<storm>_<run>.json` (one per run), `centers.json`, `city_forecast.json` (B10's `forecasts.csv`, or in a copy without it the made-up-count run, marked `"simulated": true`) and, beside a real run only, `scores.json`. Commit them: Vercel builds from git. Needs C8, C9, A5 and A10; seconds. Stock planning, not prescriptions. Check "F2 app data" in `python -m src.checks` |
 | F4 | none: the map's first two levels in `app/` (`npm run dev`, then http://localhost:5173/map and `/map/quezon-city`). They read F2's files: `ncr_cities.geojson` now carries each city's label point (`config.APP_LABEL_MIN_KM2`), and `city_forecast.json` the map's model and outbreak levels (`config.APP_LEVEL_MODEL`, `config.APP_LEVELS`); rerun `python -m src.app_data` after changing them | nothing; check "F2 app data" in `python -m src.checks` also checks the label points and the levels |
 | F5 | none: the map's level 3, the prophylaxis plan, in `app/` (`npm run dev`, then http://localhost:5173/map/quezon-city/prophylaxis?date=2024-10-22). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson` and one `barangays/<storm>_<run>.json` per forecast shown | nothing; its Export stock list button saves `lepton-stock-list_<storm>_lead<n>.csv` in the browser. Stock planning, not prescriptions |
 | F6 | none: Home in `app/` (`npm run dev`, then http://localhost:5173/). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson`, `barangays/kristine_2024_lead1.json` (the plan's preview, Kristine 1 day ahead) and `city_forecast.json` (the chart); its four photos are real and licensed, in `app/src/assets/home/`, credited in the footer (`app/src/home/photos.ts`) | nothing. Stock planning, not prescriptions |

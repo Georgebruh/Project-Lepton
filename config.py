@@ -104,7 +104,7 @@ MASE_DENOM_YEARS = (2016, 2017)            # fixed denominator, D2
 GATE_A = date(2026, 10, 16)
 GATE_BC = date(2026, 10, 19)
 GATE_D = date(2026, 10, 21)
-SUBMIT = date(2026, 10, 23)
+SUBMIT = date(2026, 10, 24)                # E1: Sat, Oct 24, 11:59 PM (README)
 
 # ---------------------------------------------------------------------------
 # Data products
@@ -241,7 +241,9 @@ RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
 M4_FIT_METHODS = ("newton", "bfgs")
 M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
 M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
+M4_RESIDUAL_ACF_TABLE = RESULTS / "m4_residual_acf.csv"  # B5: the numbers in that plot, one row per lag
 M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
+M4_ACF_ALPHA = 0.05                        # B5: the plot's shaded band holds 95% of the autocorrelations of independent weeks
 
 # M3 benchmark (B3), read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)
@@ -515,6 +517,7 @@ S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
 S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
 S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
 S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
+S11_REAL_DAYS = ((2018, 30), (2023, 30))   # S11 on A13's real counts: forecast days (year, week), each at g = 2, 1 and 3
 
 # ---------------------------------------------------------------------------
 # Evaluation (D1, D3, D5, D6)

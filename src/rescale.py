@@ -138,7 +138,9 @@ def main():
     if len(barangays) != config.QC_BARANGAYS:
         raise ValueError(f"{config.BARANGAYS_QC.name} has {len(barangays)} barangays, expected {config.QC_BARANGAYS}")
     table = scale_factors(barangays)
-    table.to_csv(config.WORLDPOP_SCALE_QC, index=False)
+    part = config.WORLDPOP_SCALE_QC.with_suffix(".part")    # a stopped run leaves no half file
+    table.to_csv(part, index=False)
+    part.replace(config.WORLDPOP_SCALE_QC)
     report(table)
     print(f"\nwrote {config.WORLDPOP_SCALE_QC}; now run python -m src.checks (S8, first part)")
 

@@ -21,7 +21,7 @@
 % Dose figures are stock planning, not prescriptions (rule 10).
 \section{Results}\label{sec:results}
 
-We report the city forecast first and the storm runs second. Every model forecast every one of
+The city forecast is reported first and the storm runs second. Every model forecast every one of
 the 454 weeks of the backtest, so all models are scored on exactly the same weeks.
 
 \subsection{Layer 1: City Forecast}\label{sec:results-layer1}
@@ -47,7 +47,7 @@ M4's 90\% forecast range, for every target week of the backtest. The COVID-19 ye
 \centering
 \includegraphics[width=\textwidth]{figures/d8_fig2_mae.png}
 \caption{Left, each model's mean absolute error over the 349 scored weeks, with a 95\%
-moving-block bootstrap interval. Right, the comparisons we tested: the mean of M4's absolute
+moving-block bootstrap interval. Right, the comparisons tested: the mean of M4's absolute
 error minus the other model's, week by week; below zero, M4 misses less.}\label{fig:mae}
 \end{figure*}
 
@@ -71,7 +71,7 @@ zero beats always quoting the usual breach rate.}\label{tab:scores}
 M0, last year & 9.30 & 24.9 & $-$3.81 & 3.57 & 7.13 & 48 & 73 & 0.148 & 0.03 \\
 M1, seasonal average & 8.55 & 23.2 & $-$5.28 & 3.28 & 6.46 & 60 & 94 & 0.127 & 0.17 \\
 M3, benchmark & 15.59 & 65.2 & 4.82 & 5.98 & 6.74 & 62 & 87 & 0.135 & 0.11 \\
-M4, ours & 6.70 & 19.4 & $-$3.91 & 2.57 & 5.61 & 70 & 96 & 0.101 & 0.34 \\
+M4, proposed & 6.70 & 19.4 & $-$3.91 & 2.57 & 5.61 & 70 & 96 & 0.101 & 0.34 \\
 M4 without flood index & 6.86 & 19.4 & $-$3.87 & 2.63 & 5.55 & 69 & 96 & 0.101 & 0.34 \\
 \bottomrule
 \end{tabular}
@@ -272,14 +272,15 @@ no one. For the August 2026 habagat all three leads came close to the observed r
 
 \subsection{Comparison with the Benchmark}\label{sec:results-benchmark}
 
-On the benchmark's own national data, our seasonal naive forecast matched all eight of its
-published scores, and our Prophet came within 4.4\% of the published mean absolute error (24.73
-against 23.68), but our hybrid did not reproduce the published gain: its error was 24.60 against
-16.72, and its one-sided Diebold--Mariano test against Prophet gave $p = 0.49$ against the
-published 0.043 \parencite{latigay2026}. The two evaluations also differ in kind. The benchmark
-scored 18 national forecasts, two weeks ahead from nine rolling origins, and tested the hybrid
-against Prophet with a one-sided test; we scored 349 weekly one-week-ahead forecasts of QC's
-cases and set a two-sided 95\% interval on the difference in mean absolute error. QC's weekly
-counts are also far smaller than the national ones, so our errors cannot be set beside the
-paper's. Our result compares M4 with our reproduction of M3, refitted every week on what the
-guard lets it see, not with the published accuracy.
+Rebuilt on the benchmark's own national data, the seasonal naive forecast matched all eight of
+the paper's published scores for it, and Prophet came within 4.4\% of the published mean
+absolute error (24.73 against 23.68), but the hybrid did not reproduce the published gain: its
+error was 24.60 against 16.72, and its one-sided Diebold--Mariano test against Prophet gave
+$p = 0.49$ against the published 0.043 \parencite{latigay2026}. The two evaluations also differ
+in kind. The benchmark scored 18 national forecasts, two weeks ahead from nine rolling origins,
+and tested the hybrid against Prophet with a one-sided test; this study scored 349 weekly
+one-week-ahead forecasts of QC's cases and set a two-sided 95\% interval on the difference in
+mean absolute error. QC's weekly counts are also far smaller than the national ones, so the
+errors reported here cannot be set beside the paper's. The primary result therefore compares M4
+with the reproduction of M3, refitted every week on what the guard lets it see, not with the
+published accuracy.

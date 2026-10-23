@@ -9,6 +9,11 @@ Notes: Task A13. CASE-LEVEL RECORDS: saved unchanged in data/raw/qcesd/ (config.
   the app, and share it only through the team drive (rule 11). Ethics (E2): the adviser
   approved aggregating it to weekly counts (2026-10-20); file the formal request or exemption
   and record its date in E2.
+  Publishing: QCESD gave permission to publish the weekly city totals, 2015-2026 (the counts
+  in cases_weekly.csv, which appear as `y` in results/forecasts*.csv and in
+  app/public/data/city_forecast.json). Nothing else from the list may be published. Confirmed
+  by a team member for G11 on 2026-10-22 (GitHub #83). QCESD's e-mail or letter is kept on the
+  team drive beside the case list.
   File: qcesd_case_list.xlsx, 191,344 bytes, SHA-256
     c37cf6e28a705abcc78b47fd83b314ff30b844770b14367f13d93eaaf6f617d7.
     Renamed from the e-mail's attachment so the repository names no school: save the team

@@ -150,7 +150,9 @@ def main():
     if table["residents"].isna().any() or (table["residents"] < 0).any():
         raise ValueError("missing or negative residents in the overlay table")
 
-    table.to_csv(config.OVERLAY, index=False)
+    part = config.OVERLAY.with_suffix(".part")    # a stopped run leaves no half file
+    table.to_csv(part, index=False)
+    part.replace(config.OVERLAY)
     report(table, barangays)
     print(f"\nwrote {config.OVERLAY} ({len(table)} rows); now run python -m src.checks (S8)")
 

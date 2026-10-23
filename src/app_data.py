@@ -2,7 +2,7 @@
 
 The LEPTON app (app/, Workstream F) is a static site with no server: it only draws the
 numbers this script writes, so the app and the model never disagree. Every number comes
-from results/ (C8 and C9 now; B10's backtest once A13's counts arrive) or from A5's and
+from results/ (C8, C9 and B10's backtest) or from A5's and
 A10's files. Nothing about rain, exposure, doses or forecasts is computed again here, and
 barangays and cities join on their 10-digit PSGC.
 
@@ -619,7 +619,8 @@ def city_forecast(table, simulated, path):
     A model's forecast is its mean mu, the 90% range (the 5% and 95% quantiles of
     NB(mu, theta), B6) and Pr(breach) (B7). The forecast for week i was made at week
     i - config.FORECAST_HORIZON_WEEKS. Stops unless every model has a forecast for exactly
-    the same weeks (rule 5) and the models agree on each week's y and threshold.
+    the same weeks (rule 5) and the models agree on each week's y and threshold, and on a
+    missing value in a column it reads (rule 5).
     The map (F4) colors Quezon City by config.APP_LEVEL_MODEL's Pr(breach): "levels" lists
     each outbreak level with the Pr(breach) it starts at (config.APP_LEVELS).
     """
@@ -631,6 +632,9 @@ def city_forecast(table, simulated, path):
     if config.APP_LEVEL_MODEL not in models:
         raise ValueError(f"{path.name} has no {config.APP_LEVEL_MODEL} forecasts, the model the map shows")
     low, high = (f"q{q:.3f}" for q in (config.RANGE_LOW_Q, config.RANGE_HIGH_Q))
+    blank = [col for col in ("y", "threshold", "breached", "mu", low, high, "p_breach") if table[col].isna().any()]
+    if blank:
+        raise ValueError(f"{path.name} has missing values in {blank}: rerun B10 (rule 5)")
     weeks_out = []
     for index, rows in table.groupby("week_index"):
         if rows[["y", "threshold"]].nunique().max() > 1:
@@ -671,12 +675,7 @@ def scores_file(table, cases):
     window = table[table["year"].isin(config.PROB_SCORE_YEARS)]
     brier = {model: breach_scores.brier(rows["p_breach"], rows["breached"].astype(float))
              for model, rows in window.groupby("model")}
-    model_a, model_b = config.PRIMARY_COMPARISON
-    d = compare.loss_differences(table, model_a, model_b, config.MAE_YEARS)["d"]
-    boot = compare.block_bootstrap(d, config.BOOT_BLOCK_WEEKS)
-    head = {"comparison": f"{model_a} vs {model_b}", "block_weeks": config.BOOT_BLOCK_WEEKS, "weeks": len(d),
-            "mean_diff": boot["mean"], "low": boot["low"], "high": boot["high"],
-            "verdict": compare.verdict(boot["low"], boot["high"], model_a, model_b)}
+    head = compare.primary_endpoint(table).iloc[0]   # the 8-week row, D5's headline
     models = {model: {"mae": round(float(point.at[model, "mae"]), 4), "mase": round(float(point.at[model, "mase"]), 4),
                       "wis": round(float(probability.at[model, "wis"]), 4),
                       "coverage_90": round(float(probability.at[model, "coverage_90"]), 4),
@@ -720,11 +719,16 @@ def write_layer1():
     """city_forecast.json from B10's forecasts, and scores.json beside the real run only; returns what it did.
 
     Both files are made before either is written, so a failure leaves the old pair as it was.
+    Without A13's cases_weekly.csv (scores.json's MASE needs it) both are left as they were:
+    a copy without QC's case data still runs (E10).
     """
     table, simulated, path = load_forecasts()
     if table is None:
         return ("city_forecast.json left as it was: no B10 forecasts on this computer (results/forecasts.csv, "
                 "or run python -m src.backtest --simulate --option C)")
+    if not simulated and not config.CASES_WEEKLY.exists():
+        return (f"city_forecast.json and scores.json left as they were: scores.json's MASE needs "
+                f"{config.CASES_WEEKLY.name} (run task A13, python -m src.cases, or copy the file from the team drive)")
     forecast = city_forecast(table, simulated, path)
     scores_content = None if simulated else scores_file(table, backtest.load_cases())
     write_json(forecast, config.APP_DATA / "city_forecast.json")

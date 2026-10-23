@@ -4,10 +4,12 @@ LaTeX source of the LEPTON paper. One file per section in `sections/`, each open
 with its task code and the files its numbers come from. All styling is in `lepton.sty`, so the
 sections can move to another template unchanged.
 
-Status (October 21): E4 (background, problem, scope and limitations, and the assumptions table),
-E5 (the methodology, and its formulas in Appendix B), E6 (the results, Tables 2-4 and
-Figures 1-4) and E9 (the executive summary, 247 words) are written. The other sections are stubs
-that print a red **[Check: …]** note naming their task.
+Status (October 22): E3 (the objectives), E4 (background, problem, scope and limitations, and
+the assumptions table), E5 (the methodology, and its formulas in Appendix B), E6 (the results,
+Tables 2-4 and Figures 1-4) and E9 (the executive summary, 247 words) are written. E7 (the
+references) was checked on October 23: all 40 cited, every DOI matched against Crossref or
+DataCite. E8's other
+appendices are still a stub that prints a red **[Check: …]** note naming its task.
 Note: E1's reading of the 2026 PJDSC primer (branch `E1-submission-rules`) is that the final
 submission is a slide deck, a video and this repository, with no written paper. The team writes
 the paper anyway, as the project's full report.
@@ -52,8 +54,8 @@ itself.
 `biber main`, `pdflatex main`, `pdflatex main`. A full TeX Live has every package. MiKTeX works
 too, but its latexmk needs Perl installed separately.
 
-Checked on October 21 with TinyTeX (TeX Live 2026), by hand and with latexmk as LaTeX Workshop
-runs it: 22 pages with E9, no errors, no overfull lines, Biber without warnings.
+Checked on October 22 with TinyTeX (TeX Live 2026) and latexmk, as LaTeX Workshop runs it:
+22 pages with E3, no errors, no overfull lines, Biber without warnings.
 
 ## Files
 
@@ -64,7 +66,7 @@ runs it: 22 pages with E9, no errors, no overfull lines, Biber without warnings.
 | `sections/summary.tex` | E9 | Executive summary (written last, under 250 words, with D5's primary result) and keywords |
 | `sections/background.tex` | E4 | Background |
 | `sections/problem.tex` | E4 | The problem |
-| `sections/objectives.tex` | E3 | Objectives (stub) |
+| `sections/objectives.tex` | E3 | Objectives: the proposal's four, worded as they were tested; the last is D5's primary endpoint (M4 against M3) |
 | `sections/scope.tex` | E4 | Scope, limitations, and what is not covered (future work) |
 | `sections/methodology.tex` | E5 | Methodology: data, the shared flood computation, Layer 1, Layer 2, evaluation; Table 1 (the storms) |
 | `sections/results.tex` | E6 | Results: the city forecast (Table 2, the scores; Table 3, the checks), the storm runs (Table 4, the doses) and D8's Figures 1-4. Numbers from `results/`, including `python -m src.score_tables` |
@@ -85,5 +87,7 @@ runs it: 22 pages with E9, no errors, no overfull lines, Biber without warnings.
   Add each new work to `references.bib` in sentence case, with proper nouns in braces, e.g.
   `{Quezon City}`, so their capitals survive.
 - **No formulas in the main text** (E5); they go in an appendix.
+- **No first person.** This is a research paper: write "this study", "the proposed model" (M4)
+  or the passive ("cases were counted by week of onset"), never "we", "our" or "us".
 - **No case-level records**, in the text or in a table (rule 11): weekly counts only.
 - Build files go to the folder you compile in; `.gitignore` here keeps them out of git.
