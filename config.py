@@ -609,6 +609,15 @@ PH_TOWNS_APART = {
 # MAP_SIMPLIFY_M, since the map drills down into Quezon City.
 PH_SIMPLIFY_M = 100
 APP_CITIES_FILE = "ph_cities.json"             # .json, not .geojson, so the web host sends it compressed
+# F14: the islands' coastlines, which the map draws between the country's view and the towns'
+# borders (app/src/map/borders.ts): every city and municipality joined, with the gaps between
+# faeldon's province files (a border two files leave up to twice PH_ISLANDS_GAP_M apart) closed.
+# Assumptions: islands under PH_ISLANDS_MIN_KM2 are left out, and the coasts keep detail to
+# PH_ISLANDS_SIMPLIFY_M: both under a pixel at the zooms the map draws them at (6 to 8.75).
+PH_ISLANDS_GAP_M = 150
+PH_ISLANDS_MIN_KM2 = 1
+PH_ISLANDS_SIMPLIFY_M = 250
+APP_ISLANDS_FILE = "ph_islands.json"
 # F14: the app's Simulation mode (src/app_simulation.py): made-up counts after A13's last week, and
 # next week's forecast with today's ECMWF rain forecast from Open-Meteo's forecast API.
 SIM_FORECAST_API = "https://api.open-meteo.com/v1/forecast"

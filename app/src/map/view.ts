@@ -27,6 +27,9 @@ const MIN_CITY_HEIGHT = 120
 /** MapLibre's whole world at zoom 0, in px: one 512 px tile. */
 const WORLD_PX = 512
 
+/** F14: how many zoom levels the camera steps back when the city panel closes: twice the ground each way. */
+const CLOSE_ZOOM_OUT = 1
+
 /** A box on the map: [[west, south], [east, north]]. */
 type Box = [[number, number], [number, number]]
 
@@ -83,6 +86,36 @@ export function viewFor(
   // F14: and the top left corner's logo and data modes, while the city keeps at least MIN_CITY_HEIGHT
   const top = Math.max(0, Math.min(topBar?.offsetHeight ?? 0, most - bottom))
   return { bounds: boundsOf(open), padding: { top: pad + top, bottom: pad + bottom, left: pad + cover.left, right: pad } }
+}
+
+/**
+ * F14: what the camera shows of a city the map's search found (MapSearch), at level 1: its
+ * outline, kept clear of the top corners' cards by `topBar` and of the timeline and legends by
+ * `controls`, while the city keeps at least MIN_CITY_HEIGHT.
+ */
+export function cityView(
+  cities: Cities,
+  psgc: string,
+  container: HTMLElement,
+  controls: HTMLElement | null,
+  topBar: HTMLElement | null,
+): LevelView {
+  const pad = FIT_PADDING.city
+  const city = cities.features.filter((feature) => feature.properties.psgc === psgc)
+  const most = container.clientHeight - 2 * pad - MIN_CITY_HEIGHT
+  const bottom = Math.max(0, Math.min(controls?.offsetHeight ?? 0, most))
+  const top = Math.max(0, Math.min(topBar?.offsetHeight ?? 0, most - bottom))
+  return { bounds: boundsOf(city), padding: { top: pad + top, bottom: pad + bottom, left: pad, right: pad } }
+}
+
+/**
+ * F14: the camera, for easeTo, when the city panel closes (its Close button, or the browser's
+ * Back): where it is, CLOSE_ZOOM_OUT zoom levels further out, facing north and tilted by `pitch`,
+ * with `view`'s padding (the Philippines', viewFor at level 1) in place of the panel's. The reader
+ * sees the city among its neighbours, not the whole country: the pin button shows that.
+ */
+export function closeCamera(map: MapLibreMap, view: LevelView, pitch: number): EaseToOptions {
+  return { center: map.getCenter(), zoom: map.getZoom() - CLOSE_ZOOM_OUT, padding: view.padding, pitch, bearing: 0 }
 }
 
 /**

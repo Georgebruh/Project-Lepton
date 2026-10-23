@@ -1,12 +1,14 @@
 import type {
   FilterSpecification,
   LayerSpecification,
+  LineLayerSpecification,
   RasterDEMSourceSpecification,
   StyleSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { MultiPolygon } from 'geojson'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { shapeParts } from '../exposed/nearest.ts'
+import { ISLANDS_ZOOM, fadeIn } from './borders.ts'
 import { SLOTS } from './layerOrder.ts'
 import type { Cities } from './mapData.ts'
 import { tokenColor } from './tokens.ts'
@@ -25,7 +27,10 @@ import { tokenColor } from './tokens.ts'
  *     looked better zoomed out but cost a freeze: MapLibre compiles each of its shaders twice
  *     for a globe (once round, once flat for close up), and on an integrated GPU each compile
  *     holds the page up to a third of a second (measured 22 October 2026: 31 shaders and 1.6 s
- *     frozen at the plan level, against 10 and 0.3 s before F13).
+ *     frozen at the plan level, against 10 and 0.3 s before F13);
+ *   - F14: no lines on the country's view. The street map's roads and rivers start at
+ *     ISLANDS_ZOOM, fading in with the islands' coastlines (borders.ts, fromIslandsZoom), and its
+ *     borders are left out at every zoom: LEPTON draws the coastlines and the towns' borders.
  * If the style cannot be fetched, the map draws on the plain background it had before F13, so
  * LEPTON's data always shows.
  *
@@ -226,6 +231,20 @@ export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
   }
 }
 
+/**
+ * F14: a street map line (a road, a river) that would show on the country's view starts at
+ * ISLANDS_ZOOM instead, fading in with the coastlines (borders.ts). One that starts closer in is
+ * left as it is. Positron's line opacities are plain numbers, which the fade ends at.
+ */
+function fromIslandsZoom(layer: LineLayerSpecification): LineLayerSpecification {
+  if ((layer.minzoom ?? 0) >= ISLANDS_ZOOM) {
+    return layer
+  }
+  const opacity = layer.paint?.['line-opacity'] ?? 1
+  const fade = typeof opacity === 'number' ? { 'line-opacity': fadeIn(ISLANDS_ZOOM, opacity) } : {}
+  return { ...layer, minzoom: ISLANDS_ZOOM, paint: { ...layer.paint, ...fade } }
+}
+
 /** One base map layer in the app's colors; a layer of names LEPTON writes itself, without those inside the cities with data. */
 function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPolygon): LayerSpecification[] {
   if (layer.type === 'background') {
@@ -234,9 +253,16 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPo
   if (layer.type === 'fill' && layer['source-layer'] === 'water') {
     return [{ ...layer, paint: { ...layer.paint, 'fill-color': colors.water } }]
   }
+  // F14: the borders are LEPTON's own (borders.ts and CityMap)
+  if (layer.type === 'line' && layer['source-layer'] === 'boundary') {
+    return []
+  }
   // Positron's roads are white on grey; on the app's lighter land they take the map's border color
   if (layer.type === 'line' && layer['source-layer'] === 'transportation' && !layer.id.endsWith('dashline')) {
-    return [{ ...layer, paint: { ...layer.paint, 'line-color': colors.road } }]
+    return [fromIslandsZoom({ ...layer, paint: { ...layer.paint, 'line-color': colors.road } })]
+  }
+  if (layer.type === 'line') {
+    return [fromIslandsZoom(layer)]
   }
   if (layer.type === 'symbol' && PLACE_NAME_LAYERS.includes(layer.id)) {
     const outside = ['!', ['within', named]] as FilterSpecification

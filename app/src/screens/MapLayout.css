@@ -3,7 +3,8 @@
  * (section 53:267). --map-hover, --map-camera, --map-crossfade, --map-ease, --map-panel-width
  * and --map-sheet-share come from map/motion.ts through MapLayout.tsx.
  *
- * F14: only the map, on the whole screen: the logo and data modes top left, the timeline at the
+ * F14: only the map, on the whole screen: the logo and search top left, the data modes top
+ * right, the timeline at the
  * bottom in the middle, the legends and map buttons bottom right over Methods and the credits,
  * and the city panel from the left over about a third of the screen (clamp(400px, 36vw, 560px),
  * map/motion.ts).
@@ -59,6 +60,18 @@
 
 .map-layout-top > * {
   pointer-events: auto;
+}
+
+/* F14: the open search's matches (map/MapSearch.css) lie over the data modes on a narrow map */
+.map-layout-top:has(.map-search) {
+  z-index: 1;
+}
+
+/* F14: the logo and the search beside it, as tall as each other; the open search narrows to fit */
+.map-layout-top-row {
+  display: flex;
+  gap: var(--space-2);
+  max-width: 100%;
 }
 
 /* The logo, on a card like the map's other controls */

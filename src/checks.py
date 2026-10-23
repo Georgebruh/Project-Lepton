@@ -1485,6 +1485,9 @@ def f2_app_data():
       - F4: Quezon City has a label point, inside it, and (F14) no other city does: the street
         map names the rest; city_forecast.json names config.APP_LEVEL_MODEL and the outbreak
         levels of config.APP_LEVELS;
+      - F14: ph_islands.json's coasts are valid, without holes, and hold all but 1% of the
+        cities' land (the islands under config.PH_ISLANDS_MIN_KM2 it leaves out), adding at
+        most 2% (the lakes and the gaps between faeldon's files it closes);
       - every health center has coordinates or is listed with C7's reason for leaving it out;
       - every file with doses carries the not-prescriptions label;
       - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
@@ -1494,6 +1497,7 @@ def f2_app_data():
     import json
 
     import geopandas as gpd
+    import shapely
 
     from src import app_data, doses
 
@@ -1560,6 +1564,15 @@ def f2_app_data():
     outside = [name for name, shape, point in zip(country.loc[labeled, "name"], country.loc[labeled].geometry, points)
                if not shape.contains(point)]
     assert not outside, f"label points outside their city: {outside}"
+    islands = gpd.read_file(config.APP_DATA / config.APP_ISLANDS_FILE).to_crs(config.CRS_OVERLAY)
+    coasts = shapely.get_parts(islands.geometry.values)
+    assert len(coasts) and shapely.is_valid(coasts).all() and not any(len(coast.interiors) for coast in coasts), (
+        f"{config.APP_ISLANDS_FILE}: every island must be valid, with no holes: {rerun}")
+    land = country.to_crs(config.CRS_OVERLAY).union_all()
+    outside_coasts = land.difference(islands.union_all()).area / land.area
+    added = islands.area.sum() / land.area - 1
+    assert outside_coasts < 0.01 and added <= 0.02, (f"{config.APP_ISLANDS_FILE} leaves {outside_coasts:.1%} of the "
+                                                     f"cities' land outside its coasts and adds {added:.1%}: {rerun}")
     for storm in storms["storms"]:
         for run in storm["runs"]:
             rows = fresh[run["file"]]["barangays"]
@@ -1606,7 +1619,8 @@ def f2_app_data():
         layer1 = "no city_forecast.json yet"
     left_out = sum(bool(center["left_out"]) for center in centers)
     return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; {len(country):,} "
-            f"cities (NCR's 17 a clean coverage) and 142 barangays join; Quezon City's label inside it; {len(centers) - left_out} centers "
+            f"cities (NCR's 17 a clean coverage) and 142 barangays join; Quezon City's label inside it; {len(coasts)} "
+            f"islands' coasts hold all but {outside_coasts:.1%} of the land; {len(centers) - left_out} centers "
             f"get stock, {left_out} left out and listed; {layer1}")
 
 

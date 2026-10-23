@@ -17,6 +17,8 @@ Files written to app/public/data/ (config.APP_DATA), which the app fetches as /d
                         (province_cities, towns_apart). Also label_lon and label_lat, where the
                         map writes the name of a city with data (F4, label_points). It replaces
                         F4's ncr_cities.geojson
+  ph_islands.json       F14: the coastline of every island of 1 km2 or more, the cities and
+                        municipalities joined (island_outlines), for the map zoomed out
   qc_barangays.geojson  A5's 142 barangays: psgc and name
   storms.json           C9's runs of each storm: the rain that fell (observed, IMERG) and
                         the forecasts 1, 2 and 3 days ahead (ECMWF). Each run gives its
@@ -344,6 +346,26 @@ def label_points(cities):
     lonlat = gpd.GeoSeries(points, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
     return cities.assign(label_lon=lonlat.x.round(config.APP_COORD_DECIMALS),
                          label_lat=lonlat.y.round(config.APP_COORD_DECIMALS))
+
+
+def island_outlines(cities):
+    """F14: the coastline of every island, which the map draws zoomed out (EPSG:4326).
+
+    Every city and municipality joined into land. faeldon's province files do not quite meet,
+    so the gaps between them are closed first: the land grown by config.PH_ISLANDS_GAP_M, then
+    shrunk by as much. Each island keeps only its outer coast. The holes left inside are lakes,
+    which the street map already draws as water, or gaps in faeldon's maps (221 km2 inside
+    Zamboanga City), which would draw lines across the land. Islands under
+    config.PH_ISLANDS_MIN_KM2 are left out, and the coasts simplified to
+    config.PH_ISLANDS_SIMPLIFY_M: the map draws these lines only between the country's view and
+    the towns' borders (app/src/map/borders.ts), where both are under a pixel.
+    """
+    land = shapely.union_all(cities.to_crs(config.CRS_OVERLAY).geometry.make_valid().values)   # in metres
+    gap = config.PH_ISLANDS_GAP_M
+    closed = land.buffer(gap, join_style="mitre").buffer(-gap, join_style="mitre")
+    islands = [shapely.Polygon(part.exterior).simplify(config.PH_ISLANDS_SIMPLIFY_M)
+               for part in shapely.get_parts(closed) if part.area >= config.PH_ISLANDS_MIN_KM2 * 1e6]
+    return gpd.GeoDataFrame(geometry=islands, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
 
 
 def write_geojson(shapes, path):
@@ -737,6 +759,7 @@ def main():
     others = pd.concat([province_cities(*download_province_cities()), towns_apart()], ignore_index=True)
     country = country_cities(cities, gpd.GeoDataFrame(others, crs=config.CRS_LONLAT))
     write_geojson(label_points(country), config.APP_DATA / config.APP_CITIES_FILE)
+    write_geojson(island_outlines(country), config.APP_DATA / config.APP_ISLANDS_FILE)
     for old in ("ncr_cities.geojson", *(f"noah_{t}yr.json" for t in config.NOAH_RETURN_PERIODS)):
         (config.APP_DATA / old).unlink(missing_ok=True)   # F14: ph_cities.json and NOAH's national tiles replace them
     write_geojson(barangays, config.APP_DATA / "qc_barangays.geojson")

@@ -13,17 +13,19 @@ import Icon from '../components/Icon.tsx'
 import maplibregl from '../lib/maplibre.ts'
 import { barangayLayers } from './barangayLayers.ts'
 import { DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
+import { CITIES_ZOOM, addIslands, fadeIn, type Islands } from './borders.ts'
 import { CITY_LAYERS as LAYERS, CITY_NAMES_SOURCE as NAMES_SOURCE, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
 import { LEVEL_NAMES, LEVEL_TONES, isSimulated, levelOf, simulatedLabel } from './forecast.ts'
 import { SLOTS, addSlots } from './layerOrder.ts'
+import { orbit } from './orbit.ts'
 import { TILT, set3D } from './terrain.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
 import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, easeInOut, prefersReducedMotion } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
 import { tokenColor } from './tokens.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
-import { levelCamera, moveToLevel, viewFor } from './view.ts'
+import { READER_MOVE, cityView, closeCamera, levelCamera, moveToLevel, viewFor } from './view.ts'
 import './CityMap.css'
 
 /*
@@ -48,6 +50,11 @@ import './CityMap.css'
  * (DATA_OPACITY). The cities' names have a halo, and keep the street map's names off them
  * (addNameRoom). In the 3D view (terrain.ts) the camera tilts,
  * and a level's view keeps the tilt and faces north (view.ts, moveToLevel).
+ *
+ * F14: the lines come with the zoom (borders.ts): none on the country's view, the islands'
+ * coastlines a step in, and the towns' borders from CITIES_ZOOM. The town the search finds keeps
+ * an outline of its own ("city-found" layers). Closing the panel steps the camera back from the
+ * city (view.ts, closeCamera), and the prophylaxis plan, in 3D, circles it (orbit.ts).
  */
 
 /** How far out the reader may zoom: at 1 the map is the whole world. */
@@ -60,12 +67,17 @@ const BOUNDARIES_CREDIT = 'Boundaries: PSA and NAMRIA via OCHA HDX; faeldon/phil
 const LINE = { noData: 1, data: 1.5, hover: 3, open: 2.5 }
 
 /**
- * F14: the whole country's 1,642 outlines would cover it in black zoomed out, so they are drawn
- * at OUTLINE_FAR of their width at COUNTRY_ZOOM, growing to the full width at CITY_ZOOM.
+ * F14: the outline of the town the search found, in px: accent/primary over a wider bg/surface
+ * casing, so it stands out over any fill, the towns' borders and NOAH's blue flood zones.
  */
-const COUNTRY_ZOOM = 5
-const CITY_ZOOM = 9
-const OUTLINE_FAR = 0.25
+const FOUND_LINE = { width: 2.5, casing: 6 }
+
+/**
+ * F14: the cities' fills keep a smoothed edge (antialiasing) only from CITIES_ZOOM, where the
+ * borders are drawn over it. Zoomed out, two towns' see-through fills overlapped along the edge
+ * they share, and drew every border faintly on the country's view.
+ */
+const FILL_EDGES: ExpressionSpecification = ['step', ['zoom'], false, CITIES_ZOOM, true]
 
 /** F14: how opaque a city without data is filled: the street map shows through most of the country. */
 const NO_DATA_ALPHA = 0.35
@@ -79,19 +91,11 @@ const HAS_DATA: ExpressionSpecification = ['boolean', ['get', 'has_data'], false
 const HOVER: ExpressionSpecification = ['number', ['feature-state', 'hover'], 0]
 const REST_WIDTH: ExpressionSpecification = ['case', HAS_DATA, LINE.data, LINE.noData]
 
-/** A city's outline: its resting width, growing to LINE.hover as its hover goes from 0 to 1. */
-const NEAR_WIDTH: ExpressionSpecification = ['+', REST_WIDTH, ['*', HOVER, ['-', LINE.hover, REST_WIDTH]]]
-
-/** F14: the outline thinner zoomed out to the country (OUTLINE_FAR), full from CITY_ZOOM in. */
-const LINE_WIDTH: ExpressionSpecification = [
-  'interpolate',
-  ['linear'],
-  ['zoom'],
-  COUNTRY_ZOOM,
-  ['*', OUTLINE_FAR, NEAR_WIDTH],
-  CITY_ZOOM,
-  NEAR_WIDTH,
-]
+/**
+ * A city's outline: its resting width, growing to LINE.hover as its hover goes from 0 to 1. F14:
+ * drawn only from CITIES_ZOOM in (borders.ts), so it no longer thins with the zoom.
+ */
+const LINE_WIDTH: ExpressionSpecification = ['+', REST_WIDTH, ['*', HOVER, ['-', LINE.hover, REST_WIDTH]]]
 
 /** F14: a hex color from tokens.css with an alpha, as MapLibre reads colors: "#e9ebee" at 0.35. */
 function withAlpha(hex: string, alpha: number): string {
@@ -111,6 +115,9 @@ function tokenColors(element: HTMLElement) {
     low: color('risk-low'),
     watch: color('risk-watch'),
     high: color('risk-high'),
+    // F14: the town the search found
+    found: color('accent-primary'),
+    foundCasing: color('bg-surface'),
   }
 }
 
@@ -134,6 +141,12 @@ function isOpen(psgc: string): ExpressionSpecification {
 
 function isNotOpen(psgc: string): ExpressionSpecification {
   return ['!=', ['get', 'psgc'], psgc]
+}
+
+/** F14: outlines the town `psgc` as the search's find ("" for none). */
+function showFound(map: MapLibreMap, psgc: string) {
+  map.setFilter(LAYERS.foundCasing, isOpen(psgc))
+  map.setFilter(LAYERS.foundLine, isOpen(psgc))
 }
 
 /**
@@ -248,12 +261,14 @@ type LabelSpot = { city: CityProperties; element: HTMLElement }
 
 type CityMapProps = {
   cities: Cities
+  /** F14: the islands' coastlines, drawn between the country's view and the towns' borders. */
+  islands: Islands
   forecast: CityForecast
   /** F13: the street map's style from the loader, or null to draw on a plain background. */
   baseStyle: StyleSpecification | null
   /** F13: the base map chosen in the Layers panel. */
   base: BaseMap
-  /** F13: whether the Layers panel's 3D view is on. */
+  /** F13: whether the map is in 3D: the Layers panel's 3D view, or (F14) the prophylaxis plan's own (MapLayout). */
   view3d: boolean
   /** The week after the chosen date, or undefined if the backtest has no forecast for it. */
   week: ForecastWeek | undefined
@@ -265,6 +280,8 @@ type CityMapProps = {
   controls: RefObject<HTMLElement | null>
   /** F14: the top left corner's box (MapLayout), which the camera keeps the open city clear of too. */
   topBar: RefObject<HTMLElement | null>
+  /** F14: the city the search last found (a new object each time it finds one), or null. */
+  found: { psgc: string } | null
 }
 
 /**
@@ -273,12 +290,14 @@ type CityMapProps = {
  * When the level changes, the camera and the cities move as the Figma notes say.
  *
  * F14: every city and municipality of the Philippines; the street map names them, and LEPTON
- * writes only Quezon City's name, with its cases. The hint and the list of cities are gone:
- * Quezon City's name on the map is a link the keyboard reaches. The sources' credits and the
- * link to Methods sit in the bottom right corner.
+ * writes only Quezon City's name, with its cases while hovered. The hint and the list of cities
+ * are gone: Quezon City's name on the map is a link the keyboard reaches. The sources' credits and the
+ * link to Methods sit in the bottom right corner. The search (MapSearch, top left) brings the
+ * camera to the town it finds (`found`).
  */
 export default function CityMap({
   cities,
+  islands,
   forecast,
   baseStyle,
   base,
@@ -288,6 +307,7 @@ export default function CityMap({
   onMap,
   controls,
   topBar,
+  found,
 }: CityMapProps) {
   const navigate = useNavigate()
   const { search } = useLocation()
@@ -301,9 +321,10 @@ export default function CityMap({
   const [spots, setSpots] = useState<LabelSpot[]>([])
   const [pointer, setPointer] = useState<Pointer | null>(null)
   const [methods] = useState(() => new MethodsControl()) // F14: the Methods link's box, bottom right
-  const readerMoved = useRef(false) // F13: the reader has panned, zoomed or turned the map since the camera last fit the level
+  const readerMoved = useRef(false) // F13: the reader has panned, zoomed or turned the map since the camera last fit the level (F14: or the plan's circling has)
   const fillOpacity = useRef(DATA_OPACITY[base]) // F13: how opaque the fills are on the base map shown
   const shown3D = useRef<boolean | null>(null) // F13: whether the map is drawn in 3D; null until first set
+  const shownFound = useRef<{ psgc: string } | null>(null) // F14: the search's find the camera last went to
 
   // The click handler opens a city with the latest navigate and date
   useEffect(() => {
@@ -386,17 +407,24 @@ export default function CityMap({
           type: 'fill',
           source: SOURCE,
           filter: isNotOpen(open),
-          paint: { 'fill-color': fillColor(colors), 'fill-opacity': opacity * fillOpacity.current },
+          paint: {
+            'fill-color': fillColor(colors),
+            'fill-opacity': opacity * fillOpacity.current,
+            'fill-antialias': FILL_EDGES,
+          },
         },
         SLOTS.fills,
       )
+      // F14: the coastlines, then the towns' borders, each from its zoom on (borders.ts)
+      addIslands(map, islands, colors.line)
       map.addLayer({
         id: LAYERS.line,
         type: 'line',
         source: SOURCE,
         filter: isNotOpen(open),
+        minzoom: CITIES_ZOOM,
         layout: { 'line-join': 'round' },
-        paint: { 'line-color': colors.line, 'line-width': LINE_WIDTH, 'line-opacity': opacity },
+        paint: { 'line-color': colors.line, 'line-width': LINE_WIDTH, 'line-opacity': fadeIn(CITIES_ZOOM, opacity) },
       })
       map.addLayer(
         {
@@ -416,6 +444,20 @@ export default function CityMap({
         layout: { 'line-join': 'round' },
         paint: { 'line-color': colors.line, 'line-width': LINE.open },
       })
+      // F14: the search's town, at every zoom, none at first
+      for (const [id, color, width] of [
+        [LAYERS.foundCasing, colors.foundCasing, FOUND_LINE.casing],
+        [LAYERS.foundLine, colors.found, FOUND_LINE.width],
+      ] as const) {
+        map.addLayer({
+          id,
+          type: 'line',
+          source: SOURCE,
+          filter: isOpen(''),
+          layout: { 'line-join': 'round' },
+          paint: { 'line-color': color, 'line-width': width },
+        })
+      }
       // Each city's name sits in an element MapLibre keeps over its label point (F2's label_lon, label_lat)
       const labelSpots: LabelSpot[] = []
       for (const { properties: city } of cities.features) {
@@ -481,7 +523,7 @@ export default function CityMap({
       setLoaded(false)
       onMap(null)
     }
-  }, [cities, baseStyle, onMap, controls, topBar, methods])
+  }, [cities, islands, baseStyle, onMap, controls, topBar, methods])
 
   // F13: the base map chosen in the Layers panel (shaded in 3D), and the fills' opacity over it (a
   // 150 ms crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
@@ -539,6 +581,7 @@ export default function CityMap({
     if (!map || !loaded || shownLevel.current === level) {
       return
     }
+    const closing = level === 1 // F14: the panel closes
     shownLevel.current = level
     const open = level > 1 ? QC_PSGC : ''
     map.setFilter(LAYERS.fill, isNotOpen(open))
@@ -550,20 +593,63 @@ export default function CityMap({
     map.setPaintProperty(LAYERS.fill, 'fill-opacity-transition', fade)
     map.setPaintProperty(LAYERS.fill, 'fill-opacity', opacity * fillOpacity.current)
     map.setPaintProperty(LAYERS.line, 'line-opacity-transition', fade)
-    map.setPaintProperty(LAYERS.line, 'line-opacity', opacity)
+    map.setPaintProperty(LAYERS.line, 'line-opacity', fadeIn(CITIES_ZOOM, opacity))
     setNameRoom(map, level)
     // With reduced motion the camera jumps. F13: the view keeps the 3D view's tilt (its target,
     // should the tilt still be under way)
-    moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current, topBar.current), view3d ? TILT : 0, {
-      duration: CAMERA_MS,
-      easing: easeInOut,
-    })
+    const pitch = view3d ? TILT : 0
+    const motion = { duration: CAMERA_MS, easing: easeInOut }
+    if (closing) {
+      // F14: the camera steps back from the city instead of going to the whole country. It is the
+      // reader's move (READER_MOVE): a new map size keeps it, and the pin brings the country back
+      const country = viewFor(1, cities, map.getContainer(), controls.current, topBar.current)
+      map.easeTo({ ...closeCamera(map, country, pitch), ...motion }, READER_MOVE)
+    } else {
+      moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current, topBar.current), pitch, motion)
+      showFound(map, '') // F14: opening a city ends the search's mark
+    }
     if (level > 1 && faderRef.current) {
       moveHover(faderRef.current, hoveredRef, null)
       map.getCanvas().style.cursor = ''
       setPointer(null)
     }
   }, [level, loaded, cities, controls, topBar, view3d])
+
+  // F14: a city the search found: the camera goes to it, and it keeps an outline of its own
+  // (FOUND_LINE) until the search finds another, the pin button brings the Philippines back
+  // (`found` turns null) or a city opens. Found with the panel open, it waits for the panel to
+  // close (MapLayout goes back to level 1). This effect comes after the one above, so its camera
+  // move replaces the panel's closing move. It is the reader's move (READER_MOVE): a new map size
+  // keeps the city.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded || level !== 1 || shownFound.current === found) {
+      return
+    }
+    shownFound.current = found
+    showFound(map, found?.psgc ?? '')
+    if (!found) {
+      return
+    }
+    const view = cityView(cities, found.psgc, map.getContainer(), controls.current, topBar.current)
+    const camera = levelCamera(view, map.getContainer(), view3d ? TILT : 0)
+    if (camera) {
+      map.easeTo({ ...camera, duration: CAMERA_MS, easing: easeInOut }, READER_MOVE)
+    }
+  }, [found, level, loaded, cities, controls, topBar, view3d])
+
+  // F14: the prophylaxis plan opens in 3D (MapLayout), and once the camera has tilted it circles
+  // Quezon City until the reader takes the map (orbit.ts); not with reduced motion. The turn moves
+  // the camera from the level's view as the reader would, so a new map size keeps it.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded || level !== 3 || !view3d || prefersReducedMotion()) {
+      return
+    }
+    return orbit(map, () => {
+      readerMoved.current = true
+    })
+  }, [level, loaded, view3d])
 
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
@@ -585,8 +671,12 @@ export default function CityMap({
       {spots.map(({ city, element }) =>
         createPortal(
           CITY_PATHS[city.psgc] ? (
-            // A city with data: its name and next week's expected cases, a link for keyboard readers
-            <Link to={CITY_PATHS[city.psgc] + search} className="city-map-label city-map-label-open">
+            // A city with data: its name and next week's expected cases, a link for keyboard readers.
+            // F14: the cases show only while the city or its name is hovered, or the name has the keyboard
+            <Link
+              to={CITY_PATHS[city.psgc] + search}
+              className={`city-map-label city-map-label-open${pointer?.psgc === city.psgc ? ' city-map-label-hovered' : ''}`}
+            >
               <span className="label-ui">{shortName(city)}</span>
               {expected !== null && <span className="city-map-label-cases body-s">{expected} cases next week</span>}
             </Link>

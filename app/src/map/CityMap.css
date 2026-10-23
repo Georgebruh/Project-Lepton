@@ -101,8 +101,19 @@
   text-decoration: none;
 }
 
+/* F14: the cases show only while the city or its name is hovered, or the name has the keyboard
+   (it is a link, so screen readers still hear them). Hidden, they keep their room, so the name
+   does not move, and the street map's names stay off it (addNameRoom) */
 .city-map-label-cases {
   color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity var(--map-hover) linear;
+}
+
+.city-map-label-open:hover .city-map-label-cases,
+.city-map-label-open:focus-visible .city-map-label-cases,
+.city-map-label-hovered .city-map-label-cases {
+  opacity: 1;
 }
 
 /* The name belongs to the level of the whole country: it fades with the camera when a city opens */

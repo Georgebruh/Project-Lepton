@@ -2,7 +2,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { BaseMap } from '../map/basemap.ts'
 import { DEFAULT_FLOOD, useFloodZones, type FloodPeriod } from '../map/floodLayer.ts'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Link, Outlet, useLoaderData, useSearchParams } from 'react-router'
+import { Link, Outlet, useLoaderData, useLocation, useNavigate, useSearchParams } from 'react-router'
 import Logo from '../components/Logo.tsx'
 import CityMap from '../map/CityMap.tsx'
 import FloodLegend from '../map/FloodLegend.tsx'
@@ -22,6 +22,7 @@ import {
   weatherOf,
 } from '../map/layerParams.ts'
 import MapLayers from '../map/MapLayers.tsx'
+import MapSearch from '../map/MapSearch.tsx'
 import type { MapContext } from '../map/mapContext.ts'
 import { withSimulation, type DataMode, type MapData } from '../map/mapData.ts'
 import MapTimeline from '../map/MapTimeline.tsx'
@@ -38,7 +39,7 @@ import {
   easeInOut,
 } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
-import { PLAN_PARAMS, useMapLevel, type MapLevel } from '../map/routes.ts'
+import { CITY_PATHS, MAP_PATHS, PLAN_PARAMS, QC_PSGC, levelSearch, useMapLevel, type MapLevel } from '../map/routes.ts'
 import { TILT } from '../map/terrain.ts'
 import { moveToLevel, viewFor } from '../map/view.ts'
 import { WEATHER_NAMES, isLive, useWeather, type Weather } from '../map/weather.ts'
@@ -96,19 +97,23 @@ const MOTION = {
  * legends and map buttons, then Methods and the sources' credits (CityMap). Clicking Quezon City
  * opens its panel from the left over half the screen, with three tabs: the case forecast,
  * Compare models and the prophylaxis plan. In Simulation mode the forecast adds
- * city_simulation.json's weeks after QCESD's last count (mapData.ts, withSimulation).
+ * city_simulation.json's weeks after QCESD's last count (mapData.ts, withSimulation). The search
+ * beside the logo (map/MapSearch.tsx) finds any city or municipality and takes the map there.
  */
 export default function MapLayout() {
   // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
   // too deep for TypeScript, and with no server nothing is serialized
-  const { cities, forecast: realForecast, simulation, baseStyle } = useLoaderData() as MapData
+  const { cities, islands, forecast: realForecast, simulation, baseStyle } = useLoaderData() as MapData
   const level = useMapLevel()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { search } = useLocation()
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
   const [listSlot, setListSlot] = useState<HTMLElement | null>(null)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [found, setFound] = useState<{ psgc: string } | null>(null) // F14: the town the search last found
   const layersButton = useRef<HTMLButtonElement>(null)
   const controls = useRef<HTMLDivElement>(null)
   const topBar = useRef<HTMLDivElement>(null)
@@ -120,7 +125,15 @@ export default function MapLayout() {
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const base = baseOf(searchParams)
-  const view3d = is3D(searchParams)
+  // F14: the prophylaxis plan opens in 3D of its own accord, and the map turns flat again when the
+  // plan closes, unless the Layers panel's switch (?view=3d) is on. The switch shows either.
+  const [plan3d, setPlan3d] = useState(level === 3)
+  const [plan3dLevel, setPlan3dLevel] = useState(level)
+  if (level !== plan3dLevel) {
+    setPlan3dLevel(level)
+    setPlan3d(level === 3)
+  }
+  const view3d = is3D(searchParams) || plan3d
   const flood = floodOf(searchParams)
   const [floodChoice, setFloodChoice] = useState<FloodPeriod>(flood ?? DEFAULT_FLOOD)
   if (flood !== null && flood !== floodChoice) {
@@ -177,8 +190,14 @@ export default function MapLayout() {
     setSearchParams((params) => setBaseParam(params, next), { replace: true, preventScrollReset: true })
   }
 
-  /** F13: the 3D view turned on or off in the Layers panel replaces the address's (no new history entry). */
+  /**
+   * F13: the 3D view turned on or off in the Layers panel replaces the address's (no new history
+   * entry). F14: off also ends the plan's own 3D; on keeps 3D after the plan closes.
+   */
   function change3D(on: boolean) {
+    if (!on) {
+      setPlan3d(false)
+    }
     setSearchParams((params) => set3DParam(params, on), { replace: true, preventScrollReset: true })
   }
 
@@ -198,15 +217,38 @@ export default function MapLayout() {
     layersButton.current?.focus()
   }
 
-  /** F13: the pin button: the camera goes back to the open level's view, as when the level opened. */
+  /**
+   * F13: the pin button: the camera goes back to the open level's view, as when the level opened.
+   * F14: it ends the search's mark on a town.
+   */
   function showLevel() {
     if (!map) {
       return
     }
+    setFound(null)
     moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current, topBar.current), view3d ? TILT : 0, {
       duration: CAMERA_MS,
       easing: easeInOut,
     })
+  }
+
+  /**
+   * F14: a place the search picked. A city with data opens its forecast; picked while its panel
+   * is open, the camera goes back to it, as the pin does. Any other town: the panel closes, if
+   * open, and the camera goes to the town and marks it (CityMap, `found`).
+   */
+  function pickPlace(psgc: string) {
+    const path = CITY_PATHS[psgc]
+    if (path && level > 1 && psgc === QC_PSGC) {
+      showLevel()
+    } else if (path) {
+      navigate(path + levelSearch(2, search))
+    } else {
+      setFound({ psgc })
+      if (level > 1) {
+        navigate(MAP_PATHS[1] + levelSearch(1, search))
+      }
+    }
   }
 
   const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
@@ -223,6 +265,7 @@ export default function MapLayout() {
         <h1 className="visually-hidden">{HEADINGS[level]}</h1>
         <CityMap
           cities={cities}
+          islands={islands}
           forecast={forecast}
           baseStyle={baseStyle}
           base={base}
@@ -232,14 +275,19 @@ export default function MapLayout() {
           onMap={setMap}
           controls={controls}
           topBar={topBar}
+          found={found}
         />
         {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
-        {/* F14: the top left corner: the logo, a link home; F11: the plan's list of barangays under it */}
+        {/* F14: the top left corner: the logo, a link home, and the search beside it; F11: the
+            plan's list of barangays under them */}
         <div className="map-layout-top">
-          <Link to="/" className="map-layout-logo" aria-label="LEPTON, home page">
-            <Logo />
-          </Link>
+          <div className="map-layout-top-row">
+            <Link to="/" className="map-layout-logo" aria-label="LEPTON, home page">
+              <Logo />
+            </Link>
+            <MapSearch cities={cities} onPick={pickPlace} />
+          </div>
           <div ref={setListSlot} className="map-layout-list-slot" />
         </div>
         {/* F14: the top right corner: the data modes. The camera keeps the open city clear of them

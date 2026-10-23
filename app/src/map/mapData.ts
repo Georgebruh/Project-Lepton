@@ -1,6 +1,7 @@
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec'
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import { fetchBaseStyle } from './basemap.ts'
+import type { Islands } from './borders.ts'
 
 /**
  * F4: the files the map screens read, written by F2 (python -m src.app_data) into
@@ -121,6 +122,8 @@ export function withSimulation(forecast: CityForecast, simulation: Simulation | 
 
 export type MapData = {
   cities: Cities
+  /** F14: the islands' coastlines (ph_islands.json), drawn between the country's view and the towns' borders (borders.ts). */
+  islands: Islands
   forecast: CityForecast
   /** F14: the Simulation mode's weeks, or null if the file is missing (the map then has Real data only). */
   simulation: Simulation | null
@@ -151,16 +154,18 @@ async function fetchSimulation(): Promise<Simulation | null> {
 }
 
 /**
- * The /map route's loader: the city outlines, the city forecast, (F14) the simulation and
- * (F13) the street map's style, fetched together. A missing outline or forecast file stops
- * with an error; a missing simulation or a street map that does not load does not.
+ * The /map route's loader: the city outlines, (F14) the islands' coastlines, the city forecast,
+ * (F14) the simulation and (F13) the street map's style, fetched together. A missing outline or
+ * forecast file stops with an error; a missing simulation or a street map that does not load
+ * does not.
  */
 export async function loadMapData(): Promise<MapData> {
-  const [cities, forecast, simulation, baseStyle] = await Promise.all([
+  const [cities, islands, forecast, simulation, baseStyle] = await Promise.all([
     fetchJson<Cities>('/data/ph_cities.json'),
+    fetchJson<Islands>('/data/ph_islands.json'),
     fetchJson<CityForecast>('/data/city_forecast.json'),
     fetchSimulation(),
     fetchBaseStyle(),
   ])
-  return { cities, forecast, simulation, baseStyle }
+  return { cities, islands, forecast, simulation, baseStyle }
 }

@@ -32,7 +32,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/components/` | The shared components (F3), shown together at `/kit` in `npm run dev` |
 | `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
 | `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the tab's loader (F14: Compare models is a tab of the map's city panel) |
-| `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle) |
+| `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle), `MapSearch.tsx` (the search beside the logo), `borders.ts` (which lines show at each zoom), `orbit.ts` (the plan's circling camera) |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
 | `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
@@ -113,6 +113,7 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 | File | What it holds | Screens |
 | --- | --- | --- |
 | `ph_cities.json` | F14: the Philippines' 1,642 cities and municipalities (faeldon's 2023 maps): `psgc`, `name`, `province`, `has_data` (Quezon City only), and `label_lon`, `label_lat` where the map writes the name of a city with data (Quezon City only; the street map names the rest). NCR's 17 are F4's cleaned outlines; the rest are simplified province by province to about 100 m (`config.PH_SIMPLIFY_M`). 6 MB, 1.4 MB sent compressed (it is `.json`, not `.geojson`, so Vercel compresses it). It replaces F4's `ncr_cities.geojson` | Map |
+| `ph_islands.json` | F14: the coastline of every island of 1 km² or more (`config.PH_ISLANDS_MIN_KM2`): the 1,642 towns joined, the gaps between faeldon's province files closed (`PH_ISLANDS_GAP_M`), each island's outer coast only (the holes left are lakes, which the street map draws, or gaps in faeldon's maps), simplified to 250 m (`PH_ISLANDS_SIMPLIFY_M`). 0.5 MB, 0.15 MB sent compressed | Map |
 | `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
 | `noah_flood_5yr.pmtiles`, `noah_flood_25yr.pmtiles`, `noah_flood_100yr.pmtiles` | F14: NOAH's flood maps of every province NOAH has mapped, as vector tiles (`python -m src.noah_national`, not F2): layer `flood`, `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), zooms 4 to 11, each map thinned as little as keeps it under GitHub's 100 MB a file (`config.NOAH_TILE_LIMITS`: the 5- and 25-year maps keep tippecanoe's default tiles; the 100-year map's densest tiles drop more of their smallest patches). Patches under 400 m² dropped. ODbL, as NOAH's maps are. 50–95 MB each; the browser fetches only the tiles in view (HTTP range requests). They replace F13's Metro Manila overlays, `noah_<T>yr.json` | Map's flood zones (F13, F14), read when first turned on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes` | Prophylaxis plan |
@@ -178,18 +179,45 @@ The app's map was reworked on 22 October 2026 at the team's request: after openi
 is only the map, of the whole country, with no other tabs.
 
 - **The frame.** No app bar and no breadcrumb bar: the map fills the screen. Top left: the logo
-  (home). Top right: **Simulation | Real data** (`map/MapDataModes.tsx`), with a line saying what
-  the mode shows. Bottom middle: the timeline (`map/MapTimeline.tsx`): the date picker in the
-  middle, between the previous and next week, and under it the week its forecast is for; under
-  them a slider over every forecast week (the simulated ones amber), with each year marked under
-  it. Bottom right: the legends and the map buttons, then **Methods** (How it works) and the
-  sources' "i". The hint
+  (home) and the search beside it (`map/MapSearch.tsx`). Top right: **Simulation | Real data**
+  (`map/MapDataModes.tsx`), with a line saying what the mode shows. Bottom middle: the timeline
+  (`map/MapTimeline.tsx`): the date picker in the middle, between the previous and next week, and
+  under it the week its forecast is for; under them a slider over every forecast week (the
+  simulated ones amber), with each year marked under it. Bottom right: the legends and the map
+  buttons, then **Methods** (How it works) and the sources' "i". The hint
   ("Hover a city…") and the Cities list are gone; Quezon City's name on the map is the keyboard's
   way in.
+- **Search.** The button beside the logo opens a field that finds any of the 1,642 cities and
+  municipalities as the reader types (the phone guide's `matchPlaces`, `exposed/nearest.ts`),
+  each with its province, since many towns share a name. The arrow keys move through the matches
+  and Enter picks; Escape closes it. Quezon City opens its panel; any other town closes the panel,
+  if open, and the camera flies to the town (`map/view.ts` `cityView`, CityMap's `found`), which
+  keeps an outline of its own, `accent/primary` over a white casing, at every zoom: the "city-found"
+  layers. The mark stays until the search finds another town, a city opens, or the pin button
+  brings the Philippines back.
+- **Lines come with the zoom** (`map/borders.ts`). The country's view has no lines at all: the
+  land, the water and Quezon City's color. From zoom 6 (`ISLANDS_ZOOM`, a step in from the
+  country's 5 on a laptop) the islands' coastlines (`ph_islands.json`) fade in with the street
+  map's roads and rivers; from zoom 8 (`CITIES_ZOOM`) the towns' borders fade in as the coastlines
+  fade out. Each fade takes 0.75 of a zoom level. The street map's own borders are left out at
+  every zoom (`basemap.ts`). Below its zoom a layer is not drawn at all, so the country's view
+  draws none of the 1,642 borders; and below `CITIES_ZOOM` the towns' see-through fills lose their
+  smoothed edge (`fill-antialias`), which drew every border faintly where two fills met.
+- **Closing the panel** (its X, or the browser's Back) steps the camera one zoom level out from
+  where it is (`closeCamera`, `CLOSE_ZOOM_OUT`), so Quezon City stays in sight among its
+  neighbours; the pin button shows the whole country.
+- **The prophylaxis plan opens in 3D.** Opening the plan turns on the 3D view of its own accord
+  (the Layers panel's switch shows it on): the camera tilts with the panel's slide, then circles
+  Quezon City slowly, once in two minutes, easing in over 2 s (`map/orbit.ts`). The first click,
+  touch, wheel or key on the map stops it for good, as do the zoom and pin buttons; the reader
+  then turns the map by hand. Leaving the plan returns the map flat, unless the reader turned the
+  3D switch on themselves (`?view=3d`). With reduced motion the plan opens tilted and does not
+  circle.
 - **The whole Philippines.** Level 1 shows all 1,642 cities and municipalities
   (`ph_cities.json`): thin outlines zoomed out, a light fill the street map shows through, and a
   tooltip with the town's province and "No data yet". Only Quezon City has data, colored by its
-  outbreak level and named with next week's cases at every zoom; only it opens the panel.
+  outbreak level and named at every zoom, with next week's cases while it or its name is
+  hovered; only it opens the panel.
 - **The city panel** slides in from the left over about a third of the screen (36%, from 400 to
   560 px, `map/motion.ts`; half the screen, tried first, was too wide; a sheet from the bottom on
   a phone, as before), with three tabs: Cases forecast, **Compare models** (F9's
@@ -260,7 +288,8 @@ is only the map, of the whole country, with no other tabs.
   (`map/terrain.ts`). The ground rises with Mapzen's Terrain Tiles (heights doubled: Metro
   Manila is low), the street map gets the hill shading, and its buildings stand up from zoom 14.
   The camera tilts 60°; the reader can turn and tilt it with a right-button drag, two fingers,
-  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north.
+  or Shift and the arrow keys. Switching 3D off returns the map flat and facing north. F14: the
+  prophylaxis plan turns it on by itself, and off when the plan closes (above).
 - **Weather (F13).** The panel's Weather rows show one layer at a time, `?wx=` in the address
   (`map/weather.ts`): live clouds (Himawari-9 infrared, JMA, through NASA GIBS; the last 3 hours),
   live radar (RainViewer, the past 2 hours), live rain (NASA IMERG, the last 6 hours), and the
@@ -314,6 +343,12 @@ is only the map, of the whole country, with no other tabs.
   heatmap), a dashed or patterned line, or a paint property that varies by feature where others
   are constant each mean another shader. The browser keeps compiled shaders while the tab is
   open, so each one freezes the page once.
+
+  F14, measured 23 October 2026 (headless Edge on the GPU, 1440 × 900): zooming from the
+  whole country to Metro Manila and back, through the coastlines and the towns' borders, ran at
+  60 frames a second with no frame over 17 ms. The plan opened cold in 3D holds the page for up
+  to 0.8 s at a time over its first 3.6 s (the terrain's first tiles and shaders), then circles at
+  a steady 60. The circling never jumps ahead after such a pause (`LONGEST_STEP_MS`).
 
 ### The prophylaxis plan (F5)
 
