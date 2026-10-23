@@ -264,8 +264,8 @@ function csvField(value: string | number): string {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
-/** A date as the stock list writes it: "21 Oct 2024". */
-function fullDate(day: string): string {
+/** A date as the stock list (and F15's barangay report) writes it: "21 Oct 2024". */
+export function fullDate(day: string): string {
   return `${formatDayMonth(day)} ${day.slice(0, 4)}`
 }
 

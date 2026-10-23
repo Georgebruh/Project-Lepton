@@ -66,9 +66,11 @@ rain that fell (NASA IMERG) and on ECMWF forecasts issued 1, 2 and 3 days before
 
 **The app.** A web map of the Philippines (only Quezon City has data yet) shows the weekly
 forecast, compares the models, and plays each storm's prophylaxis plan barangay by barangay, with
-a stock list per health center to download. A guide for residents ("I have been exposed to
-floodwater") finds the nearest health center without storing or sending anything. See
-[`app/README.md`](app/README.md).
+a stock list per health center to download. Clicking a barangay opens its numbers and a
+**Generate Report** button, which saves a PDF report for its health office: the stock to prepare,
+the health centers that hold it, a map, and how the figures were made. A guide for residents ("I
+have been exposed to floodwater") finds the nearest health center without storing or sending
+anything. See [`app/README.md`](app/README.md).
 
 ## Why Quezon City first
 
@@ -305,7 +307,7 @@ npm run dev      # http://localhost:5173
 | `/map` | The map of the whole Philippines; Quezon City is the first city with data |
 | `/map/quezon-city` | Next week's forecast for Quezon City, any week since 2018 (`?date=2024-10-22`) |
 | `/map/quezon-city/compare` | The five models' forecasts and scores |
-| `/map/quezon-city/prophylaxis?date=2024-10-22` | Kristine's prophylaxis plan per barangay and health center, 1 to 3 days ahead |
+| `/map/quezon-city/prophylaxis?date=2024-10-22` | Kristine's prophylaxis plan per barangay and health center, 1 to 3 days ahead; click a barangay for its PDF report |
 | `/exposed` | The "I have been exposed to floodwater" guide for residents |
 | `/leptospirosis` | Leptospirosis explained for residents, each fact linked to its DOH source |
 | `/how-it-works` | The pipeline, models, tests, limits and sources |

@@ -23,41 +23,58 @@ type BarangayTooltipProps = {
  * prescriptions" badge (app check U2, which looks at the tooltips too); Figma's 3a has none.
  */
 export default function BarangayTooltip({ name, barangay, note, style }: BarangayTooltipProps) {
-  const units = barangay?.units[PLAN_FLOOD]
   return (
     <div className="barangay-tooltip" style={style}>
       <div className="barangay-tooltip-title">
         <p className="barangay-tooltip-name label-ui">{name}</p>
         {barangay?.flagged && <Badge tone="alert">Flagged</Badge>}
       </div>
-      {barangay && units ? (
-        <>
-          <p className="barangay-tooltip-text body-s">
-            {`${formatCount(barangay.exposed)} of ${formatCount(barangay.pop_2024)} residents exposed ` +
-              `(${formatShare(barangay.share)})`}
-          </p>
-          <hr className="barangay-tooltip-divider" />
-          <dl className="barangay-tooltip-units body-s">
-            <div>
-              <dt>Doxycycline 100 mg capsules</dt>
-              <dd className="data-m">{formatCount(units.doxy100)}</dd>
-            </div>
-            <div>
-              <dt>Children's courses</dt>
-              <dd className="data-m">{formatCount(units.courses)}</dd>
-            </div>
-            <div>
-              <dt>Amoxicillin 500 mg tablets</dt>
-              <dd className="data-m">{formatCount(units.amox500)}</dd>
-            </div>
-          </dl>
-          <Badge tone="warn" className="barangay-tooltip-badge">
-            Stock planning, not prescriptions
-          </Badge>
-        </>
-      ) : (
-        <p className="barangay-tooltip-text body-s">{note}</p>
-      )}
+      <BarangayNumbers barangay={barangay} note={note} />
     </div>
+  )
+}
+
+type BarangayNumbersProps = {
+  /** The barangay's numbers in the run on the map; undefined while no storm is shown. */
+  barangay: BarangayRun | undefined
+  /** What to say instead while no storm is shown. */
+  note: string
+}
+
+/**
+ * The tooltip's numbers, under the name: residents exposed, then the three units over the
+ * not-prescriptions badge; `note` while no storm is shown. F15: the barangay's pop-up
+ * (BarangayPopup.tsx) shows the same, so the two never differ.
+ */
+export function BarangayNumbers({ barangay, note }: BarangayNumbersProps) {
+  const units = barangay?.units[PLAN_FLOOD]
+  if (!barangay || !units) {
+    return <p className="barangay-tooltip-text body-s">{note}</p>
+  }
+  return (
+    <>
+      <p className="barangay-tooltip-text body-s">
+        {`${formatCount(barangay.exposed)} of ${formatCount(barangay.pop_2024)} residents exposed ` +
+          `(${formatShare(barangay.share)})`}
+      </p>
+      <hr className="barangay-tooltip-divider" />
+      <dl className="barangay-tooltip-units body-s">
+        <div>
+          <dt>Doxycycline 100 mg capsules</dt>
+          <dd className="data-m">{formatCount(units.doxy100)}</dd>
+        </div>
+        <div>
+          <dt>Children's courses</dt>
+          <dd className="data-m">{formatCount(units.courses)}</dd>
+        </div>
+        <div>
+          <dt>Amoxicillin 500 mg tablets</dt>
+          <dd className="data-m">{formatCount(units.amox500)}</dd>
+        </div>
+      </dl>
+      <Badge tone="warn" className="barangay-tooltip-badge">
+        Stock planning, not prescriptions
+      </Badge>
+    </>
   )
 }
