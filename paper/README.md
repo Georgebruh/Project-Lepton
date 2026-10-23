@@ -6,7 +6,9 @@ sections can move to another template unchanged.
 
 Status (October 22): E3 (the objectives), E4 (background, problem, scope and limitations, and
 the assumptions table), E5 (the methodology, and its formulas in Appendix B), E6 (the results,
-Tables 2-4 and Figures 1-4) and E9 (the executive summary, 247 words) are written. E8's other
+Tables 2-4 and Figures 1-4) and E9 (the executive summary, 247 words) are written. E7 (the
+references) was checked on October 23: all 40 cited, every DOI matched against Crossref or
+DataCite. E8's other
 appendices are still a stub that prints a red **[Check: …]** note naming its task.
 Note: E1's reading of the 2026 PJDSC primer (branch `E1-submission-rules`) is that the final
 submission is a slide deck, a video and this repository, with no written paper. The team writes
