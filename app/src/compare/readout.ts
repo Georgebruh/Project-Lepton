@@ -1,4 +1,4 @@
-import { SIMULATED_LABEL, formatCount, formatDayMonth, formatWeek, thresholdCount } from '../map/forecast.ts'
+import { badgeWords, formatCount, formatDayMonth, formatWeek, thresholdCount } from '../map/forecast.ts'
 import type { ForecastWeek } from '../map/mapData.ts'
 import { RANGE_MODEL, modelStyle } from './models.ts'
 import type { StormMark } from './periods.ts'
@@ -38,7 +38,9 @@ export function readoutRows(week: ForecastWeek, models: string[], layers: Layers
     return { series: model, value: formatCount(forecast.mu), label: `${modelStyle(model).key} forecast`, note: range }
   })
   if (layers.observed) {
-    rows.push({ series: 'observed', value: formatCount(week.y), label: 'cases' })
+    // F14: a simulated week's count is made up, and a week still under way has none yet
+    const label = week.simulated ? 'simulated cases' : 'cases'
+    rows.push({ series: 'observed', value: week.y === null ? '—' : formatCount(week.y), label, note: week.y === null ? 'week not over' : undefined })
   }
   if (layers.threshold) {
     const note = week.breached ? 'the count is above it' : undefined
@@ -62,8 +64,8 @@ export function readoutSentence(week: ForecastWeek, rows: ReadoutRow[], storm: S
   if (storm) {
     words.push(`${stormWords(storm)}.`)
   }
-  if (simulated) {
-    words.push(`${SIMULATED_LABEL}.`)
+  if (simulated || week.simulated) {
+    words.push(`${badgeWords(simulated)}.`)
   }
   return words.join(' ')
 }

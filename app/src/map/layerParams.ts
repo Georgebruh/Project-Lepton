@@ -1,5 +1,6 @@
 import { BASE_MAPS, type BaseMap } from './basemap.ts'
 import { FLOOD_PERIODS, type FloodPeriod } from './floodLayer.ts'
+import type { DataMode } from './mapData.ts'
 import { WEATHER, type Weather } from './weather.ts'
 
 /*
@@ -7,9 +8,25 @@ import { WEATHER, type Weather } from './weather.ts'
  * so a link opens the same map: ?base=satellite or ?base=terrain (the street map, the default,
  * is left out), ?flood=5, 25 or 100 for NOAH's flood zones, ?view=3d for the 3D view, and
  * ?wx=clouds, radar, rain, rain-day or photo-day for the weather layer (each left out when off).
+ * F14: ?data=real for the Real data mode (Simulation, the default, is left out).
  * levelSearch (routes.ts) keeps them when the reader moves between the levels.
  */
-export const LAYER_PARAMS = { base: 'base', flood: 'flood', view: 'view', weather: 'wx' }
+export const LAYER_PARAMS = { base: 'base', flood: 'flood', view: 'view', weather: 'wx', data: 'data' }
+
+/** F14: the mode the address names: Real data with ?data=real, otherwise Simulation, the default. */
+export function dataOf(params: URLSearchParams): DataMode {
+  return params.get(LAYER_PARAMS.data) === 'real' ? 'real' : 'simulation'
+}
+
+/** F14: writes the mode into `params` (Simulation, the default, as no setting at all). */
+export function setDataParam(params: URLSearchParams, mode: DataMode): URLSearchParams {
+  if (mode === 'real') {
+    params.set(LAYER_PARAMS.data, 'real')
+  } else {
+    params.delete(LAYER_PARAMS.data)
+  }
+  return params
+}
 
 /** The base map the address names; the street map if it names none, or one the app does not know. */
 export function baseOf(params: URLSearchParams): BaseMap {

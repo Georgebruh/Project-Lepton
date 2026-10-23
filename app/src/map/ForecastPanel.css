@@ -104,15 +104,3 @@
 .forecast-panel-chance-fill-high {
   background: var(--color-status-alert);
 }
-
-/* margin-top: auto pushes the buttons to the bottom of the panel, as Figma's spacer does */
-.forecast-panel-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: auto;
-}
-
-.forecast-panel-action {
-  width: 100%;
-}

@@ -14,8 +14,8 @@ import { QC_PSGC, type MapLevel } from './routes.ts'
  * turns and tilts about the middle of the map left in sight, beside the panel or above the sheet.
  */
 
-/** Space kept around what the camera fits, in px (Figma: 28 around Metro Manila, 32 around Quezon City). */
-const FIT_PADDING = { metro: 28, city: 32 }
+/** Space kept around what the camera fits, in px (Figma: 28 around Metro Manila, now the Philippines; 32 around Quezon City). */
+const FIT_PADDING = { country: 28, city: 32 }
 
 /**
  * F13: the least height, in px, the open city keeps on a phone. Legends taller than the map left
@@ -50,24 +50,39 @@ function boundsOf(features: Cities['features']): Box {
   ]
 }
 
+/** F14: the box around every city and municipality, computed once per file: the Philippines. */
+const countryBounds = new WeakMap<Cities, Box>()
+
 /**
- * What the camera shows at a level: all of Metro Manila at level 1; the open city at levels 2
- * and 3, kept clear of the panel by padding the side it covers: the right by the panel's width,
- * or on a phone the bottom by the sheet's height and by `controls`, the legend and zoom buttons
- * that stand on it (F11, panelCover), leaving the city at least MIN_CITY_HEIGHT. `container`
- * is the map's element, at its size now.
+ * What the camera shows at a level: all of the Philippines at level 1 (F14; Metro Manila
+ * before); the open city at levels 2 and 3, kept clear of the panel by padding the side it
+ * covers: the left by the panel's width (F14), or on a phone the bottom by the sheet's height and
+ * by `controls`, the legend and zoom buttons that stand on it (F11, panelCover), leaving the city
+ * at least MIN_CITY_HEIGHT. F14: the top by `topBar`, the logo and data modes over the map.
+ * `container` is the map's element, at its size now.
  */
-export function viewFor(level: MapLevel, cities: Cities, container: HTMLElement, controls: HTMLElement | null): LevelView {
+export function viewFor(
+  level: MapLevel,
+  cities: Cities,
+  container: HTMLElement,
+  controls: HTMLElement | null,
+  topBar: HTMLElement | null = null,
+): LevelView {
   if (level === 1) {
-    const pad = FIT_PADDING.metro
-    return { bounds: boundsOf(cities.features), padding: { top: pad, bottom: pad, left: pad, right: pad } }
+    const pad = FIT_PADDING.country
+    if (!countryBounds.has(cities)) {
+      countryBounds.set(cities, boundsOf(cities.features))
+    }
+    return { bounds: countryBounds.get(cities)!, padding: { top: pad, bottom: pad, left: pad, right: pad } }
   }
   const pad = FIT_PADDING.city
   const open = cities.features.filter((feature) => feature.properties.psgc === QC_PSGC)
   const cover = panelCover(container.clientWidth, container.clientHeight)
   const most = container.clientHeight - 2 * pad - MIN_CITY_HEIGHT
   const bottom = cover.bottom > 0 ? Math.max(cover.bottom, Math.min(cover.bottom + (controls?.offsetHeight ?? 0), most)) : 0
-  return { bounds: boundsOf(open), padding: { top: pad, bottom: pad + bottom, left: pad, right: pad + cover.right } }
+  // F14: and the top left corner's logo and data modes, while the city keeps at least MIN_CITY_HEIGHT
+  const top = Math.max(0, Math.min(topBar?.offsetHeight ?? 0, most - bottom))
+  return { bounds: boundsOf(open), padding: { top: pad + top, bottom: pad + bottom, left: pad + cover.left, right: pad } }
 }
 
 /**

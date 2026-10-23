@@ -12,6 +12,24 @@ import type { CityForecast, ForecastWeek, OutbreakLevel } from './mapData.ts'
 /** Shown with every Layer 1 number while city_forecast.json says simulated (app check U2). */
 export const SIMULATED_LABEL = 'Simulated until QCESD data'
 
+/** F14: shown with every number of a week from the Simulation mode (made-up counts, or forecasts made on them). */
+export const SIMULATION_LABEL = 'Simulated'
+
+/** F14: whether a week's numbers are simulated: the whole file made up, or a week the Simulation mode added. */
+export function isSimulated(forecast: CityForecast, week: ForecastWeek | undefined): boolean {
+  return forecast.simulated || week?.simulated === true
+}
+
+/** F14: the badge's words for simulated numbers: the made-up file's (`fileSimulated`), or the Simulation mode's. */
+export function badgeWords(fileSimulated: boolean): string {
+  return fileSimulated ? SIMULATED_LABEL : SIMULATION_LABEL
+}
+
+/** F14: the badge a week's numbers carry when isSimulated. */
+export function simulatedLabel(forecast: CityForecast): string {
+  return badgeWords(forecast.simulated)
+}
+
 /** Each outbreak level's name, as the legend and the badges write it. */
 export const LEVEL_NAMES: Record<OutbreakLevel, string> = { low: 'Low', watch: 'Watch', high: 'High' }
 
@@ -60,16 +78,21 @@ export function dateRange(forecast: CityForecast): { first: string; last: string
   return { first: addDays(weeks[0].start, -lead), last: addDays(weeks[weeks.length - 1].start, -lead + 6) }
 }
 
+/** F14: today's date where the reader is, YYYY-MM-DD. */
+export function today(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 /**
  * The date the map shows: the one in the address, moved inside the backtest's dates if it
- * falls outside them; the latest date if the address names none, or no real date.
+ * falls outside them. F14: if the address names none, or no real date, today, moved inside
+ * them too: in Simulation mode the simulation runs to today; Real data ends at QCESD's last week.
  */
 export function chosenDate(forecast: CityForecast, requested: string | null): string {
   const { first, last } = dateRange(forecast)
-  if (!requested || !isDay(requested)) {
-    return last
-  }
-  return requested < first ? first : requested > last ? last : requested
+  const day = requested && isDay(requested) ? requested : today()
+  return day < first ? first : day > last ? last : day
 }
 
 /** The forecast made in the week holding `day`, for the week after it; undefined if the backtest has none. */

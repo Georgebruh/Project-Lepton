@@ -4,7 +4,7 @@ import Icon from '../components/Icon.tsx'
 import PanelHeader from '../components/PanelHeader.tsx'
 import Tab from '../components/Tab.tsx'
 import ToggleRow from '../components/ToggleRow.tsx'
-import { SIMULATED_LABEL } from '../map/forecast.ts'
+import { badgeWords } from '../map/forecast.ts'
 import type { ForecastWeek } from '../map/mapData.ts'
 import { RANGE_MODEL, modelStyle } from './models.ts'
 import { RECENT_WEEKS, allYearsName, type Period } from './periods.ts'
@@ -174,7 +174,8 @@ export default function ControlsPanel({
       <div className="controls-panel-data">
         <p className="controls-panel-data-label label-eyebrow">Latest week with a count</p>
         <p className="controls-panel-data-week heading-s">{weekTitle(latest)}</p>
-        {simulated && <Badge tone="warn">{SIMULATED_LABEL}</Badge>}
+        {/* F14: also a week the Simulation mode added */}
+        {(simulated || latest.simulated) && <Badge tone="warn">{badgeWords(simulated)}</Badge>}
       </div>
     </section>
   )

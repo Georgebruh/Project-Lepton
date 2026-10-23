@@ -1475,14 +1475,16 @@ def f2_app_data():
         789,689 residents exposed, 3,174,170 doxycycline capsules, 254,430 children's courses
         and 37,386 amoxicillin tablets; Tatalon (1381300121) has 36,809 of its 58,286
         residents exposed (63%) and needs 138,400 capsules, 13,463 courses and 1,680 tablets;
-      - joins on PSGC: 17 of 17 NCR cities (only Quezon City has data); 142 of 142 barangays
-        in the shapes, in A5 and in every barangay file; each run's barangays add up to its QC
-        totals (both rounded to whole numbers, so within about half a unit per barangay);
-      - the city outlines leave no gap and overlap less than 1 m2, and Quezon City's outline
+      - joins on PSGC: F14's ph_cities.json holds the Philippines' 1,642 cities and
+        municipalities (config.PH_CITY_COUNT), one PSGC each, with a province each, and only
+        Quezon City has data; 142 of 142 barangays in the shapes, in A5 and in every barangay
+        file; each run's barangays add up to its QC totals (both rounded to whole numbers, so
+        within about half a unit per barangay);
+      - NCR's 17 outlines leave no gap and overlap less than 1 m2, and Quezon City's outline
         is its barangays joined (within 1 m), so the map's two levels line up;
-      - F4: every city of at least config.APP_LABEL_MIN_KM2 has a label point, inside the city,
-        and no smaller city has one; city_forecast.json names config.APP_LEVEL_MODEL and the
-        outbreak levels of config.APP_LEVELS;
+      - F4: Quezon City has a label point, inside it, and (F14) no other city does: the street
+        map names the rest; city_forecast.json names config.APP_LEVEL_MODEL and the outbreak
+        levels of config.APP_LEVELS;
       - every health center has coordinates or is listed with C7's reason for leaving it out;
       - every file with doses carries the not-prescriptions label;
       - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
@@ -1532,9 +1534,14 @@ def f2_app_data():
     got = (tatalon["exposed"], tatalon["pop_2024"], round(100 * tatalon["share"]), *tatalon["units"]["D1"].values())
     assert got == (36_809, 58_286, 63, 138_400, 13_463, 1_680), f"Tatalon, Kristine 1 day ahead: {got}"
 
-    cities = gpd.read_file(config.APP_DATA / "ncr_cities.geojson")
-    assert len(cities) == config.NCR_CITY_COUNT and cities["psgc"].is_unique, f"{len(cities)} NCR cities, expected 17 with one PSGC each"
-    assert set(cities.loc[cities["has_data"].astype(bool), "psgc"]) == {config.QC_CITY_PSGC}, "only Quezon City may have data"
+    country = gpd.read_file(config.APP_DATA / config.APP_CITIES_FILE)
+    assert len(country) == config.PH_CITY_COUNT and country["psgc"].is_unique, (
+        f"{len(country)} cities and municipalities, expected {config.PH_CITY_COUNT} with one PSGC each: {rerun}")
+    assert country["province"].notna().all() and (country["province"] != "").all(), f"a city without its province: {rerun}"
+    assert set(country.loc[country["has_data"].astype(bool), "psgc"]) == {config.QC_CITY_PSGC}, "only Quezon City may have data"
+    assert country.is_valid.all() and not country.is_empty.any(), f"a city outline is invalid or empty: {rerun}"
+    cities = country[country["province"] == "National Capital Region"].reset_index(drop=True)
+    assert len(cities) == config.NCR_CITY_COUNT, f"{len(cities)} NCR cities, expected {config.NCR_CITY_COUNT}"
     shapes = gpd.read_file(config.APP_DATA / "qc_barangays.geojson")
     a5 = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc"])
     assert len(shapes) == config.QC_BARANGAYS and set(shapes["psgc"]) == set(a5["psgc"]), "the barangay shapes do not join A5's 142"
@@ -1547,11 +1554,10 @@ def f2_app_data():
     qc_city = flat.loc[flat["psgc"] == config.QC_CITY_PSGC].geometry.iloc[0]
     apart = qc_city.hausdorff_distance(shapes.to_crs(config.CRS_OVERLAY).union_all())
     assert apart < 1, f"Quezon City's outline lies up to {apart:.0f} m from its barangays' outline: {rerun}"
-    labeled = cities["label_lon"].notna() & cities["label_lat"].notna()
-    big_enough = flat.area / 1e6 >= config.APP_LABEL_MIN_KM2
-    assert (labeled == big_enough).all(), f"label points must be given to exactly the cities of {config.APP_LABEL_MIN_KM2} km2 or more: {rerun}"
-    points = gpd.points_from_xy(cities.loc[labeled, "label_lon"], cities.loc[labeled, "label_lat"], crs=config.CRS_LONLAT)
-    outside = [name for name, shape, point in zip(cities.loc[labeled, "name"], cities.loc[labeled].geometry, points)
+    labeled = country["label_lon"].notna() & country["label_lat"].notna()
+    assert set(country.loc[labeled, "psgc"]) == {config.QC_CITY_PSGC}, f"only Quezon City, the city with data, gets a label point: {rerun}"
+    points = gpd.points_from_xy(country.loc[labeled, "label_lon"], country.loc[labeled, "label_lat"], crs=config.CRS_LONLAT)
+    outside = [name for name, shape, point in zip(country.loc[labeled, "name"], country.loc[labeled].geometry, points)
                if not shape.contains(point)]
     assert not outside, f"label points outside their city: {outside}"
     for storm in storms["storms"]:
@@ -1599,8 +1605,8 @@ def f2_app_data():
     else:
         layer1 = "no city_forecast.json yet"
     left_out = sum(bool(center["left_out"]) for center in centers)
-    return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; 17 cities and "
-            f"142 barangays join; {labeled.sum()} city labels inside their cities; {len(centers) - left_out} centers "
+    return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; {len(country):,} "
+            f"cities (NCR's 17 a clean coverage) and 142 barangays join; Quezon City's label inside it; {len(centers) - left_out} centers "
             f"get stock, {left_out} left out and listed; {layer1}")
 
 
@@ -1773,46 +1779,103 @@ def e6_score_tables():
     assert set(all_years["weeks"]) == {weeks_all}, f"d5_d6_all_years.csv weeks {set(all_years['weeks'])}, not {weeks_all}: {rerun}"
     return (f"{len(point)} models' MAE equal d8_fig2_mae.csv and {len(fig3)} Brier scores d8_fig3_reliability.csv; "
             f"windows of {', '.join(str(int(table.loc[table['window'] == w, 'weeks'].iloc[0])) for w in windows)} weeks")
-def f13_noah_map():
-    """F13: the map's NOAH overlay (app/public/data/noah_<T>yr.json) still shows A8's flood maps.
+def f14_noah_tiles():
+    """F14: the map's NOAH tiles (app/public/data/noah_flood_<T>yr.pmtiles) cover the whole country.
 
-    F2 writes each of NOAH's three maps simplified for the browser (app_data.noah_overlay).
-    Each file must hold the three hazard levels (var 1-3) as polygons, carry today's settings
-    and A8's file's fingerprint (app_data.noah_settings, so a file left from older settings or an
-    older A8 run fails),
-    and keep a share of A8's flooded area within config.APP_NOAH_AREA_KEPT: the overlay drops
-    patches smaller than APP_NOAH_MIN_M2, so it shows a little less than the full map (C2 and
-    every number use the full map). Shapes are not checked for validity: rounding to
-    config.APP_COORD_DECIMALS can make a patch touch itself, which the map draws without trouble.
+    src/noah_national.py writes one PMTiles file per NOAH map. Each must be a PMTiles version 3
+    file of vector tiles (its 127-byte header, https://github.com/protomaps/PMTiles spec v3), with
+    the zooms of config.NOAH_TILE_ZOOMS, small enough for GitHub (config.APP_NOAH_TILES_MAX_BYTES),
+    and bounds that reach at least config.APP_NOAH_TILES_REACH, from Mindanao to northern Luzon:
+    a file of Metro Manila alone, or of a few provinces, fails.
+    Where src/noah_national.py ran (data/clean/noah_national/manifest.csv), every province it
+    prepared for a map has flood patches, unless NOAH's own file held no shapes (features 0: the
+    100-year Tawi-Tawi zip is empty, the 5-year Masbate shapefile has no rows).
     """
-    need_file(config.NOAH_FLOOD, "A8 (python -m src.noah)")
-    import geopandas as gpd
+    import struct
 
-    from src import app_data
+    import pandas as pd
 
-    paths = {t: app_data.noah_path(t) for t in config.NOAH_RETURN_PERIODS}
-    for path in paths.values():
-        need_file(path, "F2 (python -m src.app_data)")
+    rerun = "rerun python -m src.noah_national"
+    lines = []
+    manifest_path = config.NOAH_NATIONAL_CLEAN / "manifest.csv"
+    manifest = pd.read_csv(manifest_path) if manifest_path.exists() else None
+    for t in config.NOAH_RETURN_PERIODS:
+        path = config.APP_DATA / config.APP_NOAH_TILES.format(return_period=t)
+        need_file(path, "F14 (python -m src.noah_national)")
+        size = path.stat().st_size
+        assert size <= config.APP_NOAH_TILES_MAX_BYTES, f"{path.name} is {size / 1e6:.0f} MB, over GitHub's limit"
+        with open(path, "rb") as f:
+            header = f.read(127)
+        assert header[:7] == b"PMTiles" and header[7] == 3, f"{path.name} is not a PMTiles v3 file: {rerun}"
+        tile_type, min_zoom, max_zoom = header[99], header[100], header[101]
+        west, south, east, north = (v / 1e7 for v in struct.unpack_from("<4i", header, 102))
+        assert tile_type == 1, f"{path.name} holds tile type {tile_type}, not vector tiles (1)"
+        assert (min_zoom, max_zoom) == tuple(config.NOAH_TILE_ZOOMS), (
+            f"{path.name}: zooms {min_zoom}-{max_zoom}, config says {config.NOAH_TILE_ZOOMS}: {rerun}")
+        reach_west, reach_south, reach_east, reach_north = config.APP_NOAH_TILES_REACH
+        assert west <= reach_west and south <= reach_south and east >= reach_east and north >= reach_north, (
+            f"{path.name} reaches only {west:.2f}-{east:.2f} E, {south:.2f}-{north:.2f} N: not the whole country: {rerun}")
+        if manifest is not None:
+            rows = manifest[manifest["return_period"] == t]
+            empty_at_source = rows["features"].eq(0) if "features" in rows else rows["shapefiles"].eq(0)
+            lost = rows.loc[(rows["patches"] == 0) & ~empty_at_source, "province"].tolist()
+            assert len(rows) and not lost, f"{t}-year map: no flood patches kept for {lost}, though NOAH's files have shapes"
+            lines.append(f"{t}-year {len(rows)} provinces, {size / 1e6:.0f} MB")
+        else:
+            lines.append(f"{t}-year {size / 1e6:.0f} MB")
+    return "; ".join(lines)
 
-    # A8's file keeps each level's area (km2): no need to read its 2 million points
-    full_km2 = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard", ignore_geometry=True).groupby("return_period")["area_km2"].sum()
-    low, high = config.APP_NOAH_AREA_KEPT
-    rerun = "rerun python -m src.app_data"
-    kept = {}
-    for t, path in paths.items():
-        overlay = gpd.read_file(path)
-        assert sorted(overlay["var"]) == list(config.NOAH_HAZARD_LEVELS), (
-            f"{path.name} holds levels {sorted(overlay['var'])}, expected {list(config.NOAH_HAZARD_LEVELS)}")
-        for name, value in app_data.noah_settings().items():
-            now = "A8's maps as they are now" if name == "a8_fingerprint" else "today's setting in config"
-            assert name in overlay and (overlay[name] == value).all(), (
-                f"{path.name} was not made with {name} = {value} ({now}): {rerun}")
-        assert overlay.geom_type.isin(["Polygon", "MultiPolygon"]).all() and not overlay.is_empty.any(), (
-            f"{path.name}: a hazard level without polygons")
-        kept[t] = overlay.to_crs(config.CRS_OVERLAY).area.sum() / 1e6 / full_km2[t]
-        assert low <= kept[t] <= high, (
-            f"{path.name} keeps {kept[t]:.1%} of A8's flooded area, outside {low:.0%} to {high:.1%}: {rerun}")
-    return ", ".join(f"{t}-year {share:.1%}" for t, share in kept.items()) + " of A8's flooded area"
+
+def f14_simulation():
+    """F14: the map's Simulation mode (app/public/data/city_simulation.json) follows the real weeks.
+
+      - its weeks start the week after city_forecast.json's last and run on without a gap to the
+        week after the day it was made (made_on): next week's forecast;
+      - every week has every model's forecast, and a whole count of 0 or more where the week had
+        ended by made_on; the week of made_on and next week have none (y null);
+      - its ECMWF rain was fetched on made_on;
+      - where B10's real run and that day's ECMWF reply are on this computer, the file equals a
+        fresh src.app_simulation for that day, without M3 (Prophet's fits differ from computer to
+        computer, as the F2 check says).
+    """
+    import json
+    from datetime import date
+
+    from src import app_simulation, backtest, weeks
+
+    path = config.APP_DATA / config.APP_SIMULATION_FILE
+    need_file(path, "F14 (python -m src.app_simulation)")
+    rerun = "rerun python -m src.app_simulation"
+    with open(path, encoding="utf-8") as f:
+        simulation = json.load(f)
+    with open(config.APP_DATA / "city_forecast.json", encoding="utf-8") as f:
+        real = json.load(f)
+    made_on = date.fromisoformat(simulation["made_on"])
+    this_week = weeks.week_index(made_on)
+    indexes = [week["week_index"] for week in simulation["weeks"]]
+    first = real["weeks"][-1]["week_index"] + 1
+    assert indexes == list(range(first, this_week + 2)), (
+        f"simulated weeks {indexes[0]}-{indexes[-1]}, expected {first}-{this_week + 1} (made on {made_on}): {rerun}")
+    assert simulation["weather"]["fetched_on"] == simulation["made_on"], "the ECMWF rain is from another day than made_on"
+    for week in simulation["weeks"]:
+        assert set(week["forecasts"]) == set(backtest.MODELS), f"week {week['week_index']}: models {sorted(week['forecasts'])}"
+        ended = week["week_index"] < this_week
+        assert (week["y"] is not None) == ended, f"week {week['week_index']}: a count only for the weeks ended by {made_on}"
+        assert not week["simulated_y"] or week["y"] is not None, f"week {week['week_index']}: simulated, but no count"
+        assert week["y"] is None or (isinstance(week["y"], int) and week["y"] >= 0), f"week {week['week_index']}: count {week['y']}"
+    try:
+        without_m3 = [model for model in backtest.MODELS if model != "M3"]
+        fresh = (json.loads(json.dumps(app_simulation.simulation_file(made_on, fetch=False, models=without_m3)[0]))
+                 if config.FORECASTS.exists() else None)
+    except FileNotFoundError:   # that day's ECMWF reply is not on this computer: a past day is never fetched again
+        fresh = None
+    if fresh is not None:
+        for content in (fresh, simulation):
+            for week in content["weeks"]:
+                week["forecasts"].pop("M3", None)
+        assert fresh == simulation, f"city_simulation.json differs from a fresh run for {made_on}: {rerun} --day {made_on}"
+        return f"{len(indexes)} weeks to {simulation['weeks'][-1]['start']}, equal to a fresh run for {made_on}"
+    return f"{len(indexes)} weeks to {simulation['weeks'][-1]['start']} (no fresh run: B10's forecasts or the ECMWF reply are not here)"
 
 
 def not_built(task):
@@ -1851,7 +1914,8 @@ CHECKS = {
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
     "E6 score tables": e6_score_tables,
-    "F13 NOAH map": f13_noah_map,
+    "F14 NOAH tiles": f14_noah_tiles,
+    "F14 simulation": f14_simulation,
     "E10 package": e10_package,
 }
 

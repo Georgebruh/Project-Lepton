@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import Badge from '../components/Badge.tsx'
-import { SIMULATED_LABEL } from '../map/forecast.ts'
+import { badgeWords } from '../map/forecast.ts'
 import type { ForecastWeek } from '../map/mapData.ts'
 import type { StormMark } from './periods.ts'
 import { stormWords, weekTitle, type ReadoutRow } from './readout.ts'
@@ -29,7 +29,8 @@ export default function ChartReadout({ week, rows, storm, simulated, style }: Ch
   return (
     <div className="chart-readout" style={style} aria-hidden="true">
       <p className="chart-readout-week label-ui">{weekTitle(week)}</p>
-      {simulated && <Badge tone="warn">{SIMULATED_LABEL}</Badge>}
+      {/* F14: also a week the Simulation mode added */}
+      {(simulated || week.simulated) && <Badge tone="warn">{badgeWords(simulated)}</Badge>}
       <ul className="chart-readout-rows">
         {rows.map((row) => (
           <li key={row.series} className="chart-readout-row">

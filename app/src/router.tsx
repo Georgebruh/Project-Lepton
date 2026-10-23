@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router'
 import App from './App.tsx'
 import { loadMapData } from './map/mapData.ts'
 import { loadPlanData } from './map/planData.ts'
+import CompareRedirect from './screens/CompareRedirect.tsx'
 import ErrorPage from './screens/ErrorPage.tsx'
 import Exposed from './screens/Exposed.tsx'
 import Home from './screens/Home.tsx'
@@ -36,6 +37,12 @@ import Leptospirosis from './screens/Leptospirosis.tsx'
  * F12: /kit is in `npm run dev` only. Its Figma sample text and its buttons that do nothing
  * would fail check U7 (nothing fake ships), so the built site, the one Vercel serves, leaves it
  * out: there /kit shows ErrorPage, as any other unknown address does.
+ *
+ * F14: the map is the app's one view: Compare models is a tab of the city panel
+ * (/map/quezon-city/compare, level 2), with its own loader (the storms and the scores). /compare,
+ * which the site header's Results and How it works link to, opens that tab in Real data mode,
+ * keeping the address's ?period= (screens/CompareRedirect.tsx). Level 1 is the Philippines
+ * (MapPhilippines).
  */
 const DEV_ROUTES = import.meta.env.DEV
   ? [{ path: '/kit', lazy: async () => ({ Component: (await import('./screens/Kit.tsx')).default }) }]
@@ -57,12 +64,24 @@ export const router = createBrowserRouter([
           {
             index: true,
             handle: { mapLevel: 1 },
-            lazy: async () => ({ Component: (await import('./screens/MapMetroManila.tsx')).default }),
+            lazy: async () => ({ Component: (await import('./screens/MapPhilippines.tsx')).default }),
           },
           {
             path: 'quezon-city',
             handle: { mapLevel: 2 },
             lazy: async () => ({ Component: (await import('./screens/MapQuezonCity.tsx')).default }),
+          },
+          {
+            path: 'quezon-city/compare',
+            handle: { mapLevel: 2 },
+            lazy: async () => {
+              const [{ default: Component }, { loadCompareData }] = await Promise.all([
+                import('./screens/MapCompare.tsx'),
+                import('./compare/compareData.ts'),
+              ])
+              return { Component, loader: loadCompareData }
+            },
+            shouldRevalidate: () => false,
           },
           {
             path: 'quezon-city/prophylaxis',
@@ -75,18 +94,7 @@ export const router = createBrowserRouter([
       },
       { path: '/leptospirosis', element: <Leptospirosis /> },
       { path: '/exposed', element: <Exposed /> },
-      {
-        path: '/compare',
-        lazy: async () => {
-          const [{ default: Component }, { loadCompareData }] = await Promise.all([
-            import('./screens/CompareModels.tsx'),
-            import('./compare/compareData.ts'),
-          ])
-          return { Component, loader: loadCompareData }
-        },
-        shouldRevalidate: () => false,
-        hydrateFallbackElement: <p className="route-loading body-m">Loading the forecasts…</p>,
-      },
+      { path: '/compare', element: <CompareRedirect /> },
       { path: '/how-it-works', element: <HowItWorks /> },
       ...DEV_ROUTES,
     ],

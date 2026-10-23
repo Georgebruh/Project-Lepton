@@ -45,7 +45,7 @@ export default function BacktestChart({ forecast }: BacktestChartProps) {
   const at = (week: ForecastWeek) => x(week.week_index) ?? 0
   const tallest = Math.max(
     1,
-    ...weeks.flatMap((week) => [week.y, week.threshold, week.forecasts[model].high, week.forecasts[model].mu]),
+    ...weeks.flatMap((week) => [week.y ?? 0, week.threshold, week.forecasts[model].high, week.forecasts[model].mu]),
   )
   const y = scaleLinear().domain([0, tallest]).range([BASE, TOP])
 
@@ -68,16 +68,20 @@ export default function BacktestChart({ forecast }: BacktestChartProps) {
     <figure className="backtest-chart">
       <svg className="backtest-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
         <rect className="backtest-chart-axis" x={0} y={BASE} width={WIDTH} height={1} />
-        {weeks.map((week) => (
-          <rect
-            key={week.week_index}
-            className="backtest-chart-bar"
-            x={at(week) - BAR / 2}
-            y={y(week.y)}
-            width={BAR}
-            height={BASE - y(week.y)}
-          />
-        ))}
+        {/* city_forecast.json's weeks all have a count; only the map's Simulation mode adds weeks without one (F14) */}
+        {weeks.map(
+          (week) =>
+            week.y !== null && (
+              <rect
+                key={week.week_index}
+                className="backtest-chart-bar"
+                x={at(week) - BAR / 2}
+                y={y(week.y)}
+                width={BAR}
+                height={BASE - y(week.y)}
+              />
+            ),
+        )}
         <path className="backtest-chart-range" d={range} />
         <path className="backtest-chart-forecast" d={line(weeks, (week) => week.forecasts[model].mu)} />
         <path className="backtest-chart-threshold" d={line(weeks, (week) => week.threshold)} />

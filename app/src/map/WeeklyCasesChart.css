@@ -19,6 +19,14 @@
   opacity: 0.45;
 }
 
+/* F14: a simulated week's count: outlined, dashed, so it never reads as a real count */
+.weekly-cases-chart-bar-simulated {
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-dasharray: 2 2;
+  opacity: 1;
+}
+
 .weekly-cases-chart-range {
   fill: var(--color-chart-m4);
   opacity: 0.25;

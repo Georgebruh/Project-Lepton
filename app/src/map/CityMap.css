@@ -1,7 +1,8 @@
 /*
- * F4: the map (CityMap.tsx): MapLibre's canvas, the city names, the hint and the city tooltip,
- * Figma frames 1, 1a, 1b and 2. The durations and the curve (--map-hover, --map-move,
- * --map-ease) come from MapLayout.css, which takes them from map/motion.ts.
+ * F4: the map (CityMap.tsx): MapLibre's canvas, the city names and the city tooltip, Figma
+ * frames 1, 1a, 1b and 2. The durations and the curve (--map-hover, --map-move, --map-ease)
+ * come from MapLayout.css, which takes them from map/motion.ts. F14: the hint and the list of
+ * cities are gone; Methods and the credits sit in the bottom right corner.
  */
 .city-map {
   position: absolute;
@@ -21,17 +22,29 @@
   background: var(--color-map-land);
 }
 
-/* F13: the sources' credits (MapLibre's attribution control): an "i" button bottom left, 24 px
-   in from the map's edges like the other controls, that opens the credits over the map. It is
-   MapLibre's element and cannot take the body-s class, so it copies body-s here. Opened, the
-   credits wrap within the map's visible part (MapLayout.css narrows it while the panel is open). */
-.city-map .maplibregl-ctrl-bottom-left {
-  right: 0;
+/* F13: the sources' credits (MapLibre's attribution control): an "i" button that opens them over
+   the map. It is MapLibre's element and cannot take the body-s class, so it copies body-s here.
+   F14: in the bottom right corner, after Methods, one row along the map's foot (--map-edge and
+   --map-credits-room come from MapLayout.css). Opened, the credits wrap within the map. */
+.city-map .maplibregl-ctrl-bottom-right {
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--map-edge, var(--space-5)) var(--space-2) 0;
+  pointer-events: none;
 }
 
-.city-map .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib {
-  max-width: calc(100% - 2 * var(--space-5));
-  margin: 0 0 var(--space-5) var(--space-5);
+.city-map .maplibregl-ctrl-bottom-right > .maplibregl-ctrl {
+  float: none;
+  margin: 0;
+  pointer-events: auto;
+}
+
+.city-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
+  max-width: calc(100% - 2 * var(--map-edge, var(--space-5)) - 80px);
   color: var(--color-text-secondary);
   font: 400 13px/18px var(--font-sans);
 }
@@ -40,25 +53,19 @@
   color: inherit;
 }
 
+/* F14: Methods, beside the credits: How it works, where the methods are told */
+.city-map-methods-link {
+  display: block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+}
+
 /* F11: MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom); it fills the map,
    whose edges clip, so its focus ring sits inside it */
 .city-map-canvas canvas:focus-visible {
   outline-offset: -2px;
-}
-
-/* F11: the hint's words for a touch screen, which cannot hover, replace Figma's there */
-.city-map-hint-touch {
-  display: none;
-}
-
-@media (hover: none) {
-  .city-map-hint-pointer {
-    display: none;
-  }
-
-  .city-map-hint-touch {
-    display: inline;
-  }
 }
 
 /* The element MapLibre keeps over a label point: the pointer passes through it to the map */
@@ -98,108 +105,13 @@
   color: var(--color-text-secondary);
 }
 
-/* F13: zoomed far out, the 17 names would pile up (basemap.ts, CITY_NAMES_ZOOM) */
-.city-map[data-far] .city-map-label {
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity var(--map-hover) linear,
-    visibility 0s linear var(--map-hover);
-}
-
-/* F11: the map's top left corner: the hint and the list of cities at level 1, the plan's list of
-   barangays at level 3. Kept inside the map; the pointer passes through its empty part.
-   It spans the map's width (its boxes keep their own widths), so the hint and the list of cities
-   keep theirs when they leave its column at level 3 (below); sized to its boxes, it would shrink
-   as they left and squeeze them to a word a line while they fade. It stops above the credits' "i" button (24 px, MapLibre's), so a
-   long list's last rows do not run under it. */
-.city-map {
-  --city-map-credits-room: calc(24px + var(--space-3));
-}
-
-.city-map-corner {
-  position: absolute;
-  top: var(--space-5);
-  left: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  width: calc(100% - 2 * var(--space-5));
-  max-height: calc(100% - 2 * var(--space-5) - var(--city-map-credits-room));
-  pointer-events: none;
-}
-
-.city-map-corner > * {
-  pointer-events: auto;
-}
-
-/* The lists shrink to the corner's height, and their rows scroll (MapList.css) */
-.city-map-cities {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-width: 100%;
-  transition:
-    opacity var(--map-move) var(--map-ease),
-    visibility 0s;
-}
-
-.city-map-list-slot {
-  display: contents;
-}
-
-/* "Hover a city …", top left (Figma "Hint", node 55:468) */
-.city-map-hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  /* Figma's 8 px, with 12 px after the text and 10 px before the icon */
-  padding: var(--space-2) var(--space-3) var(--space-2) 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-surface);
-  color: var(--color-text-secondary);
-  transition:
-    opacity var(--map-move) var(--map-ease),
-    visibility 0s;
-}
-
-/* The names and the hint belong to Metro Manila: they fade with the camera when a city opens.
-   F11: so does the list of cities (hidden, it is out of the keyboard's reach too). At the plan
-   (level 3) the hint and the list leave the corner's column, so the plan's list of barangays
-   takes the top. F13: only there, not as they fade out at level 2, where both jumping to the top
-   left put the hint under the list for the length of the camera's move. */
-.city-map:not([data-level='1']) .city-map-label,
-.city-map:not([data-level='1']) .city-map-hint,
-.city-map:not([data-level='1']) .city-map-cities {
+/* The name belongs to the level of the whole country: it fades with the camera when a city opens */
+.city-map:not([data-level='1']) .city-map-label {
   opacity: 0;
   visibility: hidden;
   transition:
     opacity var(--map-move) var(--map-ease),
     visibility 0s linear var(--map-move);
-}
-
-.city-map[data-level='3'] .city-map-hint,
-.city-map[data-level='3'] .city-map-cities {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-/* F11, below 600 px (motion.ts's SHEET_BELOW): 16 px from the edges, and above the panel's
-   sheet when it is open */
-@media (max-width: 599px) {
-  .city-map-corner {
-    top: var(--space-4);
-    left: var(--space-4);
-    width: calc(100% - 2 * var(--space-4));
-    max-height: calc(100% - 2 * var(--space-4) - var(--city-map-credits-room));
-  }
-
-  .city-map:not([data-level='1']) .city-map-corner {
-    max-height: calc(100% - var(--map-sheet-share) - 2 * var(--space-4) - var(--city-map-credits-room));
-  }
 }
 
 /* The city under the pointer (Figma "Tooltip", nodes 55:621 and 55:776); it fades in */

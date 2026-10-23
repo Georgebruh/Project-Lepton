@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
-import AppBar from '../components/AppBar.tsx'
 import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
 import CenterRow, { CenterRowHeader } from '../components/CenterRow.tsx'
@@ -181,10 +180,6 @@ export default function Kit() {
 
       <KitSection title="Site header" node="Components · 4:21" wide>
         <SiteHeader />
-      </KitSection>
-
-      <KitSection title="App bar" node="Map · 1 Metro Manila · 55:319" wide>
-        <AppBar />
       </KitSection>
 
       <KitSection title="Footer" node="Home · 20:364" wide>

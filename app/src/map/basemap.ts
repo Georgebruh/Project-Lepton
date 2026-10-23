@@ -16,9 +16,11 @@ import { tokenColor } from './tokens.ts'
  * in the OpenMapTiles schema, free and with no key. The /map route's loader fetches the style
  * once (fetchBaseStyle); CityMap adapts it to the app before making the map (mapStyle):
  *   - land, water and roads take the Figma map colors (map/land, bg/inset, map/boundary);
- *   - the base map's own city and town names inside NCR are hidden where LEPTON writes the
- *     cities' names itself (from CITY_NAMES_ZOOM in), in Figtree, with next week's cases;
- *     zoomed further out, LEPTON's names hide and the base map's come back;
+ *   - the base map's own city and town names inside a city with data (Quezon City) are hidden,
+ *     since LEPTON writes its name itself, in Figtree, with next week's cases. F14: at every
+ *     zoom, so a reader finds the one city with data on the map of the whole country (F13 hid
+ *     LEPTON's 17 NCR names zoomed out, where they piled up); everywhere else the base map
+ *     names the Philippines' cities and towns;
  *   - the flat (Mercator) map of the whole world: zoomed out, it shows every continent. A globe
  *     looked better zoomed out but cost a freeze: MapLibre compiles each of its shaders twice
  *     for a globe (once round, once flat for close up), and on an integrated GPU each compile
@@ -102,14 +104,8 @@ const BASE_ATTRIBUTION =
   '<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> ' +
   'Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
 
-/** The base map's place names that LEPTON writes itself inside NCR: its cities and Pateros. */
-const NCR_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
-
-/**
- * From this zoom in, LEPTON writes the NCR cities' names (CityMap); further out the 17 names
- * would pile up, so they hide and the base map's own names (Manila, Quezon City) show instead.
- */
-export const CITY_NAMES_ZOOM = 8.5
+/** The base map's place names that LEPTON writes itself inside a city with data. */
+const PLACE_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
 
 
 /** Fetches the street map's style; null if it does not come within BASE_STYLE_TIMEOUT_MS or is not a style. */
@@ -149,9 +145,10 @@ function mapColors(element: HTMLElement) {
 
 type MapColors = ReturnType<typeof mapColors>
 
-/** The cities' outlines as one shape, to hide the base map's names inside it. */
-function ncrOutline(cities: Cities): MultiPolygon {
-  return { type: 'MultiPolygon', coordinates: cities.features.flatMap(({ geometry }) => shapeParts(geometry)) }
+/** The outlines of the cities with data as one shape, to hide the base map's names inside it. */
+function dataOutline(cities: Cities): MultiPolygon {
+  const named = cities.features.filter(({ properties }) => properties.has_data)
+  return { type: 'MultiPolygon', coordinates: named.flatMap(({ geometry }) => shapeParts(geometry)) }
 }
 
 function addSatellite(map: MapLibreMap) {
@@ -229,11 +226,8 @@ export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
   }
 }
 
-/**
- * One base map layer in the app's colors. A layer of names LEPTON writes itself becomes two: as
- * it was up to CITY_NAMES_ZOOM, and from there on without the names inside NCR.
- */
-function adaptLayer(layer: LayerSpecification, colors: MapColors, ncr: MultiPolygon): LayerSpecification[] {
+/** One base map layer in the app's colors; a layer of names LEPTON writes itself, without those inside the cities with data. */
+function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPolygon): LayerSpecification[] {
   if (layer.type === 'background') {
     return [{ ...layer, paint: { ...layer.paint, 'background-color': colors.land } }]
   }
@@ -244,15 +238,9 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, ncr: MultiPoly
   if (layer.type === 'line' && layer['source-layer'] === 'transportation' && !layer.id.endsWith('dashline')) {
     return [{ ...layer, paint: { ...layer.paint, 'line-color': colors.road } }]
   }
-  if (layer.type === 'symbol' && NCR_NAME_LAYERS.includes(layer.id)) {
-    const outside = ['!', ['within', ncr]] as FilterSpecification
-    const near = {
-      ...layer,
-      id: `${layer.id}-outside-ncr`,
-      minzoom: Math.max(layer.minzoom ?? 0, CITY_NAMES_ZOOM),
-      filter: (layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification,
-    }
-    return [{ ...layer, maxzoom: Math.min(layer.maxzoom ?? CITY_NAMES_ZOOM, CITY_NAMES_ZOOM) }, near]
+  if (layer.type === 'symbol' && PLACE_NAME_LAYERS.includes(layer.id)) {
+    const outside = ['!', ['within', named]] as FilterSpecification
+    return [{ ...layer, filter: (layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification }]
   }
   return [layer]
 }
@@ -273,12 +261,12 @@ export function mapStyle(base: StyleSpecification | null, element: HTMLElement, 
       ...flat,
     }
   }
-  const ncr = ncrOutline(cities)
+  const named = dataOutline(cities)
   const sources = Object.fromEntries(
     Object.entries(base.sources).map(([id, source]) => [
       id,
       id === BASE_SOURCE ? { ...source, attribution: BASE_ATTRIBUTION } : source,
     ]),
   )
-  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, ncr)), ...flat }
+  return { ...base, sources, layers: base.layers.flatMap((layer) => adaptLayer(layer, colors, named)), ...flat }
 }

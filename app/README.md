@@ -31,8 +31,8 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/screens/` | One file per screen |
 | `src/components/` | The shared components (F3), shown together at `/kit` in `npm run dev` |
 | `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
-| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the route's loader |
-| `src/map/` | The map screens' parts (F4): the map, its legend, zoom buttons, breadcrumb bar, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every city and barangay from the keyboard |
+| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the tab's loader (F14: Compare models is a tab of the map's city panel) |
+| `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle) |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
 | `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
@@ -45,18 +45,20 @@ adding a package (`npm install --save-exact <name>@<version>`).
 
 ## Screens
 
-The three map levels share `MapLayout.tsx`, so the one map stays on screen while the reader
-drills down; each level's own content shows inside it. Figma node ids are in each file.
+The map levels share `MapLayout.tsx`, so the one map stays on screen while the reader drills
+down; each level's own content shows inside it. Figma node ids are in each file. F14: the map is
+the app's one view, with no other tabs: Compare models is a tab of Quezon City's panel.
 
 | Route | Screen | File | Task |
 | --- | --- | --- | --- |
 | `/` | Home | `Home.tsx` | F6 |
-| `/map` | Map: Metro Manila | `MapMetroManila.tsx` | F4 |
+| `/map` | Map: the Philippines | `MapPhilippines.tsx` | F4, F14 |
 | `/map/quezon-city` | Map: Quezon City's case forecast | `MapQuezonCity.tsx` | F4 |
+| `/map/quezon-city/compare` | Map: Compare models, in the city panel | `MapCompare.tsx` | F9, F14 |
 | `/map/quezon-city/prophylaxis` | Map: prophylaxis plan | `MapProphylaxis.tsx` | F5 |
 | `/leptospirosis` | Leptospirosis, for residents | `Leptospirosis.tsx` | F7 |
 | `/exposed` | The "I have been exposed to floodwater" guide | `Exposed.tsx` | F8 |
-| `/compare` | Compare models | `CompareModels.tsx` | F9 |
+| `/compare` | Opens `/map/quezon-city/compare?data=real` (the site header's Results) | `router.tsx` | F14 |
 | `/how-it-works` | How it works | `HowItWorks.tsx` | F10 |
 
 Any other address, and any error while drawing a screen, shows `ErrorPage.tsx`. Every screen is
@@ -66,9 +68,10 @@ A setting kept in the address's query should change with
 `setSearchParams(next, { preventScrollReset: true })`; otherwise the page jumps to the top.
 The map keeps its date there: `/map/quezon-city?date=2024-10-22` (F4). The date picks the
 forecast day, the MMWR week holding it, and the panel shows the forecast made that week for
-the week after ("next week"); without a date, or with one outside the backtest, the map
-shows the latest. Links between the map levels keep it (`MAP_PATHS[2] + search`). Compare
-models keeps its period there: `/compare?period=2024` (F9).
+the week after ("next week"); without a date the map shows today's (F14), and a date outside
+the dates the mode has moves inside them. Links between the map levels keep it
+(`MAP_PATHS[2] + search`). Compare models keeps its period there:
+`/map/quezon-city/compare?period=2024` (F9), and the map its data mode, `?data=real` (F14).
 
 ## Components
 
@@ -89,7 +92,6 @@ sample text and buttons that do nothing must not ship (check U7), so the built s
 | `CenterRow` | One health center's doxycycline, children's courses and amoxicillin; rows go in a `role="table"`, under `<CenterRowHeader />`, the column names (F6, as in Home's stock list) | Center row, 4:12 |
 | `PanelHeader` | A side-panel section's title that opens and closes it | Panel header, 4:17 |
 | `SiteHeader` | The header of Home, Leptospirosis and How it works; the open page's link is darker (F6). Below 1024 px the links wrap on a row of their own | Site header, 4:21 |
-| `AppBar` | The header of the map screens and Compare models | Map frame, 55:319 |
 | `Footer` | The footer, with the stock-planning note and the credits of the app's data and fonts, each with its licence (F12, check U8); `credits` adds the page's own under them (F6: Home's photos) | Home frame, 20:364 |
 | `Logo` | The logo; the headers and the footer already include it | Logo, 3:47 |
 | `Icon` | `<Icon name="calendar" size={16} />`, any of the 18 Figma icons, in the text color | icon/…, Components page |
@@ -110,13 +112,14 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 
 | File | What it holds | Screens |
 | --- | --- | --- |
-| `ncr_cities.geojson` | NCR's 17 cities: `psgc`, `name`, `has_data` (Quezon City only), and `label_lon`, `label_lat`, where the map writes the name (empty for Pateros, too small) | Map |
+| `ph_cities.json` | F14: the Philippines' 1,642 cities and municipalities (faeldon's 2023 maps): `psgc`, `name`, `province`, `has_data` (Quezon City only), and `label_lon`, `label_lat` where the map writes the name of a city with data (Quezon City only; the street map names the rest). NCR's 17 are F4's cleaned outlines; the rest are simplified province by province to about 100 m (`config.PH_SIMPLIFY_M`). 6 MB, 1.4 MB sent compressed (it is `.json`, not `.geojson`, so Vercel compresses it). It replaces F4's `ncr_cities.geojson` | Map |
 | `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
-| `noah_5yr.json`, `noah_25yr.json`, `noah_100yr.json` | F13: NOAH's flood maps (A8) for the map's flood overlay, one MultiPolygon per hazard level: `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), and the settings they were made with (`min_m2`, `simplify_m`). Simplified for the browser (`config.APP_NOAH_*`: patches under 400 m² dropped, the three levels' outlines simplified together, so they still meet without gaps), they show 90–93% of NOAH's flooded area; every number uses A8's full maps. Written again only when A8's file or those settings change. ODbL, as NOAH's maps are. Named `.json`, not `.geojson`, so Vercel sends them compressed (7.6–9.0 MB each, 1.3–1.5 MB sent) | Map's flood zones (F13), fetched when first turned on |
+| `noah_flood_5yr.pmtiles`, `noah_flood_25yr.pmtiles`, `noah_flood_100yr.pmtiles` | F14: NOAH's flood maps of every province NOAH has mapped, as vector tiles (`python -m src.noah_national`, not F2): layer `flood`, `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), zooms 4 to 11, each map thinned as little as keeps it under GitHub's 100 MB a file (`config.NOAH_TILE_LIMITS`: the 5- and 25-year maps keep tippecanoe's default tiles; the 100-year map's densest tiles drop more of their smallest patches). Patches under 400 m² dropped. ODbL, as NOAH's maps are. 50–95 MB each; the browser fetches only the tiles in view (HTTP range requests). They replace F13's Metro Manila overlays, `noah_<T>yr.json` | Map's flood zones (F13, F14), read when first turned on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes` | Prophylaxis plan |
 | `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
 | `centers.json` | Health centers (`lat`, `lon`, `barangay`; `left_out` says why one gets no stock) and `needs[storm][run][flood][facility_code]` | Prophylaxis plan, Exposure guide |
 | `city_forecast.json` | Per target week: `start`, `end`, `y`, `threshold`, `breached`, and per model `mu`, `low` and `high` (the 90% range), `p_breach`. `"simulated": true` until A13's counts arrive. Also `map_model` (M4, the model the map shows) and the outbreak `levels`, each with the Pr(breach) it starts at (`config.APP_LEVELS`) | Map, Compare models |
+| `city_simulation.json` | F14: the map's Simulation mode (`python -m src.app_simulation`, not F2): the weeks after QCESD's last count, in `city_forecast.json`'s form, to next week. Each ended week's `y` is made up (the median of M4's forecast), `null` for this week and next; `made_on`, the day it ran to, and `weather`, the ECMWF forecast it used. Run it again on a later day to move it | Map in Simulation mode |
 | `scores.json` | Per model: MAE, MASE, WIS, 90% coverage, Brier score; D5's M4 − M3 (`primary`). Written only after B10's real run: show "—" while it is missing | Compare models |
 
 Units: `doxy100` (doxycycline 100 mg capsules), `courses` (children's courses) and `amox500`
@@ -169,16 +172,46 @@ MapLibre adds about 1 MB of JavaScript. Import it only in the map screens, and l
 routes with React Router's `lazy` in `router.tsx`, so Home and the phone guide do not
 download it. (`npm run build` warns that the map's chunk is over 500 kB: that is MapLibre.)
 
+### Only the map (F14)
+
+The app's map was reworked on 22 October 2026 at the team's request: after opening the map there
+is only the map, of the whole country, with no other tabs.
+
+- **The frame.** No app bar and no breadcrumb bar: the map fills the screen. Top left: the logo
+  (home). Top right: **Simulation | Real data** (`map/MapDataModes.tsx`), with a line saying what
+  the mode shows. Bottom middle: the timeline (`map/MapTimeline.tsx`): the previous and next week, a slider
+  over every forecast week (the simulated ones amber), and the date picker. Bottom right: the
+  legends and the map buttons, then **Methods** (How it works) and the sources' "i". The hint
+  ("Hover a city…") and the Cities list are gone; Quezon City's name on the map is the keyboard's
+  way in.
+- **The whole Philippines.** Level 1 shows all 1,642 cities and municipalities
+  (`ph_cities.json`): thin outlines zoomed out, a light fill the street map shows through, and a
+  tooltip with the town's province and "No data yet". Only Quezon City has data, colored by its
+  outbreak level and named with next week's cases at every zoom; only it opens the panel.
+- **The city panel** slides in from the left over about a third of the screen (36%, from 400 to
+  560 px, `map/motion.ts`; half the screen, tried first, was too wide; a sheet from the bottom on
+  a phone, as before), with three tabs: Cases forecast, **Compare models** (F9's
+  chart, Controls and scores, on the mode's weeks) and Prophylaxis plan, and a Close button.
+- **Simulation | Real data** (`?data=real`; Simulation is the default). QCESD's counts end on
+  26 September 2026. Real data shows them and B10's forecasts only. Simulation adds
+  `city_simulation.json`: the weeks since, each with a made-up count (the median of M4's
+  forecast, so later forecasts see a typical week), and forecasts to next week, the last made
+  with ECMWF's rain forecast of the day it ran (`src/app_simulation.py`). Every simulated number
+  carries the amber "Simulated" badge, and simulated counts are dashed outlines in the charts.
+  The scores are always the real run's. The prophylaxis plan works on the storms in both modes.
+- **NOAH everywhere.** The flood zones cover every province NOAH has mapped
+  (`noah_flood_<T>yr.pmtiles`, `src/noah_national.py`), read tile by tile through the `pmtiles`
+  package; F13's Metro Manila overlays are gone.
+
 ### The map screens (F4, F5)
 
-- **One map, three levels.** `MapLayout.tsx` holds the app bar, the breadcrumb bar with the
-  date picker, the map (`map/CityMap.tsx`), its legend and zoom buttons, and the panel on the
-  right. Each level's route fills the panel and names its level in `router.tsx`
-  (`handle: { mapLevel: 2 }`). At level 1 the panel waits off-screen with Quezon City's
-  forecast, as in Figma frame 1, so it slides in already filled.
-- **Data.** The `/map` route's loader fetches `ncr_cities.geojson` and `city_forecast.json`
-  once, and (F13) the street map's style; a style that does not load in 2 s leaves the map on
-  its plain background, with all of LEPTON's data. In a level's component, `useMapContext()` (`map/mapContext.ts`) gives the files, the
+- **One map, three levels.** `MapLayout.tsx` holds the map (`map/CityMap.tsx`), its corners
+  (F14, above) and the city panel. Each level's route fills the panel and names its level in
+  `router.tsx` (`handle: { mapLevel: 2 }`). At level 1 the panel waits off-screen with Quezon
+  City's forecast, as in Figma frame 1, so it slides in already filled.
+- **Data.** The `/map` route's loader fetches `ph_cities.json`, `city_forecast.json` and (F14)
+  `city_simulation.json` once, and (F13) the street map's style; a style that does not load in
+  2 s leaves the map on its plain background, with all of LEPTON's data. In a level's component, `useMapContext()` (`map/mapContext.ts`) gives the files, the
   chosen date, that week's forecasts and the MapLibre map, for a level that draws its own
   layers (the map arrives once it has drawn the cities). It also gives two empty boxes for a
   level's own legend and tooltips, `legendSlot` beside the zoom buttons and `overlay` over the
@@ -192,10 +225,11 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   paint value that differs from feature to feature. So animate a value the whole layer
   shares with a paint transition (the other cities' fade to 45%), or step a feature state
   each frame (`map/featureFades.ts`: `featureFader` for a hover, `stagger` for F5's wave).
-- **Names on the map.** HTML elements that MapLibre keeps over each city's label point (F2's
-  `label_lon`, `label_lat`), so they are set in Figtree. F13: the street map's own names (Noto
-  Sans, from OpenFreeMap) leave out NCR's cities while LEPTON writes them (from zoom 8.5);
-  zoomed further out, LEPTON's names hide and the street map's come back (`map/basemap.ts`).
+- **Names on the map.** An HTML element that MapLibre keeps over the label point of the city
+  with data (F2's `label_lon`, `label_lat`), so it is set in Figtree. The street map's own names
+  (Noto Sans, from OpenFreeMap) name every other town, and leave out Quezon City, which LEPTON
+  writes (`map/basemap.ts`); F14: at every zoom, so the one city with data stands out on the map
+  of the whole country.
 - **The street map (F13).** OpenFreeMap's Positron style under LEPTON's data, in the Figma map
   colors, with the cities' fills over its roads and under its names; zoomed out it shows the
   whole world, and the pin button above Zoom brings the open level back. The drawing order lives
@@ -212,8 +246,8 @@ download it. (`npm run build` warns that the map's chunk is over 500 kB: that is
   `?base=satellite` or `?base=terrain` (`map/layerParams.ts`), and links between the levels keep it.
 - **NOAH's flood zones (F13).** The panel's Flood hazard switch draws one of NOAH's maps
   (`map/floodLayer.ts`), the 25-year one first; while it is on, chips pick the 5-, 25- or
-  100-year map, `?flood=25` in the address. Each map is fetched the first time it is chosen:
-  MapLibre loads the file and cuts it into tiles in its worker, then keeps it. The zones go
+  100-year map, `?flood=25` in the address. F14: each map covers the whole country, a PMTiles
+  file of vector tiles that MapLibre reads tile by tile (the `pmtiles` protocol). The zones go
   over LEPTON's fills and under the street map's names, in the `map/hazard-*` blues at 80%,
   and the cities' names get a halo. Their legend (`map/FloodLegend.tsx`) stands above the
   map's own; on a phone it shows only the levels' names (the depths are read out) and leaves
@@ -496,9 +530,9 @@ the map on a phone; both use the existing components and tokens.
 - **Focus.** Every link, button and field shows the same ring, 2 px of `accent/secondary`
   (`global.css`). A control in a box that clips its edges draws it inside itself
   (`outline-offset: -2px`), as the zoom buttons and the map's canvas do.
-- **The map from the keyboard** (`map/MapList.tsx`). In the map's top left corner, under the hint,
-  "Cities · 17" (level 1) and the plan's "Barangays · 142" (level 3) are Panel headers that open a
-  list, closed at first. Tab reaches the list; the arrow keys, Home, End or a name's first
+- **The map from the keyboard** (`map/MapList.tsx`). In the map's top left corner, the plan's
+  "Barangays · 142" (level 3) is a Panel header that opens a list, closed at first. (F14 removed
+  F11's "Cities · 17" at level 1; Quezon City's name on the map is a link the keyboard reaches.) Tab reaches the list; the arrow keys, Home, End or a name's first
   letters move through it, and the row reached thickens and shows its tooltip as under the
   pointer. Enter opens Quezon City's forecast; Escape closes the list. The plan's rows run from
   the most exposed, as the wave does. When the level changes, the keyboard moves to the panel's

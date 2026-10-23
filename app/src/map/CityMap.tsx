@@ -4,24 +4,22 @@ import type {
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { FeatureCollection, Point } from 'geojson'
-import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
-import { useEffect, useRef, useState, type CSSProperties, type Ref, type RefObject } from 'react'
+import type { IControl, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Badge from '../components/Badge.tsx'
 import Icon from '../components/Icon.tsx'
-import { shapeMiddle, shapeParts } from '../exposed/nearest.ts'
 import maplibregl from '../lib/maplibre.ts'
 import { barangayLayers } from './barangayLayers.ts'
-import { CITY_NAMES_ZOOM, DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
+import { DATA_OPACITY, mapStyle, setBase, type BaseMap } from './basemap.ts'
 import { CITY_LAYERS as LAYERS, CITY_NAMES_SOURCE as NAMES_SOURCE, CITY_SOURCE as SOURCE } from './cityLayers.ts'
 import { featureFader } from './featureFades.ts'
-import { LEVEL_NAMES, LEVEL_TONES, SIMULATED_LABEL, levelOf } from './forecast.ts'
-import MapList, { type MapListHandle, type MapListItem } from './MapList.tsx'
+import { LEVEL_NAMES, LEVEL_TONES, isSimulated, levelOf, simulatedLabel } from './forecast.ts'
 import { SLOTS, addSlots } from './layerOrder.ts'
 import { TILT, set3D } from './terrain.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
-import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, SHEET_BELOW, easeInOut, prefersReducedMotion } from './motion.ts'
+import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, easeInOut, prefersReducedMotion } from './motion.ts'
 import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
 import { tokenColor } from './tokens.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
@@ -44,8 +42,8 @@ import './CityMap.css'
  *
  * F13: the cities sit on the street map (basemap.ts), and the reader may pan anywhere and zoom
  * out to the whole world. The fills go in over the street map's roads and under its names, the
- * outlines on top (layerOrder.ts). Zoomed out past CITY_NAMES_ZOOM the cities' names hide, since they
- * would pile up. The credits for the map's sources sit behind an "i" in its bottom left corner.
+ * outlines on top (layerOrder.ts). F14: the one name LEPTON writes, Quezon City's, shows at
+ * every zoom (it used to hide zoomed out, where NCR's 17 names piled up). The credits for the map's sources sit behind an "i" in its bottom right corner (F14).
  * On the satellite and terrain base maps (the Layers panel) the fills let the ground show through
  * (DATA_OPACITY). The cities' names have a halo, and keep the street map's names off them
  * (addNameRoom). In the 3D view (terrain.ts) the camera tilts,
@@ -61,6 +59,17 @@ const BOUNDARIES_CREDIT = 'Boundaries: PSA and NAMRIA via OCHA HDX; faeldon/phil
 /** Outline widths in px, from Figma: a city without data 1, with data 1.5, under the pointer 3, open 2.5. */
 const LINE = { noData: 1, data: 1.5, hover: 3, open: 2.5 }
 
+/**
+ * F14: the whole country's 1,642 outlines would cover it in black zoomed out, so they are drawn
+ * at OUTLINE_FAR of their width at COUNTRY_ZOOM, growing to the full width at CITY_ZOOM.
+ */
+const COUNTRY_ZOOM = 5
+const CITY_ZOOM = 9
+const OUTLINE_FAR = 0.25
+
+/** F14: how opaque a city without data is filled: the street map shows through most of the country. */
+const NO_DATA_ALPHA = 0.35
+
 /** The tooltip's width in px (Figma), and the most it is tall. */
 const TOOLTIP_WIDTH = 256
 const TOOLTIP_TALLEST = 150
@@ -71,13 +80,32 @@ const HOVER: ExpressionSpecification = ['number', ['feature-state', 'hover'], 0]
 const REST_WIDTH: ExpressionSpecification = ['case', HAS_DATA, LINE.data, LINE.noData]
 
 /** A city's outline: its resting width, growing to LINE.hover as its hover goes from 0 to 1. */
-const LINE_WIDTH: ExpressionSpecification = ['+', REST_WIDTH, ['*', HOVER, ['-', LINE.hover, REST_WIDTH]]]
+const NEAR_WIDTH: ExpressionSpecification = ['+', REST_WIDTH, ['*', HOVER, ['-', LINE.hover, REST_WIDTH]]]
+
+/** F14: the outline thinner zoomed out to the country (OUTLINE_FAR), full from CITY_ZOOM in. */
+const LINE_WIDTH: ExpressionSpecification = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  COUNTRY_ZOOM,
+  ['*', OUTLINE_FAR, NEAR_WIDTH],
+  CITY_ZOOM,
+  NEAR_WIDTH,
+]
+
+/** F14: a hex color from tokens.css with an alpha, as MapLibre reads colors: "#e9ebee" at 0.35. */
+function withAlpha(hex: string, alpha: number): string {
+  const value = hex.trim().replace('#', '')
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16))
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 /** The colors the map paints with, read from tokens.css (tokens.ts). */
 function tokenColors(element: HTMLElement) {
   const color = (token: string) => tokenColor(element, token)
   return {
-    noData: color('bg-raised'),
+    // F14: a city without data lets the street map show through, and turns white under the pointer
+    noData: withAlpha(color('bg-raised'), NO_DATA_ALPHA),
     hovered: color('bg-surface'),
     line: color('text-primary'),
     low: color('risk-low'),
@@ -118,7 +146,7 @@ function hoverFader(map: MapLibreMap) {
 
 /**
  * Moves the hover to the city `psgc` (null: to none) from the city in `hovered`: the one's
- * outline thins as the other's thickens. The pointer and, F11, the list of cities both move it.
+ * outline thins as the other's thickens. The pointer moves it.
  */
 function moveHover(fader: ReturnType<typeof hoverFader>, hovered: { current: string | null }, psgc: string | null) {
   if (psgc === hovered.current) {
@@ -142,8 +170,8 @@ const CASES_ROOM = '000 cases next week'
  * printed over Quezon City's cases (San Mateo). This adds an invisible copy of each name, and of
  * the cases line for a city with data, at its label point and on top of every layer: MapLibre
  * places the top layer's labels first, always places these (allow-overlap), and drops any street
- * map name that would run into them. It shows where the HTML names do: at level 1 (setNameRoom),
- * from CITY_NAMES_ZOOM in. It needs the street map's fonts; without the street map (it did not
+ * map name that would run into them. It shows where the HTML names do: at level 1 (setNameRoom).
+ * It needs the street map's fonts; without the street map (it did not
  * load) there are no names to keep off, and it is not added.
  */
 function addNameRoom(map: MapLibreMap, cities: Cities, level: MapLevel) {
@@ -173,7 +201,6 @@ function addNameRoom(map: MapLibreMap, cities: Cities, level: MapLevel) {
     id: LAYERS.names,
     type: 'symbol',
     source: NAMES_SOURCE,
-    minzoom: CITY_NAMES_ZOOM,
     layout: {
       visibility: level === 1 ? 'visible' : 'none',
       'text-field': ['get', 'text'],
@@ -196,32 +223,25 @@ function setNameRoom(map: MapLibreMap, level: MapLevel) {
   }
 }
 
-/** F11: the list's rows, the cities with a forecast first, then the others by name. */
-function cityItems(cities: Cities, forecast: CityForecast, week: ForecastWeek | undefined): MapListItem[] {
-  const model = week?.forecasts[forecast.map_model]
-  const simulated = forecast.simulated ? ` (${SIMULATED_LABEL})` : ''
-  const items: MapListItem[] = cities.features.map(({ properties: city }) => {
-    if (!CITY_PATHS[city.psgc]) {
-      const detail = <span className="body-s">No data yet</span>
-      return { id: city.psgc, name: shortName(city), detail, words: 'no data yet' }
-    }
-    if (!model) {
-      return { id: city.psgc, name: shortName(city), words: 'no forecast for the week after this date', opens: true }
-    }
-    const level = levelOf(model.p_breach, forecast.levels)
-    return {
-      id: city.psgc,
-      name: shortName(city),
-      detail: <Badge tone={LEVEL_TONES[level]}>{LEVEL_NAMES[level]}</Badge>,
-      words: `${LEVEL_NAMES[level]} chance of an outbreak, ${Math.round(model.mu)} cases expected next week${simulated}`,
-      opens: true,
-    }
-  })
-  return items.sort((a, b) => Number(Boolean(b.opens)) - Number(Boolean(a.opens)) || a.name.localeCompare(b.name))
+/**
+ * F14: a box in the map's bottom right corner, beside the sources' credits ("i"), where CityMap
+ * writes the link to Methods (How it works).
+ */
+class MethodsControl implements IControl {
+  readonly element = document.createElement('div')
+
+  onAdd() {
+    this.element.className = 'maplibregl-ctrl city-map-methods'
+    return this.element
+  }
+
+  onRemove() {
+    this.element.remove()
+  }
 }
 
-/** The city under the pointer, and where the pointer is in the map, in px; F11: or the city the list shows. */
-type Pointer = MapPointer & { psgc: string; fromList?: boolean }
+/** The city under the pointer, and where the pointer is in the map, in px. */
+type Pointer = MapPointer & { psgc: string }
 
 /** Where a city's name is written: the element MapLibre keeps over its label point. */
 type LabelSpot = { city: CityProperties; element: HTMLElement }
@@ -237,26 +257,25 @@ type CityMapProps = {
   view3d: boolean
   /** The week after the chosen date, or undefined if the backtest has no forecast for it. */
   week: ForecastWeek | undefined
-  /** The open level: 1 Metro Manila, 2 Quezon City, 3 its prophylaxis plan. */
+  /** The open level: 1 the Philippines, 2 Quezon City, 3 its prophylaxis plan. */
   level: MapLevel
   /** Called with the map once it has loaded and drawn the cities, and with null when it is removed. */
   onMap: (map: MapLibreMap | null) => void
   /** F11: the legend and zoom buttons' box (MapLayout), which on a phone the camera keeps the open city clear of. */
   controls: RefObject<HTMLElement | null>
-  /** F11: the list of cities, which MapLayout moves the keyboard to when the reader comes back to level 1. */
-  listRef: Ref<MapListHandle>
-  /** F11: called with the box under the hint where a level puts its own list (F5's barangays), and null when it goes. */
-  onListSlot: (slot: HTMLElement | null) => void
+  /** F14: the top left corner's box (MapLayout), which the camera keeps the open city clear of too. */
+  topBar: RefObject<HTMLElement | null>
 }
 
 /**
- * F4: the map, its city names, the hint and the city tooltip. At level 1, hovering a city
+ * F4: the map, the name of the city with data and the city tooltip. At level 1, hovering a city
  * thickens its outline and shows its tooltip; clicking a city with data opens its forecast.
  * When the level changes, the camera and the cities move as the Figma notes say.
  *
- * F11: under the hint, the list of cities reaches each of them without a mouse (MapList): the
- * city reached thickens and shows its tooltip, as under the pointer, and Enter opens a city with
- * a forecast. The prophylaxis plan puts its list of barangays in the same corner (onListSlot).
+ * F14: every city and municipality of the Philippines; the street map names them, and LEPTON
+ * writes only Quezon City's name, with its cases. The hint and the list of cities are gone:
+ * Quezon City's name on the map is a link the keyboard reaches. The sources' credits and the
+ * link to Methods sit in the bottom right corner.
  */
 export default function CityMap({
   cities,
@@ -268,8 +287,7 @@ export default function CityMap({
   level,
   onMap,
   controls,
-  listRef,
-  onListSlot,
+  topBar,
 }: CityMapProps) {
   const navigate = useNavigate()
   const { search } = useLocation()
@@ -282,7 +300,7 @@ export default function CityMap({
   const [loaded, setLoaded] = useState(false)
   const [spots, setSpots] = useState<LabelSpot[]>([])
   const [pointer, setPointer] = useState<Pointer | null>(null)
-  const [farOut, setFarOut] = useState(false) // F13: zoomed out past CITY_NAMES_ZOOM
+  const [methods] = useState(() => new MethodsControl()) // F14: the Methods link's box, bottom right
   const readerMoved = useRef(false) // F13: the reader has panned, zoomed or turned the map since the camera last fit the level
   const fillOpacity = useRef(DATA_OPACITY[base]) // F13: how opaque the fills are on the base map shown
   const shown3D = useRef<boolean | null>(null) // F13: whether the map is drawn in 3D; null until first set
@@ -297,7 +315,7 @@ export default function CityMap({
   useEffect(() => {
     const container = containerRef.current!
     const colors = tokenColors(container)
-    const view = viewFor(shownLevel.current, cities, container, controls.current)
+    const view = viewFor(shownLevel.current, cities, container, controls.current, topBar.current)
     const start = levelCamera(view, container, 0)
     const map = new maplibregl.Map({
       container,
@@ -321,9 +339,10 @@ export default function CityMap({
     if (start) {
       map.setPadding(view.padding)
     }
-    // F13: the sources' credits, bottom left, folded behind an "i" button: written out, they are
-    // wide enough to run into the legend on a laptop with the panel open
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
+    // F13: the sources' credits, folded behind an "i" button: written out, they are wide enough
+    // to run into the legend on a laptop with the panel open. F14: bottom right, after Methods
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+    map.addControl(methods, 'bottom-right')
     // MapLibre opens them when they first arrive and closes them on the first drag; here they start closed
     const closeCredits = () => {
       const credits = container.querySelector('.maplibregl-ctrl-attrib')
@@ -333,7 +352,6 @@ export default function CityMap({
       }
     }
     map.on('sourcedata', closeCredits)
-    map.on('zoom', () => setFarOut(map.getZoom() < CITY_NAMES_ZOOM))
     // A move the reader makes comes with their event (a drag, a pinch, a key) or, F13, is the zoom
     // buttons' (READER_MOVE); a wheel zoom says so through its own event. A move to the level's
     // view (a level, the pin) carries LEVEL_FIT. MapLibre's own moves, such as a resize or the 3D
@@ -411,7 +429,6 @@ export default function CityMap({
       }
       addNameRoom(map, cities, shownLevel.current)
       setSpots(labelSpots)
-      setFarOut(map.getZoom() < CITY_NAMES_ZOOM) // a short map can start zoomed out that far
       setLoaded(true)
       // Only now, so a level that draws its own layers (F5) finds the cities' layers in place
       onMap(map)
@@ -446,7 +463,7 @@ export default function CityMap({
       if (readerMoved.current) {
         return
       }
-      const view = viewFor(shownLevel.current, cities, container, controls.current)
+      const view = viewFor(shownLevel.current, cities, container, controls.current, topBar.current)
       moveToLevel(map, view, shown3D.current ? TILT : 0, { duration: 0 })
     })
 
@@ -464,7 +481,7 @@ export default function CityMap({
       setLoaded(false)
       onMap(null)
     }
-  }, [cities, baseStyle, onMap, controls])
+  }, [cities, baseStyle, onMap, controls, topBar, methods])
 
   // F13: the base map chosen in the Layers panel (shaded in 3D), and the fills' opacity over it (a
   // 150 ms crossfade). barangayLayers sets the open city's fill, which at level 3 fades out under the barangays.
@@ -500,11 +517,11 @@ export default function CityMap({
     const motion = { duration: first ? 0 : CAMERA_MS, easing: easeInOut }
     // On the level's view the camera fits it again, tilted or flat; moved away from it (or with no
     // room to fit it), it tilts where it is
-    const view = viewFor(shownLevel.current, cities, map.getContainer(), controls.current)
+    const view = viewFor(shownLevel.current, cities, map.getContainer(), controls.current, topBar.current)
     if (readerMoved.current || !moveToLevel(map, view, pitch, motion)) {
       map.easeTo({ pitch, bearing: view3d ? map.getBearing() : 0, ...motion })
     }
-  }, [view3d, loaded, cities, controls])
+  }, [view3d, loaded, cities, controls, topBar])
 
   // Color the city with data by its outbreak level for the chosen week
   useEffect(() => {
@@ -537,7 +554,7 @@ export default function CityMap({
     setNameRoom(map, level)
     // With reduced motion the camera jumps. F13: the view keeps the 3D view's tilt (its target,
     // should the tilt still be under way)
-    moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current), view3d ? TILT : 0, {
+    moveToLevel(map, viewFor(level, cities, map.getContainer(), controls.current, topBar.current), view3d ? TILT : 0, {
       duration: CAMERA_MS,
       easing: easeInOut,
     })
@@ -546,31 +563,7 @@ export default function CityMap({
       map.getCanvas().style.cursor = ''
       setPointer(null)
     }
-  }, [level, loaded, cities, controls, view3d])
-
-  /**
-   * F11: shows a city from the list as the pointer would: its outline thickens and its tooltip
-   * shows at its label point (for Pateros, which has none, a point inside it); null hides it.
-   */
-  function showCity(psgc: string | null) {
-    const map = mapRef.current
-    const container = containerRef.current
-    if (!map || !container || !faderRef.current || shownLevel.current !== 1) {
-      return
-    }
-    moveHover(faderRef.current, hoveredRef, psgc)
-    const city = cities.features.find((feature) => feature.properties.psgc === psgc)
-    if (!city) {
-      setPointer(null)
-      return
-    }
-    const { label_lon: lon, label_lat: lat } = city.properties
-    const spot = lon !== null && lat !== null ? [lon, lat] : shapeMiddle(shapeParts(city.geometry))
-    const { x, y } = map.project([spot[0], spot[1]])
-    const { clientWidth: width, clientHeight: height } = container
-    // On a phone the open list covers the map, and a tooltip would cover the list: the outline shows the city
-    setPointer(width < SHEET_BELOW ? null : { psgc: city.properties.psgc, x, y, width, height, fromList: true })
-  }
+  }, [level, loaded, cities, controls, topBar, view3d])
 
   const model = week?.forecasts[forecast.map_model]
   const expected = model ? Math.round(model.mu) : null
@@ -578,32 +571,17 @@ export default function CityMap({
     <div
       className="city-map"
       data-level={level}
-      data-far={farOut || undefined}
       data-base={base}
       data-view={view3d ? '3d' : undefined}
     >
       <div ref={containerRef} className="city-map-canvas" />
-      <div className="city-map-corner">
-        <p className="city-map-hint body-s">
-          <Icon name="info" size={16} />
-          {/* F11: a touch screen cannot hover; a tap shows a city's tooltip, or opens a city with data */}
-          <span className="city-map-hint-pointer">Hover a city to check its data · click a city to open its forecast</span>
-          <span className="city-map-hint-touch">Tap a city to check its data or open its forecast</span>
-        </p>
-        <div className="city-map-cities">
-          <MapList
-            ref={listRef}
-            title="Cities"
-            items={cityItems(cities, forecast, week)}
-            note={forecast.simulated && <Badge tone="warn">{SIMULATED_LABEL}</Badge>}
-            instructions="The arrow keys or a city's first letters move through the list; Enter opens a city's forecast."
-            onShow={showCity}
-            onOpen={(psgc) => navigate(CITY_PATHS[psgc] + search)}
-          />
-        </div>
-        {/* F11: the prophylaxis plan's list of barangays goes here (MapProphylaxis) */}
-        <div ref={onListSlot} className="city-map-list-slot" />
-      </div>
+      {/* F14: Methods (How it works), bottom right beside the credits */}
+      {createPortal(
+        <Link to="/how-it-works" className="city-map-methods-link label-ui-s">
+          Methods
+        </Link>,
+        methods.element,
+      )}
       {spots.map(({ city, element }) =>
         createPortal(
           CITY_PATHS[city.psgc] ? (
@@ -629,8 +607,7 @@ export default function CityMap({
           city={cities.features.find((feature) => feature.properties.psgc === pointer.psgc)!.properties}
           forecast={forecast}
           week={week}
-          fromList={pointer.fromList ?? false}
-          style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width)}
+          style={placeTooltip(pointer, TOOLTIP_WIDTH, TOOLTIP_TALLEST)}
         />
       )}
     </div>
@@ -641,8 +618,6 @@ type CityTooltipProps = {
   city: CityProperties
   forecast: CityForecast
   week: ForecastWeek | undefined
-  /** F11: whether the list of cities shows it, where Enter opens the forecast, not a click. */
-  fromList: boolean
   style: CSSProperties
 }
 
@@ -650,8 +625,10 @@ type CityTooltipProps = {
  * F4: the tooltip of the city under the pointer. Figma 1a: a city without data says so. Figma
  * 1b: a city with data shows its outbreak level and next week's expected cases. While the
  * forecasts are simulated it carries the amber badge (app check U2), which Figma's 1b lacks.
+ * F14: the province under the name, since many towns share one (San Jose); the badge also on a
+ * week the Simulation mode added.
  */
-function CityTooltip({ city, forecast, week, fromList, style }: CityTooltipProps) {
+function CityTooltip({ city, forecast, week, style }: CityTooltipProps) {
   const model = week?.forecasts[forecast.map_model]
   if (!CITY_PATHS[city.psgc]) {
     return (
@@ -660,7 +637,8 @@ function CityTooltip({ city, forecast, week, fromList, style }: CityTooltipProps
           <Icon name="no-data" size={18} className="city-map-tooltip-icon" />
           {shortName(city)}
         </p>
-        <p className="city-map-tooltip-text body-s">No data yet. A forecast needs this city's weekly case counts.</p>
+        <p className="city-map-tooltip-text body-s">{city.province}</p>
+        <p className="city-map-tooltip-text body-s">No data yet. A forecast needs this town's weekly case counts.</p>
       </div>
     )
   }
@@ -683,12 +661,12 @@ function CityTooltip({ city, forecast, week, fromList, style }: CityTooltipProps
       ) : (
         <p className="city-map-tooltip-text body-s">No forecast for the week after this date.</p>
       )}
-      {forecast.simulated && (
+      {isSimulated(forecast, week) && (
         <Badge tone="warn" className="city-map-tooltip-badge">
-          {SIMULATED_LABEL}
+          {simulatedLabel(forecast)}
         </Badge>
       )}
-      <p className="city-map-tooltip-hint body-s">{fromList ? 'Press Enter' : 'Click'} to open the forecast</p>
+      <p className="city-map-tooltip-hint body-s">Click to open the forecast</p>
     </div>
   )
 }
