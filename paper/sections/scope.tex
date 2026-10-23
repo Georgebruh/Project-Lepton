@@ -10,15 +10,33 @@
 % 264 in the list, 17 days), data/raw/noah.md (11 barangays, 542 people), Notes.md 1.5
 % (83, 163, 176 and 775 cases), results/m4_residual_acf.csv (M4's misses 1 and 2 weeks apart:
 % 0.41 and 0.15, 95% band 0.08 and 0.09; python -m src.m4), config.py.
+% Scope's first two paragraphs (October 23, at the team's request): LEPTON is designed for any
+% Philippine city; QC came first as the most populous city (background.tex, psa_census2024) with
+% an up-to-date case list (data/raw/qcesd.md: onset 2015-01-30 to 2026-10-14, received 20 October
+% 2026), and because the schedule left time to request counts from one city only. The national
+% fallback is the decision tree's last row (lepton-plan.md). NOAH's maps cover most provinces:
+% 66 to 79, by return period (data/raw/noah_national.md). Every other source is in Appendix E.
 \section{Scope and Limitations}\label{sec:scope}
 
 \subsection{Scope}\label{sec:scope-scope}
 
-This study covers Quezon City only. QCESD shared a list of the city's leptospirosis cases with
-each case's date of onset, which supports weekly forecasting; the Cebu City surveillance data
-obtained for this study are annual, too coarse to follow a storm. Results may therefore not carry
-over to cities with different drainage, climate or reporting. QCESD's list is used only as weekly
-counts by week of onset (CDC/MMWR weeks), and no case-level record is published.
+LEPTON is designed for any Philippine city, since every input but the case counts comes from a
+national or global source (Appendix~\ref{app:sources}): IMERG, ERA5 and ECMWF rain, the WorldPop
+grid, the PSA census and birth tables, the national barangay boundaries, the DOH facility
+registry, the HydroBASINS river basins and Project NOAH's flood maps, which cover most provinces.
+Another city therefore needs its own weekly case counts for Layer~1, and its catchments,
+barangays and health centers, drawn from the same sources, for both layers; Layer~2 needs no
+case data.
+
+This study covers one city, Quezon City, for two reasons. First, QC is the country's most
+populous city, and QCESD keeps an up-to-date list of the city's leptospirosis cases with each
+case's date of onset, from January 2015 to mid-October 2026, which supports weekly forecasting.
+Second, the competition's schedule left time to request case counts from one city only,
+and a reply in time was not assured: without one, Layer~1 would have fallen back to national
+weekly counts \parencite{parreno2023}, without flood features. QCESD's list arrived on 20 October
+2026. Because only one city was tested, results may not carry over to cities with different
+drainage, climate or reporting. QCESD's list is used only as weekly counts by week of onset
+(CDC/MMWR weeks), and no case-level record is published.
 
 \emph{Layer 1} forecasts next week's number of cases in QC by week of onset, with a 90\% range
 and the probability that the count exceeds the epidemic threshold, set here at the same week's
@@ -182,7 +200,8 @@ physician's consultation before any prophylaxis.
 To finish within the competition's schedule, several parts of the project's original plan were
 cut. They are named here so that no result is read as covering them:
 \begin{itemize}
-  \item other cities, Cebu City first, each of which needs weekly case counts of its own;
+  \item other Philippine cities, Cebu City first, each with its own weekly case counts
+    (Section~\ref{sec:scope-scope});
   \item running LEPTON live each week, which needs counts as they arrive and report dates to
     nowcast the weeks still filling in;
   \item forecasting two weeks ahead, and two more models: Prophet alone (M2) and an XGBoost

@@ -340,3 +340,41 @@ References:
 - **Case data (A13, October 20):** copy QCESD's case list from the team drive into
   `data/raw/qcesd/` (never into git: rule 11), then `python -m src.cases` writes
   `data/clean/cases_weekly.csv` (seconds). Weekly totals only: put it on the drive too.
+
+## 6. Submission rules (task E1)
+
+Moved here from the README on October 23, when the README was rewritten for readers outside
+the team.
+
+From the 2026 PJDSC Event Primer (pages 8–15), read on October 18, 2026. The primer says exact
+dates may change: check PJDSC's Facebook page before the deadline.
+
+**Due Saturday, October 24, 2026, 11:59 PM** (not October 23), through
+bit.ly/pjdsc2026FinalProjectSubmission. The primer asks for no written paper (the team's paper in
+`paper/` is extra, not a required item). The final submission is:
+
+| Item | Limit | Penalty for going over |
+| --- | --- | --- |
+| Slide deck, PDF | 20 slides, counting the title slide, references and appendices | 1 point for every 1–2 slides over, at most 10 |
+| Recorded demonstration video | 3 minutes | 1 point for every 15 seconds over, at most 10 |
+| Link to the complete code repository | none given | none |
+
+Results are expected: "Findings and Analysis" is a judging criterion. The judging criteria:
+
+- **Project rationale and design:** problem statement and motivation; data sources and acquisition; methodology and approach.
+- **Execution and impact:** findings and analysis; challenges and mitigation strategies; future directions and real-world application.
+- **Code repository:** code structure and documentation; functional execution and reproducibility; dependencies and data management.
+- **Demonstration video:** communication quality and clarity; technical content and functional showcase; how much it helps the audience understand.
+- **Technical rigor and innovation:** validity and appropriateness of techniques; novelty and creativity; analytical depth.
+- **Sources:** reliable, up to date, APA 7th edition.
+
+After the deadline:
+
+- The top 10 teams are announced on November 4, 2026. Finalists present on November 14, 2026, in
+  Quezon City: a live demonstration of the working product, a 10-minute talk (stopped at 10
+  minutes) and 10 minutes of questions. Finals are judged on functionality and technical
+  robustness (including code quality and reproducibility), real-world impact, user experience and
+  design, presentation, and sources.
+- **The whole project, "including the code and datasets," is published on UP Data Science
+  Society's GitHub.** Anything in this repository at submission time should be fit to publish:
+  no case-level records (rule 11), and weekly case counts only if their source allows it.

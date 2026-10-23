@@ -56,6 +56,12 @@ const BUILT = [
     text: 'A week-by-week backtest from 2018 to 2026 with a leak check, mean absolute error as the primary score, and four real storms for the stock plan.',
     tag: 'Evidence',
   },
+  // Not in Figma: LEPTON is for the whole country, and why it starts in Quezon City (the paper's Scope)
+  {
+    name: 'Where it runs',
+    text: 'Built for the whole Philippines: every input but the case counts already comes from national sources. Quezon City is first: the most populous city, with an up-to-date case list, and the one city there was time to ask for its counts while LEPTON was built.',
+    tag: 'Scope',
+  },
 ]
 
 /**
@@ -75,7 +81,7 @@ export default function Home() {
   const forecast = useLoaded(loadCityForecast)
   return (
     <>
-      <title>LEPTON · Leptospirosis forecasts for Quezon City</title>
+      <title>LEPTON · Leptospirosis forecasts for the Philippines, starting with Quezon City</title>
       <SiteHeader />
       <main className="home">
         <section className="home-hero" aria-labelledby="home-hero-title">
@@ -97,7 +103,8 @@ export default function Home() {
             </h1>
             <p className="home-hero-text body-l">
               LEPTON combines rain forecasts, flood hazard maps and population data to estimate leptospirosis
-              risk in every Quezon City barangay, one to three days ahead.
+              risk barangay by barangay, one to three days ahead. Built for the whole Philippines, it starts in
+              Quezon City.
             </p>
             <Button variant="ghost" to="/map" className="home-hero-button">
               Try LEPTON

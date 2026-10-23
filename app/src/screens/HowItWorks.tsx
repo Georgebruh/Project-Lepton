@@ -77,8 +77,9 @@ function Intro({ current }: { current: string }) {
       </h1>
       <p className="how-it-works-intro-lead body-l">
         One shared flood computation feeds two models: a city forecast for next week’s cases, and a
-        barangay stock plan for the next one to three days. Every number on this site comes from
-        the code in our repository.
+        barangay stock plan for the next one to three days. LEPTON is built for the whole
+        Philippines and starts in Quezon City, for the reasons under Limits. Every number on this
+        site comes from the code in our repository.
       </p>
       <nav className="how-it-works-tabs" aria-label="Sections">
         {SECTIONS.map(({ id, label }) => (

@@ -1,56 +1,550 @@
-# Project-Lepton
-Leptospirosis Exposure Prediction &amp; Targeting Operational Network
+# Project LEPTON
 
-A few days’ warning before a storm lets health offices send doxycycline to the barangays most likely to flood, and a week’s warning lets hospitals prepare for the cases that follow. Project LEPTON will give Local Government Units both warnings. Standard forecasting models smooth over the sharp post-typhoon spikes that define leptospirosis outbreaks, so health offices cannot position prophylaxis where needed. Project LEPTON will run on one shared flood computation combining NASA IMERG rainfall, Project NOAH flood hazard maps and WorldPop population data to estimate how many residents of each barangay a storm exposes. Layer 1, a negative binomial regression on season, recent cases, two weeks of rainfall and a flood exposure index, will forecast next week’s city-level cases with a 90% range and the probability of crossing the epidemic threshold. Layer 2 will convert 1- to 3-day rain forecasts into barangay-level prophylaxis stock under DOH Memorandum 2023-0309, serving the high-risk tier first when supplies run short. Layer 1 will be tested in a weekly rolling-origin backtest (2018 to 2026) against two seasonal baselines and the published Prophet-XGBoost hybrid, with mean absolute error as the primary endpoint. Layer 2 will be tested on Typhoon Carina (2024) and the 2025 and 2026 floods against flood reports.
+**Leptospirosis Exposure Prediction & Targeting Operational Network**
 
-## Submission rules (task E1)
+LEPTON is built for the whole Philippines. It forecasts a city's leptospirosis cases a week ahead
+and turns a storm's rain into prophylaxis stock for each barangay and health center, and every
+input it needs except the case counts comes from national or global sources. This first version
+runs in Quezon City, the country's most populous city ([Why Quezon City
+first](#why-quezon-city-first)). It was built for PJDSC 2026. A research paper written alongside
+the code, in [`paper/`](paper/), sets out the method, the tests and the results in full
+([The paper](#the-paper)).
 
-From the 2026 PJDSC Event Primer (pages 8–15), read on October 18, 2026. The primer says exact
-dates may change: check PJDSC's Facebook page before the deadline.
+> [!IMPORTANT]
+> **Stock planning, not prescriptions.** Every dose figure in this repository, its results and
+> its app is a stock-planning figure for a health office. DOH Department Memorandum 2023-0309
+> requires a physician's consultation before anyone takes prophylaxis.
 
-**Due Saturday, October 24, 2026, 11:59 PM** (not October 23), through
-bit.ly/pjdsc2026FinalProjectSubmission. The primer asks for no written paper (the team's paper in
-`paper/` is extra, not a required item). The final submission is:
+<!-- The app's production link goes here once Vercel is set up (app/README.md, "Deploy (Vercel)"). -->
 
-| Item | Limit | Penalty for going over |
-| --- | --- | --- |
-| Slide deck, PDF | 20 slides, counting the title slide, references and appendices | 1 point for every 1–2 slides over, at most 10 |
-| Recorded demonstration video | 3 minutes | 1 point for every 15 seconds over, at most 10 |
-| Link to the complete code repository | none given | none |
+**Contents:** [Why](#why) · [What LEPTON does](#what-lepton-does) ·
+[Why Quezon City first](#why-quezon-city-first) · [Results](#results) ·
+[The paper](#the-paper) · [Quick start](#quick-start) · [Getting the data](#getting-the-data) ·
+[Repository layout](#repository-layout) · [Documentation](#documentation) ·
+[Methods in brief](#methods-in-brief) · [Safeguards and sanity checks](#safeguards-and-sanity-checks) ·
+[Working on the code](#working-on-the-code) ·
+[Data sources and licenses](#data-sources-and-licenses) · [License](#license)
 
-Results are expected: "Findings and Analysis" is a judging criterion. The judging criteria:
+## Why
 
-- **Project rationale and design:** problem statement and motivation; data sources and acquisition; methodology and approach.
-- **Execution and impact:** findings and analysis; challenges and mitigation strategies; future directions and real-world application.
-- **Code repository:** code structure and documentation; functional execution and reproducibility; dependencies and data management.
-- **Demonstration video:** communication quality and clarity; technical content and functional showcase; how much it helps the audience understand.
-- **Technical rigor and innovation:** validity and appropriateness of techniques; novelty and creativity; analytical depth.
-- **Sources:** reliable, up to date, APA 7th edition.
+Leptospirosis is a bacterial infection caught from floodwater or soil contaminated by the urine
+of infected animals, especially rats. In Quezon City, as across Metro Manila, cases surge in the
+weeks after a typhoon or a monsoon flood.
 
-After the deadline:
+Two warnings would help a city health office. A few days' notice before a storm lets it send
+doxycycline to the barangays most likely to flood; a week's notice of the cases that follow lets
+hospitals prepare. Standard forecasting models smooth over the sharp post-storm spikes that
+define leptospirosis outbreaks, so they cannot tell a health office where to position
+prophylaxis. LEPTON gives both warnings, for any city in the country, from one shared flood
+computation.
 
-- The top 10 teams are announced on November 4, 2026. Finalists present on November 14, 2026, in
-  Quezon City: a live demonstration of the working product, a 10-minute talk (stopped at 10
-  minutes) and 10 minutes of questions. Finals are judged on functionality and technical
-  robustness (including code quality and reproducibility), real-world impact, user experience and
-  design, presentation, and sources.
-- **The whole project, "including the code and datasets," is published on UP Data Science
-  Society's GitHub.** Anything in this repository at submission time should be fit to publish:
-  no case-level records (rule 11), and weekly case counts only if their source allows it.
+## What LEPTON does
 
-Read `Notes.md` first: the open decisions, the changes from the plan, and what the paper
-must say about them.
+![Inputs on top (case counts, rain, flood maps and people), the shared flood computation in the middle, and below it Layer 1's city forecast and Layer 2's barangay stock, both feeding the evaluation](results/e8_fig_design.png)
+
+*One flood computation feeds both layers. Drawn by `src/diagrams.py`; the paper's Figure A1.*
+
+**The shared flood computation.** Rain over the catchments that drain into a city (for Quezon
+City, the Marikina, San Juan and Tullahan rivers) is set against that rain's own history: a
+storm as rare as a 5-, 25- or 100-year rain is matched with Project NOAH's flood map for that
+return period, and a storm between two of them falls between the two maps. WorldPop's population
+grid, fitted to the 2024 census, then gives the residents of each barangay in each flooded zone.
+The share of the city's residents in those zones is the **flood exposure index** (EI).
+
+**Layer 1, the city forecast.** Every week, for the week after: expected cases, a 90% range and
+the probability that cases cross the epidemic threshold. The proposed model, **M4**, is a
+negative binomial regression on the season, recent cases, the last two weeks' rain and the flood
+exposure index. It is tested against two seasonal baselines and a reproduction of a published
+Prophet–XGBoost hybrid in a weekly backtest, 2018–2026, on Quezon City's own case counts.
+
+**Layer 2, barangay stock.** Exposed residents are split into children, pregnant women and
+adults, and adults into DOH DM 2023-0309's risk tiers (a flood of 2 days or more makes every
+exposed adult high risk). Each tier's regimen gives the doxycycline 100 mg capsules, children's
+courses and amoxicillin 500 mg tablets each barangay needs, then each health center, with the
+high-risk tier served first when stock runs short. Layer 2 needs no case data. It runs on the
+rain that fell (NASA IMERG) and on ECMWF forecasts issued 1, 2 and 3 days before each storm.
+
+**The app.** A web map of the Philippines (only Quezon City has data yet) shows the weekly
+forecast, compares the models, and plays each storm's prophylaxis plan barangay by barangay, with
+a stock list per health center to download. A guide for residents ("I have been exposed to
+floodwater") finds the nearest health center without storing or sending anything. See
+[`app/README.md`](app/README.md).
+
+## Why Quezon City first
+
+LEPTON is designed for every city in the Philippines. Apart from the case counts, its inputs come
+from national or global sources: NASA IMERG, ERA5 and ECMWF rain; the WorldPop population grid;
+PSA's census and birth tables; the national barangay boundaries; the DOH health facility
+registry; HydroBASINS river basins; and Project NOAH's flood maps, which cover most provinces
+(the app's map already draws them for the whole country). What a city has to supply is its own
+weekly case counts. This first version runs in Quezon City for two reasons:
+
+1. **A big city with an up-to-date case list.** Quezon City is the most populous city in the
+   country, with 3,084,270 residents in the 2024 census, and its Epidemiology and Surveillance
+   Division (QCESD) keeps a current list of its leptospirosis cases, each with its date of
+   onset, from January 2015 to October 2026.
+2. **Time.** LEPTON was built in under two weeks for PJDSC 2026, and formal requests for case
+   data take weeks, so there was time to ask one city only. Even that was a gamble: without
+   QCESD's reply, the city forecast would have fallen back to national weekly counts, without
+   the flood features. QCESD answered, and its list arrived on 20 October 2026.
+
+To add a city, LEPTON needs its weekly case counts and its own settings in
+[`config.py`](config.py), where almost everything particular to Quezon City sits: the river
+outlets that define its catchments, the box its rain is read over, its PSGC codes and census
+totals, its names in the facility registry and the births table, and its storms. The sanity
+checks hold Quezon City's own values too (142 barangays, for one), so a new city needs its own
+pass values. Layer 2 needs no case data, so a city's stock plan can come before its case counts
+do. Cebu City is next in line, as the paper's future work says. Until then, every result here is
+Quezon City's, and may not carry over to cities with different drainage, climate or reporting.
+
+## Results
+
+Every number here comes from the committed files in [`results/`](results/). The paper's results
+section reports them in full, with every test.
+
+### Layer 1: next week's cases
+
+The backtest made one forecast a week, for the weeks of 14 January 2018 to 20 September 2026:
+454 forecasts. Each used only what the health office would have had: counts by week of symptom
+onset, with the latest two weeks hidden from every model, as if not yet reported (the delay
+guard, g = 2). The headline scores leave out the COVID-19 years 2020–2021, which leaves 349
+weeks.
+
+| Model | What it is | Average miss, cases a week (MAE, 349 weeks) | 95% interval | 90% range held the count (2022–2026) | Brier skill score (2022–2026) |
+| --- | --- | ---: | :---: | ---: | ---: |
+| M0 | The count in the same week last year | 9.30 | 4.77–13.79 | 73% | 0.03 |
+| M1 | The average of the same week in recent years | 8.55 | 4.42–12.15 | 94% | 0.17 |
+| M3 | Prophet + XGBoost hybrid (Latigay & Gonzaga, 2026), reproduced | 15.59 | 6.38–27.62 | 87% | 0.11 |
+| **M4** | **Negative binomial regression, proposed** | **6.70** | **3.69–9.54** | **96%** | **0.34** |
+| M4 without EI2 | M4 without the flood exposure index | 6.86 | 3.79–9.69 | 96% | 0.34 |
+
+A well-sized 90% range holds the count in 90% of weeks, so M4's is slightly wide. The Brier
+skill score rates the breach probabilities: above 0 beats always quoting the usual breach rate,
+and 1 is perfect. Sources: `results/d8_fig2_mae.csv` and `results/d1_scores.csv`.
+
+- **Primary endpoint.** M4 missed by 8.88 fewer cases a week than M3: the mean of
+  |error of M4| − |error of M3| is −8.88, with a 95% moving-block bootstrap interval of −19.93 to
+  −1.88 (8-week blocks, 2,000 resamples). It holds with 4- and 13-week blocks, and with the
+  guard at g = 1 and g = 3 (`results/d5_guard_reruns.csv`). Much of the gap is 2018, when M3's
+  forecasts ran away during the July outbreak (MAE 50.4 against M4's 7.4), but M4 still missed
+  less than M3 in five of the six other scored years (`results/d1_mae_by_year.csv`).
+- **Practical test.** M4 also beat the seasonal average M1, by 1.84 cases a week (interval
+  −3.28 to −0.25).
+- **Flood test.** The flood exposure index did not measurably improve M4: −0.15 cases a week
+  (interval −0.50 to 0.21), at every guard. The flood maps earn their place in Layer 2.
+- **Benchmark reproduction.** M3's Prophet step came within 4.4% of the published MAE (24.73
+  against 23.68), but the hybrid's published gain could not be reproduced (24.60 against 16.72;
+  none of 75 XGBoost settings came within 10%). M4 is compared with this reproduction, not with
+  the published figure: [`results/m3_reproduction.md`](results/m3_reproduction.md).
+
+![Weekly leptospirosis cases in Quezon City, 2018 to 2026, with M4's and M3's 1-week-ahead forecasts and M4's 90% range; M3 overshoots to over 1,000 cases in mid-2018](results/d8_fig1_forecasts.png)
+
+### Layer 2: stock for four storms
+
+On the rain that fell (IMERG), at full coverage: every exposed resident counted, every course
+taken. **Stock-planning figures, not prescriptions.**
+
+| Storm | Flood days (D) | Wettest 3-day rain over the catchments | Residents in flooded zones (EI) | Exposed residents | Doxycycline 100 mg capsules | Children's courses | Amoxicillin 500 mg tablets |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Typhoon Carina, July 2024 | 3 | 120.0 mm | 0.05% | 1,414 | 1,893 | 457 | 67 |
+| July 2025 floods | 6 | 191.0 mm | 13.1% | 404,966 | 542,106 | 130,719 | 19,169 |
+| August 2026 habagat floods | 4 | 141.0 mm | 4.0% | 124,765 | 167,017 | 40,273 | 5,906 |
+| Severe Tropical Storm Kristine, October 2024 | 1 | 195.1 mm | 13.8% | 425,192 | 1,707,544 | 137,248 | 20,126 |
+
+Kristine's flood lasted a day, so its adults split between DM 2023-0309's low and moderate
+tiers by w, the share with a wound or floodwater in the eyes, nose or mouth. The table uses
+w = 0.5; w = 0 gives 569,182 capsules and w = 1 gives 2,845,907. Source:
+`results/d8_fig5_doses.csv`; per barangay and per health center, `results/c8_*`, `c9_*` and
+`d7_*`.
+
+- **Satellite rain under-reads typhoon peaks.** IMERG puts Carina's rain at the no-flood floor,
+  so its observed run sizes almost no stock. The ECMWF forecast issued a day ahead saw a 5- to
+  25-year storm, with 24.6% of residents in flooded zones. Kristine, which IMERG does register,
+  was added as a fourth storm for that reason; it was not in the proposal.
+- **Forecasts 1 to 3 days ahead** put 25.6%, 15.2% and 13.1% of residents in flooded zones for
+  Kristine (13.8% on observed rain), but fell short for the long July 2025 floods (4.7%, 1.2% and
+  0%, against 13.1%). Each rain product is set against its own return levels: forecasts against
+  ERA5's, observed rain against IMERG's (`results/c9_forecast_runs.csv`).
+- **These runs are demonstrations, not validations.** No barangay case counts were available to
+  test them against.
+
+### Limits
+
+- One city so far ([Why Quezon City first](#why-quezon-city-first)): the results are Quezon
+  City's, from one source of case counts, its surveillance division.
+- The backtest scores final counts behind a 2-week guard. Real-time accuracy may be lower,
+  because real counts are still filling in when the forecast is made.
+- M4's outbreak alarms are seldom false (73% of them came true) but caught only 4 of 14
+  outbreak episodes in advance, against 9 for the seasonal average M1
+  (`results/d3_alarms.csv`).
+- Layer 2 rests on satellite rain that under-reads typhoon peaks, on NOAH maps that state no
+  design rain duration, and on a no-flood floor (half the 5-year rain) that was not tuned.
+- The full list is in the paper's scope and limitations, and in [`Notes.md`](Notes.md),
+  section 3.
+
+## The paper
+
+The project is supported by a research paper, *Project LEPTON: Leptospirosis Exposure Prediction
+and Targeting Operational Network*, written alongside the code. The repository is the working
+system; the paper is the case for it: why the problem matters, how the method was built, how it
+was tested, what the tests found and what they cannot claim. Its LaTeX source is in
+[`paper/`](paper/).
+
+| Part | What it covers |
+| --- | --- |
+| Executive summary | The project and its main results, in under 250 words |
+| Background, problem, objectives | Leptospirosis after floods in Quezon City, why current forecasts fall short, and the four objectives as they were tested |
+| Scope and limitations | What was built, what was left as future work, and what the results cannot claim |
+| Methodology | The data, the shared flood computation, both layers and the evaluation, in words (the formulas are in an appendix) |
+| Results | The forecast scores and their tests, the sanity checks, the four storm runs and the figures |
+| References | 40 works in APA 7th edition, each DOI checked against Crossref or DataCite |
+| Appendices A–E | The study design and Layer 1's steps; the models; every assumption, with its `config.py` name and how it was tested; every formula, with the `src/` file that computes it; the data sources with their download dates |
+
+Every number in the paper comes from `results/`, `config.py` or a note in `data/raw/`, and a
+comment at the top of each section names its files, so the paper can be checked against a
+rebuild of the code. The PDF is not kept in git: build it from `paper/` on Overleaf or with
+`latexmk` ([Quick start](#6-build-the-paper)).
+
+## Quick start
+
+Run every command from the repository root unless it says otherwise.
+
+### 1. Look without installing anything
+
+- [`results/`](results/) holds every result: `forecasts.csv` (every model's forecast for every
+  week), the score tables (`d1_*`, `d3_*`, `d5_*`), the storm runs (`c8_*`, `c9_*`, `d7_*`) and
+  the paper's figures (`d8_fig*`, `e8_fig*`).
+- [`app/public/data/`](app/public/data/) holds the files the app draws (JSON and GeoJSON).
+- [`data/raw/`](data/raw/) holds a note per data source: where it came from, when, and how to
+  download it again.
+
+### 2. Set up Python
+
+Install Python 3.13, the version `requirements.txt` is pinned for. Then make a virtual
+environment and install the packages:
+
+```
+python -m venv .venv
+.venv\Scripts\activate            (Windows; on macOS or Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+```
+
+On Windows, keep the repository in a short path, or turn on Windows long paths: a virtual
+environment in a very deep folder fails with "DLL load failed ... The filename or extension is
+too long" when importing netCDF4, shapely or rasterio. Prophet prints "Importing plotly failed.
+Interactive plots will not work." when it loads; that is harmless.
+
+### 3. Run the sanity checks
+
+```
+python -m src.checks
+```
+
+Each check prints PASS, SKIP (its data file is not on this computer) or FAIL. A FAIL stops work
+until it is fixed; rerun the checks after any change. With the full data on disk they take about
+3 minutes. [Safeguards and sanity checks](#safeguards-and-sanity-checks) says what they prove.
+
+### 4. Rebuild everything
+
+One command reruns every step in order from the files in `data/raw/`, then the checks:
+
+```
+python -m src.run_all --list          # the steps in order, and which are skipped and why
+python -m src.run_all                 # run them all, then python -m src.checks
+python -m src.run_all --fetch-imerg   # also download IMERG rain first (needs an Earthdata login)
+python -m src.run_all --simulate      # the city forecast on made-up counts, without the case data
+```
+
+- With the data already downloaded, a full run took about 40 minutes on a laptop (October 22,
+  2026). Most of it is the backtest's three runs, one per delay guard, about 12 minutes each,
+  because M3 refits Prophet every week. The first run also downloads what is missing: NOAH's
+  maps can take over an hour.
+- If a step fails, the run stops there and prints the command that resumes from it. Before the
+  first step it checks the files saved by hand (HydroBASINS, the census files, the Mendeley
+  file, PSA births) and `data/raw/imerg_daily.nc`, and lists any that are missing
+  ([Getting the data](#getting-the-data)).
+- Downloads: WorldPop, NOAH's maps, the facility registry, ERA5 and the archived ECMWF forecasts
+  are fetched only when they are not already in `data/raw/`. IMERG always fetches up to today
+  and needs an Earthdata login, so it runs only with `--fetch-imerg`.
+- Quezon City's case data: the step that turns QCESD's case list into weekly counts runs only
+  when the list is in `data/raw/qcesd/`. The list is case-level and stays on the team drive
+  (safeguard 11), so in any other copy that step is skipped, not stopped. The backtest then runs
+  on `data/clean/cases_weekly.csv` if it was copied from the drive, and is skipped if not.
+  Without `cases_weekly.csv`, the residual check (`python -m src.m4`) and the score tables
+  (`python -m src.score_tables`) are skipped too, and the app's export leaves
+  `city_forecast.json` and `scores.json` as they were; the paper's figures are still drawn,
+  from the committed `results/forecasts.csv`.
+- `--simulate` runs the city forecast on made-up counts shaped like Quezon City's and draws the
+  forecast figures as previews from them (`results/d8_preview_*`). The app's export still uses
+  the committed `results/forecasts.csv`; only a copy without that file gets a
+  `city_forecast.json` marked `"simulated": true`. It tests the whole chain; none of it is a
+  result.
+- One check confirms what the repository ships: every package pinned in `requirements.txt` and
+  installed at that version, nothing tracked under `data/` but the notes, and no tracked table
+  with a person's columns (safeguard 11).
+- Two app-only steps are not in `run_all`: `python -m src.app_simulation` (the map's Simulation
+  mode) and `python -m src.noah_national` (NOAH's maps for the whole country). Both are in
+  [`app/README.md`](app/README.md).
+- M3's Prophet fit can differ slightly from one computer to another, so a rerun elsewhere may not
+  match M3's committed forecasts, or the scores built on them, to the last digit.
+
+### 5. Run the app
+
+The app's data files are committed, so it runs from a fresh clone without Python. It needs
+Node.js 22.12 or newer:
+
+```
+cd app
+npm install      # once
+npm run dev      # http://localhost:5173
+```
+
+| Address | What it shows |
+| --- | --- |
+| `/` | Home: the project, the latest forecast and a storm's stock plan |
+| `/map` | The map of the whole Philippines; Quezon City is the first city with data |
+| `/map/quezon-city` | Next week's forecast for Quezon City, any week since 2018 (`?date=2024-10-22`) |
+| `/map/quezon-city/compare` | The five models' forecasts and scores |
+| `/map/quezon-city/prophylaxis?date=2024-10-22` | Kristine's prophylaxis plan per barangay and health center, 1 to 3 days ahead |
+| `/exposed` | The "I have been exposed to floodwater" guide for residents |
+| `/leptospirosis` | Leptospirosis explained for residents, each fact linked to its DOH source |
+| `/how-it-works` | The pipeline, models, tests, limits and sources |
+
+The map opens in **Simulation** mode, which extends the weeks past QCESD's last count with
+made-up counts, each marked with an amber "Simulated" badge; **Real data** (`?data=real`) shows
+only the counts and the backtest's forecasts. `npm run build` writes the site to `app/dist/`, and
+`npm run preview` serves it as Vercel would. The screens, data files and deployment are in
+[`app/README.md`](app/README.md).
+
+### 6. Build the paper
+
+On [Overleaf](https://www.overleaf.com): zip the `paper/` folder, then New Project → Upload
+Project; in Menu, set the compiler to pdfLaTeX and the main document to `main.tex`. With a TeX
+installation (TeX Live, TinyTeX or MiKTeX), from `paper/`:
+
+```
+latexmk -pdf main.tex
+```
+
+[`paper/README.md`](paper/README.md) has the step-by-step setup on Windows and in VS Code, which
+file holds which section, and the rules for writing in it.
+
+## Getting the data
+
+Data files are not in git: they are large, and the case data must never be published. Each
+source has a note in [`data/raw/`](data/raw/), `<file>.md`, with its URL, download date, version
+and citation, so anyone can fetch it again. Teammates copy the files from the team drive
+instead.
+
+| How the file arrives | Files |
+| --- | --- |
+| Downloaded by its script when missing | WorldPop, NOAH's maps, the health facility registry, ERA5, ECMWF's archived forecasts, the city outlines |
+| Downloaded with a free NASA Earthdata login | IMERG daily rain: `python -m src.imerg`, steps at the top of `src/imerg.py`, or `run_all --fetch-imerg` |
+| Saved by hand, link in the note | HydroBASINS (`hybas_au_lev12_v1c.md`), the barangay boundaries (`phl_admin_boundaries.gdb.zip.md`), the 2020 and 2024 census tables (their `.xlsx.md` notes), the national weekly cases (`parreno.md`), PSA births (`psa_births_2024.csv.md`, a `curl` command) |
+| Not public | QCESD's case list (`qcesd.md`), one row per case, on the team drive only |
+
+**Quezon City's case data.** The Quezon City Epidemiology and Surveillance Division (QCESD)
+shared its case list for this project. It is a case-level record, so it never enters this
+repository (safeguard 11): it lives only on the team drive, saved as
+`data/raw/qcesd/qcesd_case_list.xlsx`. QCESD allowed the weekly city totals to be published, and
+those are the `y` column of `results/forecasts.csv` and of the app's `city_forecast.json`.
+Without the list, every other step still runs: copy `data/clean/cases_weekly.csv` from the drive
+to rerun the backtest, or use `--simulate` to run the city forecast on made-up counts.
+
+## Repository layout
+
+```
+config.py          every date, path and assumption value; no number is written anywhere else
+requirements.txt   the Python packages, pinned (Python 3.13)
+src/               the pipeline: one module per step, each run as python -m src.<module>
+  run_all.py       reruns every step in order
+  checks.py        the sanity checks
+data/raw/          downloads, saved unchanged (not in git); a note <file>.md per source
+data/clean/        processed files (not in git)
+results/           every result: forecasts, scores, storm runs, figures
+app/               the web app (React, TypeScript, Vite, MapLibre); app/public/data/ is its data
+paper/             the research paper (LaTeX)
+notebooks/         exploration only; nothing a result depends on
+Notes.md           the team's decisions, departures from the plan, limitations and their sources
+LICENSE            MIT, for the code
+```
+
+The modules in `src/`, by stage:
+
+| Stage | Modules |
+| --- | --- |
+| Data | `weeks` (the week calendar), `catchments` (river basins), `imerg`, `era5`, `ecmwf` (rain), `census`, `worldpop` (people), `noah` (flood maps), `facilities` (health centers), `benchmark` (national cases), `cases` (Quezon City's cases) |
+| Flood computation and Layer 2 | `rescale`, `overlay`, `flood_exposure`, `shares`, `exposed`, `doses`, `allocation`, `observed_run`, `forecast_run` |
+| Layer 1 | `population`, `features`, `view` (what a model may see), `baselines` (M0, M1), `m3`, `m3_port` (M3), `m4`, `forecast_range`, `thresholds`, `backtest` |
+| Evaluation and figures | `scores`, `breach_scores`, `compare`, `score_tables`, `layer2_results`, `paper_figures`, `diagrams` |
+| App data | `app_data`, `app_simulation`, `noah_national` |
+| Running and checking | `run_all`, `checks` |
+
+Functions carry docstrings that state their formulas in plain words.
+
+## Documentation
+
+| Where | What |
+| --- | --- |
+| [`paper/`](paper/) | The research paper: the full method, results and limitations ([The paper](#the-paper)) |
+| [`Notes.md`](Notes.md) | The team's decisions, every place the code departs from the original plan and why, and the limitations with the papers behind them |
+| [`results/m3_reproduction.md`](results/m3_reproduction.md) | How the M3 benchmark was reproduced, and why its hybrid's published gain could not be |
+| [`data/raw/storm-facts.md`](data/raw/storm-facts.md) | The four storms: flood dates, days flooded and flooded barangays, each with its source |
+| [`data/raw/*.md`](data/raw/) | One note per data source: URL, download date, version, checks and citation |
+| [`config.py`](config.py) | Every date, path and assumption value, each with a comment |
+| [`app/README.md`](app/README.md) | The app: its screens, data files, design tokens, maps, accessibility checks and deployment |
+| [`paper/README.md`](paper/README.md) | How to build the paper, which file holds which section, and the rules for writing in it |
+
+## Methods in brief
+
+The paper's methodology gives the full method, and its Appendix D every formula.
+
+**Conventions.**
+
+- Weeks are CDC/MMWR epidemiological weeks, Sunday to Saturday (`epiweeks`), numbered
+  continuously; for seasonal lookups week 53 counts as week 52.
+- Rain days are UTC days (8 AM to 8 AM Philippine time), from IMERG Late daily (V07).
+- Quezon City's counts are by week of symptom onset, with no report dates, so models see counts
+  only up to 2 weeks before the forecast day (option C, g = 2; rerun with g = 1 and 3). Rain is
+  never hidden: it is observed in real time.
+- 2020 and 2021 are COVID-19 years: an indicator in M4, and left out of the thresholds' reference
+  years and of the headline scores.
+- The years 2015–2017 are burn-in; the backtest forecasts from 2018.
+
+**The flood computation.** A storm's rain is its wettest 3-day total over the catchments, each
+IMERG cell weighted by its area inside them. A Gumbel curve fitted to the yearly maxima of the
+years before the storm (at least 10) gives the 5-, 25- and 100-year rain. Below the no-flood
+floor, half the 5-year rain, nobody counts as exposed; between two return periods the exposed
+residents are interpolated between the two maps; above the 100-year rain, the 100-year map
+counts.
+
+**The models.**
+
+- **M0:** the count 52 weeks before the target week.
+- **M1:** the mean of the same week of the year over the threshold's reference years.
+- **M3** (Latigay & Gonzaga, 2026): Prophet (multiplicative seasonality, changepoint prior scale
+  0.55), plus XGBoost trained on Prophet's in-sample misses with two features, Prophet's forecast
+  and the ISO week; the forecast is Prophet's plus XGBoost's correction, never below 0.
+- **M4:** a negative binomial regression with Quezon City's population as an offset, fitted with
+  statsmodels at every forecast day:
+
+```math
+\log \mu_{T+1} = \log P_T + \beta_0 + \sum_{k=1}^{3}\left(\alpha_k \sin\frac{2\pi k t}{52.18} + \gamma_k \cos\frac{2\pi k t}{52.18}\right) + \rho \log(1 + \tilde{y}) + \beta_1 \frac{\mathrm{Rcum2}_T}{50} + \beta_2\, \mathrm{EI2}_T + \delta\, \mathrm{COVID}_{T+1}
+```
+
+  In plain words: expected cases = population × a base rate × the season × a recent-cases
+  multiplier (ỹ, the two latest weeks the model may see) × a rain multiplier (Rcum2, the last two
+  weeks' rain where people live) × a flood multiplier (EI2, the larger of this week's and last
+  week's exposure index) × a COVID multiplier.
+
+**Every forecast's range.** Each model's forecast is a negative binomial distribution around its
+mean, as wide as that model's own last 104 misses outside the COVID years (with fewer than 26,
+the training fit's spread). The 90% range runs from its 5% to its 95% point.
+
+**The epidemic threshold.** For each week of the year, the mean plus 2 standard deviations of
+that week over up to the 5 most recent complete non-COVID years (at least 3). A week breaches
+when its count is strictly greater; Pr(breach) uses the same rule.
+
+**The scores.** The primary endpoint is the mean of |error of M4| − |error of M3| over 2018–2019
+and 2022–2026, with a moving-block bootstrap (8-week blocks, 2,000 resamples). Also: RMSE, bias,
+MASE, the weighted interval score, 50% and 90% coverage, Brier scores, reliability, alarms and
+lead times.
+
+**Layer 2, step by step:**
+
+1. Rescale WorldPop so each barangay adds up to its 2024 census total.
+2. Count the residents of each barangay in each NOAH hazard level (up to 0.5 m, 0.5–1.5 m, over
+   1.5 m) of each map, counting a pixel partly inside a zone in proportion.
+3. Place the storm's rain against the return levels and interpolate the exposed residents.
+4. Split them into children under 18 (2020 census ages), pregnant women (2024 births by the
+   mother's residence × 0.75, split by each barangay's women aged 15–49) and adults.
+5. Floods of 2 days or more make every exposed adult high risk; shorter floods split adults into
+   moderate (a share w with a wound or floodwater in the eyes, nose or mouth) and low risk.
+6. Turn people into units: doxycycline 100 mg capsules = 2 per low-risk adult + 10 per
+   moderate-risk adult + 2 per week of flooding per high-risk adult; one children's course per
+   week of flooding (at least one) per exposed child; 6 amoxicillin 500 mg tablets per exposed
+   pregnant woman. **Stock planning, not prescriptions.**
+7. Send each barangay's need to its health centers (66 get stock), high risk first when stock
+   is short.
+8. Run each storm on observed rain (IMERG, on IMERG's return levels), with the flood's real
+   length D.
+9. Run each storm on ECMWF forecasts issued 1, 2 and 3 days ahead (on ERA5's return levels),
+   for a 1-day and a 7-day flood, since a forecast cannot know how long the flood will last.
+
+## Safeguards and sanity checks
+
+Each rule below prevents a known way for this kind of pipeline to give a wrong answer without an
+error. The sanity checks test them.
+
+1. **No leakage.** At forecast day T a model sees case counts only up to its cutoff (T − g).
+   Training rows are built with the same lags they have at prediction time. Check S11 overwrites
+   every count a model may not see with −999 and confirms the forecasts do not change.
+2. Rain return levels are fitted only on years **before** the forecast or storm year, at least
+   10 of them, and refitted at the first forecast day of each year.
+3. Each rain product is judged on its own return levels: IMERG for observed rain, ERA5 for ECMWF
+   forecasts. They are never mixed.
+4. M4 uses statsmodels' `smf.negativebinomial`, which estimates the spread (the GLM family fixes
+   it), with the population offset when fitting **and** when predicting.
+5. The run stops if any forecast is NaN (a missing input gives NaN without an error), and every
+   model is scored on exactly the same weeks.
+6. A breach is a final count strictly greater than the threshold, for the forecast and for the
+   scored outcome alike.
+7. The exposure index divides by Quezon City's 2024 total from the same rescaled maps, not by
+   that week's population.
+8. IMERG files store longitude before latitude, so data are selected by dimension name, never by
+   position.
+9. M3 was rebuilt on its benchmark paper's own data and checked against the published scores
+   before it was used on Quezon City; where it falls short, the gap is written down
+   (`results/m3_reproduction.md`).
+10. Dose figures are labelled stock planning, not prescriptions, wherever they are printed.
+11. No case-level records in git: weekly counts only.
+
+The checks in `src/checks.py` (`python -m src.checks`):
+
+| Check | What passing proves |
+| --- | --- |
+| S1 calendar | Weeks follow CDC/MMWR: 9 August 2026 is 2026 week 32; 2020 and 2025 have 53 weeks |
+| S2 rain file | IMERG has no fill or negative values and no missing day; Carina's days are among 2024's wettest |
+| S3 census join | All 142 barangays match in the boundaries, the 2024 totals and the 2020 age tables |
+| S4 cases file | One row per week, unconfirmed weeks missing (not 0), and QCESD's published 2025 total reproduced |
+| S5 M4 simulation | M4 recovers known parameters from 50 simulated datasets, and its offset gives the true means |
+| S6 theta | The forecast range's spread is recovered from 20,000 simulated counts |
+| S7 breach, scores | Breach probabilities, the weighted interval score and outbreak episodes match hand-worked answers |
+| S8 census fit, overlay | Each barangay's rescaled pixels add up to its census total; no barangay has more exposed residents than people |
+| S9 return levels, exposure index | A known Gumbel curve gives 145.0, 196.0 and 238.0 mm at 5, 25 and 100 years; exposure interpolates exactly between the maps |
+| S10 shares, exposed, doses, allocate | Shares add up to 1; 100 exposed adults at w = 0.5 need 600 capsules at D = 1, 200 at D = 3, 400 at D = 10; high risk is served first |
+| S11 leakage | Hidden counts set to −999 change no forecast; every model has a forecast on every scored day; no NaN |
+
+Further checks cover the storm facts, what each model may see, the baselines M0 and M1, M3's
+weekly refits, MASE, lead time, the primary endpoint, the flood test, the score tables, the
+app's data files, scores, flood tiles and simulation, and what the repository ships.
+
+## Working on the code
+
+For anyone extending the project:
+
+- **Read [`Notes.md`](Notes.md) first:** the decisions taken, where the code departs from the
+  original plan, and why.
+- **No magic numbers.** Every date, path and assumption value lives in `config.py`, with a
+  comment.
+- **Run `python -m src.checks` after any change.** A FAIL stops work until it is fixed.
+- **New data:** save the download unchanged in `data/raw/` with a note `<file>.md` (the template
+  is in [`data/raw/README.md`](data/raw/README.md)); cleaned versions go in `data/clean/`.
+- **Never commit case-level records** (safeguard 11). The submission names no team, school or
+  member, as PJDSC's guidelines ask, so data notes say "a team member".
+- The paper has its own writing rules ([`paper/README.md`](paper/README.md)), and the app its own
+  conventions ([`app/README.md`](app/README.md)).
 
 ## Data sources and licenses
 
 The code is under the [LICENSE](LICENSE) file's terms (MIT). The data keep their sources'
-licenses. Files in `data/` are not in git (share them through the team drive); each has a note
-in `data/raw/<file>.md` with its source, date and citation. Files the repository does ship that
-are built from these sources (in `results/` and `app/public/data/`) keep the same terms.
+licenses. Files in `data/` are not in git; each has a note in `data/raw/<file>.md` with its
+source, date and citation. Files the repository does ship that are built from these sources (in
+`results/` and `app/public/data/`) keep the same terms.
 
 | Data | Source | License | Credit |
 | --- | --- | --- | --- |
-| Flood hazard maps, 5-, 25- and 100-year, Metro Manila | [Project NOAH](https://noah.up.edu.ph), UP Resilience Institute | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) | UP Resilience Institute / NOAH Center. `app/public/data/noah_*yr.json` are derived from these maps and shared under the ODbL |
+| Flood hazard maps, 5-, 25- and 100-year | [Project NOAH](https://noah.up.edu.ph), UP Resilience Institute | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/) | UP Resilience Institute / NOAH Center. Every result uses the Metro Manila maps; the app's flood layer, `app/public/data/noah_flood_*.pmtiles`, covers every province NOAH has mapped and is shared under the ODbL |
 | Population, 100 m, 2024 (R2025A) | [WorldPop](https://hub.worldpop.org) | CC BY 4.0 | Bondarenko et al. (2025), WorldPop, University of Southampton |
 | Barangay boundaries (COD-AB v03) | NAMRIA and PSA via [OCHA on HDX](https://data.humdata.org/dataset/cod-ab-phl) | CC BY-IGO | OCHA Philippines, from NAMRIA and PSA |
 | Population by single-year age and sex, 2020 census | PSA via [OCHA on HDX](https://data.humdata.org/dataset/popn-single-year-age-sex-and-barangay-census-2020) | CC BY | OCHA Philippines, from PSA |
@@ -59,166 +553,18 @@ are built from these sources (in `results/` and `app/public/data/`) keep the sam
 | Health facilities | [DOH National Health Facility Registry](https://nhfr.doh.gov.ph) | No license stated (public registry) | Department of Health. Only facility names, codes and coordinates are kept; the registry's staff names and e-mails are not |
 | Daily rain, IMERG Late V07 | [NASA GES DISC](https://doi.org/10.5067/GPM/IMERGDL/DAY/07) | NASA open data, no restrictions | Huffman et al. (2024), NASA/GSFC, archived at GES DISC |
 | ERA5 hourly rain | ECMWF via the [Open-Meteo](https://open-meteo.com) Historical Weather API | CC BY 4.0 | Weather data by Open-Meteo.com (Zippenfenig, 2023); contains modified Copernicus Climate Change Service information (Hersbach et al., 2020) |
-| ECMWF IFS archived forecasts | ECMWF via the [Open-Meteo](https://open-meteo.com) Previous Runs API | CC BY 4.0 | Weather data by Open-Meteo.com; ECMWF IFS open data |
+| ECMWF IFS forecasts | ECMWF via the [Open-Meteo](https://open-meteo.com) Previous Runs API (the storm runs) and Forecast API (the app's Simulation mode) | CC BY 4.0 | Weather data by Open-Meteo.com; ECMWF IFS open data |
 | Sub-basins (HydroBASINS v1c, level 12) | [HydroSHEDS](https://www.hydrosheds.org) | HydroSHEDS license: free for scientific, educational and commercial use | Lehner & Grill (2013), Hydrological Processes 27(15) |
 | National weekly cases, 2019–2023 | [Parreño (2023), Mendeley Data](https://doi.org/10.17632/v98325dpxv.1) | CC BY 4.0 | S. J. Parreño, Philippine Epidemiological Data, v1 |
-| NCR city outlines | [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) | MIT | (c) James Faeldon |
-| QC leptospirosis cases, 2015–2026 | Quezon City Epidemiology and Surveillance Division (shared on request) | Not public | The case list never enters this repository (rule 11). Only weekly city totals are published, with QCESD's permission |
+| City and municipality outlines | [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) | MIT | (c) James Faeldon; the app's map of the Philippines (`ph_cities.json`, `ph_islands.json`) |
+| QC leptospirosis cases, 2015–2026 | Quezon City Epidemiology and Surveillance Division (shared on request) | Not public | The case list never enters this repository (safeguard 11). Only weekly city totals are published, with QCESD's permission |
 | App base maps | OpenFreeMap / OpenStreetMap; EOX Sentinel-2 cloudless 2024 | ODbL; CC BY-NC-SA 4.0 | © OpenStreetMap contributors; EOX IT Services, contains modified Copernicus Sentinel data |
+| App terrain and live weather layers | Mapzen Terrain Tiles (Registry of Open Data on AWS); NASA GIBS (Himawari-9 infrared from JMA, IMERG, VIIRS); RainViewer | Each provider's terms (RainViewer: free for personal and educational use) | Credited in the app's footer and its How it works page |
+| App photos and fonts | Wikimedia Commons; Google Fonts (Figtree, Instrument Sans) | CC BY 2.0 and CC BY-SA 4.0; SIL Open Font License | Each photo's author and license in the app's footer (`app/src/home/photos.ts`) |
 
-## Setup
+## License
 
-1. Install Python 3.13, the version `requirements.txt` is pinned for.
-2. From the repository root, make a virtual environment and install the packages:
-
-   ```
-   python -m venv .venv
-   .venv\Scripts\activate            (Windows; on macOS or Linux: source .venv/bin/activate)
-   pip install -r requirements.txt
-   ```
-
-3. Copy the data files from the team drive into `data/raw/` and `data/clean/`. They are not in
-   git. Each file in `data/raw/` has a note, `<file>.md`, saying where it was downloaded from.
-4. Run the sanity checks:
-
-   ```
-   python -m src.checks
-   ```
-
-   Each check prints PASS, SKIP (its task is not built yet, or its data file is not on this
-   computer) or FAIL. A FAIL stops work until it is fixed. Rerun the checks after any change.
-
-## Rebuild everything (task E10)
-
-One command reruns every task below in order, from the files in `data/raw/`, then the checks:
-
-```
-python -m src.run_all --list          # the steps, and which are skipped and why
-python -m src.run_all                 # run them all, then python -m src.checks
-python -m src.run_all --from C3       # resume at a task after fixing a failed step
-python -m src.run_all --only B3 D7    # just these tasks
-python -m src.run_all --simulate      # Layer 1 on B10's made-up counts, without QC's case data
-```
-
-- It stops at the first failed step and says how to resume. Before the first step it checks
-  the files saved by hand (HydroBASINS, the census files, the Mendeley file, PSA births) and
-  `data/raw/imerg_daily.nc`, and lists any that are missing: copy them from the team drive.
-- Downloads: A6, A8, A10, A14 and A15 fetch only files not already in `data/raw/`. A4
-  (IMERG) always fetches up to today and needs an Earthdata login, so it runs only with
-  `--fetch-imerg`.
-- QC's case data: A13 runs only when QCESD's case list is in `data/raw/qcesd/`. The list is
-  case-level and stays on the team drive (rule 11), so in any other copy A13 is skipped, not
-  stopped. B10 then runs on `data/clean/cases_weekly.csv` if it was copied from the drive, and
-  is skipped if not; its guard reruns (g = 1 and 3) run in option C only. D8 draws figures 4
-  and 5 every run, and all five once B10's `results/forecasts.csv` exists; B5's residual check
-  (`python -m src.m4`) and E6's score tables (`python -m src.score_tables`) wait for it and for
-  `cases_weekly.csv`, and F2 then leaves `city_forecast.json` and `scores.json` as they were. A
-  task not built yet is skipped.
-- `--simulate` skips A13, B5's residual check and E6 and runs B10 on its made-up counts (`--simulate --option C`) and D8's figures 1–3 as
-  previews from them (`results/d8_preview_*`). F2 still exports the committed
-  `results/forecasts.csv`; only a copy without that file gets a `city_forecast.json` marked
-  `"simulated": true`. It tests the whole chain; none of it is a result.
-- The check "E10 package" confirms what the repository ships: every package pinned in
-  `requirements.txt` and installed at that version, nothing tracked under `data/` but the
-  notes, and no tracked table with a person's columns (rule 11).
-
-## Rebuilding the data (Workstream A)
-
-Run from the repository root, in this order (A4's box and the A14 and A15 grid cells come from A7's
-catchments; A10 checks its facilities against A5's barangays):
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| A3 | `python -m src.weeks` | `data/clean/calendar_weeks.csv` |
-| A7 | `python -m src.catchments` | `data/clean/catchments_qc.gpkg`, `results/catchments_qc.png` |
-| A4 | `python -m src.imerg` | `data/raw/imerg_daily.nc`; needs a NASA Earthdata login (steps at the top of `src/imerg.py`) |
-| A5 | `python -m src.census` | `data/clean/barangays_qc.gpkg`, `census_qc.csv`, `age_sex_2020_qc.csv` |
-| A6 | `python -m src.worldpop` | `data/raw/phl_pop_2024_CN_100m_R2025A_v1.tif`, `data/clean/worldpop_2024_box.tif` |
-| A8 | `python -m src.noah` | `data/raw/noah/` (the three maps and NOAH's notes), `data/clean/noah_flood_mm.gpkg`; can take over an hour |
-| A10 | `python -m src.facilities` | `data/raw/nhfr/` (the registry pages), `data/clean/health_facilities_qc.csv` |
-| A14 | `python -m src.era5` | `data/raw/era5_open_meteo/` (one reply per year), `data/clean/era5_daily.csv`; about 5 minutes |
-| A9 | `python -m src.benchmark` | `data/clean/parreno_national_weekly.csv`; needs the Mendeley file in `data/raw/parreno/`, downloaded by hand (link in `data/raw/parreno.md`) |
-| A11 | by hand: dates, D and flooded barangays in `config.STORMS`, with sources in `data/raw/storm-facts.md` | nothing; check "A11 storm facts" in `python -m src.checks` |
-| A12 | by hand: the `curl` command in `data/raw/psa_births_2024.csv.md` | `data/raw/psa_births_2024.csv` |
-| A15 | `python -m src.ecmwf` | `data/raw/ecmwf_previous_runs/` (one reply per storm), `data/clean/forecasts_storms.csv` (previous days 1-5 for C9's 3-day totals at leads 1-3, from 2 days before each storm's wettest days); storms without A11's dates in `config.STORMS` are skipped |
-| A13 | `python -m src.cases` | `data/clean/cases_weekly.csv` (week_index, year, week, cases: QC cases by MMWR week of onset, 2015 week 1 on; the last weeks, still filling in, are missing, not 0); needs QCESD's case list in `data/raw/qcesd/` (team drive; case-level records, never commit them: note in `data/raw/qcesd.md`). Decision-tree row: onset weeks, no report dates, so `config.DATA_OPTION = "C"`. Check S4 in `python -m src.checks` |
-
-## Layer 1: city forecast (Workstream B)
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| B1 | `python -m src.population` | `data/clean/pop_weekly.csv`; needs only `config.py` (A5's census totals are in it) |
-| B4 | `python -m src.features` | `data/clean/imerg_weights_qc.csv` (WorldPop QC weights per IMERG cell), `rain_weekly.csv` (weekly QC rain R and Rcum2), `features_weekly.csv` (R, Rcum2, EI and EI2 per fit year, read by B10); needs A3, A4, A5, A6 and C3's file |
-| B2 | none: `cutoff`, `visible`, `training_rows` and `prediction_row` in `src/view.py`, used by B5, B9 and B10. Set `config.DATA_OPTION` from A13's row first: option B sees every week up to forecast day T, option C up to T − g (`config.DELAY_GUARD_G`) | nothing; check "B2 view" in `python -m src.checks` |
-| B7 | none: functions in `src/thresholds.py` (and `forecast_dist` in `src/forecast_range.py`), used by B8 and B10 | nothing; check S7 in `python -m src.checks` |
-| B8 | none: functions in `src/baselines.py`, used by B10 | nothing; check "B8 M0 and M1" in `python -m src.checks` |
-| B6 | none: `estimate_theta` and `theta_for` in `src/forecast_range.py`, used by B10 for every model's 90% range and breach probability | nothing; check S6 in `python -m src.checks` |
-| B3 | `python -m src.m3` (then `--diagnose`) | `results/m3_reproduction.csv`, `m3_forecasts.csv`, `m3_diagnostics.csv`; needs A9's file; about a minute. Findings: `results/m3_reproduction.md` |
-| B9 | none: `m3_forecast` in `src/m3_port.py`, used by B10 (M3 refitted on the weeks it may see, about 0.5 s a forecast day) | nothing; check "B9 M3" in `python -m src.checks` |
-| B5 | `python -m src.m4` (after B10): v2's residual check, on M4's fit at the last forecast day of B10's run (its data option, g and rows). `model_rows`, `fit_m4` (M4, and M4 without EI2 with `with_ei=False`) and `predict_m4` in `src/m4.py` are used by B10 at every forecast day. Inputs: B2's rows, B4's weekly `rcum2` and `ei2`, B1's population | `results/m4_residual_acf.png` and `m4_residual_acf.csv` (how much one week's miss says about the miss 1 to 26 weeks later, with the 95% band for independent weeks); seconds. Check S5 in `python -m src.checks` (50 made-up datasets, a few seconds) |
-| B10 | `python -m src.backtest` (option from `config.DATA_OPTION`, or `--option B`/`C`; `--g 1` and `--g 3` for the guard reruns). To test without QC's counts: `python -m src.backtest --simulate --option C` on made-up QC-shaped counts | `results/forecasts.csv`: one row per model (M0, M1, M3, M4, M4_no_EI2) and forecast day, 2018 week 1 on, with mu, theta, the 23 WIS quantiles, the threshold, Pr(breach), y and breached. Guard reruns write `forecasts_g1.csv`, simulated runs `forecasts_simulated_B.csv` / `_C.csv`. Needs B1, B4 (`features_weekly.csv`) and A13; about 12 minutes (M3 refits Prophet every week). Check S11 in `python -m src.checks` |
-
-## Layer 2: barangay doses (Workstream C)
-
-Run after Workstream A, in this order:
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| C1 | `python -m src.rescale` | `data/clean/worldpop_scale_qc.csv`; needs A5 and A6 |
-| C2 | `python -m src.overlay` | `data/clean/overlay_qc.csv`; needs A5, A8 and C1's file (team drive, or run C1 first); about a minute |
-| C3 | `python -m src.flood_exposure` | `data/clean/ei_weekly.csv` (one EI series per forecast year, 2018–2026, on 3-day rain totals, `config.RAIN_ACCUM_DAYS`); needs A3, A4, A7, A5 and C2's file; seconds. Prints each year's return levels and where the storms fall. Comparison runs: `--days 1` (single wettest day) writes `ei_weekly_1day.csv`; `--without-2000` (refit without June–December 2000) writes `ei_weekly_no2000.csv` |
-| C4 | `python -m src.shares` | `data/clean/shares_qc.csv`; needs A5 and A12's `data/raw/psa_births_2024.csv` |
-| C5 | `python -m src.exposed` | no file: prints QC's exposed people and adult risk tiers at each map's own rain; needs C2 and C4. C8 and C9 call its `exposed_with_tiers` |
-| C6 | `python -m src.doses` | no file: prints QC's stock (doxycycline, children's courses, amoxicillin) at each map's own rain; needs C2 and C4. C7, C8 and C9 call its `barangay_doses`. Stock planning, not prescriptions |
-| C7 | `python -m src.allocation` | `data/clean/center_shares_qc.csv` (each barangay's need to its health centers); needs A5, A10 and C1, and C2 and C4 for its preview of stock per health center and `allocate`; a few seconds |
-| C8 | `python -m src.observed_run` | `results/c8_observed_runs.csv` (per storm, test, D, cut-off and w: IMERG's 3-day rain against IMERG's return levels fitted on years before the storm, its return period, EI, flagged-versus-flooded shares, QC's exposed people, tiers and units), `c8_observed_barangays.csv` and `c8_observed_centers.csv` (the main run, per barangay and per health center); each storm on observed rain with A11's D, rerun with the continuous-exposure cut-off at 1 and 3 days and with D ± 1 day; needs A4, A7, A5, C2, C4 and C7's files; a few seconds. Stock planning, not prescriptions |
-| C9 | `python -m src.forecast_run` | `results/c9_forecast_runs.csv` (per storm, run, D and w: rain against the return levels, EI, flagged-versus-flooded shares, QC's units), `c9_forecast_barangays.csv`, `c9_forecast_centers.csv`; ECMWF 3-day forecasts at leads 1-3 on ERA5's return levels, beside the observed IMERG run; needs A4, A7, A14, A15, A5, C2, C4 and C7's files; a few seconds. Stock planning, not prescriptions |
-
-
-## Evaluation (Workstream D)
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| D1 | none: `point_scores`, `wis`, `covered` and `score_models` in `src/scores.py`, used on B10's forecasts (columns model, week_index, year, y, mu, theta) | nothing; check "S7 scores" in `python -m src.checks` |
-| D2 | none: `mase_denominator` and `add_mase` in `src/scores.py`: `add_mase(score_models(table, config.MAE_YEARS), mase_denominator(cases))` | nothing; check "D2 MASE" in `python -m src.checks` |
-| D3 | none: `brier`, `base_rate`, `brier_skill_score`, `reliability`, `alarm_test`, `episodes` and `caught_share` in `src/breach_scores.py` | nothing; check "S7 scores" in `python -m src.checks` |
-| D4 | none: `lead_times` and `caught_in_advance` in `src/breach_scores.py`: `caught_in_advance(lead_times(forecasts, p_star))`, one model at a time (columns week_index, year, p, breached), with D3's p* from the first half of forecast days and scored on the second half | nothing; check "D4 lead time" in `python -m src.checks` |
-| D7 | `python -m src.layer2_results` | `results/d7_map_<storm>.png` (one per storm, C8's main run: share of each barangay's residents in flood zones, and doxycycline capsules; A11's flooded barangays outlined), `d7_centers.csv` (doses per health center, whole units), `d7_flags.csv` (flagged versus flooded, observed run and each lead), `d7_tests.csv` (the cut-off test and D ± 1), `d7_forecast_vs_observed.csv` (C9's doses at each lead beside C8's observed doses); reads C8's and C9's results files and A5's `barangays_qc.gpkg`, and stops if C8's main run and C9's observed run disagree; a few seconds. No validation regression: no barangay case counts. Stock planning, not prescriptions |
-| D5 | none: `primary_endpoint(table)` in `src/compare.py` (M4 vs M3 over the MAE window: mean of \|error M4\| − \|error M3\|, 95% moving-block bootstrap interval with 8-, 4- and 13-week blocks, and the Diebold–Mariano test), on B10's forecasts (columns model, week_index, year, y, mu) | nothing; check "D5 primary endpoint" in `python -m src.checks` |
-| D6 | none: `flood_and_practical_tests(table)` and `flood_finding(result)` in `src/compare.py` (M4 vs M4 without EI2, no Diebold–Mariano since the models are nested; M4 vs M1 with it; same bootstrap as D5) | nothing; check "D6 flood test" in `python -m src.checks` |
-| D1–D6 tables | `python -m src.score_tables` (after B10; also reads B10's guard reruns `forecasts_g1.csv` and `forecasts_g3.csv` when they are there). D1–D6's functions applied to `results/forecasts.csv`, so every score the paper's results (E6) quote is in `results/` | `results/d1_scores.csv` (each model's MAE, RMSE, bias, MASE, WIS, 50% and 90% coverage, Brier and Brier skill score, over the MAE years, 2022–2026 and all years), `d1_mae_by_year.csv`, `d3_alarms.csv` (D3's p*, precision and sensitivity on each half; D4's episodes caught and lead time), `d3_precision_recall.csv` (the full curve behind p*), `d5_d6_all_years.csv` (D5 and D6 over 2018–2026, COVID years in), `d5_guard_reruns.csv` (MAE and D5/D6 with g = 1, 2 and 3); seconds. Check "E6 score tables" in `python -m src.checks` |
-| D8 | `python -m src.paper_figures` (all five; needs B10's `results/forecasts.csv`). Without B10's run: `--layer2` (figures 4 and 5 only). To try figures 1–3 on B10's made-up counts: `python -m src.backtest --simulate --option C`, then `--preview results/forecasts_simulated_C.csv` (writes `results/d8_preview_*`, kept out of git, not for the paper) | `results/d8_fig1_forecasts.png` (QC weekly cases, M4's and M3's forecasts, M4's 90% range), `d8_fig2_mae.png` and `.csv` (MAE by model with 95% block-bootstrap intervals, beside D5's and D6's differences), `d8_fig3_reliability.png` and `.csv` (CORP reliability of M4's and M3's breach probabilities, forecasts per step), `d8_fig4_exposure_map.png` (share of residents in flood zones, C8's main run, Carina and Kristine; `config.D8_MAP_STORMS`), `d8_fig5_doses.png` and `.csv` (QC's doses table on observed rain, whole units). Reads B10's forecasts, C8's results files and A5's `barangays_qc.gpkg`; a few seconds. Stock planning, not prescriptions |
-
-## Paper (Workstream E)
-
-The paper's LaTeX source is in `paper/`; its README says how to build it (Overleaf, or
-`latexmk -pdf main.tex` in `paper/`) and which file holds which task.
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| E3 | none: `sections/objectives.tex` in `paper/`, the proposal's four objectives worded as they were tested (the last is D5's primary endpoint, M4 against M3); build as for E4 | `paper/main.pdf` (not in git) |
-| E4 | none: `sections/background.tex`, `problem.tex` and `scope.tex`, and the assumptions table `tables/assumptions.tex`, in `paper/`; build the whole paper with `latexmk -pdf main.tex` there | `paper/main.pdf` (not in git) |
-| E5 | none: `sections/methodology.tex` (no formulas in its text) and its formulas appendix `tables/formulas.tex` (Table D1, each formula with the `src/` file that computes it), in `paper/`; build as for E4 | `paper/main.pdf` (not in git) |
-| E6 | none: `sections/results.tex` in `paper/`, with D8's figures 1-4 copied into `paper/figures/`. Its numbers come from `results/`: B10's guard reruns (`python -m src.backtest --g 1`, `--g 3`), then `python -m src.score_tables` (D1–D6 tables) and `python -m src.paper_figures` (D8); build as for E4 | `paper/main.pdf` (not in git) |
-| E8 | `python -m src.diagrams`, a second; needs no data. Then copy both PNGs into `paper/figures/`. The appendices are `sections/appendix.tex` in `paper/`: A, the study design and Layer 1's steps; B, the models (Table B1); C, E4's assumptions; D, E5's formulas; E, the data sources with download dates (Table E1, from the notes in `data/raw/`); build as for E4 | `results/e8_fig_design.png` (the Methodology document's Figure 1, redrawn as built: one flood computation feeds both layers), `results/e8_fig_layer1.png` (its Layer 1 pipeline: the six steps behind every forecast day). Every setting they print comes from `config.py` |
-| E9 | none: `sections/summary.tex` in `paper/`, the executive summary under the title (under 250 words, with D5's primary result). Its numbers are E6's, from `results/forecasts.csv`, `d8_fig2_mae.csv`, `d1_scores.csv` and `c9_forecast_runs.csv`; build as for E4 | `paper/main.pdf` (not in git) |
-
-## App (Workstream F)
-
-The web app lives in `app/`. Its README has the details: the screens, the design tokens, maps
-and the Vercel setup.
-
-| Task | Command | Writes |
-| --- | --- | --- |
-| F1 | `cd app`, then `npm install` once and `npm run dev` (http://localhost:5173). Needs Node.js 22.12 or newer | nothing; `npm run build` writes `app/dist/` (not in git). `app/src/styles/tokens.css` holds the Figma file's colors, corners, spacing and text styles |
-| F2 | `python -m src.app_data` (repository root, after C8 and C9; downloads NCR's city outlines once into `data/raw/ncr_cities/`). In a copy without `results/forecasts.csv`, run `python -m src.backtest --simulate --option C` first to test the city forecast on made-up counts | `app/public/data/`: `ph_cities.json` and `ph_islands.json` (F14; they replace `ncr_cities.geojson`), `qc_barangays.geojson`, `storms.json`, `barangays/<storm>_<run>.json` (one per run), `centers.json`, `city_forecast.json` (B10's `forecasts.csv`, or in a copy without it the made-up-count run, marked `"simulated": true`) and, beside a real run only, `scores.json`. Commit them: Vercel builds from git. Needs C8, C9, A5 and A10; seconds. Stock planning, not prescriptions. Check "F2 app data" in `python -m src.checks` |
-| F4 | none: the map's first two levels in `app/` (`npm run dev`, then http://localhost:5173/map and `/map/quezon-city`). They read F2's files: `ncr_cities.geojson` now carries each city's label point (`config.APP_LABEL_MIN_KM2`), and `city_forecast.json` the map's model and outbreak levels (`config.APP_LEVEL_MODEL`, `config.APP_LEVELS`); rerun `python -m src.app_data` after changing them | nothing; check "F2 app data" in `python -m src.checks` also checks the label points and the levels |
-| F5 | none: the map's level 3, the prophylaxis plan, in `app/` (`npm run dev`, then http://localhost:5173/map/quezon-city/prophylaxis?date=2024-10-22). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson` and one `barangays/<storm>_<run>.json` per forecast shown | nothing; its Export stock list button saves `lepton-stock-list_<storm>_lead<n>.csv` in the browser. Stock planning, not prescriptions |
-| F6 | none: Home in `app/` (`npm run dev`, then http://localhost:5173/). It reads F2's `storms.json`, `centers.json`, `qc_barangays.geojson`, `barangays/kristine_2024_lead1.json` (the plan's preview, Kristine 1 day ahead) and `city_forecast.json` (the chart); its four photos are real and licensed, in `app/src/assets/home/`, credited in the footer (`app/src/home/photos.ts`) | nothing. Stock planning, not prescriptions |
-| F7 | none: the Leptospirosis page for residents in `app/` (`npm run dev`, then http://localhost:5173/leptospirosis). Text only, each medical fact linked to its DOH source (DM 2023-0309 and DOH advisories); no doses | nothing |
-| F8 | none: the "I have been exposed to floodwater" guide in `app/` (`npm run dev`, then http://localhost:5173/exposed). Its last step reads F2's `centers.json` and `qc_barangays.geojson` | nothing: answers and location stay in the page's memory, never stored or sent |
-| F9 | none: Compare models in `app/` (`npm run dev`, then http://localhost:5173/compare, which F14 made a tab of the map's city panel; `?period=12w`, `?period=2024` or `?period=all`). It reads F2's `city_forecast.json` and `storms.json`, and `scores.json` beside B10's real run only; until then every score shows "—" | nothing; check "F9 scores" in `python -m src.checks`: after B10's real run, the page's scores (`scores.json`) equal D8's `d8_fig2_mae.csv` |
-| F10 | none: the How it works page in `app/` (`npm run dev`, then http://localhost:5173/how-it-works). Text only, in `app/src/howItWorks/content.ts`: the pipeline, models (formulas behind "Show the formula"), testing, limits and sources; check it against the paper's final text (E4, E5, E7) | nothing |
-| F11 | none: motion, accessibility and small screens across `app/` (its README, "Motion, accessibility and small screens"): the map's keyboard lists, one focus ring, live updates, text contrast to WCAG AA, and layouts at 1440, 1024 and 390 px (the map panel a bottom sheet on a phone) | nothing; Lighthouse accessibility 100 on every route. Figma's Theme collection needs the three darker Clinic colors in `app/src/styles/tokens.css` |
-| F12 | `python -m src.app_data` on the latest results, then in `app/`: `npm run build`, `npm run preview` and the app checks U1–U8 (`app/README.md`, "Deploy and checks"); Vercel deploys `main` | the production link, at the top of this README once Vercel is set up (`app/README.md`, "Deploy (Vercel)"). Checked October 21 on B10's real run: U1–U8 pass after two fixes (U7: `/kit` in `npm run dev` only; U8: the footer and How it works credit every source); still by hand: two phones and two laptops, a teammate's keyboard run |
-| F14 | `python -m src.app_data` (now also writes `ph_cities.json`, every city and municipality, downloading faeldon's province files once into `data/raw/ph_cities/`); `python -m src.app_simulation` (the map's Simulation mode, after B10's real run; fetches the day's ECMWF forecast from Open-Meteo into `data/raw/ecmwf_forecast/`); `python -m src.noah_national` (NOAH's flood maps for the whole country: downloads, prepares and deletes 6 to 8 GB of province zips, then needs tippecanoe, in WSL on Windows; hours on a slow line). The map is the app's one view (`app/README.md`, "Only the map") | `app/public/data/ph_cities.json`, `city_simulation.json`, `noah_flood_5yr.pmtiles`, `noah_flood_25yr.pmtiles`, `noah_flood_100yr.pmtiles` (they replace `ncr_cities.geojson` and F13's `noah_<T>yr.json`), `data/clean/noah_national/` (one file per province and its manifest). Checks "F2 app data", "F14 NOAH tiles" and "F14 simulation" in `python -m src.checks` |
+The code is released under the MIT License ([LICENSE](LICENSE)). The data keep their own
+licenses ([above](#data-sources-and-licenses)); anything built from NOAH's maps is shared under
+the ODbL. Thanks to the Quezon City Epidemiology and Surveillance Division for sharing the
+city's case counts and allowing their weekly totals to be published.

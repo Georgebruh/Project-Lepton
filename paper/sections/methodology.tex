@@ -21,12 +21,15 @@
 %     DELAY_GUARD_G, M3_*, THETA_*, THRESHOLD_*, GUMBEL_MIN_YEARS, R0_FACTOR, RAIN_ACCUM_DAYS,
 %     FORECAST_LEADS_DAYS, FORECAST_RUN_D, WOUND_SHARE_W, DOXY_*, AMOX_TABS_PREG,
 %     FLAG_EXPOSED_SHARES, BOOT_*, EPISODE_GAP_WEEKS, S5_*); 18-26 IMERG fit years as in E4.
+%   The repository's link (E10, October 23): git's origin remote, as in the app's footer
+%     (app/src/components/Footer.tsx, GITHUB_URL); python -m src.run_all reruns every step.
 \section{Methodology}\label{sec:methodology}
 
 LEPTON has two layers that share one flood computation (Figure~\ref{fig:design}), which sets a
 storm's rain against flood hazard maps and population counts to estimate how many residents of
 each barangay the rain exposes. Layer~1 uses it, with past cases and rain, to forecast next week's cases in QC. Layer~2
-turns it into prophylaxis stock for each barangay and health center. This section describes the
+turns it into prophylaxis stock for each barangay and health center. Both layers apply to any
+Philippine city; this study runs them on QC (Section~\ref{sec:scope-scope}). This section describes the
 data, the shared computation, the two layers and how they were evaluated. It holds no formulas:
 the formula behind each step is in Appendix~\ref{app:formulas}, and each assumption's value and
 test in Table~\ref{tab:assumptions}.
@@ -335,8 +338,10 @@ comparisons show the chain at work; they do not validate it.
 
 \paragraph{Software and checks}
 Every step from the raw data files to each number and figure in this paper is a Python script in
-the project's code repository, run with one command each in the order its README gives
-\checkme{E10: the repository's public link}. Most downloads are scripted too, and every raw file
+the project's code repository at % the link breaks only after a slash, never mid-word (xurl's default)
+{\def\UrlBreaks{\do\/}\url{https://github.com/Georgebruh/Project-Lepton}}; one command
+reruns them all in order, as the repository's README explains. Most downloads are
+scripted too, and every raw file
 has a note saying where and when it was obtained (Table~\ref{tab:sources}). Package versions are pinned, and every setting
 and assumption is held in one configuration file. Automated checks with answers known in advance guard
 the steps: for example, M4 must recover known coefficients from 50 simulated data sets of 400

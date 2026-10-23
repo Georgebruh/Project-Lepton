@@ -57,7 +57,7 @@ function distanceNote(start: Start): string {
     notes.push(`Your phone placed you to within about ${formatKm(start.accuracyM / 1000)}, so the order may differ.`)
   }
   if (!start.barangay) {
-    notes.push('LEPTON lists Quezon City’s health centers only: outside Quezon City, ask your city’s health office.')
+    notes.push('LEPTON lists only Quezon City’s health centers for now: outside Quezon City, ask your city’s health office.')
   }
   return notes.join(' ')
 }

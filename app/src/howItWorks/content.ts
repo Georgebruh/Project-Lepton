@@ -153,9 +153,14 @@ export const TESTS: { label: string; title: string; text: string }[] = [
 /**
  * What LEPTON can't do yet. The Figma notes ask for every limit the paper states; these are
  * the plan's E4 list (corrections 2, 8 and 9 and the assumptions table) and Notes.md
- * sections 1 to 3, in plain words.
+ * sections 1 to 3, in plain words. The first, one city so far, follows the paper's Scope
+ * (October 23): LEPTON is for the whole country, and why it starts in Quezon City.
  */
 export const LIMITS: { title: string; text: string }[] = [
+  {
+    title: 'One city so far',
+    text: 'LEPTON is built for the whole Philippines, but only Quezon City’s case counts are in it. Quezon City came first: it is the most populous city, and its surveillance division (QCESD) keeps an up-to-date case list. With under two weeks to build LEPTON, there was time to ask one city for its counts, and even that was a gamble: QCESD’s list arrived on 20 October 2026. Every other input already comes from national sources, so what each new city must supply is its own weekly case counts.',
+  },
   {
     title: 'Satellite rain under-reads typhoon peaks',
     text: 'IMERG puts Carina’s rain at the no-flood floor, so the observed run sizes almost no stock for it (Aryastana et al., 2022; Veloria et al., 2021).',
@@ -204,15 +209,11 @@ export const LIMITS: { title: string; text: string }[] = [
     title: 'A chosen flag line',
     text: 'A barangay is flagged when 25% or more of its residents live in zones the rain floods. The team chose this line and also reports 50%.',
   },
-  {
-    title: 'One city',
-    text: 'Quezon City only, for now. Each other city needs its own weekly case counts.',
-  },
 ]
 
 /** The plan's cut items, named under the list as future work. */
 export const FUTURE_WORK =
-  'Left for future work: Cebu City, live weekly forecasts, nowcasting from report dates, a distributed-lag model, a satellite flood check (Sentinel-1) and hospital demand.'
+  'Left for future work: more Philippine cities, Cebu City first, live weekly forecasts, nowcasting from report dates, a distributed-lag model, a satellite flood check (Sentinel-1) and hospital demand.'
 
 /** One reference: its text (APA 7 style) and a link to it; no link for data shared on request. */
 export type Reference = { text: string; url?: string }

@@ -1,7 +1,8 @@
 % E9 (SCRUM-60): Executive summary, written last: under 250 words, with D5's primary result in
 % it (lepton-plan.md, E9). Starts from the submitted proposal's summary (the README's first
 % paragraph), now in the past tense with the results of Section 6. No formulas, no citations.
-% The keywords are the proposal's.
+% The keywords are the proposal's. LEPTON is designed for any Philippine city and tested in QC
+% (October 23, at the team's request; the reasons are in scope.tex's Scope).
 % Numbers (each also in sections/results.tex):
 %   results/forecasts.csv: target weeks 2018 week 3 to 2026 week 38 (2018-2026).
 %   results/d8_fig2_mae.csv: 349 weeks; MAE M4 6.70, M3 15.59; M4 vs M3 -8.88 (8-week blocks,
@@ -18,15 +19,16 @@
 \vspace{1mm}
 A few days' warning before a storm lets health offices send doxycycline to the barangays most
 likely to flood; a week's warning lets hospitals prepare for the cases that follow. Project
-LEPTON gives Quezon City (QC) both from one flood computation: NASA IMERG rain over the city's
-catchments, set against Project NOAH flood maps and WorldPop population fitted to the census,
-estimates how many residents of each barangay a storm exposes. Layer~1, a negative binomial
-regression on season, recent cases, rain and a flood exposure index, forecasts next week's cases
-with a 90\% range and the probability of crossing the epidemic threshold. In a 2018--2026 weekly
-backtest on QC's case counts, hiding the latest two weeks as if unreported, it missed by 6.70
-cases a week over 349 forecasts outside the COVID-19 years, against 15.59 for a reproduction
-of the published Prophet--XGBoost hybrid: 8.88 fewer (95\% block-bootstrap interval 1.88 to
-19.93). It also beat a seasonal average, and from 2022 its 90\% ranges held 96\% of counts. The
+LEPTON, designed for any Philippine city and tested in Quezon City (QC), gives both from one
+flood computation: NASA IMERG rain over the city's catchments, set against Project NOAH flood
+maps and census-fitted WorldPop population, estimates how many residents of each barangay a
+storm exposes. Layer~1, a negative binomial regression on season, recent cases, rain and a flood
+exposure index, forecasts next week's cases with a 90\% range and the probability of crossing
+the epidemic threshold. In a 2018--2026 weekly backtest on QC's counts, treating the latest two
+weeks as unreported, it missed by 6.70 cases a week over 349 forecasts outside the COVID-19
+years, against 15.59 for a reproduction of the published Prophet--XGBoost hybrid: 8.88 fewer
+(95\% block-bootstrap interval 1.88 to 19.93). It also beat a seasonal average; from 2022 its
+90\% ranges held 96\% of counts. The
 flood index did not measurably improve it. Layer~2 turns exposed residents into doxycycline,
 children's courses and amoxicillin per barangay and health center, under DOH
 Memorandum~\mbox{2023-0309}. On four storms, day-ahead ECMWF forecasts put 25\% of residents in

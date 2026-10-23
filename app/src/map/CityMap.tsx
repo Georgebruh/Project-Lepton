@@ -728,7 +728,9 @@ function CityTooltip({ city, forecast, week, style }: CityTooltipProps) {
           {shortName(city)}
         </p>
         <p className="city-map-tooltip-text body-s">{city.province}</p>
-        <p className="city-map-tooltip-text body-s">No data yet. A forecast needs this town's weekly case counts.</p>
+        <p className="city-map-tooltip-text body-s">
+          No data yet: LEPTON starts with Quezon City. A forecast here needs this town's weekly case counts.
+        </p>
       </div>
     )
   }
