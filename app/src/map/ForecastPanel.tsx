@@ -1,21 +1,18 @@
-import { useLocation } from 'react-router'
-import { compareLink } from '../compare/periods.ts'
 import Badge from '../components/Badge.tsx'
-import Button from '../components/Button.tsx'
 import {
   LEVEL_NAMES,
   LEVEL_TONES,
-  SIMULATED_LABEL,
   formatChance,
   formatWeek,
+  isSimulated,
   levelOf,
   rangePercent,
+  simulatedLabel,
   thresholdCount,
   weeksBefore,
 } from './forecast.ts'
 import type { CityForecast, ForecastWeek } from './mapData.ts'
 import PanelModes from './PanelModes.tsx'
-import { MAP_PATHS } from './routes.ts'
 import WeeklyCasesChart from './WeeklyCasesChart.tsx'
 import './ForecastPanel.css'
 
@@ -33,15 +30,17 @@ type ForecastPanelProps = {
 /**
  * F4: the city panel's case forecast, Figma frame 2's "Panel" (node 53:316): next week's
  * expected cases with the range, the chance of an outbreak (a count above the epidemic
- * threshold) with its level, the last 15 weeks and next week's range, then the Prophylaxis
- * plan and Compare models buttons. Every number is the map model's (M4) for the chosen week in
- * city_forecast.json; the expected count is rounded to whole cases. While the file says
- * simulated, the amber badge sits above the numbers. F9: Compare models opens at the year of
- * the week shown.
+ * threshold) with its level, the last 15 weeks and next week's range. Every number is the map
+ * model's (M4) for the chosen week in city_forecast.json; the expected count is rounded to whole
+ * cases. While the file says simulated, the amber badge sits above the numbers.
+ *
+ * F14: Figma's Prophylaxis plan and Compare models buttons are tabs at the top (PanelModes). A
+ * week the Simulation mode added carries the amber "Simulated" badge, and its made-up counts are
+ * outlined bars in the chart.
  */
 export default function ForecastPanel({ city, forecast, week }: ForecastPanelProps) {
-  const { search } = useLocation()
   const model = week?.forecasts[forecast.map_model]
+  const simulated = isSimulated(forecast, week)
   return (
     <div className="forecast-panel">
       <PanelModes mode="cases" />
@@ -52,9 +51,9 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
         </h2>
         <p className="forecast-panel-subtitle label-ui-s">Cases forecast · next week · whole city</p>
       </div>
-      {forecast.simulated && (
+      {simulated && (
         <Badge tone="warn" className="forecast-panel-badge">
-          {SIMULATED_LABEL}
+          {simulatedLabel(forecast)}
         </Badge>
       )}
       {week && model ? (
@@ -69,14 +68,6 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
       <p className="visually-hidden" aria-live="polite">
         {week && model ? forecastWords(forecast, week) : 'No forecast for the week after this date.'}
       </p>
-      <div className="forecast-panel-actions">
-        <Button to={MAP_PATHS[3] + search} icon="arrow-right" className="forecast-panel-action">
-          Prophylaxis plan
-        </Button>
-        <Button variant="secondary" to={week ? compareLink(week.year) : '/compare'} className="forecast-panel-action">
-          Compare models
-        </Button>
-      </div>
     </div>
   )
 }
@@ -140,6 +131,6 @@ function forecastWords(forecast: CityForecast, week: ForecastWeek): string {
   return (
     `Week of ${formatWeek(week.start, week.end)}: ${Math.round(model.mu)} cases expected, ` +
     `${rangePercent(forecast)} range ${model.low} to ${model.high}; ${formatChance(model.p_breach)} chance of an ` +
-    `outbreak, ${LEVEL_NAMES[level]}.${forecast.simulated ? ` ${SIMULATED_LABEL}.` : ''}`
+    `outbreak, ${LEVEL_NAMES[level]}.${isSimulated(forecast, week) ? ` ${simulatedLabel(forecast)}.` : ''}`
   )
 }

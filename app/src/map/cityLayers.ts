@@ -18,4 +18,7 @@ export const CITY_LAYERS = {
   openLine: 'city-open-line',
   /** F13: an invisible copy of the cities' names, on top, that keeps the street map's names off them. */
   names: 'city-names-room',
+  /** F14: the outline of the town the map's search found, over a wider light casing, on top of the other outlines. */
+  foundCasing: 'city-found-casing',
+  foundLine: 'city-found-line',
 }

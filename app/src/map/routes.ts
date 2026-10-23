@@ -3,15 +3,19 @@ import { useMatches } from 'react-router'
 /**
  * F4: the map's three levels and their addresses. Each map route in router.tsx names its
  * level in its handle ({ mapLevel: 2 }), so the layout knows which level is open.
+ * F14: level 1 is the whole Philippines, no longer Metro Manila.
  */
 export type MapLevel = 1 | 2 | 3
 
-/** Each level's address: Metro Manila, Quezon City's case forecast, its prophylaxis plan (F5). */
+/** Each level's address: the Philippines, Quezon City's case forecast, its prophylaxis plan (F5). */
 export const MAP_PATHS: Record<MapLevel, string> = {
   1: '/map',
   2: '/map/quezon-city',
   3: '/map/quezon-city/prophylaxis',
 }
+
+/** F14: Compare models, a tab of the city panel at level 2 (it was the /compare screen, F9). */
+export const COMPARE_PATH = '/map/quezon-city/compare'
 
 /** Quezon City's 10-digit PSGC (config.QC_CITY_PSGC): the only city with weekly case counts. */
 export const QC_PSGC = '1381300000'
@@ -48,7 +52,7 @@ export function levelSearch(level: MapLevel, search: string): string {
   return query ? `?${query}` : ''
 }
 
-/** The map level the open route names in its handle; 1 (Metro Manila) if none does. */
+/** The map level the open route names in its handle; 1 (the Philippines) if none does. */
 export function useMapLevel(): MapLevel {
   const matches = useMatches()
   for (const match of [...matches].reverse()) {

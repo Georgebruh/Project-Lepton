@@ -13,3 +13,6 @@ Downloaded by:
 Version / release:
 Notes (subset box, years, anything changed in the request):
 ```
+
+"Downloaded by" says "a team member", never a name: PJDSC's guidelines ask that the
+submission name no team, school or member.

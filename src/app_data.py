@@ -8,17 +8,18 @@ barangays and cities join on their 10-digit PSGC.
 
 Files written to app/public/data/ (config.APP_DATA), which the app fetches as /data/<file>:
 
-  ncr_cities.geojson    NCR's 17 city and municipality outlines (PSGC as of 2023, from
-                        faeldon/philippines-json-maps, MIT): psgc, name and has_data (only
-                        Quezon City has data). Cleaned into one coverage with no gaps or
-                        overlaps, Quezon City's outline being A5's barangays joined, so the map
-                        lines up when it drills down (map_shapes). Also label_lon and
-                        label_lat, where the map writes the city's name (F4, label_points)
+  ph_cities.json        F14: the outlines of the Philippines' 1,642 cities and municipalities
+                        (PSGC as of 2023, from faeldon/philippines-json-maps, MIT): psgc, name,
+                        province and has_data (only Quezon City has data). NCR's 17 are cleaned
+                        into one coverage with no gaps or overlaps, Quezon City's outline being
+                        A5's barangays joined, so the map lines up when it drills down
+                        (map_shapes); the others are simplified province by province
+                        (province_cities, towns_apart). Also label_lon and label_lat, where the
+                        map writes the name of a city with data (F4, label_points). It replaces
+                        F4's ncr_cities.geojson
+  ph_islands.json       F14: the coastline of every island of 1 km2 or more, the cities and
+                        municipalities joined (island_outlines), for the map zoomed out
   qc_barangays.geojson  A5's 142 barangays: psgc and name
-  noah_<T>yr.json       F13: NOAH's 5-, 25- and 100-year flood maps (A8), one row per hazard
-                        level (var 1-3), simplified for the map's overlay (noah_overlay). For
-                        looking at only; every number uses A8's full maps. Written again only
-                        when A8's file or the overlay's settings change (it takes most of a minute)
   storms.json           C9's runs of each storm: the rain that fell (observed, IMERG) and
                         the forecasts 1, 2 and 3 days ahead (ECMWF). Each run gives its
                         3-day window, rain, where the rain falls against the return levels,
@@ -54,14 +55,18 @@ The words behind the numbers:
 
 Every file with doses carries doses.LABEL: stock-planning figures, not prescriptions (rule 10).
 
+Two more of the app's files have their own scripts (F14): NOAH's flood tiles for the whole
+country (python -m src.noah_national) and the Simulation mode's weeks (python -m src.app_simulation).
+F13's Metro Manila overlays (noah_<T>yr.json) are gone: the tiles replace them.
+
 Run from the repository root after C8 and C9 (and B10, or its --simulate run, for
-city_forecast.json); a few seconds, and about a minute more when NOAH's maps must be written again:
+city_forecast.json); a few seconds:
     python -m src.app_data
-It downloads the NCR outlines once into data/raw/ncr_cities/. Commit app/public/data/
-afterwards, so the deployed app gets the new files. Check: python -m src.checks ("F2 app data").
+It downloads the NCR outlines once into data/raw/ncr_cities/, and the rest of the country's into
+data/raw/ph_cities/. Commit app/public/data/ afterwards, so the deployed app gets the new files.
+Check: python -m src.checks ("F2 app data").
 """
 
-import hashlib
 import json
 from datetime import timedelta
 
@@ -91,6 +96,7 @@ INPUTS = {                                        # the files F2 reads, and the 
     config.FACILITIES_QC: "A10: python -m src.facilities",
 }
 DOWNLOAD_TIMEOUT_S = 60
+DOWNLOAD_ATTEMPTS = 3
 
 
 def check_inputs():
@@ -234,22 +240,132 @@ def map_shapes(cities, barangays):
             out_barangays.to_crs(config.CRS_LONLAT))
 
 
+def faeldon_file(path):
+    """One of faeldon's files (config.FAELDON_URL), downloaded once into data/raw/ph_cities/, unchanged.
+
+    The address names one commit, so the file never changes; a download that is not whole
+    JSON (cut off) is not kept.
+    """
+    config.PH_CITIES_RAW.mkdir(parents=True, exist_ok=True)
+    local = config.PH_CITIES_RAW / path.rsplit("/", 1)[1]
+    if not local.exists():
+        for attempt in range(DOWNLOAD_ATTEMPTS):   # a slow line drops a connection now and then
+            try:
+                reply = requests.get(config.FAELDON_URL.format(path=path), timeout=DOWNLOAD_TIMEOUT_S)
+                break
+            except (requests.ConnectionError, requests.Timeout):
+                if attempt == DOWNLOAD_ATTEMPTS - 1:
+                    raise
+        reply.raise_for_status()
+        json.loads(reply.content)
+        part = local.with_name(local.name + ".part")
+        part.write_bytes(reply.content)
+        part.replace(local)
+        print(f"downloaded {local.name}")
+    return local
+
+
+def download_province_cities():
+    """F14: every province's file of city and municipality outlines but NCR's, as the region files list them.
+
+    Returns (paths, province names by PSGC). NCR's four district files come from
+    download_ncr_cities, so the Metro Manila outlines are made as before.
+    """
+    paths, provinces = [], {}
+    for region in config.PH_REGIONS:
+        listing = gpd.read_file(faeldon_file(f"regions/lowres/provdists-region-{region}.0.001.json"),
+                                ignore_geometry=True)
+        for psgc, name in zip(listing["adm2_psgc"].astype("int64").astype(str), listing["adm2_en"]):
+            provinces[psgc.zfill(10)] = name
+            if psgc.zfill(10) not in config.NCR_DISTRICTS:
+                paths.append(faeldon_file(f"provdists/hires/municities-provdist-{psgc}.0.1.json"))
+    return paths, provinces
+
+
+def province_cities(paths, provinces):
+    """F14: the cities and municipalities outside NCR, each province simplified on its own (EPSG:4326).
+
+    Within a province the outlines are one coverage, so they are simplified together, as
+    map_shapes does for NCR (simplify_coverage, about config.PH_SIMPLIFY_M): a border two
+    towns share stays one line. Provinces are simplified apart, since faeldon's files do not
+    quite meet at province borders.
+    """
+    parts = []
+    for path in paths:
+        raw = gpd.read_file(path)
+        if "adm3_psgc" not in raw:   # BARMM's Special Geographic Area: an empty file, no municipalities of its own until 2024
+            continue
+        raw = raw.to_crs(config.CRS_OVERLAY)
+        shapes = gpd.GeoDataFrame({"psgc": raw["adm3_psgc"].astype("int64").astype(str).str.zfill(10),
+                                   "name": raw["adm3_en"],
+                                   "province": raw["adm2_psgc"].astype("int64").astype(str).str.zfill(10).map(provinces)},
+                                  geometry=raw.geometry.make_valid().simplify_coverage(config.PH_SIMPLIFY_M),
+                                  crs=config.CRS_OVERLAY)
+        parts.append(shapes[~shapes.is_empty])
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
+
+
+def towns_apart():
+    """F14: the towns no province file holds (config.PH_TOWNS_APART), each its barangays joined and simplified (EPSG:4326)."""
+    rows = []
+    for psgc, (name, province) in config.PH_TOWNS_APART.items():
+        barangays = gpd.read_file(faeldon_file(f"municities/hires/bgysubmuns-municity-{int(psgc)}.0.1.json"))
+        shape = shapely.union_all(barangays.to_crs(config.CRS_OVERLAY).geometry.make_valid().values)
+        rows.append({"psgc": psgc, "name": name, "province": province,
+                     "geometry": shape.simplify(config.PH_SIMPLIFY_M)})
+    return gpd.GeoDataFrame(rows, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
+
+
+def country_cities(ncr_cities, others):
+    """F14: every city and municipality of the Philippines: NCR's from map_shapes, the others from province_cities.
+
+    Stops unless there are config.PH_CITY_COUNT of them, one PSGC each.
+    """
+    ncr = ncr_cities.assign(province="National Capital Region")
+    cities = gpd.GeoDataFrame(pd.concat([ncr, others.assign(has_data=False)], ignore_index=True),
+                              crs=config.CRS_LONLAT)
+    if len(cities) != config.PH_CITY_COUNT or not cities["psgc"].is_unique:
+        raise ValueError(f"expected {config.PH_CITY_COUNT} cities and municipalities, one PSGC each; got {len(cities)}")
+    return cities[["psgc", "name", "province", "has_data", "geometry"]].sort_values("psgc", ignore_index=True)
+
+
 def label_points(cities):
     """Where the map writes each city's name (F4): cities with label_lon and label_lat added.
 
     The point is the one farthest inside the city's largest part (shapely's polylabel, found
     to within config.MAP_SIMPLIFY_M), so the name sits inside even a thin or curved city,
     where its centre point might fall outside. A city smaller than config.APP_LABEL_MIN_KM2
-    gets none (empty), as in Figma.
+    gets none (empty), as in Figma. F14: only a city with data gets one; the street map writes
+    the others' names.
     """
     points = []
-    for shape in cities.to_crs(config.CRS_OVERLAY).geometry:   # in metres
+    for shape, has_data in zip(cities.to_crs(config.CRS_OVERLAY).geometry, cities["has_data"]):   # in metres
         largest = max(shapely.get_parts(shape), key=lambda part: part.area)
-        big_enough = shape.area / 1e6 >= config.APP_LABEL_MIN_KM2
+        big_enough = has_data and shape.area / 1e6 >= config.APP_LABEL_MIN_KM2
         points.append(shapely.ops.polylabel(largest, tolerance=config.MAP_SIMPLIFY_M) if big_enough else None)
     lonlat = gpd.GeoSeries(points, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
     return cities.assign(label_lon=lonlat.x.round(config.APP_COORD_DECIMALS),
                          label_lat=lonlat.y.round(config.APP_COORD_DECIMALS))
+
+
+def island_outlines(cities):
+    """F14: the coastline of every island, which the map draws zoomed out (EPSG:4326).
+
+    Every city and municipality joined into land. faeldon's province files do not quite meet,
+    so the gaps between them are closed first: the land grown by config.PH_ISLANDS_GAP_M, then
+    shrunk by as much. Each island keeps only its outer coast. The holes left inside are lakes,
+    which the street map already draws as water, or gaps in faeldon's maps (221 km2 inside
+    Zamboanga City), which would draw lines across the land. Islands under
+    config.PH_ISLANDS_MIN_KM2 are left out, and the coasts simplified to
+    config.PH_ISLANDS_SIMPLIFY_M: the map draws these lines only between the country's view and
+    the towns' borders (app/src/map/borders.ts), where both are under a pixel.
+    """
+    land = shapely.union_all(cities.to_crs(config.CRS_OVERLAY).geometry.make_valid().values)   # in metres
+    gap = config.PH_ISLANDS_GAP_M
+    closed = land.buffer(gap, join_style="mitre").buffer(-gap, join_style="mitre")
+    islands = [shapely.Polygon(part.exterior).simplify(config.PH_ISLANDS_SIMPLIFY_M)
+               for part in shapely.get_parts(closed) if part.area >= config.PH_ISLANDS_MIN_KM2 * 1e6]
+    return gpd.GeoDataFrame(geometry=islands, crs=config.CRS_OVERLAY).to_crs(config.CRS_LONLAT)
 
 
 def write_geojson(shapes, path):
@@ -259,97 +375,6 @@ def write_geojson(shapes, path):
     shapes.to_file(part, driver="GeoJSON", layer=path.stem, RFC7946="YES",
                    COORDINATE_PRECISION=config.APP_COORD_DECIMALS)
     part.replace(path)
-
-
-# ---------------------------------------------------------------------------
-# NOAH's flood zones, the map's overlay (F13)
-# ---------------------------------------------------------------------------
-
-def noah_fingerprint():
-    """A fingerprint of A8's maps' content: the first 16 hex digits of the SHA-256 of each map
-    level's area (A8's area_km2, to the square metre), read without the 2 million points.
-
-    Any change to NOAH's maps changes their areas. The file's bytes would not do: a GeoPackage
-    made again from the same inputs records a new time, so a teammate who ran A8 themselves
-    would get another fingerprint for the same maps.
-    """
-    rows = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard", ignore_geometry=True)
-    rows = rows.sort_values(["return_period", "var"])
-    text = ";".join(f"{t},{v},{a:.6f}" for t, v, a in zip(rows["return_period"], rows["var"], rows["area_km2"]))
-    return hashlib.sha256(text.encode()).hexdigest()[:16]
-
-
-def noah_settings():
-    """What an overlay was made from, written into each of its files so that a stale file can be told apart:
-    the settings that shape it and A8's file's fingerprint."""
-    return {
-        "min_m2": config.APP_NOAH_MIN_M2,
-        "simplify_m": config.APP_NOAH_SIMPLIFY_M,
-        "coord_decimals": config.APP_COORD_DECIMALS,
-        "a8_fingerprint": noah_fingerprint(),
-    }
-
-
-def noah_path(return_period):
-    """The app's file of one NOAH map: app/public/data/noah_<T>yr.json."""
-    return config.APP_DATA / config.APP_NOAH_FILE.format(return_period=return_period)
-
-
-def noah_overlay(flood, return_period):
-    """One NOAH map made light enough for a browser: one row per hazard level (var), in metres.
-
-    A8's map (config.NOAH_FLOOD, EPSG:32651) holds about 2 million points in 126,000 to 142,000
-    separate flood patches, most of them one to four of NOAH's grid cells. For the overlay:
-      1. each patch becomes a row of its own;
-      2. a patch smaller than config.APP_NOAH_MIN_M2 is dropped;
-      3. the patches of all three levels are simplified together (GeoPandas simplify_coverage,
-         as map_shapes does): a point goes when the triangle it makes with its two neighbours is
-         smaller than about config.APP_NOAH_SIMPLIFY_M squared, and a border two patches share
-         is simplified once, so the levels still meet without gaps or overlaps;
-      4. a level's patches are listed together as one MultiPolygon (they never overlap, so
-         nothing needs joining).
-    The rows also carry noah_settings(). Only for looking at: C2 and every number in the app
-    use A8's full maps.
-    """
-    patches = flood.loc[flood["return_period"] == return_period, ["var", "geometry"]].explode(index_parts=False)
-    patches = patches[patches.area >= config.APP_NOAH_MIN_M2].copy()
-    patches["geometry"] = patches.geometry.simplify_coverage(config.APP_NOAH_SIMPLIFY_M).values
-    patches = patches[~patches.is_empty]
-    levels = sorted(patches["var"].unique())
-    shapes = [shapely.multipolygons(patches.geometry[patches["var"] == var].values) for var in levels]
-    return gpd.GeoDataFrame({"var": levels, **noah_settings()}, geometry=shapes, crs=flood.crs)
-
-
-def noah_is_current(path):
-    """Whether an overlay file was made from today's A8 file and settings (noah_settings), whatever the files' dates."""
-    if not path.exists():
-        return False
-    written = gpd.read_file(path, ignore_geometry=True)
-    return all(name in written and (written[name] == value).all() for name, value in noah_settings().items())
-
-
-def write_noah_files():
-    """Write the overlay of each NOAH map that is missing or stale; returns a line per map for the report.
-
-    Without A8's map on this computer the files are left as they were: the rest of the
-    export does not need them.
-    """
-    if not config.NOAH_FLOOD.exists():
-        return [f"noah_*.json left as they were: {config.NOAH_FLOOD.name} not on this computer (A8: python -m src.noah)"]
-    flood = None   # A8's 2 million points are read only when a file must be written again
-    lines = []
-    for return_period in config.NOAH_RETURN_PERIODS:
-        path = noah_path(return_period)
-        if noah_is_current(path):
-            lines.append(f"{path.name} left as it was: up to date with A8 and config")
-            continue
-        if flood is None:
-            flood = gpd.read_file(config.NOAH_FLOOD, layer="flood_hazard")
-        overlay = noah_overlay(flood, return_period)
-        kept = overlay.area.sum() / flood.loc[flood["return_period"] == return_period].area.sum()
-        write_geojson(overlay.to_crs(config.CRS_LONLAT), path)
-        lines.append(f"{path.name}: {kept:.1%} of the map's flooded area, {path.stat().st_size / 1e6:.1f} MB")
-    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -715,7 +740,7 @@ def write_layer1():
     return f"city_forecast.json and scores.json from {path.name}"
 
 
-def report(storms, layer1, noah):
+def report(storms, layer1):
     """Print each run's flags and QC totals as the app shows them, the files written, and the label."""
     for storm in storms["storms"]:
         print(f"\n{storm['name']}:")
@@ -726,7 +751,6 @@ def report(storms, layer1, noah):
     written = sorted(path for path in config.APP_DATA.rglob("*") if path.is_file())
     size = sum(path.stat().st_size for path in written) / 1024
     print(f"\n{layer1}")
-    print("\n".join(noah))
     print(f"{len(written)} files in {config.APP_DATA.relative_to(config.ROOT)} ({size:,.0f} KB); "
           f"commit them so the deployed app gets them")
     print(doses.LABEL)
@@ -736,15 +760,19 @@ def main():
     check_inputs()
     config.APP_BARANGAY_RUNS.mkdir(parents=True, exist_ok=True)
     cities, barangays = map_shapes(load_cities(download_ncr_cities()), load_barangays())
-    write_geojson(label_points(cities), config.APP_DATA / "ncr_cities.geojson")
+    others = pd.concat([province_cities(*download_province_cities()), towns_apart()], ignore_index=True)
+    country = country_cities(cities, gpd.GeoDataFrame(others, crs=config.CRS_LONLAT))
+    write_geojson(label_points(country), config.APP_DATA / config.APP_CITIES_FILE)
+    write_geojson(island_outlines(country), config.APP_DATA / config.APP_ISLANDS_FILE)
+    for old in ("ncr_cities.geojson", *(f"noah_{t}yr.json" for t in config.NOAH_RETURN_PERIODS)):
+        (config.APP_DATA / old).unlink(missing_ok=True)   # F14: ph_cities.json and NOAH's national tiles replace them
     write_geojson(barangays, config.APP_DATA / "qc_barangays.geojson")
     files = layer2_files()
     for name, content in files.items():
         write_json(content, config.APP_DATA / name)
     remove_stale_runs(files)
     layer1 = write_layer1()
-    noah = write_noah_files()
-    report(files["storms.json"], layer1, noah)
+    report(files["storms.json"], layer1)
 
 
 if __name__ == "__main__":

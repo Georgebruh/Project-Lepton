@@ -61,11 +61,6 @@ export function periodParam(period: Period): string {
   return period.kind === 'all' ? ALL_PARAM : String(period.year)
 }
 
-/** The address of Compare models showing one year: the city panel's button opens the year it shows (F4). */
-export function compareLink(year: number): string {
-  return `/compare?period=${year}`
-}
-
 /** The backtest's years in words: "2018–2026". */
 export function allYearsName(years: number[]): string {
   return `${years[0]}–${years[years.length - 1]}`

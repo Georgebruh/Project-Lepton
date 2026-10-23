@@ -1,17 +1,46 @@
-/* F4: the city panel's modes (PanelModes.tsx), Figma "Modes" in frames 2 and 3. */
+/* F4: the city panel's modes (PanelModes.tsx), Figma "Modes" in frames 2 and 3. F14: three tabs and Close. */
 .panel-modes {
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.panel-modes-tabs {
+  display: flex;
+  flex: 1;
   /* The selected tab is 2 px taller than the other (its border), so the tabs line up at the top */
   align-items: flex-start;
   gap: var(--space-1);
+  min-width: 0;
   padding: var(--space-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   background: var(--color-bg-canvas);
 }
 
-/* The two tabs share the width equally */
+/* The tabs share the width equally */
 .panel-modes .tab {
   flex: 1;
   min-width: 0;
+}
+
+/* F14: in a narrow panel (a phone's sheet) the three labels wrap onto two lines instead of
+   running into each other */
+@container map-panel (max-width: 480px) {
+  .panel-modes .tab {
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+/* F14: Close, a 36 px square like the map buttons */
+.panel-modes-close {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
 }

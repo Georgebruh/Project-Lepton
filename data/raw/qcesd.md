@@ -1,7 +1,7 @@
 Source URL: none; sent by e-mail by the Quezon City Epidemiology and Surveillance Division
-  (QCESD, QC Health Department), in reply to the team's A1 request sent by George for the team.
+  (QCESD, QC Health Department), in reply to the team's A1 request.
 Downloaded on (YYYY-MM-DD): 2026-10-20 (saved from the e-mail; confirm the date QCESD replied)
-Downloaded by: Ryan
+Downloaded by: a team member
 Version / release: QCESD's case list as extracted for us, no version number. Latest date in it:
   2026-10-18 (an admission), so the extract is from that day or later.
 Notes: Task A13. CASE-LEVEL RECORDS: saved unchanged in data/raw/qcesd/ (config.QCESD_CASES_RAW),
@@ -12,10 +12,12 @@ Notes: Task A13. CASE-LEVEL RECORDS: saved unchanged in data/raw/qcesd/ (config.
   Publishing: QCESD gave permission to publish the weekly city totals, 2015-2026 (the counts
   in cases_weekly.csv, which appear as `y` in results/forecasts*.csv and in
   app/public/data/city_forecast.json). Nothing else from the list may be published. Confirmed
-  by Dexter for G11 on 2026-10-22 (GitHub #83). QCESD's e-mail or letter is kept on the team
-  drive beside the case list.
-  File: U.P Cebu Data Request.xlsx, 191,344 bytes, SHA-256
+  by a team member for G11 on 2026-10-22 (GitHub #83). QCESD's e-mail or letter is kept on the
+  team drive beside the case list.
+  File: qcesd_case_list.xlsx, 191,344 bytes, SHA-256
     c37cf6e28a705abcc78b47fd83b314ff30b844770b14367f13d93eaaf6f617d7.
+    Renamed from the e-mail's attachment so the repository names no school: save the team
+    drive's copy under this name.
   Layout: one sheet per year, 2026 down to 2015, one row per case, no names. Columns
     Year_of_onset, Date_of_onset, Morbidity_week, Date_of_Admission, District (1-6), Barangay
     (names, not PSGC codes). 4,953 cases; onset 2015-01-30 to 2026-10-14.

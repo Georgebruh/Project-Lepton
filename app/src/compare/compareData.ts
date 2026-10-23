@@ -3,7 +3,7 @@ import type { Storm, StormsFile } from '../map/planData.ts'
 
 /**
  * F9: the files Compare models reads, written by F2 (python -m src.app_data) into
- * public/data/, and the /compare route's loader that fetches them:
+ * public/data/, and the loader that fetches them (F14: for the city panel's Compare models tab):
  *
  *   city_forecast.json   B10's forecasts per target week; made-up counts while "simulated"
  *   scores.json          each model's scores (D1-D3) and D5's primary endpoint. F2 writes it
@@ -72,19 +72,26 @@ async function fetchScores(): Promise<Scores | null> {
 }
 
 /**
- * The /compare route's loader. Scores show only beside a real run they were made from: a
- * scores.json from another B10 file than city_forecast.json's is left out, and the page shows
- * "—" (nothing on the page may read as a real result that is not one).
+ * The scores to show beside `forecast`: only those made from the same real run. A scores.json
+ * from another B10 file than city_forecast.json's is left out, and the page shows "—" (nothing
+ * on the page may read as a real result that is not one).
  */
-export async function loadCompareData(): Promise<CompareData> {
-  const [forecast, stormsFile] = await Promise.all([
-    fetchJson<CityForecast>('/data/city_forecast.json'),
-    fetchJson<StormsFile>('/data/storms.json'),
-  ])
-  let scores = forecast.simulated ? null : await fetchScores()
-  if (scores && scores.source !== forecast.source) {
-    console.warn(`scores.json is from ${scores.source}, city_forecast.json from ${forecast.source}: rerun python -m src.app_data`)
-    scores = null
+export function scoresFor(forecast: CityForecast, scores: Scores | null): Scores | null {
+  if (forecast.simulated || !scores) {
+    return null
   }
-  return { forecast, storms: stormsFile.storms, scores }
+  if (scores.source !== forecast.source) {
+    console.warn(`scores.json is from ${scores.source}, city_forecast.json from ${forecast.source}: rerun python -m src.app_data`)
+    return null
+  }
+  return scores
+}
+
+/**
+ * F14: the loader of Compare models, now a tab of the map's city panel (/map/quezon-city/compare):
+ * the storms and the scores. The forecast comes from the map (MapLayout), in the mode shown.
+ */
+export async function loadCompareData(): Promise<Omit<CompareData, 'forecast'>> {
+  const [stormsFile, scores] = await Promise.all([fetchJson<StormsFile>('/data/storms.json'), fetchScores()])
+  return { storms: stormsFile.storms, scores }
 }

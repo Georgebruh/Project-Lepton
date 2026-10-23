@@ -41,31 +41,37 @@ type WeeklyCasesChartProps = {
 export default function WeeklyCasesChart({ past, pastWeeks, next, threshold, rangeName }: WeeklyCasesChartProps) {
   const slots = Array.from({ length: pastWeeks + 1 }, (_, slot) => slot)
   const x = scaleBand<number>().domain(slots).range([0, WIDTH]).paddingInner(0.4).paddingOuter(0.2)
-  const tallest = Math.max(1, threshold, next.high, next.mu, ...past.map((week) => week.y))
+  // F14: a simulated week still under way has no count, so no bar
+  const counts = past.flatMap((week) => (week.y === null ? [] : [week.y]))
+  const tallest = Math.max(1, threshold, next.high, next.mu, ...counts)
   const y = scaleLinear().domain([0, tallest]).nice(5).range([HEIGHT, 0])
   const firstSlot = pastWeeks - past.length // the bars end just before next week's slot
   const middle = (x(pastWeeks) ?? 0) + x.bandwidth() / 2
 
-  const counts = past.map((week) => week.y)
   const label =
     (counts.length ? `Weekly cases over the last ${counts.length} weeks, from ${Math.min(...counts)} to ` +
       `${Math.max(...counts)}. ` : '') +
     `Next week: ${Math.round(next.mu)} expected, ${rangeName} range ${next.low} to ${next.high}. ` +
-    `Epidemic threshold: ${Math.floor(threshold)} cases.`
+    `Epidemic threshold: ${Math.floor(threshold)} cases.` +
+    (past.some((week) => week.simulated) ? ' Outlined bars are simulated counts.' : '')
 
   return (
     <figure className="weekly-cases-chart">
       <svg className="weekly-cases-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
-        {past.map((week, i) => (
-          <rect
-            key={week.week_index}
-            className="weekly-cases-chart-bar"
-            x={x(firstSlot + i)}
-            y={y(week.y)}
-            width={x.bandwidth()}
-            height={HEIGHT - y(week.y)}
-          />
-        ))}
+        {past.map(
+          (week, i) =>
+            week.y !== null && (
+              <rect
+                key={week.week_index}
+                // F14: a simulated count is outlined, not filled
+                className={week.simulated ? 'weekly-cases-chart-bar weekly-cases-chart-bar-simulated' : 'weekly-cases-chart-bar'}
+                x={x(firstSlot + i)}
+                y={y(week.y)}
+                width={x.bandwidth()}
+                height={HEIGHT - y(week.y)}
+              />
+            ),
+        )}
         <rect
           className="weekly-cases-chart-range"
           x={middle - MARK / 2}

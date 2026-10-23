@@ -23,7 +23,7 @@ OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13: QC weekly counts by onset week
 # A13: QCESD's case list, unchanged. Case-level records: never commit or share it (rule 11).
-QCESD_CASES_RAW = DATA_RAW / "qcesd" / "U.P Cebu Data Request.xlsx"
+QCESD_CASES_RAW = DATA_RAW / "qcesd" / "qcesd_case_list.xlsx"
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
 IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
@@ -569,6 +569,64 @@ NCR_DISTRICTS = ("1303900000", "1307400000", "1307500000", "1307600000")   # Man
 NCR_CITIES_BYTES = {"1303900000": 29_016, "1307400000": 23_439, "1307500000": 45_025, "1307600000": 78_208}   # the pinned files' sizes
 NCR_CITY_COUNT = 17
 QC_CITY_PSGC = QC_PSGC_PREFIX + "00000"        # Quezon City's own 10-digit PSGC: the only city with data
+# F14: the map shows every city and municipality of the Philippines, from the same commit of
+# faeldon's maps. Its region files (at "lowres": only their province PSGCs are read) name each
+# province's file, read at "hires" as NCR's are. NCR's own come from NCR_CITIES_RAW.
+FAELDON_URL = NCR_CITIES_URL.split("provdists/")[0] + "{path}"   # the same commit's 2023/geojson/ folder
+PH_CITIES_RAW = DATA_RAW / "ph_cities"
+PH_REGIONS = ("100000000", "200000000", "300000000", "400000000", "500000000", "600000000",
+              "700000000", "800000000", "900000000", "1000000000", "1100000000", "1200000000",
+              "1300000000", "1400000000", "1600000000", "1700000000", "1900000000")   # faeldon's 17 regions, NCR is 1300000000
+PH_CITY_COUNT = 1642                           # cities and municipalities in faeldon's 2023 maps, one file each
+# The towns no province file holds: the highly urbanized cities outside NCR and BARMM's Special
+# Geographic Area. faeldon draws only their barangays, without the town's name, so each is its
+# barangays joined; name and the province it lies in, checked against OpenStreetMap on 2026-10-22.
+PH_TOWNS_APART = {
+    "0330100000": ("City of Angeles", "Pampanga"),
+    "0331400000": ("City of Olongapo", "Zambales"),
+    "0431200000": ("City of Lucena", "Quezon"),
+    "0630200000": ("City of Bacolod", "Negros Occidental"),
+    "0631000000": ("City of Iloilo", "Iloilo"),
+    "0730600000": ("City of Cebu", "Cebu"),
+    "0731100000": ("City of Lapu-Lapu", "Cebu"),
+    "0731300000": ("City of Mandaue", "Cebu"),
+    "0831600000": ("City of Tacloban", "Leyte"),
+    "0931700000": ("City of Zamboanga", "Zamboanga del Sur"),
+    "1030500000": ("City of Cagayan de Oro", "Misamis Oriental"),
+    "1030900000": ("City of Iligan", "Lanao del Norte"),
+    "1230800000": ("City of General Santos", "South Cotabato"),
+    "1430300000": ("City of Baguio", "Benguet"),
+    "1630400000": ("City of Butuan", "Agusan del Norte"),
+    "1731500000": ("City of Puerto Princesa", "Palawan"),
+    "1999901000": ("Kapalawan", "Special Geographic Area"),
+    "1999902000": ("Old Kaabakan", "Special Geographic Area"),
+    "1999903000": ("Kadayangan", "Special Geographic Area"),
+    "1999904000": ("Nabalawag", "Special Geographic Area"),
+    "1999905000": ("Pahamuddin", "Special Geographic Area"),
+    "1999906000": ("Malidegao", "Special Geographic Area"),
+    "1999907000": ("Ligawasan", "Special Geographic Area"),
+    "1999908000": ("Tugunan", "Special Geographic Area"),
+}
+# Assumption: outside NCR the outlines keep detail to about 100 m (a pixel at a province's view),
+# so the whole country is 6 MB (1.4 MB sent compressed; 50 m made it 9.9 MB); NCR keeps
+# MAP_SIMPLIFY_M, since the map drills down into Quezon City.
+PH_SIMPLIFY_M = 100
+APP_CITIES_FILE = "ph_cities.json"             # .json, not .geojson, so the web host sends it compressed
+# F14: the islands' coastlines, which the map draws between the country's view and the towns'
+# borders (app/src/map/borders.ts): every city and municipality joined, with the gaps between
+# faeldon's province files (a border two files leave up to twice PH_ISLANDS_GAP_M apart) closed.
+# Assumptions: islands under PH_ISLANDS_MIN_KM2 are left out, and the coasts keep detail to
+# PH_ISLANDS_SIMPLIFY_M: both under a pixel at the zooms the map draws them at (6 to 8.75).
+PH_ISLANDS_GAP_M = 150
+PH_ISLANDS_MIN_KM2 = 1
+PH_ISLANDS_SIMPLIFY_M = 250
+APP_ISLANDS_FILE = "ph_islands.json"
+# F14: the app's Simulation mode (src/app_simulation.py): made-up counts after A13's last week, and
+# next week's forecast with today's ECMWF rain forecast from Open-Meteo's forecast API.
+SIM_FORECAST_API = "https://api.open-meteo.com/v1/forecast"
+SIM_FORECAST_RAW = DATA_RAW / "ecmwf_forecast"   # each day's reply, unchanged
+APP_SIMULATION_FILE = "city_simulation.json"
+SIM_MAX_PAST_DAYS = 92                           # the most past days Open-Meteo's forecast API gives
 # Assumption: shape detail kept for the web, in metres (about a pixel at the city's view). One
 # value for cities and barangays, which are simplified together so their borders stay one line.
 MAP_SIMPLIFY_M = 10
@@ -586,12 +644,35 @@ APP_LEVELS = (("low", 0.0), ("watch", 0.10), ("high", 0.50))   # each level and 
 # Pateros, 1.6 km2; the next smallest, San Juan, is 5.8 km2). Its name still shows on hover.
 APP_LABEL_MIN_KM2 = 3
 
-# The map's NOAH overlay (F13): A8's flood maps, made light enough for a browser. For looking at
-# only; C2 and every LEPTON number use the full maps. Assumptions: a flood patch smaller than a
-# 20 m square is dropped (most are one to four of NOAH's grid cells, under a pixel at the city's
-# view), and a point of an outline goes when the triangle it makes with its two neighbours is
-# smaller than about APP_NOAH_SIMPLIFY_M squared (as MAP_SIMPLIFY_M; a few px at street level).
+# NOAH's flood patches on the map (F13; F14: the whole country, src/noah_national.py). Assumption:
+# a flood patch smaller than a 20 m square is dropped; most are one to four of NOAH's grid cells,
+# under a pixel at a city's view. For looking at only: C2 and every LEPTON number use A8's full maps.
 APP_NOAH_MIN_M2 = 400
-APP_NOAH_SIMPLIFY_M = 25
-APP_NOAH_FILE = "noah_{return_period}yr.json"  # .json, not .geojson, so the web host sends it compressed
-APP_NOAH_AREA_KEPT = (0.85, 1.005)             # check "F13 NOAH map": each map keeps this share of A8's flooded area
+
+# F14: the map shows NOAH's flood maps for the whole country (src/noah_national.py), as vector
+# tiles. NOAH's Drive folders of province zips, one per map (the folder A8's Metro Manila came from):
+NOAH_NATIONAL_FOLDERS = {
+    5: "17ecJuf2vnkrpCzNVLes0fI08XFsR1x8N",
+    25: "1PYdJFtfxzmAwk1gIgn8wYLh8WPkiZvOf",
+    100: "10pCWTfU-gVuAbdx4gdUGaDcNrSzMz0Mm",
+}
+NOAH_NATIONAL_CLEAN = DATA_CLEAN / "noah_national"   # one FlatGeobuf per province and map, and manifest.csv
+# Assumption: before tiling, each patch's outline loses points that move it less than 5 m; the
+# highest zoom's pixel is about 10 m, so the tiles look the same and the files are much smaller.
+NOAH_NATIONAL_PRESIMPLIFY_M = 5
+# Assumption: tiles from zoom 4 (the whole country) to 11 (a city), each tile 2^11 units across,
+# about 10 m a unit at zoom 11, NOAH's own grid; the map stretches zoom 11's tiles further in.
+# Zoom 12 at full detail would double the files (tested on Marinduque), past GitHub's 100 MB a file.
+NOAH_TILE_ZOOMS = (4, 11)
+NOAH_TILE_DETAIL = 11
+# Assumption: each map gets the largest of these tile size limits (bytes; tippecanoe's default is
+# 500,000) that keeps its file under APP_NOAH_TILES_MAX_BYTES: a tile over its limit drops its
+# smallest patches. The 5- and 25-year maps fit at the default; the 100-year map, NOAH's largest,
+# was 106 MB at it.
+NOAH_TILE_LIMITS = (500_000, 300_000, 200_000)
+APP_NOAH_TILES = "noah_flood_{return_period}yr.pmtiles"
+APP_NOAH_TILES_MAX_BYTES = 95_000_000
+# Check "F14 NOAH tiles": each file must reach at least this far (west, south, east, north, degrees):
+# from Palawan and Mindanao to northern Luzon, so a file of a few provinces fails.
+APP_NOAH_TILES_REACH = (120.0, 7.5, 125.5, 18.0)
+TIPPECANOE_WSL_DIR = "$HOME/tools/tippecanoe"   # Windows only: the WSL folder tippecanoe was built in (make)

@@ -2,7 +2,7 @@ Source URL: https://github.com/faeldon/philippines-json-maps (MIT License, (c) J
   pinned to commit 8eeead560246863c8c820c31ca6fbca81a279477 (17 Sep 2024), folder
   2023/geojson/provdists/hires/; the full URL pattern is config.NCR_CITIES_URL.
 Downloaded on (YYYY-MM-DD): 2026-10-19
-Downloaded by: George (by python -m src.app_data, which fetches them if they are missing)
+Downloaded by: a team member (by python -m src.app_data, which fetches them if they are missing)
 Version / release: the repository's 2023 maps: PSGC as of 31 December 2023 (PSA's 4Q 2023
   summary), simplified by the author with mapshaper at 10% ("hires"), longitude/latitude.
 Notes: Task F2. Four files, saved unchanged in data/raw/ncr_cities/ (config.NCR_CITIES_RAW),

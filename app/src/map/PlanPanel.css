@@ -28,7 +28,7 @@
   outline: none;
 }
 
-/* All storms: an outlined chevron and its words, like the breadcrumb's Back (MapBreadcrumb.css);
+/* All storms: an outlined chevron and its words, like F4's breadcrumb Back (gone in F14);
    34 px tall, so the heading's 44 px row does not grow */
 .plan-panel-all {
   display: inline-flex;

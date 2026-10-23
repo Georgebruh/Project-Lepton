@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
 
-/** The 19 icons' names, as on the Figma Components page without "icon/" (icon/play is 'play'). */
+/**
+ * The 20 icons' names, as on the Figma Components page without "icon/" (icon/play is 'play').
+ * F14: 'search' is not in Figma: drawn on the same grid with the same 1.75 px line.
+ */
 export const ICON_NAMES = [
   'play',
   'pause',
@@ -21,6 +24,7 @@ export const ICON_NAMES = [
   'map',
   'chart',
   'no-data',
+  'search',
 ] as const
 
 export type IconName = (typeof ICON_NAMES)[number]
@@ -194,6 +198,13 @@ export const ICON_SHAPES: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.5" />
       <path d="M5.64 5.64L18.36 18.36" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+  // F14: a magnifying glass, the map's search (not in Figma)
+  search: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M15.5 15.5L20 20" stroke="currentColor" strokeWidth="1.75" strokeLinecap="square" />
     </>
   ),
 }

@@ -1,6 +1,6 @@
 Source URL: https://psa.gov.ph/system/files/apc-pr/NCR%20-%20Table%20C%20-%20Population%20by%20Barangay.xlsx
 Downloaded on (YYYY-MM-DD): 2026-10-15
-Downloaded by: Hans
+Downloaded by: a team member
 Version / release: PSA 2024 Census of Population (POPCEN), counts declared official by the President; page https://psa.gov.ph/content/2024-census-population-popcen-population-counts-declared-official-president
 Notes: The scripted download got HTTP 403, so this copy was saved by hand from the
 browser. Sheet "Table B" has city totals for 2010, 2015,

@@ -1,0 +1,57 @@
+/* F14: the map's data modes (MapDataModes.tsx), top right: Simulation | Real data, and what the mode shows. */
+.map-data-modes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+/* The two modes: a segmented control on a card, the chosen one filled */
+.map-data-modes-buttons {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+.map-data-modes-button {
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--map-hover, 150ms) linear,
+    color var(--map-hover, 150ms) linear;
+}
+
+.map-data-modes-button[aria-pressed='true'] {
+  background: var(--color-accent-primary);
+  color: var(--color-text-on-accent);
+}
+
+.map-data-modes-button:disabled {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* What the mode shows, on the map, right-aligned under the buttons */
+.map-data-modes-note {
+  max-width: 320px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+/* A phone's map needs the room: the buttons stay, the note goes (the badges still mark every simulated number) */
+@media (max-width: 599px) {
+  .map-data-modes-note {
+    display: none;
+  }
+}

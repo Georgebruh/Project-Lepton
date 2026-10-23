@@ -1,0 +1,134 @@
+/* F14: the map's search (MapSearch.tsx), beside the logo. Not in Figma: a card like the logo's. */
+
+/* Closed: a square card as tall as the logo's (the row stretches it, MapLayout.css): the logo's
+   22 px, with 12 px of padding and a 1 px border above and below */
+.map-search-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* Open: the field, 320 px wide where there is room, and its matches under it */
+.map-search {
+  position: relative;
+  flex: 0 1 320px;
+  min-width: 0;
+}
+
+.map-search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+/* The field itself has no ring: the card shows where the keyboard is */
+.map-search-field:has(.map-search-input:focus-visible) {
+  outline: 2px solid var(--color-accent-secondary);
+  outline-offset: 2px;
+}
+
+.map-search-icon {
+  color: var(--color-text-secondary);
+}
+
+.map-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  /* Phones zoom into a field whose text is under 16 px, so the field's text is 16 px */
+  font-size: 16px;
+}
+
+.map-search-input:focus-visible {
+  outline: none;
+}
+
+.map-search-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.map-search-close {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+/* The matches: a card under the field, over the map and the plan's list of barangays. It shows
+   only when it holds a match or a count to read */
+.map-search-results {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.map-search-results:has(.map-search-option, .map-search-count) {
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+.map-search-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-search-list:empty {
+  display: none;
+}
+
+/* Each match: its name over its province; the one the arrow keys or the pointer reached is tinted */
+.map-search-option {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.map-search-option + .map-search-option {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.map-search-option[aria-selected='true'] {
+  background: var(--color-accent-subtle);
+}
+
+.map-search-province {
+  color: var(--color-text-secondary);
+}
+
+.map-search-count {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.map-search-list:not(:empty) + .map-search-count {
+  border-top: 1px solid var(--color-border-subtle);
+}

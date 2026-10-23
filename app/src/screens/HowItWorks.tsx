@@ -136,7 +136,7 @@ function Pipeline() {
           <Button variant="secondary" icon="arrow-right" to="/map">
             Open the map
           </Button>
-          <Button variant="secondary" icon="arrow-right" to="/compare">
+          <Button variant="secondary" icon="arrow-right" to="/map/quezon-city/compare?data=real">
             Compare models
           </Button>
         </div>

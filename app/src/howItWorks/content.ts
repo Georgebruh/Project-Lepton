@@ -359,7 +359,7 @@ export const DATA_SOURCES: Reference[] = [
     url: 'https://www.rainviewer.com/api.html',
   },
   {
-    text: 'UP Resilience Institute & NOAH Center. (n.d.). Project NOAH flood hazard maps, 5-, 25- and 100-year rain return, Metro Manila [Data set]. ODbL.',
+    text: 'UP Resilience Institute & NOAH Center. (n.d.). Project NOAH flood hazard maps, 5-, 25- and 100-year rain return: Metro Manila for LEPTON’s numbers, every province mapped for the map’s flood layer [Data set]. ODbL.',
     url: 'https://noah.up.edu.ph',
   },
   {

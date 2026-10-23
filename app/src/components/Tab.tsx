@@ -26,7 +26,7 @@ type TabProps = {
 
 /**
  * F3: the Figma component "Tab" (node 3:83), Default or Selected. With `to` it is a link to a
- * route (the app bar's views, the panel's Cases and Prophylaxis), with `href` a link to a
+ * route (the city panel's Cases forecast, Compare models and Prophylaxis plan), with `href` a link to a
  * part of the same page (F10); otherwise a button that reports its state to screen readers
  * with aria-pressed.
  */

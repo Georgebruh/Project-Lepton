@@ -53,12 +53,15 @@ export default function WeeksTable({ weeks, models, layers, rangeName, periodNam
             <tbody>
               {weeks.map((week) => (
                 <tr key={week.week_index}>
-                  <th scope="row">{weekTitle(week)}</th>
+                  <th scope="row">
+                    {weekTitle(week)}
+                    {week.simulated ? ' (simulated)' : ''}
+                  </th>
                   {models.map((model) => (
                     <td key={model}>{formatCount(week.forecasts[model].mu)}</td>
                   ))}
                   {range && <td>{`${week.forecasts[RANGE_MODEL].low}–${week.forecasts[RANGE_MODEL].high}`}</td>}
-                  {layers.observed && <td>{formatCount(week.y)}</td>}
+                  {layers.observed && <td>{week.y === null ? '—' : formatCount(week.y)}</td>}
                   {layers.threshold && <td>{formatCount(thresholdCount(week.threshold))}</td>}
                 </tr>
               ))}

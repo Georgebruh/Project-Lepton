@@ -1,0 +1,148 @@
+/* F14: the map's timeline (MapTimeline.tsx), at the bottom in the middle of the map: the date
+   between the week steps and its forecast week under it, then the slider with the years under
+   it. The box is a container, so a narrow timeline shortens the years (below). */
+.map-timeline {
+  container: map-timeline / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+/* The date and its forecast week, one under the other in the middle */
+.map-timeline-when {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+/* The previous week, the date picker and the next week, side by side */
+.map-timeline-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The previous and next week: 34 px squares, as tall as the date picker, like the weather timeline's steps */
+.map-timeline-step {
+  display: flex;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.map-timeline-step:hover:not(:disabled) {
+  background: var(--color-bg-canvas);
+}
+
+.map-timeline-step:disabled {
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.map-timeline-target {
+  color: var(--color-text-secondary);
+}
+
+/* The slider: a 4 px track, accent up to the week shown (--map-timeline-played), the simulated
+   weeks amber (from --map-timeline-simulated), and a 16 px round thumb with a 2 px accent ring */
+.map-timeline-slider {
+  display: block;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  appearance: none;
+  --map-timeline-track: linear-gradient(
+    to right,
+    var(--color-accent-primary) 0 var(--map-timeline-played),
+    var(--color-border-strong) var(--map-timeline-played) var(--map-timeline-simulated),
+    color-mix(in srgb, var(--color-status-warn) 45%, transparent) var(--map-timeline-simulated)
+  );
+}
+
+.map-timeline-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--map-timeline-track);
+}
+
+.map-timeline-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--map-timeline-track);
+}
+
+.map-timeline-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  appearance: none;
+}
+
+.map-timeline-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+}
+
+/* The years under the slider, each centred under the week holding its 1 January
+   (--map-timeline-at, 0 to 1). The thumb's middle runs from 8 px in to 8 px short of the end
+   (it is 16 px wide), so a year sits where the thumb would stand on its first week. */
+.map-timeline-years {
+  position: relative;
+  height: 24px;
+}
+
+.map-timeline-year {
+  position: absolute;
+  top: 0;
+  left: calc(8px + var(--map-timeline-at) * (100% - 16px));
+  padding-top: var(--space-2);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* A short tick from the track down to the year */
+.map-timeline-year::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 1px;
+  height: 4px;
+  background: var(--color-border-strong);
+}
+
+.map-timeline-year-short {
+  display: none;
+}
+
+/* A narrow timeline writes the years short ('24), or they would run into each other */
+@container map-timeline (max-width: 420px) {
+  .map-timeline-year-long {
+    display: none;
+  }
+
+  .map-timeline-year-short {
+    display: inline;
+  }
+}

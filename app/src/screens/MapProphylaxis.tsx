@@ -245,7 +245,7 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
   if (!pointer || (pointer.fromList && pointer.width < SHEET_BELOW)) {
     return null
   }
-  // The panel covers the map's right side, or on a phone its lower part (as the camera assumes, CityMap)
+  // The panel covers the map's left side (F14), or on a phone its lower part (as the camera assumes, CityMap)
   const cover = panelCover(pointer.width, pointer.height)
   const shown = { ...pointer, height: pointer.height - cover.bottom }
   return createPortal(
@@ -254,7 +254,7 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
       name={names.get(pointer.psgc) ?? pointer.psgc}
       barangay={barangays?.get(pointer.psgc)}
       note={note}
-      style={placeTooltip(shown, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width - cover.right)}
+      style={placeTooltip(shown, TOOLTIP_WIDTH, TOOLTIP_TALLEST, pointer.width, cover.left)}
     />,
     overlay,
   )

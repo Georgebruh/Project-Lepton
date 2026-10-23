@@ -14,8 +14,8 @@ import { QC_PSGC, type MapLevel } from './routes.ts'
  * turns and tilts about the middle of the map left in sight, beside the panel or above the sheet.
  */
 
-/** Space kept around what the camera fits, in px (Figma: 28 around Metro Manila, 32 around Quezon City). */
-const FIT_PADDING = { metro: 28, city: 32 }
+/** Space kept around what the camera fits, in px (Figma: 28 around Metro Manila, now the Philippines; 32 around Quezon City). */
+const FIT_PADDING = { country: 28, city: 32 }
 
 /**
  * F13: the least height, in px, the open city keeps on a phone. Legends taller than the map left
@@ -26,6 +26,9 @@ const MIN_CITY_HEIGHT = 120
 
 /** MapLibre's whole world at zoom 0, in px: one 512 px tile. */
 const WORLD_PX = 512
+
+/** F14: how many zoom levels the camera steps back when the city panel closes: twice the ground each way. */
+const CLOSE_ZOOM_OUT = 1
 
 /** A box on the map: [[west, south], [east, north]]. */
 type Box = [[number, number], [number, number]]
@@ -50,24 +53,69 @@ function boundsOf(features: Cities['features']): Box {
   ]
 }
 
+/** F14: the box around every city and municipality, computed once per file: the Philippines. */
+const countryBounds = new WeakMap<Cities, Box>()
+
 /**
- * What the camera shows at a level: all of Metro Manila at level 1; the open city at levels 2
- * and 3, kept clear of the panel by padding the side it covers: the right by the panel's width,
- * or on a phone the bottom by the sheet's height and by `controls`, the legend and zoom buttons
- * that stand on it (F11, panelCover), leaving the city at least MIN_CITY_HEIGHT. `container`
- * is the map's element, at its size now.
+ * What the camera shows at a level: all of the Philippines at level 1 (F14; Metro Manila
+ * before); the open city at levels 2 and 3, kept clear of the panel by padding the side it
+ * covers: the left by the panel's width (F14), or on a phone the bottom by the sheet's height and
+ * by `controls`, the legend and zoom buttons that stand on it (F11, panelCover), leaving the city
+ * at least MIN_CITY_HEIGHT. F14: the top by `topBar`, the logo and data modes over the map.
+ * `container` is the map's element, at its size now.
  */
-export function viewFor(level: MapLevel, cities: Cities, container: HTMLElement, controls: HTMLElement | null): LevelView {
+export function viewFor(
+  level: MapLevel,
+  cities: Cities,
+  container: HTMLElement,
+  controls: HTMLElement | null,
+  topBar: HTMLElement | null = null,
+): LevelView {
   if (level === 1) {
-    const pad = FIT_PADDING.metro
-    return { bounds: boundsOf(cities.features), padding: { top: pad, bottom: pad, left: pad, right: pad } }
+    const pad = FIT_PADDING.country
+    if (!countryBounds.has(cities)) {
+      countryBounds.set(cities, boundsOf(cities.features))
+    }
+    return { bounds: countryBounds.get(cities)!, padding: { top: pad, bottom: pad, left: pad, right: pad } }
   }
   const pad = FIT_PADDING.city
   const open = cities.features.filter((feature) => feature.properties.psgc === QC_PSGC)
   const cover = panelCover(container.clientWidth, container.clientHeight)
   const most = container.clientHeight - 2 * pad - MIN_CITY_HEIGHT
   const bottom = cover.bottom > 0 ? Math.max(cover.bottom, Math.min(cover.bottom + (controls?.offsetHeight ?? 0), most)) : 0
-  return { bounds: boundsOf(open), padding: { top: pad, bottom: pad + bottom, left: pad, right: pad + cover.right } }
+  // F14: and the top left corner's logo and data modes, while the city keeps at least MIN_CITY_HEIGHT
+  const top = Math.max(0, Math.min(topBar?.offsetHeight ?? 0, most - bottom))
+  return { bounds: boundsOf(open), padding: { top: pad + top, bottom: pad + bottom, left: pad + cover.left, right: pad } }
+}
+
+/**
+ * F14: what the camera shows of a city the map's search found (MapSearch), at level 1: its
+ * outline, kept clear of the top corners' cards by `topBar` and of the timeline and legends by
+ * `controls`, while the city keeps at least MIN_CITY_HEIGHT.
+ */
+export function cityView(
+  cities: Cities,
+  psgc: string,
+  container: HTMLElement,
+  controls: HTMLElement | null,
+  topBar: HTMLElement | null,
+): LevelView {
+  const pad = FIT_PADDING.city
+  const city = cities.features.filter((feature) => feature.properties.psgc === psgc)
+  const most = container.clientHeight - 2 * pad - MIN_CITY_HEIGHT
+  const bottom = Math.max(0, Math.min(controls?.offsetHeight ?? 0, most))
+  const top = Math.max(0, Math.min(topBar?.offsetHeight ?? 0, most - bottom))
+  return { bounds: boundsOf(city), padding: { top: pad + top, bottom: pad + bottom, left: pad, right: pad } }
+}
+
+/**
+ * F14: the camera, for easeTo, when the city panel closes (its Close button, or the browser's
+ * Back): where it is, CLOSE_ZOOM_OUT zoom levels further out, facing north and tilted by `pitch`,
+ * with `view`'s padding (the Philippines', viewFor at level 1) in place of the panel's. The reader
+ * sees the city among its neighbours, not the whole country: the pin button shows that.
+ */
+export function closeCamera(map: MapLibreMap, view: LevelView, pitch: number): EaseToOptions {
+  return { center: map.getCenter(), zoom: map.getZoom() - CLOSE_ZOOM_OUT, padding: view.padding, pitch, bearing: 0 }
 }
 
 /**

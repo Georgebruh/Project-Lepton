@@ -2,7 +2,7 @@ Source URL: https://nhfr.doh.gov.ph (DOH National Health Facility Registry, "Act
 List: https://nhfr.doh.gov.ph/VActivefacilitiesList?cmd=search&x_factype=17,20,21&z_factype=LIKE&x_regcode=13&z_regcode=LIKE&recperpage=ALL
 Detail pages: https://nhfr.doh.gov.ph/VActivefacilitiesView/<facility code>?showdetail=
 Downloaded on (YYYY-MM-DD): 2026-10-15
-Downloaded by: Hans
+Downloaded by: a team member
 Version / release: the live registry, no version number; this copy is as of the download date.
 Notes: Made by `python -m src.facilities` (task A10). Saved in data/raw/nhfr/, unchanged:
 list_ncr.html (559 NCR facilities of types Rural Health Unit 17, Barangay Health Station 20,

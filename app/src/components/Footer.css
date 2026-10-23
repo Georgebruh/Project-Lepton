@@ -13,7 +13,7 @@
   gap: var(--space-5);
 }
 
-.footer-team {
+.footer-event {
   flex: 1;
   min-width: 0;
   color: var(--color-text-secondary);
@@ -40,7 +40,7 @@
   color: inherit;
 }
 
-/* F6, below 1024 px: the logo and links on one row, the team's line under them */
+/* F6, below 1024 px: the logo and links on one row, the event's line under them */
 @media (max-width: 1023px) {
   .footer {
     padding: 0 var(--space-5) var(--space-6);
@@ -51,7 +51,7 @@
     row-gap: var(--space-3);
   }
 
-  .footer-team {
+  .footer-event {
     order: 1;
     flex-basis: 100%;
   }

@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react'
 import Badge from '../components/Badge.tsx'
-import { SIMULATED_LABEL, formatCount, formatWeek } from '../map/forecast.ts'
+import { badgeWords, formatCount, formatWeek } from '../map/forecast.ts'
 import type { ForecastWeek } from '../map/mapData.ts'
 import ChartReadout from './ChartReadout.tsx'
 import {
@@ -131,7 +131,7 @@ export default function CompareChart({
   // The counts axis: the tallest count or forecast drawn, raised for a range end or threshold (axisTop)
   const dataMax = Math.max(
     0,
-    ...weeks.flatMap((week) => [layers.observed ? week.y : 0, ...models.map((model) => week.forecasts[model].mu)]),
+    ...weeks.flatMap((week) => [layers.observed ? (week.y ?? 0) : 0, ...models.map((model) => week.forecasts[model].mu)]),
   )
   const referenceMax = Math.max(
     0,
@@ -248,13 +248,16 @@ export default function CompareChart({
     : null
 
   const drawn = models.map((model) => modelStyle(model).key)
-  const counted = weeks.map((week) => week.y)
+  // F14: a simulated week still under way has no count
+  const counted = weeks.flatMap((week) => (week.y === null ? [] : [week.y]))
+  // F14: the badge also when the Simulation mode added some of the weeks
+  const simulatedWords = simulated || weeks.some((week) => week.simulated) ? badgeWords(simulated) : null
   const summary =
-    `${weeks.length} weeks, ${formatWeek(weeks[0].start, weeks[weeks.length - 1].end)}: counts from ` +
-    `${formatCount(Math.min(...counted))} to ${formatCount(Math.max(...counted))}, above the epidemic threshold in ` +
-    `${weeks.filter((week) => week.breached).length} weeks.` +
+    `${weeks.length} weeks, ${formatWeek(weeks[0].start, weeks[weeks.length - 1].end)}: ` +
+    (counted.length ? `counts from ${formatCount(Math.min(...counted))} to ${formatCount(Math.max(...counted))}, ` : '') +
+    `above the epidemic threshold in ${weeks.filter((week) => week.breached).length} weeks.` +
     (drawn.length ? ` Forecasts drawn: ${drawn.join(', ')}.` : '') +
-    (simulated ? ` ${SIMULATED_LABEL}.` : '')
+    (simulatedWords ? ` ${simulatedWords}: the counts after QCESD's last week are made up.` : '')
 
   return (
     <figure className="compare-chart" aria-labelledby={titleId}>
@@ -262,7 +265,7 @@ export default function CompareChart({
         <h2 id={titleId} className="compare-chart-title heading-s">
           Weekly leptospirosis cases, Quezon City · {periodName}
         </h2>
-        {simulated && <Badge tone="warn">{SIMULATED_LABEL}</Badge>}
+        {simulatedWords && <Badge tone="warn">{simulatedWords}</Badge>}
         <ul className="compare-chart-keys" aria-label="Key">
           {models.map((model) => (
             <li key={model} className="compare-chart-key label-eyebrow">
@@ -373,19 +376,27 @@ export default function CompareChart({
                 </text>
               ))}
               {layers.observed &&
-                weeks.map((week) => (
-                  <rect
-                    key={week.week_index}
-                    className={
-                      week.week_index === active ? 'compare-chart-bar compare-chart-bar-active' : 'compare-chart-bar'
-                    }
-                    x={x(week.week_index) - bar / 2}
-                    y={y(week.y)}
-                    width={bar}
-                    height={plotHeightPx - y(week.y)}
-                    rx={bar >= 4 ? 1 : 0}
-                  />
-                ))}
+                weeks.map(
+                  (week) =>
+                    // F14: a week under way has no bar; a simulated week's bar is outlined, not filled
+                    week.y !== null && (
+                      <rect
+                        key={week.week_index}
+                        className={[
+                          'compare-chart-bar',
+                          week.week_index === active && 'compare-chart-bar-active',
+                          week.simulated && 'compare-chart-bar-simulated',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        x={x(week.week_index) - bar / 2}
+                        y={y(week.y)}
+                        width={bar}
+                        height={plotHeightPx - y(week.y)}
+                        rx={bar >= 4 ? 1 : 0}
+                      />
+                    ),
+                )}
               <g clipPath={`url(#${clipId})`}>
                 {range && (
                   <path
