@@ -2,7 +2,7 @@ Source URL: https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDL_07/summary
   (catalogue: https://cmr.earthdata.nasa.gov, short_name GPM_3IMERGDL, version 07;
   subsets from https://opendap.earthdata.nasa.gov, free Earthdata login)
 Downloaded on (YYYY-MM-DD): 2026-10-15
-Downloaded by: George
+Downloaded by: a team member
 Version / release: IMERG Late Run, daily, V07. Files are labelled V07B up to 2026-03-02
   and V07C from 2026-03-03; the `granule` variable in imerg_daily.nc names each day's file.
 Notes: Made by `python -m src.imerg` (task A4). Box lon 120.7-121.5, lat 14.4-15.0

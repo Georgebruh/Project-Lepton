@@ -179,9 +179,11 @@ is only the map, of the whole country, with no other tabs.
 
 - **The frame.** No app bar and no breadcrumb bar: the map fills the screen. Top left: the logo
   (home). Top right: **Simulation | Real data** (`map/MapDataModes.tsx`), with a line saying what
-  the mode shows. Bottom middle: the timeline (`map/MapTimeline.tsx`): the previous and next week, a slider
-  over every forecast week (the simulated ones amber), and the date picker. Bottom right: the
-  legends and the map buttons, then **Methods** (How it works) and the sources' "i". The hint
+  the mode shows. Bottom middle: the timeline (`map/MapTimeline.tsx`): the date picker in the
+  middle, between the previous and next week, and under it the week its forecast is for; under
+  them a slider over every forecast week (the simulated ones amber), with each year marked under
+  it. Bottom right: the legends and the map buttons, then **Methods** (How it works) and the
+  sources' "i". The hint
   ("Hover a city…") and the Cities list are gone; Quezon City's name on the map is the keyboard's
   way in.
 - **The whole Philippines.** Level 1 shows all 1,642 cities and municipalities

@@ -2,7 +2,7 @@ Source URL: https://noah.up.edu.ph ("Downloads"), the public Google Drive folder
   https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o -> Flood -> 5yr / 25yr / 100yr
   (folder ids in config.NOAH_NATIONAL_FOLDERS), one zip per province, as A8's Metro Manila maps.
 Downloaded on (YYYY-MM-DD): 2026-10-22
-Downloaded by: George (by python -m src.noah_national)
+Downloaded by: a team member (by python -m src.noah_national)
 Version / release: NOAH gives no version number; each province's Drive date is its version, listed
   in data/clean/noah_national/manifest.csv (return_period, province, file_name, drive_id,
   drive_modified, shapefiles, features, patches, area_km2, prepared_on). Where NOAH's folder holds a

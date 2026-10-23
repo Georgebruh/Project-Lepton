@@ -23,7 +23,7 @@ OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
 EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
 CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13: QC weekly counts by onset week
 # A13: QCESD's case list, unchanged. Case-level records: never commit or share it (rule 11).
-QCESD_CASES_RAW = DATA_RAW / "qcesd" / "U.P Cebu Data Request.xlsx"
+QCESD_CASES_RAW = DATA_RAW / "qcesd" / "qcesd_case_list.xlsx"
 POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
 FORECASTS = RESULTS / "forecasts.csv"                 # B10
 IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell

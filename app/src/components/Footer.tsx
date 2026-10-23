@@ -91,8 +91,9 @@ type FooterProps = {
 }
 
 /**
- * F3: the footer, from the Figma frame "Home" (node 20:364): the logo, the team, links to the
+ * F3: the footer, from the Figma frame "Home" (node 20:364): the logo, the event, links to the
  * code, the paper and the sources, and the stock-planning note that every dose figure needs.
+ * No team or school name anywhere in the app: PJDSC's guidelines ask for none.
  * F6: `credits` names the sources of what the page shows under the note, such as Home's
  * photos; check U8 wants every source credited in the footer and in How it works. F12: the
  * sources of the app's data and fonts come first, on every page with this footer.
@@ -102,9 +103,7 @@ export default function Footer({ credits }: FooterProps) {
     <footer className="footer">
       <div className="footer-row">
         <Logo />
-        <p className="footer-team body-s">
-          Team MANSCIT · University of the Philippines Cebu · PJDSC 2026
-        </p>
+        <p className="footer-event body-s">PJDSC 2026</p>
         <nav className="footer-links" aria-label="Footer">
           <a href={GITHUB_URL} className="footer-link label-ui" target="_blank" rel="noreferrer">
             GitHub
