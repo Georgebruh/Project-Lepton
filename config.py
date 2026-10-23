@@ -369,7 +369,8 @@ STORM_D_TEST_DAYS = 1                      # assumption test: C8 reruns each sto
 # Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
 # residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
 # has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
-# rain passes R0. Reported at both values; the team confirms the rule (Notes.md 1.2).
+# rain passes R0. Reported at both values; the team confirmed the rule on 2026-10-23
+# (Notes.md 1.2).
 FLAG_EXPOSED_SHARES = (0.25, 0.50)
 
 # Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC).

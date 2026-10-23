@@ -6,9 +6,8 @@ Version / release: QCESD's case list as extracted for us, no version number. Lat
   2026-10-18 (an admission), so the extract is from that day or later.
 Notes: Task A13. CASE-LEVEL RECORDS: saved unchanged in data/raw/qcesd/ (config.QCESD_CASES_RAW),
   which git ignores. Never commit it, never copy rows from it into the repository, results/ or
-  the app, and share it only through the team drive (rule 11). Ethics (E2): the adviser
-  approved aggregating it to weekly counts (2026-10-20); file the formal request or exemption
-  and record its date in E2.
+  the app, and share it only through the team drive (rule 11). Ethics (E2): file the formal
+  request or exemption and record its date in E2.
   Publishing: QCESD gave permission to publish the weekly city totals, 2015-2026 (the counts
   in cases_weekly.csv, which appear as `y` in results/forecasts*.csv and in
   app/public/data/city_forecast.json). Nothing else from the list may be published. Confirmed

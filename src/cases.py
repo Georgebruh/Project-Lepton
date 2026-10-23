@@ -4,8 +4,8 @@ QCESD sent a case list (config.QCESD_CASES_RAW; note in data/raw/qcesd.md): one 
 year, 2015 to October 2026, one row per case, with the date of onset, a morbidity week, the
 date of admission, the district and the barangay. It holds no names, but it is a case-level
 record: it stays in data/raw/qcesd/ (kept out of git) and is never committed or shared
-(rule 11). The adviser approved aggregating it to weekly counts (E2). This script reads
-only the two dates and writes the weekly table the models read:
+(rule 11). This script reads only the two dates and writes the weekly table the models
+read:
 
     week_index, year, week, cases      (config.CASES_WEEKLY)
 

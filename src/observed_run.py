@@ -26,10 +26,10 @@ Five steps, each one function below:
 
 4. Flagged versus flooded (rain_columns): a barangay is flagged when at least a share X of
    its 2024 residents live in zones the rain floods (config.FLAG_EXPOSED_SHARES, the rule
-   C9 uses, forecast_run.flagged; an assumption the team confirms, Notes.md 1.2). For each
-   X: the share of flagged barangays that A11 lists as flooded, and the share of listed
-   barangays that were flagged. A11's lists are not complete, so this is a demonstration,
-   not a test.
+   C9 uses, forecast_run.flagged; an assumption the team confirmed on 2026-10-23, Notes.md
+   1.2). For each X: the share of flagged barangays that A11 lists as flooded, and the share
+   of listed barangays that were flagged. A11's lists are not complete, so this is a
+   demonstration, not a test.
 
 5. tests: the main run (A11's D, continuous-exposure cut-off config.CONTINUOUS_EXPOSURE_DAYS
    = 2 days), then reruns that each change one thing: the cut-off at 1 and 3 days

@@ -48,7 +48,7 @@ Open-Meteo's forecast archive, so C9 can run on it too.
   gauge-calibrated products, but that means a new 26-year download, and IMERG Final arrives
   about 3.5 months late, so it has no August 2026.
 
-### 1.2 Confirm the "flagged" rule
+### 1.2 The "flagged" rule (confirmed October 23)
 
 The plan's C8 reports "the share of flagged barangays that A11 lists as flooded, and the
 share of flooded barangays that were flagged". But graded exposure (C3) gives every barangay
@@ -56,14 +56,14 @@ the same weight, and all 142 barangays have some residents in the 5-year flood z
 "flagged" meant "anyone exposed", all 142 would be flagged as soon as the rain passes R0,
 and both shares would be meaningless.
 
-C9 (merged) uses this rule, an assumption the team must confirm:
+C9 (merged) uses this rule, an assumption the team confirmed on October 23:
 `config.FLAG_EXPOSED_SHARES = (0.25, 0.50)`. A barangay is flagged when at least 25% (or
 50%) of its 2024 residents live in zones the storm's rain floods; both are reported. C8
 uses the same rule through `forecast_run.flagged` and `forecast_run.flag_scores`.
 On observed rain (IMERG) at 25%: July 2025 flags 17 barangays, 29% of them on A11's list,
 and 36% of the listed barangays are flagged; Kristine flags 17 (18% listed; 38% of
-listed flagged); Carina and August 2026 flag none. The other option, if the team prefers
-it: flag the k barangays with the most exposed residents, k = the number A11 lists.
+listed flagged); Carina and August 2026 flag none. The other option, not taken: flag the k
+barangays with the most exposed residents, k = the number A11 lists.
 
 ### 1.3 Kristine's flood duration is uncertain
 
@@ -84,9 +84,9 @@ before the fix still loads in F2 (`app_data.MODEL_NAMES`); for D6 and D8, rerun
 
 QCESD sent a QC case list by e-mail (one row per case, 2015 to October 2026, 4,953 cases;
 note in `data/raw/qcesd.md`). It is a case-level record: it stays in `data/raw/qcesd/`, which
-git ignores, and is shared only through the team drive (rule 11). The adviser approved
-aggregating it to weekly counts; E2 still needs the formal request or exemption on record.
-`python -m src.cases` writes `data/clean/cases_weekly.csv`, and check S4 passes.
+git ignores, and is shared only through the team drive (rule 11). E2 still needs the formal
+request or exemption on record. `python -m src.cases` writes `data/clean/cases_weekly.csv`,
+and check S4 passes.
 
 **Decision-tree row:** the list has dates of onset and admission but no report dates, so the
 row is "QC weekly counts by onset week": `config.DATA_OPTION = "C"`, the delay guard

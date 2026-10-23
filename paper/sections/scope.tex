@@ -16,6 +16,12 @@
 % 2026), and because the schedule left time to request counts from one city only. The national
 % fallback is the decision tree's last row (lepton-plan.md). NOAH's maps cover most provinces:
 % 66 to 79, by return period (data/raw/noah_national.md). Every other source is in Appendix E.
+% Future work, M2 and the two-week forecast (October 23): Implementation Plan v2 (9 October
+% 2026), p. 16, defines M2 as "Prophet, yearly seasonality only, no regressors"; its pp. 28-29
+% ("Observed versus forecast weather") score the two-week forecast on observed weather for the
+% coming week, an optimistic upper bound (the plan's "ceiling run"), and on archived forecasts,
+% and note that the one-week forecast uses observed weather only. The flag rule (25%, 50%) was
+% confirmed by the team on October 23.
 \section{Scope and Limitations}\label{sec:scope}
 
 \subsection{Scope}\label{sec:scope-scope}
@@ -35,8 +41,8 @@ Second, the competition's schedule left time to request case counts from one cit
 and a reply in time was not assured: without one, Layer~1 would have fallen back to national
 weekly counts \parencite{parreno2023}, without flood features. QCESD's list arrived on 20 October
 2026. Because only one city was tested, results may not carry over to cities with different
-drainage, climate or reporting. QCESD's list is used only as weekly counts by week of onset
-(CDC/MMWR weeks), and no case-level record is published.
+drainage, climate or reporting. Cases are counted by week of onset (CDC/MMWR weeks), and no
+case-level record is published.
 
 \emph{Layer 1} forecasts next week's number of cases in QC by week of onset, with a 90\% range
 and the probability that the count exceeds the epidemic threshold, set here at the same week's
@@ -188,8 +194,8 @@ treated as holding the city's stock rather than handing it out.
 Finally, Layer 2 is checked against flood reports, not against cases. The reports name 8 to 17
 flooded barangays per storm and are incomplete, and a barangay counts as flagged when at least
 25\% of its residents live in zones the rain floods (50\% is also reported), a line chosen
-because every barangay has some residents in the five-year zones \checkme{the team confirms
-the 25\% and 50\% flag rule, Notes.md 1.2}. The storm runs are therefore demonstrations, not
+because every barangay has some residents in the five-year zones. The storm runs are therefore
+demonstrations, not
 validations: no barangay case counts were used, and four storms are too few to measure forecast
 error. LEPTON estimates stock needs, not supply chains, delivery or uptake, and every dose
 figure in this paper is a stock-planning figure, not a prescription: DM~\mbox{2023-0309} requires a
@@ -204,11 +210,12 @@ cut. They are named here so that no result is read as covering them:
     (Section~\ref{sec:scope-scope});
   \item running LEPTON live each week, which needs counts as they arrive and report dates to
     nowcast the weeks still filling in;
-  \item forecasting two weeks ahead, and two more models: Prophet alone (M2) and an XGBoost
-    model (M5) \checkme{confirm that M2 is Prophet alone, from Implementation Plan v2};
-  \item Layer 1 forecasts that also use the rain forecast for the coming week, with observed
-    rain as their ceiling \checkme{confirm this reading of v2's ``forecast-weather and
-    observed-weather ceiling runs''};
+  \item forecasting cases two weeks ahead. The one-week forecast reads only rain that has
+    already fallen; a two-week forecast could also use the coming week's rain from a rain
+    forecast, and would then be scored twice, on the rain that fell (an optimistic upper bound)
+    and on the archived forecasts that existed on each forecast day;
+  \item two more models for comparison: Prophet with yearly seasonality only (M2) and an
+    XGBoost model (M5);
   \item other population and flood maps: Meta's population map and the LiDAR-based flood maps
     on LiPAD;
   \item the full sensitivity analysis, of which only the tests in Table~\ref{tab:assumptions}

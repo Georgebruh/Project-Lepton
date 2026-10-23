@@ -12,7 +12,8 @@
 %     and Rcum2 on none; M3 fills 0 weeks on every forecast day.
 %   results/c8_observed_runs.csv, c9_forecast_runs.csv (levels_years 24-26);
 %     results/c8_observed_centers.csv (66 health centers); results/catchments_qc.png (6 sub-basins).
-%   data/raw notes: qcesd.md (17 days, 99%), imerg_daily.md (1 Jun 2000 to 13 Oct 2026),
+%   data/raw notes: qcesd.md (17 days, 99%; sent in reply to the A1 request; QCESD's permission
+%     to publish the weekly totals, GitHub #83), imerg_daily.md (1 Jun 2000 to 13 Oct 2026),
 %     ecmwf_previous_runs.md (previous days 1-5, archive from Feb 2024, 4 cells),
 %     era5_open_meteo.md (Jun 2000 to Dec 2025), noah.md (depth bands), psa_births_2024.csv.md
 %     (32,578 births, 24,434 pregnant women), nhfr.md (69 facilities; one 11.0 km from its
@@ -21,6 +22,9 @@
 %     DELAY_GUARD_G, M3_*, THETA_*, THRESHOLD_*, GUMBEL_MIN_YEARS, R0_FACTOR, RAIN_ACCUM_DAYS,
 %     FORECAST_LEADS_DAYS, FORECAST_RUN_D, WOUND_SHARE_W, DOXY_*, AMOX_TABS_PREG,
 %     FLAG_EXPOSED_SHARES, BOOT_*, EPISODE_GAP_WEEKS, S5_*); 18-26 IMERG fit years as in E4.
+%   Ethics (E2, October 23): the project had no adviser, so the Cases paragraph names none; it
+%     says how QCESD shared the list and what QCESD allowed (qcesd.md). The 25% and 50% flag rule
+%     (FLAG_EXPOSED_SHARES, Notes.md 1.2) was confirmed by the team the same day.
 %   The repository's link (E10, October 23): git's origin remote, as in the app's footer
 %     (app/src/components/Footer.tsx, GITHUB_URL); python -m src.run_all reruns every step.
 \section{Methodology}\label{sec:methodology}
@@ -43,9 +47,10 @@ onset, from the week of 4--10 January 2015; the list's own morbidity-week column
 changes between years, was not used. Cases reach hospitals days after onset, so a week's count is
 final only once 17 days have passed since the week ended, the time within which 99\% of cases
 were admitted. The last final week is 20--26 September 2026; later weeks are missing, not zero.
-With the project adviser's approval, the list was used only as weekly counts, and no case-level
-record appears in this paper or in the project's code repository \checkme{E2: name the ethics
-board and the date of the ethics request or exemption}.
+QCESD shared the list for this study, in reply to the project's request for case data, and
+allowed the city's weekly totals to be published. The list holds no names. Only figures computed
+from it, such as the weekly counts, appear in this paper or in the project's code repository,
+never a case-level record.
 
 \paragraph{Rain}
 Observed rain is NASA's IMERG Late daily product, version 07, on a 0.1\textdegree{} grid
@@ -330,8 +335,8 @@ Each storm runs on observed rain with its reported flood duration, then again wi
 continuous-exposure cut-off at one and at three days, and with the duration one day shorter and
 one day longer (only longer for Kristine's one-day flood). A barangay is flagged when at least 25\% of its residents live in zones the rain
 floods; 50\% is also reported. Such a share is needed because every barangay has some residents
-in the five-year zones, so any exposure at all would flag all 142 once the rain passed the floor
-\checkme{the team confirms the 25\% and 50\% rule, Notes.md 1.2}. Each run gives two shares: the
+in the five-year zones, so any exposure at all would flag all 142 once the rain passed the floor.
+Each run gives two shares: the
 share of flagged barangays that reports named as flooded, and the share of named barangays that
 were flagged. The reports are incomplete and no barangay case counts were available, so these
 comparisons show the chain at work; they do not validate it.
