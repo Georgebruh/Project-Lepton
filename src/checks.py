@@ -1539,6 +1539,8 @@ def f2_app_data():
         cities' land (the islands under config.PH_ISLANDS_MIN_KM2 it leaves out), adding at
         most 2% (the lakes and the gaps between faeldon's files it closes);
       - every health center has coordinates or is listed with C7's reason for leaving it out;
+      - F15: each of the 142 barangays names the health centers that hold its stock, centers
+        C7 sends stock to, their shares adding up to 1;
       - every file with doses carries the not-prescriptions label;
       - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
         simulated run's without M3, whose Prophet fits differ from computer to computer), and
@@ -1554,6 +1556,7 @@ def f2_app_data():
     need_file(config.APP_DATA / "storms.json", "F2 (python -m src.app_data)")
     need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
     need_file(config.FACILITIES_QC, "A10 (python -m src.facilities)")
+    need_file(config.CENTER_SHARES, "C7 (python -m src.allocation)")
 
     rerun = "rerun python -m src.app_data"
 
@@ -1640,6 +1643,12 @@ def f2_app_data():
         located = center["lat"] is not None and center["lon"] is not None
         assert located or center["left_out"], f"{center['name']} has no coordinates and is not listed as left out"
         assert center["gets_stock"] == (center["left_out"] is None), f"{center['name']}: gets stock, or is left out, not both"
+    held = fresh["centers.json"]["barangay_centers"]
+    stocked = {center["facility_code"] for center in centers if center["gets_stock"]}
+    assert set(held) == set(shapes["psgc"]), f"centers.json: barangay_centers does not join the 142 barangays: {rerun}"
+    for psgc, rows in held.items():
+        assert rows and {row["facility_code"] for row in rows} <= stocked, f"barangay {psgc}: its health centers get no stock"
+        assert abs(sum(row["share"] for row in rows) - 1) < 1e-3, f"barangay {psgc}: its centers' shares do not add up to 1"
 
     table, simulated, path = app_data.load_forecasts()
     forecast_path, scores_path = config.APP_DATA / "city_forecast.json", config.APP_DATA / "scores.json"
@@ -1671,7 +1680,7 @@ def f2_app_data():
     return (f"{len(fresh)} files equal a fresh export; Kristine 1 day ahead and Tatalon as the plan; {len(country):,} "
             f"cities (NCR's 17 a clean coverage) and 142 barangays join; Quezon City's label inside it; {len(coasts)} "
             f"islands' coasts hold all but {outside_coasts:.1%} of the land; {len(centers) - left_out} centers "
-            f"get stock, {left_out} left out and listed; {layer1}")
+            f"get stock, {left_out} left out and listed; {len(held)} barangays name their centers; {layer1}")
 
 
 PERSON_COLUMNS = {   # E10: columns of a person's record; no tracked table may have one

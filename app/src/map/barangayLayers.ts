@@ -1,5 +1,5 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
-import type { Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl'
+import type { Map as MapLibreMap, MapLayerMouseEvent, MapMouseEvent } from 'maplibre-gl'
 import { shapeMiddle, shapeParts, type LonLat } from '../exposed/nearest.ts'
 import { CITY_LAYERS } from './cityLayers.ts'
 import { featureFader, stagger } from './featureFades.ts'
@@ -33,6 +33,11 @@ import { tokenColor } from './tokens.ts'
  * the reverse before removing them: barangayLayers(map) gives the same object for the same map
  * every time. F11: highlight() shows a barangay from the plan's list as the pointer would.
  * F13: setFillOpacity() lets the satellite or terrain base map show through the fills.
+ *
+ * F15: every barangay can be clicked (or tapped): onPick() hears which, and a click on the map
+ * outside them, which closes the barangay's pop-up. select() keeps the dark outline on the
+ * barangay whose pop-up is open (feature state "selected", 0 to 1, faded like "hover"), and the
+ * pointer turns into a hand over the barangays.
  */
 
 /** What the map shows of a run: each barangay's class and the order the wave reaches them. */
@@ -49,6 +54,9 @@ export const NO_DATA = -1
 /** The barangay under the pointer, and where the pointer is in the map, in px; F11: or the one the plan's list shows. */
 export type BarangayPointer = MapPointer & { psgc: string; fromList?: boolean }
 
+/** F15: the barangay a click (or a tap) picked, and the point of the map clicked, for its pop-up. */
+export type BarangayPick = { psgc: string; at: LonLat }
+
 const SOURCE = 'barangays'
 const LAYERS = { fill: 'barangays-fill', line: 'barangays-line', hover: 'barangays-hover' }
 
@@ -63,6 +71,7 @@ const TO: ExpressionSpecification = ['number', ['feature-state', 'to'], NO_DATA]
 const T: ExpressionSpecification = ['number', ['feature-state', 't'], 1]
 const RISE: ExpressionSpecification = ['number', ['feature-state', 'rise'], 0]
 const HOVER: ExpressionSpecification = ['number', ['feature-state', 'hover'], 0]
+const SELECTED: ExpressionSpecification = ['number', ['feature-state', 'selected'], 0]
 
 /**
  * The colors the barangays paint with, read from tokens.css: MapLibre draws on a canvas and
@@ -115,6 +124,9 @@ function makeBarangayLayers(map: MapLibreMap) {
   let hover: ReturnType<typeof featureFader> | null = null
   let hovered: string | null = null
   let listener: ((pointer: BarangayPointer | null) => void) | null = null
+  let selectFader: ReturnType<typeof featureFader> | null = null // F15: the open pop-up's barangay keeps its outline
+  let selected: string | null = null
+  let picker: ((pick: BarangayPick | null) => void) | null = null
   let stopRise = () => {}
   let stopRecolor = () => {}
   let riseTimer = 0
@@ -146,6 +158,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     stopRise()
     stopRecolor()
     hover?.stop()
+    selectFader?.stop()
     clearTimeout(riseTimer)
     clearTimeout(removeTimer)
   }
@@ -170,7 +183,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener?.({ psgc, x, y, width, height, fromList })
   }
 
-  /** The pointer over a barangay: thicken its outline (150 ms) and report it, for its tooltip. */
+  /** The pointer over a barangay: thicken its outline (150 ms) and report it, for its tooltip. F15: a hand, since it can be clicked. */
   function onMove(event: MapLayerMouseEvent) {
     const feature = event.features?.[0]
     if (stage !== 'open' || !feature) {
@@ -178,12 +191,46 @@ function makeBarangayLayers(map: MapLibreMap) {
     }
     const psgc = String(feature.properties.psgc)
     moveHover(psgc)
+    map.getCanvas().style.cursor = 'pointer'
     report(psgc, event.point.x, event.point.y)
   }
 
   function onLeave() {
     moveHover(null)
+    map.getCanvas().style.cursor = ''
     listener?.(null)
+  }
+
+  /**
+   * F15: a click (or a tap) on the map: the barangay under it is picked, for its pop-up; a click
+   * outside the barangays picks none, which closes the pop-up. A drag is not a click (MapLibre).
+   */
+  function onClick(event: MapMouseEvent) {
+    if (stage !== 'open') {
+      return
+    }
+    const [feature] = map.queryRenderedFeatures(event.point, { layers: [LAYERS.fill] })
+    picker?.(feature ? { psgc: String(feature.properties.psgc), at: [event.lngLat.lng, event.lngLat.lat] } : null)
+  }
+
+  /** F15: keeps the dark outline on the barangay `psgc` while its pop-up is open (null: on none), fading as a hover does. */
+  function select(psgc: string | null) {
+    const next = stage === 'open' ? psgc : null
+    if (removed || next === selected) {
+      return
+    }
+    if (selected) {
+      selectFader?.fade(selected, 0)
+    }
+    if (next) {
+      selectFader?.fade(next, 1)
+    }
+    selected = next
+  }
+
+  /** F15: a point inside the barangay `psgc`, near its middle, where a pop-up opened from the list points. */
+  function middleOf(psgc: string): LonLat | undefined {
+    return middles.get(psgc)
   }
 
   /**
@@ -236,13 +283,16 @@ function makeBarangayLayers(map: MapLibreMap) {
         type: 'line',
         source: SOURCE,
         layout: { 'line-join': 'round' },
-        paint: { 'line-color': colors.hover, 'line-width': LINE.hover, 'line-opacity': HOVER },
+        // F15: the barangay under the pointer, and the one whose pop-up is open
+        paint: { 'line-color': colors.hover, 'line-width': LINE.hover, 'line-opacity': ['max', HOVER, SELECTED] },
       },
       below,
     )
     hover = featureFader(map, SOURCE, 'hover', HOVER_MS)
+    selectFader = featureFader(map, SOURCE, 'selected', HOVER_MS)
     map.on('mousemove', LAYERS.fill, onMove)
     map.on('mouseleave', LAYERS.fill, onLeave)
+    map.on('click', onClick)
   }
 
   /** Removes the barangays from the map, at the end of close(). */
@@ -250,6 +300,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     stopMotion()
     map.off('mousemove', LAYERS.fill, onMove)
     map.off('mouseleave', LAYERS.fill, onLeave)
+    map.off('click', onClick)
     for (const id of [LAYERS.hover, LAYERS.line, LAYERS.fill]) {
       if (map.getLayer(id)) {
         map.removeLayer(id)
@@ -263,6 +314,8 @@ function makeBarangayLayers(map: MapLibreMap) {
     middles.clear()
     hover = null
     hovered = null
+    selectFader = null
+    selected = null
     stage = 'closed'
   }
 
@@ -342,6 +395,10 @@ function makeBarangayLayers(map: MapLibreMap) {
     stopRecolor()
     clearTimeout(riseTimer)
     onLeave()
+    if (selected) {
+      selectFader?.fade(selected, 0) // F15: the pop-up's outline goes with the others
+      selected = null
+    }
     const quick = prefersReducedMotion()
     const wave = quick ? CROSSFADE_MS : WAVE_MS
     const lines = quick ? CROSSFADE_MS : LINES_MS
@@ -365,6 +422,11 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener = next
   }
 
+  /** F15: tells `next` which barangay a click picks, and null for a click outside them; null stops telling. */
+  function onPick(next: ((pick: BarangayPick | null) => void) | null) {
+    picker = next
+  }
+
   /**
    * F13: the most a fill shows (1 on the street map, less over imagery), now and for later opens.
    * The open city's fill takes it too, unless the barangays have risen over it.
@@ -382,5 +444,5 @@ function makeBarangayLayers(map: MapLibreMap) {
     }
   }
 
-  return { open, show, close, onHover, highlight, setFillOpacity }
+  return { open, show, close, onHover, highlight, setFillOpacity, onPick, select, middleOf }
 }

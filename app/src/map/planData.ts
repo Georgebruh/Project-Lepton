@@ -9,7 +9,8 @@ import { fetchJson } from './mapData.ts'
  *   storms.json             each storm's runs: the rain, where it falls against the return
  *                           levels, the barangays flagged, and QC's residents exposed and units
  *   qc_barangays.geojson    the 142 barangay shapes, joined to every number on the PSGC
- *   centers.json            the health centers and each run's need per center
+ *   centers.json            the health centers, each run's need per center and (F15) the
+ *                           centers that hold each barangay's stock
  *   barangays/<storm>_<run>.json   one per run: each barangay's numbers, fetched only when shown
  */
 
@@ -74,12 +75,30 @@ export type Storm = {
 /** One of the map's five classes: barangays whose share of residents exposed runs from `from` up to `to`. */
 export type ShareClass = { class: number; label: string; from: number; to: number }
 
+/**
+ * F15: how C6 counts each unit per person (config.py), which the barangay report explains: the
+ * capsules per adult at low and moderate risk, per high-risk adult and week of flooding (weeks of
+ * `week_days`, rounded up), and the tablets per pregnant woman. A flood of `high_risk_days` or
+ * longer makes every exposed adult high risk. Children get one course per week of flooding, at
+ * least one.
+ */
+export type CountingRules = {
+  doxy100_low: number
+  doxy100_moderate: number
+  doxy100_high_per_week: number
+  amox500_pregnant: number
+  week_days: number
+  high_risk_days: number
+}
+
 /** storms.json. */
 export type StormsFile = {
   /** "Stock-planning figures, not prescriptions: ..." */
   label: string
   source: string
   units: Record<keyof Units, string>
+  /** F15: C6's units per person. */
+  counting: CountingRules
   /** A barangay is flagged when this share of its residents or more is exposed (0.25). */
   flag_share: number
   classes: ShareClass[]
@@ -131,6 +150,24 @@ export type Center = {
   left_out: string | null
 }
 
+/**
+ * F15: one health center that holds part of a barangay's stock, as C7 sends the barangay's need
+ * (centers.json's barangay_centers).
+ */
+export type BarangayCenter = {
+  facility_code: string
+  /**
+   * own: the barangay's one health center. split: one of its several centers, which takes the
+   * share of its residents who live nearest it. nearest: a barangay without one sends all of its
+   * need to the nearest center.
+   */
+  rule: 'own' | 'split' | 'nearest'
+  /** The share of the barangay's need it holds; a barangay's shares add up to 1. */
+  share: number
+  /** For rule nearest, the km from the barangay's centroid to the center; null otherwise. */
+  km: number | null
+}
+
 /** centers.json. */
 export type CentersFile = {
   label: string
@@ -139,6 +176,8 @@ export type CentersFile = {
   centers: Center[]
   /** needs[storm][run][flood key][facility_code]: a center's units, each rounded up to whole units. */
   needs: Record<string, Record<string, Record<string, Record<string, Units>>>>
+  /** F15: each barangay's health centers by its PSGC, the largest share first. */
+  barangay_centers: Record<string, BarangayCenter[]>
 }
 
 export type PlanData = {

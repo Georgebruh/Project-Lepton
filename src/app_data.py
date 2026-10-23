@@ -26,11 +26,12 @@ Files written to app/public/data/ (config.APP_DATA), which the app fetches as /d
                         EI and the barangays flagged, then residents exposed and the three
                         units for each flood: a short one (key D1: D = 1, w = 0.5) and a long
                         one (D7), the two C9 runs every forecast at; the observed run has
-                        A11's D
+                        A11's D. Also (F15) C6's units per person, for the barangay report
   barangays/<storm>_<run>.json   one per run: each barangay's residents exposed, their share
                         of its 2024 residents, the map class, flagged, and the units per flood
-  centers.json          A10's health centers (name, type, lat, lon, barangay), and each run's
-                        need per center and flood
+  centers.json          A10's health centers (name, type, lat, lon, barangay), each run's
+                        need per center and flood, and (F15) each barangay's health centers:
+                        the share of its need each one holds, as C7 sends it
   city_forecast.json    B10's forecasts per target week: the week's dates, the count y, the
                         threshold, and each model's mean, 90% range (the 5% and 95%
                         quantiles) and Pr(breach). From results/forecasts.csv; until it
@@ -92,6 +93,7 @@ INPUTS = {                                        # the files F2 reads, and the 
     config.C9_RUNS: "C9: python -m src.forecast_run",
     config.C9_BARANGAYS: "C9: python -m src.forecast_run",
     config.C9_CENTERS: "C9: python -m src.forecast_run",
+    config.CENTER_SHARES: "C7: python -m src.allocation",
     config.BARANGAYS_QC: "A5: python -m src.census",
     config.FACILITIES_QC: "A10: python -m src.facilities",
 }
@@ -462,7 +464,22 @@ def storms_file(c9_runs):
                        "start_date": f"{facts['start_date']:%Y-%m-%d}", "end_date": f"{facts['end_date']:%Y-%m-%d}",
                        "D": facts["D"], "runs": runs})
     return {"label": doses.LABEL, "source": "C9, results/c9_forecast_runs.csv", "units": dict(doses.UNITS),
-            "flag_share": config.APP_FLAG_SHARE, "classes": share_classes(), "storms": storms}
+            "counting": counting_rules(), "flag_share": config.APP_FLAG_SHARE, "classes": share_classes(),
+            "storms": storms}
+
+
+def counting_rules():
+    """F15: how C6 counts units per person, which the app's barangay report explains (config.py's values).
+
+    doxy100_low, doxy100_moderate: capsules per adult at low and moderate risk;
+    doxy100_high_per_week: per high-risk adult and week of flooding (week_days days, rounded
+    up); amox500_pregnant: tablets per pregnant woman; high_risk_days: a flood this long or
+    longer makes every exposed adult high risk. Children get one course per week of flooding,
+    at least one.
+    """
+    return {"doxy100_low": config.DOXY_CAPS_LOW, "doxy100_moderate": config.DOXY_CAPS_MOD,
+            "doxy100_high_per_week": config.DOXY_CAPS_HIGH_PER_WEEK, "amox500_pregnant": config.AMOX_TABS_PREG,
+            "week_days": config.DOSE_WEEK_DAYS, "high_risk_days": config.CONTINUOUS_EXPOSURE_DAYS}
 
 
 def barangay_population():
@@ -555,8 +572,33 @@ def center_needs(c9_centers, c9_runs):
     return out
 
 
+def barangay_centers(stocked):
+    """F15: each barangay's health centers, as C7 sends its need: {psgc: [center, ...]}, the barangay report's stock.
+
+    Each center is {facility_code, rule, share, km}. rule is C7's: "own" (the barangay's one
+    health center), "split" (one of its several centers, which takes the share of its
+    residents who live nearest it) or "nearest" (a barangay with none sends all of its need
+    to the nearest center, km from the barangay's centroid; km is null for the other rules).
+    The largest share comes first. Stops unless each of the 142 barangays has centers whose
+    shares add up to 1, and the centers named are exactly those C7 sends stock to (`stocked`).
+    """
+    table = allocation.load_center_shares()
+    if table["psgc"].nunique() != config.QC_BARANGAYS or not set(table["rule"]) <= {"own", "split", "nearest"}:
+        raise ValueError(f"C7's shares must name each of the {config.QC_BARANGAYS} barangays, by its rules: "
+                         "rerun python -m src.allocation")
+    if not np.allclose(table.groupby("psgc")["share"].sum(), 1):
+        raise ValueError("C7's shares of a barangay's need do not add up to 1: rerun python -m src.allocation")
+    if set(table["facility_code"]) != stocked:
+        raise ValueError("C7's shares name other health centers than the ones it places: rerun python -m src.allocation")
+    ordered = table.sort_values(["psgc", "share", "facility_code"], ascending=[True, False, True])
+    return {psgc: [{"facility_code": code, "rule": rule, "share": round(float(share), 4),
+                    "km": None if pd.isna(km) else round(float(km), 2)}
+                   for code, rule, share, km in rows[["facility_code", "rule", "share", "distance_km"]].itertuples(index=False)]
+            for psgc, rows in ordered.groupby("psgc", sort=True)}
+
+
 def centers_file(c9_centers, c9_runs):
-    """centers.json: the health centers, then each run's need per center and flood (whole units, rounded up)."""
+    """centers.json: the health centers, each run's need per center and flood (whole units, rounded up), and each barangay's centers."""
     centers = center_list()
     needs = center_needs(c9_centers, c9_runs)
     stocked = {center["facility_code"] for center in centers if center["gets_stock"]}
@@ -566,8 +608,11 @@ def centers_file(c9_centers, c9_runs):
                 if set(per_center) != stocked:
                     raise ValueError(f"{storm}, {run}, {key}: C9's health centers are not the ones C7 places now "
                                      f"(A10's file changed?): rerun python -m src.allocation and python -m src.forecast_run")
-    return {"label": doses.LABEL, "source": "A10's health_facilities_qc.csv; need from C9, results/c9_forecast_centers.csv",
-            "units": dict(doses.UNITS), "centers": centers, "needs": needs}
+    return {"label": doses.LABEL,
+            "source": "A10's health_facilities_qc.csv; need from C9, results/c9_forecast_centers.csv; "
+                      "each barangay's centers from C7, center_shares_qc.csv",
+            "units": dict(doses.UNITS), "centers": centers, "needs": needs,
+            "barangay_centers": barangay_centers(stocked)}
 
 
 def layer2_files():

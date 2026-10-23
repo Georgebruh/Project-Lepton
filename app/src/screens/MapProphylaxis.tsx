@@ -1,15 +1,16 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLoaderData, useSearchParams } from 'react-router'
 import Badge from '../components/Badge.tsx'
 import { NO_DATA, barangayLayers, type BarangayPointer, type BarangayView } from '../map/barangayLayers.ts'
+import BarangayPopup, { type PinnedBarangay, type ReportRequest } from '../map/BarangayPopup.tsx'
 import BarangayTooltip from '../map/BarangayTooltip.tsx'
 import ExposureLegend from '../map/ExposureLegend.tsx'
 import { formatCount } from '../map/forecast.ts'
 import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
-import MapList, { type MapListItem } from '../map/MapList.tsx'
+import MapList, { type MapListHandle, type MapListItem } from '../map/MapList.tsx'
 import { SHEET_BELOW, panelCover } from '../map/motion.ts'
 import { PLAN_FLOOD, chosenRun, formatShare, joinRun, stormOn, waveOrder } from '../map/plan.ts'
 import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
@@ -36,11 +37,19 @@ const TOOLTIP_TALLEST = 230
  *
  * F11: the list of the 142 barangays in the map's top left corner (listSlot) reaches each from
  * the keyboard: the barangay reached thickens and shows its tooltip, as under the pointer.
+ *
+ * F15: every barangay can be clicked (or tapped), and Enter in the list does the same: its
+ * pop-up (map/BarangayPopup.tsx) shows what its tooltip shows, with Generate Report, the
+ * barangay's report as a PDF for the forecast on the map (report/). While a pop-up is open its
+ * barangay keeps the dark outline and the tooltip waits; a click on the map outside the
+ * barangays, its close button or Escape closes it.
  */
 export default function MapProphylaxis() {
-  const { cities, date, map, legendSlot, overlay, listSlot } = useMapContext()
+  const { cities, forecast, date, week, map, legendSlot, overlay, listSlot } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [pinned, setPinned] = useState<PinnedBarangay | null>(null)
+  const list = useRef<MapListHandle>(null)
   const dateStorm = stormOn(storms.storms, date)
   const listing = searchParams.get(PLAN_PARAMS.list) === 'all'
   const storm = listing ? undefined : dateStorm
@@ -73,6 +82,44 @@ export default function MapProphylaxis() {
     }
   }, [map, view])
 
+  // F15: a click on a barangay opens its pop-up where it was clicked; a click elsewhere on the map closes it
+  useEffect(() => {
+    if (!map) {
+      return
+    }
+    const layers = barangayLayers(map)
+    layers.onPick((pick) => setPinned(pick && { ...pick, fromList: false }))
+    return () => layers.onPick(null)
+  }, [map])
+
+  // F15: the open pop-up's barangay keeps its dark outline
+  useEffect(() => {
+    if (map) {
+      barangayLayers(map).select(pinned?.psgc ?? null)
+    }
+  }, [map, pinned])
+
+  /** F15: Enter (or a click) on a row of the list opens the barangay's pop-up, pointing near its middle. */
+  function openFromList(psgc: string) {
+    const at = map ? barangayLayers(map).middleOf(psgc) : undefined
+    if (at) {
+      setPinned({ psgc, at, fromList: true })
+    }
+  }
+
+  /** F15: closes the pop-up; if the keyboard was in it, it goes back to the list that opened it, or to the map. */
+  function closePopup(hadFocus: boolean) {
+    const fromList = pinned?.fromList
+    setPinned(null)
+    if (hadFocus) {
+      if (fromList) {
+        list.current?.focus()
+      } else {
+        map?.getCanvas().focus({ preventScroll: true })
+      }
+    }
+  }
+
   /** Another forecast: its lead time goes in the address (no new history entry), and the page keeps its scroll. */
   function changeLead(days: number) {
     setSearchParams(
@@ -88,6 +135,12 @@ export default function MapProphylaxis() {
   // (F11) say why there are none otherwise
   const numbers = hasStorm ? drawn : undefined
   const none = dateStorm ? 'Choose a storm to see its numbers' : 'No storm forecast for this date'
+
+  // F15: what a barangay's report is made from, while a storm's forecast is shown
+  const report: ReportRequest | undefined = useMemo(
+    () => (storm && run ? { storms, centers, shapes, storm, run, forecast, week, date } : undefined),
+    [storms, centers, shapes, storm, run, forecast, week, date],
+  )
 
   return (
     <>
@@ -110,21 +163,40 @@ export default function MapProphylaxis() {
         listSlot &&
         createPortal(
           <MapList
+            ref={list}
             title="Barangays"
             items={barangayItems(shapes, numbers, none)}
             note={<p className="body-s">{numbers ? 'Most exposed first' : `${none}.`}</p>}
             instructions={
               numbers
-                ? "The arrow keys or a barangay's first letters move through the list. Doses are stock planning, not prescriptions."
-                : "The arrow keys or a barangay's first letters move through the list."
+                ? "The arrow keys or a barangay's first letters move through the list, and Enter opens the barangay " +
+                  'with its report. Doses are stock planning, not prescriptions.'
+                : "The arrow keys or a barangay's first letters move through the list, and Enter opens the barangay."
             }
             onShow={(psgc) => barangayLayers(map).highlight(psgc)}
+            onOpen={openFromList}
           />,
           listSlot,
         )}
-      {map && overlay && (
+      {map && overlay && !pinned && (
         <HoverTooltip map={map} overlay={overlay} shapes={shapes} barangays={numbers} note={`${none}.`} />
       )}
+      {map &&
+        overlay &&
+        pinned &&
+        createPortal(
+          <BarangayPopup
+            key={pinned.psgc}
+            map={map}
+            pinned={pinned}
+            name={shapes.features.find((feature) => feature.properties.psgc === pinned.psgc)?.properties.name ?? pinned.psgc}
+            barangay={numbers?.get(pinned.psgc)}
+            note={`${none}.`}
+            report={report}
+            onClose={closePopup}
+          />,
+          overlay,
+        )}
     </>
   )
 }
@@ -139,6 +211,7 @@ function runView(barangays: Map<string, BarangayRun>): BarangayView {
  * F11: the rows of the plan's list. With a storm's numbers, the most exposed share first (as the
  * wave), each with its share and the Flagged badge; a screen reader also hears its residents
  * exposed and its three units. Without them, the barangays by name, each saying `none`, why.
+ * F15: every row opens its barangay's pop-up.
  */
 function barangayItems(
   shapes: BarangayShapes,
@@ -148,7 +221,7 @@ function barangayItems(
   const names = new Map(shapes.features.map(({ properties }) => [properties.psgc, properties.name]))
   if (!barangays) {
     return [...names]
-      .map(([psgc, name]) => ({ id: psgc, name, words: none.toLowerCase() }))
+      .map(([psgc, name]) => ({ id: psgc, name, words: none.toLowerCase(), opens: true }))
       .sort((a, b) => a.name.localeCompare(b.name))
   }
   return waveOrder(barangays.values()).map((psgc) => {
@@ -158,6 +231,7 @@ function barangayItems(
     return {
       id: psgc,
       name: names.get(psgc) ?? psgc,
+      opens: true,
       detail: (
         <>
           {barangay.flagged && <Badge tone="alert">Flagged</Badge>}
