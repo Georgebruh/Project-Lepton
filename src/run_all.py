@@ -4,7 +4,8 @@ Each step is one task's script, run as `python -m <module>` in its own process, 
 script runs exactly as it does by hand. The steps follow the README's tables: Workstream
 A, then B1, Layer 2's flood core and doses (C1-C4, C7), B4's weekly features, Layer 1
 (B3, B10, then B5's residual check on B10's run), the storm runs (C8, C9), D7, the
-paper's figures (D8), the score tables (E6) and the app's data files (F2). The sanity
+paper's figures (D8), the score tables (E6), the paper's two diagrams (E8) and the app's
+data files (F2). The sanity
 checks (python -m src.checks) run last. The run stops at the first step that
 fails (exit code not 0), and so does a FAIL in the checks.
 
@@ -87,6 +88,7 @@ STEPS = [
     ("D8", "src.paper_figures", ("--layer2",)),     # figures 4 and 5 (C8's files)
     ("D8", "src.paper_figures", ()),                # all five, once B10's forecasts.csv exists
     ("E6", "src.score_tables", ()),                 # the score tables E6 quotes, from B10's forecasts
+    ("E8", "src.diagrams", ()),                     # Appendix A's two diagrams, from config.py alone
     ("F2", "src.app_data", ()),                     # the web app's data files, after C8, C9 and B10
 ]
 

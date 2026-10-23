@@ -1,7 +1,7 @@
 % E5 (SCRUM-56): Methodology, as built: QC only; M0, M1, M3, M4; the decision-tree row used
 % ("QC weekly counts by onset week", no report dates: option C, g = 2, Notes.md 1.5); observed
 % and forecast rain on the four storms (Kristine added, Notes.md 1.1; confirmed for E4 on
-% 2026-10-21). No formula in the main text: every formula is in Appendix B, tables/formulas.tex
+% 2026-10-21). No formula in the main text: every formula is in Appendix D, tables/formulas.tex
 % (lepton-plan.md, E5). Started from the submitted proposal's Methodology: the plan's "condensed
 % draft from this chat" is not in the repository.
 % Numbers:
@@ -23,9 +23,9 @@
 %     FLAG_EXPOSED_SHARES, BOOT_*, EPISODE_GAP_WEEKS, S5_*); 18-26 IMERG fit years as in E4.
 \section{Methodology}\label{sec:methodology}
 
-LEPTON has two layers that share one flood computation, which sets a storm's rain against flood
-hazard maps and population counts to estimate how many residents of each barangay the rain
-exposes. Layer~1 uses it, with past cases and rain, to forecast next week's cases in QC. Layer~2
+LEPTON has two layers that share one flood computation (Figure~\ref{fig:design}), which sets a
+storm's rain against flood hazard maps and population counts to estimate how many residents of
+each barangay the rain exposes. Layer~1 uses it, with past cases and rain, to forecast next week's cases in QC. Layer~2
 turns it into prophylaxis stock for each barangay and health center. This section describes the
 data, the shared computation, the two layers and how they were evaluated. It holds no formulas:
 the formula behind each step is in Appendix~\ref{app:formulas}, and each assumption's value and
@@ -145,7 +145,7 @@ each forecast year's levels, and a forecast reads the series of its own year.
 
 \paragraph{What each model may see}
 At the end of each week, the forecast day, every model forecasts the number of cases with onset in
-the next week. The study's analysis plan fixed in advance what to do with each kind of case data
+the next week (Figure~\ref{fig:layer1}). The study's analysis plan fixed in advance what to do with each kind of case data
 that might arrive. For weekly counts by week of onset without report dates, the kind received, it
 prescribes a delay guard: every model sees counts only up to two weeks before the forecast day, as if the last
 two weeks had not been reported yet, so each forecast reaches three weeks past the newest count it
@@ -157,7 +157,7 @@ learns from a fresher signal than it gets on the forecast day. A check overwrite
 with an impossible value and confirms that no forecast changes.
 
 \paragraph{Models}
-Four models are compared.
+Four models are compared (Table~\ref{tab:models}).
 \begin{itemize}
   \item \textbf{M0}, last year: the count 52 weeks before the target week.
   \item \textbf{M1}, the seasonal average: the mean count of the same week of the year over the
@@ -337,7 +337,7 @@ comparisons show the chain at work; they do not validate it.
 Every step from the raw data files to each number and figure in this paper is a Python script in
 the project's code repository, run with one command each in the order its README gives
 \checkme{E10: the repository's public link}. Most downloads are scripted too, and every raw file
-has a note saying where and when it was obtained. Package versions are pinned, and every setting
+has a note saying where and when it was obtained (Table~\ref{tab:sources}). Package versions are pinned, and every setting
 and assumption is held in one configuration file. Automated checks with answers known in advance guard
 the steps: for example, M4 must recover known coefficients from 50 simulated data sets of 400
 weeks, the Gumbel fit must recover known return levels, and the leakage check above must leave

@@ -2,10 +2,101 @@
 % assumptions table (from E4), E5's formulas and the data sources with download dates
 % (lepton-plan.md, E8).
 % E8 sets their order; \appendix numbers their tables A1, B1, ... (lepton.sty).
+% Figures A1 and A2 are the Methodology document's (9 October 2026) Figure 1 and its next
+% diagram, the Layer 1 pipeline, redrawn as built by src/diagrams.py (python -m src.diagrams,
+% copied from results/e8_fig_*.png). The model table follows config.py, src/baselines.py,
+% src/m3.py, src/m4.py and src/forecast_range.py; the data sources table, the notes in data/raw/.
 \clearpage
 \onecolumn
 \appendix
 
+\section{Study Design}\label{app:design}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.94\textwidth]{figures/e8_fig_design.png}
+\caption{The study design, updated from the project's methodology to what was built: QC only,
+weekly counts by week of onset, four models forecasting one week ahead, rain measured over three
+days, and Layer~2 checked on four storms. The flood computation (blue) turns rain into exposed
+residents for Layer~2 and into the flood exposure index for Layer~1. Stock figures are for
+planning, not prescriptions.}\label{fig:design}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.94\textwidth]{figures/e8_fig_layer1.png}
+\caption{Layer~1's steps at every forecast day. Rain and the flood exposure index are known on the
+forecast day; case counts only up to two weeks before it (the delay guard). The backtest repeats
+the six steps once a week, refitting every model each time.}\label{fig:layer1}
+\end{figure}
+
+\clearpage
+\section{Models}\label{app:models}
+
+{\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.13\textwidth}
+                    >{\raggedright\arraybackslash}p{0.27\textwidth}
+                    >{\raggedright\arraybackslash}p{0.30\textwidth}
+                    >{\raggedright\arraybackslash}p{0.24\textwidth}@{}}
+\caption{The four models of Layer~1 and the flood test's variant. Each forecasts the count of the
+week after the forecast day from what the delay guard lets it see, and is refitted at every
+forecast day. The formulas are in Table~\ref{tab:formulas}; the file that computes each model is
+named in small type.}\label{tab:models}\\
+\toprule
+\textbf{Model} & \textbf{Forecast} & \textbf{Inputs and fit} & \textbf{Role} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{@{}l}{\textit{Table~\thetable, continued}}\\
+\toprule
+\textbf{Model} & \textbf{Forecast} & \textbf{Inputs and fit} & \textbf{Role} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{@{}r}{\textit{Continued on the next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+M0, last year \cfg{baselines.py}
+  & The count of the same week 52 weeks earlier
+  & Past counts only; nothing is fitted
+  & Baseline: what a health office knows without a model \\
+M1, seasonal average \cfg{baselines.py}
+  & The mean count of the same week of the year over the epidemic threshold's reference years
+    (up to the five most recent complete years before the target year, at least three, without
+    2020--2021)
+  & Past counts only; nothing is fitted
+  & Baseline, and the practical test: M4 must beat the usual week \\
+M3, Prophet--XGBoost \cfg{m3.py, m3_port.py}
+  & Prophet's forecast plus XGBoost's correction of it, floored at zero
+  & Past counts. Prophet: multiplicative seasonality, changepoint prior scale 0.55, weekly and
+    yearly seasonality, no holidays. XGBoost: Prophet's in-sample errors from Prophet's forecast
+    and the ISO week; xgboost's defaults, 100 rounds
+  & Benchmark \parencite{latigay2026}, rebuilt on its own national data before the port to QC;
+    D5's primary endpoint compares M4 with it \\
+M4, negative binomial \cfg{m4.py}
+  & The expected count $\mu$ of a negative binomial regression with QC's population as an offset
+  & Season (three yearly sine--cosine pairs), recent cases (the two newest counts it may see),
+    the last two weeks' rain over QC, the flood exposure index (larger of the last two weeks'),
+    the COVID-19 years. Maximum likelihood with statsmodels' \texttt{negativebinomial}, which
+    estimates the overdispersion; a term constant in every training row is left out
+  & The proposed model \\
+M4 without the index \cfg{m4.py}
+  & As M4
+  & M4's inputs without the flood exposure index, on the same rows
+  & The flood test: does the index help? \\
+\midrule
+Every model \cfg{forecast_range.py}
+  & A negative binomial with mean $\mu$ and spread $\theta$: expected cases, 90\% range and
+    Pr(breach)
+  & $\theta$ from the model's last 104 forecasts outside 2020--2021 whose counts it may see;
+    with fewer than 26, its training fit's (M4: $1/\alpha$; M3: Prophet's); Poisson when misses
+    are no wider than Poisson's
+  & Makes every model's ranges and breach probabilities comparable \\
+\end{longtable}
+}
+
+\clearpage
 \section{Assumptions}\label{app:assumptions}
 \input{tables/assumptions}
 
@@ -13,4 +104,115 @@
 \section{Formulas}\label{app:formulas}
 \input{tables/formulas}% E5: the formulas the methodology leaves out of its text
 
-\checkme{E8: the other appendices (lepton-plan.md, E8).}
+\clearpage
+\section{Data Sources}\label{app:sources}
+
+{\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.15\textwidth}
+                    >{\raggedright\arraybackslash}p{0.42\textwidth}
+                    >{\raggedright\arraybackslash}p{0.15\textwidth}
+                    >{\raggedright\arraybackslash}p{0.20\textwidth}@{}}
+\caption{Every data source, with the version used and the date it was downloaded. Each raw file
+is saved unchanged, with a note beside it in the repository's \texttt{data/raw/} folder giving
+its address, date and version; the note's name is in small type. Dates are 2026.}\label{tab:sources}\\
+\toprule
+\textbf{Data} & \textbf{Source, version and coverage} & \textbf{Obtained} & \textbf{Used in} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{@{}l}{\textit{Table~\thetable, continued}}\\
+\toprule
+\textbf{Data} & \textbf{Source, version and coverage} & \textbf{Obtained} & \textbf{Used in} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{@{}r}{\textit{Continued on the next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+%
+\multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Cases}}\\
+QC cases \cfg{qcesd.md}
+  & QCESD's case list \parencite{qcesd2026}: 4,953 cases, onset 30 January 2015 to 14 October
+    2026, used only as weekly counts by week of onset; never shared
+  & 20 October, by e-mail
+  & Layer~1 \\
+National cases \cfg{parreno.md}
+  & Philippine epidemiological data, Mendeley Data v1 \parencite{parreno2023}: national weekly
+    leptospirosis counts, 2019--2023
+  & 17 October
+  & M3's reproduction \\
+%
+\multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Rain}}\\
+Observed rain \cfg{imerg_daily.md}
+  & NASA IMERG Late daily, V07, 0.1\textdegree{} \parencite{huffman2024}: 1 June 2000 to 13
+    October 2026, a box around QC and its catchments
+  & 15 October
+  & Both layers \\
+Reanalysis rain \cfg{era5_open_meteo.md}
+  & ERA5 hourly \parencite{hersbach2020} through Open-Meteo's Historical Weather API
+    \parencite{zippenfenig2023}: June 2000 to December 2025, four 0.25\textdegree{} cells
+  & 17 October
+  & Return levels of the forecast runs \\
+Archived forecasts \cfg{ecmwf_previous_runs.md}
+  & ECMWF IFS 0.25\textdegree{} through Open-Meteo's Previous Runs API
+    \parencite{zippenfenig2023}: runs one to five days before each storm, the same four cells
+  & 16 October (Carina), 18 October (all four storms)
+  & Layer~2's forecast runs \\
+%
+\multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Place, people and health centers}}\\
+Catchments \cfg{hybas_au_lev12_v1c.md}
+  & HydroBASINS v1c, level 12, Australasia \parencite{lehner2013}
+  & 15 October
+  & Shared flood computation \\
+Flood hazard maps \cfg{noah.md}
+  & Project NOAH's 5-, 25- and 100-year flood hazard maps of Metro Manila \parencite{noah_nd};
+    ODbL
+  & 15 October
+  & Shared flood computation \\
+Population grid \cfg{phl_pop_2024_CN_100m_R2025A_v1.tif.md}
+  & WorldPop R2025A v1, 2024, constrained, about 100~m \parencite{bondarenko2025}; CC BY 4.0
+  & 15 October
+  & Shared flood computation \\
+Census totals \cfg{NCR - Table C - Population by Barangay.xlsx.md}
+  & PSA 2024 Census of Population, NCR barangay totals \parencite{psa_census2024}
+  & 15 October
+  & Both layers \\
+Ages \cfg{2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx.md}
+  & PSA 2020 census by single year of age, sex and barangay, through HDX
+    \parencite{psa_age2020}
+  & 15 October
+  & Layer~2's shares \\
+Boundaries \cfg{phl_admin_boundaries.gdb.zip.md}
+  & COD-AB Philippines v03, valid 13 February 2025, through HDX \parencite{namria_codab2025}
+  & 15 October
+  & Both layers \\
+Births \cfg{psa_births_2024.csv.md}
+  & PSA OpenSTAT table 1A1ABIB8, 2024 births by mother's residence \parencite{psa_births2026}
+  & 17 October
+  & Layer~2's shares \\
+Health centers \cfg{nhfr.md}
+  & DOH National Health Facility Registry, active facilities \parencite{doh_nhfr}
+  & 15 October
+  & Layer~2's allocation \\
+Storm facts \cfg{storm-facts.md}
+  & City government updates and news reports: the days QC flooded and the barangays named, one
+    link per fact
+  & Checked 18 October
+  & Table~\ref{tab:storms}; Layer~2's checks \\
+%
+\multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}The web app only (no number in this paper)}}\\
+City outlines \cfg{ncr_cities.md, ph_cities.md}
+  & philippines-json-maps, 2023 boundaries (MIT licence)
+  & 19 October (NCR), 22 October (the rest)
+  & The app's map \\
+Flood maps, whole country \cfg{noah_national.md}
+  & Project NOAH's 5-, 25- and 100-year maps of every province \parencite{noah_nd}; ODbL
+  & 22 October
+  & The app's map \\
+Today's forecast \cfg{ecmwf_forecast.md}
+  & ECMWF IFS 0.25\textdegree{} through Open-Meteo's Forecast API \parencite{zippenfenig2023}
+  & Each day the app's simulation runs, from 22 October
+  & The app's Simulation mode \\
+\end{longtable}
+}
