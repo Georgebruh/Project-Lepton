@@ -34,7 +34,7 @@ export type PrimaryResult = {
 
 /** scores.json. */
 export type Scores = {
-  /** The B10 file the scores come from; city_forecast.json names the same one. */
+  /** The forecasts file the scores come from; city_forecast.json names the same one. */
   source: string
   /** The years each score is over: MAE and MASE, then WIS, 90% coverage and the Brier score. */
   windows: { mae_mase: number[]; wis_coverage_brier: number[] }

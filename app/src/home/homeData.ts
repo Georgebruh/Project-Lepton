@@ -28,7 +28,7 @@ export type PlanPreviewData = {
   shapes: BarangayShapes
   /** Each barangay's numbers in the run, by PSGC; all 142 join the shapes (joinRun). */
   barangays: Map<string, BarangayRun>
-  /** The health centers C7 stocks, the largest doxycycline need first. */
+  /** The health centers that get stock, the largest doxycycline need first. */
   needs: CenterNeed[]
   /** The barangay of the health center first in that list, outlined on the map. */
   selected: string | undefined

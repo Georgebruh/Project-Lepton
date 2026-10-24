@@ -3,7 +3,7 @@ import { fetchJson } from './mapData.ts'
 
 /** The files the prophylaxis plan reads. */
 
-/** The three units, as C6 counts them. */
+/** The three units. */
 export type Units = {
   /** Doxycycline 100 mg capsules, adults. */
   doxy100: number
@@ -49,15 +49,16 @@ export type StormRun = {
   floods: Flood[]
 }
 
+/** A storm of storms.json, or a day's plan from a year file, in the same form. */
 export type Storm = {
   /** The storm's key, e.g. "kristine_2024". */
   storm: string
-  /** Its name in words, e.g. "Severe Tropical Storm Kristine, October 2024". */
+  /** Its name in words, e.g. "Severe Tropical Storm Kristine, October 2024", or "Daily plan, 22–24 Jul 2024". */
   name: string
-  /** The days it flooded Quezon City, YYYY-MM-DD, and how many (D). */
+  /** The days it flooded Quezon City, YYYY-MM-DD, and how many. */
   start_date: string
   end_date: string
-  D: number
+  D: number | null
   runs: StormRun[]
 }
 
@@ -128,7 +129,7 @@ export type Center = {
   psgc: string
   /** Its barangay's name, as on the map. */
   barangay: string
-  /** Whether C7 sends it stock; if not, `left_out` says why. */
+  /** Whether it gets stock; if not, `left_out` says why. */
   gets_stock: boolean
   left_out: string | null
 }
@@ -154,6 +155,24 @@ export type CentersFile = {
   needs: Record<string, Record<string, Record<string, Record<string, Units>>>>
   /** Each barangay's health centers by its PSGC, the largest share first. */
   barangay_centers: Record<string, BarangayCenter[]>
+}
+
+/** days/<year>.json, a year of daily plans. */
+export type DaysFile = {
+  label: string
+  source: string
+  /** The day the plans were made, and the UTC day ECMWF's archive was fetched. */
+  made_on: string
+  fetched_utc: string
+  /** The first and last day with a plan, the same in every year's file. */
+  first: string
+  last: string
+  year: number
+  units: Record<keyof Units, string>
+  /** Each day's plan, in date order, as storms.json writes a storm. */
+  days: Storm[]
+  /** needs[day key][run][flood key][facility_code], for the runs that expose anyone. */
+  needs: CentersFile['needs']
 }
 
 export type PlanData = {
@@ -188,6 +207,19 @@ export function loadRun(file: string): Promise<RunFile> {
     found = fetchJson<RunFile>(`/data/${file}`)
     found.catch(() => runFiles.delete(file))
     runFiles.set(file, found)
+  }
+  return found
+}
+
+const dayFiles = new Map<number, Promise<DaysFile>>()
+
+/** A year's daily plans (days/<year>.json), fetched once and kept, as the date moves back and forth. */
+export function loadDays(year: number): Promise<DaysFile> {
+  let found = dayFiles.get(year)
+  if (!found) {
+    found = fetchJson<DaysFile>(`/data/days/${year}.json`)
+    found.catch(() => dayFiles.delete(year))
+    dayFiles.set(year, found)
   }
   return found
 }

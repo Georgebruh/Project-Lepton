@@ -7,7 +7,7 @@ import type { LonLat } from '../exposed/nearest.ts'
 import type { ReportInput } from '../report/reportContent.ts'
 import { BarangayNumbers } from './BarangayTooltip.tsx'
 import { panelCover } from './motion.ts'
-import { forecastRuns, joinRun } from './plan.ts'
+import { joinRun, planRuns } from './plan.ts'
 import { loadRun, type BarangayRun } from './planData.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
 import './BarangayTooltip.css'
@@ -180,7 +180,7 @@ function reportParts(report: ReportRequest) {
   return Promise.all([
     import('../report/reportPdf.ts'),
     Promise.all(
-      forecastRuns(report.storm).map(async (run) => ({ run, barangays: joinRun(report.shapes, await loadRun(run.file)) })),
+      planRuns(report.storm).map(async (run) => ({ run, barangays: joinRun(report.shapes, await loadRun(run.file)) })),
     ),
   ])
 }

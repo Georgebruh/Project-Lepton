@@ -7,10 +7,12 @@ import {
   centerName,
   centerNeeds,
   forecastRuns,
+  fullDate,
   issuedLine,
   leadLabel,
   leadWords,
   planFlood,
+  planRuns,
   rainLine,
   stockList,
   stockListName,
@@ -38,8 +40,10 @@ type PlanPanelProps = {
   run: StormRun | undefined
   /** The chosen date, YYYY-MM-DD: a storm opened from the list goes back to it. */
   date: string
-  /** Whether the chosen date has a storm forecast (when the reader asked for the list, it may). */
-  stormOnDate: boolean
+  /** Whether the chosen date has a plan, a storm's or its own. */
+  planOnDate: boolean
+  /** Whether the chosen date's daily plans are still on their way. */
+  loading: boolean
   /** How many barangays the map has (142), for "72 of 142". */
   barangays: number
   /** Called with the lead time, in days, of the forecast the reader picks. */
@@ -48,7 +52,7 @@ type PlanPanelProps = {
 
 /** The city panel's prophylaxis plan. */
 export default function PlanPanel(props: PlanPanelProps) {
-  const { city, storms, centers, storm, run, date, stormOnDate, barangays, onLead } = props
+  const { city, storms, centers, storm, run, date, planOnDate, loading, barangays, onLead } = props
   const { search } = useLocation()
   return (
     <div className="plan-panel">
@@ -77,14 +81,18 @@ export default function PlanPanel(props: PlanPanelProps) {
           barangays={barangays}
           onLead={onLead}
         />
+      ) : loading ? (
+        <p className="plan-panel-muted body-s">Loading the plan for this date…</p>
       ) : (
-        <StormList storms={storms.storms} date={date} stormOnDate={stormOnDate} />
+        <StormList storms={storms.storms} date={date} planOnDate={planOnDate} />
       )}
       {/* Read out when the reader picks another forecast or date. */}
       <p className="visually-hidden" aria-live="polite">
         {storm && run
           ? planWords(storm, run, barangays)
-          : `${stormOnDate ? '' : 'No storm forecast for this date. '}Choose a storm with archived forecasts.`}
+          : loading
+            ? ''
+            : `${planOnDate ? '' : 'No plan for this date. '}Choose a storm with archived forecasts.`}
       </p>
     </div>
   )
@@ -93,8 +101,9 @@ export default function PlanPanel(props: PlanPanelProps) {
 /** A forecast's totals in one sentence. */
 function planWords(storm: Storm, run: StormRun, barangays: number): string {
   const flood = planFlood(storm, run)
+  const made = run.lead_days === null ? 'the rain that fell' : `forecast ${leadWords(run.lead_days)}`
   return (
-    `${storm.name}, forecast ${leadWords(run.lead_days ?? 1)}: ${run.flagged} of ${barangays} barangays flagged, ` +
+    `${storm.name}, ${made}: ${run.flagged} of ${barangays} barangays flagged, ` +
     `${formatCount(flood.exposed)} residents exposed, ${formatCount(flood.doxy100)} doxycycline capsules, ` +
     `${formatCount(flood.courses)} children's courses and ${formatCount(flood.amox500)} amoxicillin tablets. ` +
     'Stock planning, not prescriptions.'
@@ -112,37 +121,45 @@ type PlanNumbersProps = {
 
 /** The panel's numbers for one forecast: its rain, the totals, the top health centers and the export. */
 function PlanNumbers({ storms, centers, storm, run, barangays, onLead }: PlanNumbersProps) {
+  const forecast = run.lead_days !== null
   const flood = planFlood(storm, run)
   const needs = centerNeeds(centers, storm.storm, run.run, flood.key)
   const top = needs.slice(0, TOP_CENTERS)
   const anyNeed = needs.some(({ units }) => units.doxy100 + units.courses + units.amox500 > 0)
   return (
     <>
-      <section className="plan-panel-rain" aria-label="Rain forecast">
+      <section className="plan-panel-rain" aria-label={forecast ? 'Rain forecast' : 'Rain that fell'}>
         <div className="plan-panel-rain-head">
           <p id="plan-panel-made" className="label-ui-s">
-            Forecast made
+            {forecast ? 'Forecast made' : 'Rain that fell'}
           </p>
-          <div className="plan-panel-leads" role="group" aria-labelledby="plan-panel-made">
-            {forecastRuns(storm).map((each) => {
-              const days = each.lead_days ?? 1
-              return (
-                <button
-                  key={each.run}
-                  type="button"
-                  className="plan-panel-lead label-ui-s"
-                  aria-pressed={each.run === run.run}
-                  aria-label={leadWords(days)}
-                  onClick={() => onLead(days)}
-                >
-                  {leadLabel(days)}
-                </button>
-              )
-            })}
-          </div>
+          {forecast && (
+            <div className="plan-panel-leads" role="group" aria-labelledby="plan-panel-made">
+              {planRuns(storm).map((each) => {
+                const days = each.lead_days ?? 1
+                return (
+                  <button
+                    key={each.run}
+                    type="button"
+                    className="plan-panel-lead label-ui-s"
+                    aria-pressed={each.run === run.run}
+                    aria-label={leadWords(days)}
+                    onClick={() => onLead(days)}
+                  >
+                    {leadLabel(days)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
         <p className="plan-panel-rain-line label-ui">{rainLine(run)}</p>
         <p className="plan-panel-muted body-s">{issuedLine(run)}</p>
+        {!forecast && (
+          <p className="plan-panel-muted body-s">
+            No forecast is archived for this date, so the plan uses the rain {run.rain_product} measured.
+          </p>
+        )}
       </section>
 
       <section className="plan-panel-totals" aria-label="Totals">
@@ -231,16 +248,22 @@ type StormListProps = {
   storms: Storm[]
   /** The chosen date: a storm opened from the list goes back to it. */
   date: string
-  /** Whether the chosen date has a storm forecast: the list is then shown because the reader asked. */
-  stormOnDate: boolean
+  /** Whether the chosen date has a plan: the list is then shown because the reader asked. */
+  planOnDate: boolean
 }
 
 /** The storms with archived forecasts to choose from. */
-function StormList({ storms, date, stormOnDate }: StormListProps) {
+function StormList({ storms, date, planOnDate }: StormListProps) {
   const { search } = useLocation()
   return (
     <section className="plan-panel-none" aria-label="Storms with archived forecasts">
-      {!stormOnDate && <h3 className="body-m">No storm forecast for this date.</h3>}
+      {planOnDate ? (
+        <Link to={MAP_PATHS[3] + planSearch(search)} preventScrollReset className="plan-panel-storm label-ui">
+          Back to the plan for {fullDate(date)}
+        </Link>
+      ) : (
+        <h3 className="body-m">No plan for this date.</h3>
+      )}
       <p className="plan-panel-muted body-s">Choose a storm with archived forecasts:</p>
       <ul className="plan-panel-storms">
         {stormsWithForecasts(storms).map((storm) => (
@@ -279,6 +302,13 @@ function listSearch(search: string): string {
   const params = new URLSearchParams(search)
   params.set(PLAN_PARAMS.list, 'all')
   params.delete(PLAN_PARAMS.lead)
+  return `?${params}`
+}
+
+/** The query of the link from the list back to the date's plan: the same date, without ?storms=all. */
+function planSearch(search: string): string {
+  const params = new URLSearchParams(search)
+  params.delete(PLAN_PARAMS.list)
   return `?${params}`
 }
 

@@ -408,7 +408,7 @@ function drawStock(pen: Pen, content: ReportContent) {
 function drawLeads(pen: Pen, content: ReportContent) {
   const widths = [33, 33, 32, 30, 18, 16, 16]
   const columns = widths.map((width, i): Column => ({ width, align: i >= 4 ? 'right' : 'left' }))
-  tableSection(pen, 'The forecasts made as the storm came', content.leads.table, columns, [content.leads.note])
+  tableSection(pen, content.leads.title, content.leads.table, columns, [content.leads.note])
 }
 
 /** Where the stock goes. */

@@ -106,7 +106,7 @@ SUBMIT = date(2026, 10, 24)                # Sat, Oct 24, 11:59 PM (README)
 # Data products
 IMERG_PRODUCT = "GPM_3IMERGDL"
 IMERG_VERSION = "07"
-IMERG_START = date(2000, 6, 1)             # NASA's catalogue lists Late daily files from 1998-01-01; this project starts here
+IMERG_START = date(2000, 6, 1)             # NASA's catalogue lists Late daily files from 1998-01-01; the plan starts here
 IMERG_SUBSETS = DATA_RAW / "imerg_daily"   # one small file per UTC day, stacked into IMERG_DAILY
 IMERG_VARIABLES = ("precipitation", "precipitation_cnt")  # rain in mm/day; valid half-hours (of 48) behind it
 IMERG_DOWNLOAD_WORKERS = 4                 # downloads at once; keep it small, NASA's server is shared
@@ -194,7 +194,7 @@ CASES_DELAY_FLAG_DAYS = 30                 # an admission before onset or over 3
 CASES_PUBLISHED = (
     {"start": date(2025, 1, 1), "end": date(2025, 8, 20), "cases": 510,
      "source": "https://www.dzrh.com.ph/post/leptospirosis-cases-in-quezon-city-rise-to-510-deaths-double-in-just-over-a-month-to-55"},
-    # A published total, found only second-hand (MesVaccins, 3 Sep 2025, citing Outbreak News Today).
+    # The plan's example. Found only second-hand (MesVaccins, 3 Sep 2025, citing Outbreak News Today).
     {"start": date(2025, 1, 1), "end": date(2025, 9, 1), "cases": 535,
      "source": "https://www.mesvaccins.net/web/news/23425-philippines-leptospirose-a-quezon-city"},
 )
@@ -422,10 +422,10 @@ S2_KNOWN_STORMS = {
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
 # S5: made-up datasets that follow M4, fitted to see if M4 gets the true values back.
-S5_DATASETS = 50                           # 50 datasets
+S5_DATASETS = 50                           # the plan: 50 datasets...
 S5_WEEKS = 400                             # ...of 400 target weeks each
-S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the true values
-S5_THETA = 5                               # the true theta
+S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the plan's true values
+S5_THETA = 5                               # the plan's true theta
 # Our choice: about 20-60 cases a week, a June-November wet season.
 S5_BASE = {"Intercept": -13.0, "sin1": 0.4, "cos1": -0.3, "sin2": 0.1, "cos2": 0.05, "sin3": 0.0, "cos3": 0.0}
 S5_SIM = {
@@ -537,6 +537,10 @@ SIM_FORECAST_API = "https://api.open-meteo.com/v1/forecast"
 SIM_FORECAST_RAW = DATA_RAW / "ecmwf_forecast"   # each day's reply, unchanged
 APP_SIMULATION_FILE = "city_simulation.json"
 SIM_MAX_PAST_DAYS = 92                           # the most past days Open-Meteo's forecast API gives
+# A prophylaxis plan for every day of the app's timeline, not only the four storms (src/app_days.py).
+FORECAST_ARCHIVE_START = date(2024, 2, 1)        # the archive's first hour is 3 Feb 2024; earlier days come back empty
+APP_DAYS = APP_DATA / "days"                     # one file per year: each day's plan
+APP_DAY_RUNS = APP_BARANGAY_RUNS / "days"        # one barangay file per day and run that exposes anyone
 # Assumption: shape detail kept for the web, in metres (about a pixel at the city's view).
 MAP_SIMPLIFY_M = 10
 APP_COORD_DECIMALS = 5                         # about 1 m

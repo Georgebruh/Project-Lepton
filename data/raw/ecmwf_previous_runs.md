@@ -42,6 +42,17 @@ Notes: Made by `python -m src.ecmwf` (task A15). Saved in data/raw/ecmwf_previou
   Check on 2026-10-18: every hour of every day at all 4 points for previous days 1-5, all
   four storms. Carina, 23 July 2024, previous day 1: 91.7 mm over the catchments
   (recomputed by hand from the reply: 55.2, 62.1, 63.6 and 119.4 mm at the 4 points).
+  F16 (every day's prophylaxis plan, src/app_days.py): one reply per day the plans are made,
+  the same 4 cells and previous days 1-5, from config.FORECAST_ARCHIVE_START to 2 days after
+  the Saturday ending that day's week, named
+  days_<model>_<first day>_<last day>_on<day made>_utc<UTC day fetched>.json.
+    days_ecmwf_ifs025_20240201_20261026_on20261024_utc20261023.json (2026-10-24 Philippine
+      time, 2026-10-23 22:25 UTC; 4.2 MB). Every hour at all 4 points from 4 February 2024 for
+      previous day 1, a day later for each further previous day (8 February for day 5), except
+      previous_day5 on 17-22 April 2026 (no lead 3 for the windows that need it). From about 4 days after the
+      fetch every previous day holds the newest run, so a lead L is used only for windows
+      starting by the fetch's UTC day + L (src/app_days.py says why). Its Kristine, Carina,
+      2025 and 2026 days give C9's lead totals to the 0.1 mm (check "F16 daily plans").
   Table: data/clean/forecasts_storms.csv (config.FORECASTS_STORMS), 400 rows: 4 storms x
   5 previous days x 5 UTC days x 4 cells.
 Cite: Zippenfenig, P. (2023). Open-Meteo.com Weather API [Computer software]. Zenodo.

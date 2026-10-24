@@ -71,6 +71,18 @@ def fetch(cells, first, last, path):
     part.replace(path)
 
 
+def fetch_retrying(cells, first, last, path):
+    """fetch() with up to RETRIES tries, waiting a little longer after each failure; RequestRefused is raised at once."""
+    for attempt in range(1, RETRIES + 1):
+        try:
+            fetch(cells, first, last, path)
+            return
+        except requests.RequestException:
+            if attempt == RETRIES:
+                raise
+            time.sleep(RETRY_WAIT_S * attempt)
+
+
 def download(storm, cells, first, last):
     """One storm's reply from Open-Meteo, as a list with one entry per cell."""
     path = raw_path(storm, first, last)
@@ -78,14 +90,7 @@ def download(storm, cells, first, last):
         print(f"{storm}: reading {path.name} (already on disk)")
     else:
         print(f"{storm}: requesting {first} to {last} from Open-Meteo Previous Runs")
-        for attempt in range(1, RETRIES + 1):
-            try:
-                fetch(cells, first, last, path)
-                break
-            except requests.RequestException:
-                if attempt == RETRIES:
-                    raise
-                time.sleep(RETRY_WAIT_S * attempt)
+        fetch_retrying(cells, first, last, path)
 
     replies = json.loads(path.read_text(encoding="utf-8"))
     return replies if isinstance(replies, list) else [replies]  # one cell comes back without a list

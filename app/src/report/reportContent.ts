@@ -17,10 +17,10 @@ import {
   PLAN_FLOOD,
   classLabel,
   formatShare,
-  forecastRuns,
   fullDate,
   leadWords,
   planFlood,
+  planRuns,
   positionWords,
   titleCase,
   waveOrder,
@@ -90,7 +90,8 @@ export type ReportContent = {
   figures: Figure[]
   figuresNote: string
   stock: { table: Table; notes: string[] }
-  leads: { table: Table; note: string }
+  /** The forecasts made before the rain, or a day's rain that fell: the section's title, table and note. */
+  leads: { title: string; table: Table; note: string }
   centers: {
     intro: string
     table: Table
@@ -117,7 +118,7 @@ export type ReportContent = {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** Why C7 leaves a health center out (centers.json's left_out), in the report's words. */
+/** Why a health center is left out (centers.json's left_out), in the report's words. */
 const LEFT_OUT_WORDS: Record<string, string> = {
   'no coordinates': 'the registry gives it no location',
   'point outside its barangay': 'its registered location lies outside its barangay',
@@ -146,7 +147,8 @@ const SOURCES = [
   'Barangay boundaries: PSA and NAMRIA via OCHA (CC BY-IGO).',
   'Health centers: DOH National Health Facility Registry.',
   'Rain: ECMWF IFS forecasts and the ERA5 reanalysis via Open-Meteo (CC BY 4.0; ERA5 contains modified Copernicus ' +
-    'Climate Change Service information). River basins: HydroBASINS (Lehner and Grill, 2013).',
+    'Climate Change Service information); the rain that fell, GPM IMERG Late v07 (NASA GES DISC). River basins: ' +
+    'HydroBASINS (Lehner and Grill, 2013).',
   'City case counts: Quezon City Epidemiology and Surveillance Division (weekly city totals only).',
   'Regimens: DOH Department Memorandum 2023-0309.',
 ]
@@ -194,7 +196,7 @@ function floodName(flood: Flood): string {
   return `${flood.D}-day flood`
 }
 
-/** Weeks of flooding, as C6 counts them: whole weeks, rounded up. */
+/** Weeks of flooding: whole weeks, rounded up. */
 function floodWeeks(flood: Flood, counting: CountingRules): number {
   return Math.ceil(flood.D / counting.week_days)
 }
@@ -209,6 +211,16 @@ function issuedWords(run: StormRun): string {
   return run.issued && run.lead_days !== null
     ? `${fullDate(run.issued)}, ${leadWords(run.lead_days)}`
     : `the rain that fell (${run.rain_product})`
+}
+
+/** What the report calls a run. */
+function runName(run: StormRun): string {
+  return run.lead_days === null ? 'this rain' : 'this forecast'
+}
+
+/** What the report calls a run's rain: "this forecast's rain", or "this rain". */
+function rainName(run: StormRun): string {
+  return run.lead_days === null ? 'this rain' : "this forecast's rain"
 }
 
 /** A barangay's units in one flood of a run; stops with an error if its file lacks that flood. */
@@ -230,16 +242,16 @@ function barangayIn(lead: LeadRun, psgc: string): BarangayRun {
 }
 
 /** Whether a barangay is flagged, and why, for the line under its name. */
-function flagText(barangay: BarangayRun, storms: StormsFile): ReportContent['flag'] {
+function flagText(barangay: BarangayRun, storms: StormsFile, run: StormRun): ReportContent['flag'] {
   const line = `barangays are flagged at ${percent(storms.flag_share)} or more`
-  const share = `${formatShare(barangay.share)} of its residents live in zones this forecast's rain floods (${line}).`
+  const share = `${formatShare(barangay.share)} of its residents live in zones ${rainName(run)} floods (${line}).`
   if (barangay.flagged) {
     return { flagged: true, label: 'Flagged', text: share }
   }
   return {
     flagged: false,
     label: 'Not flagged',
-    text: barangay.exposed > 0 ? share : "None of its residents live in zones this forecast's rain floods.",
+    text: barangay.exposed > 0 ? share : `None of its residents live in zones ${rainName(run)} floods.`,
   }
 }
 
@@ -250,9 +262,9 @@ function cityLine(input: ReportInput, lead: LeadRun, barangay: BarangayRun): str
   const all = shapes.features.length
   const totals =
     flood.exposed > 0
-      ? `Across Quezon City this forecast puts ${formatCount(flood.exposed)} residents (${run.ei_pct.toFixed(1)}% of ` +
+      ? `Across Quezon City ${runName(run)} puts ${formatCount(flood.exposed)} residents (${run.ei_pct.toFixed(1)}% of ` +
         `the city) in flooded zones and flags ${run.flagged} of ${all} barangays.`
-      : 'Across Quezon City this forecast puts no resident in a flooded zone and flags no barangay.'
+      : `Across Quezon City ${runName(run)} puts no resident in a flooded zone and flags no barangay.`
   if (barangay.exposed === 0) {
     return totals
   }
@@ -327,8 +339,8 @@ function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun):
   const notes: string[] = []
   if (run.floods.length > 1) {
     notes.push(
-      'A forecast made days ahead cannot tell how long the flood will last, so the stock is given for ' +
-        `${listWords(run.floods.map((flood) => `a ${flood.D}-day`))} flood.`,
+      `${run.lead_days === null ? 'The rain alone' : 'A forecast made days ahead'} cannot tell how long the flood ` +
+        `will last, so the stock is given for ${listWords(run.floods.map((flood) => `a ${flood.D}-day`))} flood.`,
     )
   }
   const [shortest, longest] = [columns[0], columns[columns.length - 1]]
@@ -352,7 +364,7 @@ function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun):
 /** The storm's forecasts. */
 function leadSection(input: ReportInput): ReportContent['leads'] {
   const { storm, run, leads, psgc } = input
-  const rows = forecastRuns(storm)
+  const rows = planRuns(storm)
     .reverse()
     .map((each) => {
       const lead = leads.find((other) => other.run.run === each.run)
@@ -375,13 +387,23 @@ function leadSection(input: ReportInput): ReportContent['leads'] {
       }
     })
   const flood = planFlood(storm, run)
+  const forecast = run.lead_days !== null
   return {
+    title: forecast ? 'The forecasts made before the rain' : 'The rain that fell (no forecast is archived for this date)',
     table: {
-      heads: ['Forecast made', 'Rain over 3 days', 'How rare a storm', 'Residents exposed', 'Capsules', 'Courses', 'Tablets'],
+      heads: [
+        forecast ? 'Forecast made' : 'Rain',
+        'Rain over 3 days',
+        'How rare a storm',
+        'Residents exposed',
+        'Capsules',
+        'Courses',
+        'Tablets',
+      ],
       rows,
     },
     note:
-      `In bold: the forecast this report is for, as on the map. Units for a ${floodName(flood)}` +
+      `In bold: the ${forecast ? 'forecast' : 'rain'} this report is for, as on the map. Units for a ${floodName(flood)}` +
       `${flood.w !== null ? ` with w = ${flood.w}` : ''}. Rain over the river basins that drain into Quezon City.`,
   }
 }
@@ -493,13 +515,13 @@ function citySection({ forecast, week, date }: ReportInput): ReportContent['city
 function methodLines(storms: StormsFile, run: StormRun, flood: Flood): string[] {
   const levels = run.levels_mm
   const rain = run.issued
-    ? `The ${run.rain_product} forecast (via Open-Meteo), made ${fullDate(run.issued)},`
-    : `The rain that fell (${run.rain_product})`
+    ? `The ${run.rain_product} forecast (via Open-Meteo), made ${fullDate(run.issued)}, of the rain`
+    : `The rain that fell, as ${run.rain_product} measured it,`
   const days = storms.counting.high_risk_days
   return [
-    `Rain. ${rain} of the rain over the river basins that drain into Quezon City (the Marikina, San Juan and ` +
+    `Rain. ${rain} over the river basins that drain into Quezon City (the Marikina, San Juan and ` +
       `Tullahan rivers), added up over 3 days. It is set against ${run.levels_product}'s rain over the same basins in ` +
-      `the ${run.levels_years} years before the storm's year: on that scale a 5-year storm brings ${levels['R(5)']} mm ` +
+      `the ${run.levels_years} years before ${run.window.start.slice(0, 4)}: on that scale a 5-year storm brings ${levels['R(5)']} mm ` +
       `in 3 days, a 25-year storm ${levels['R(25)']} mm and a 100-year storm ${levels['R(100)']} mm. Below ` +
       `${levels.R0} mm (half the 5-year rain) nobody counts as exposed.`,
     "Flood zones. Project NOAH's maps of the areas a 5-, 25- and 100-year rain floods. A storm between two of these " +
@@ -532,21 +554,21 @@ export function reportContent(input: ReportInput): ReportContent {
   const units = unitsIn(barangay, flood, run)
   return {
     fileName: reportFileName(name, storm, run),
-    docTitle: `LEPTON barangay stock report: ${name}, ${storm.name} (forecast made ${issuedWords(run)})`,
+    docTitle: `LEPTON barangay stock report: ${name}, ${storm.name} (${run.issued ? 'forecast made ' : ''}${issuedWords(run)})`,
     label: storms.label,
     name,
     about: `Quezon City · PSGC ${psgc} · ${formatCount(barangay.pop_2024)} residents (2024 census)`,
-    flag: flagText(barangay, storms),
+    flag: flagText(barangay, storms, run),
     storm: storm.name,
     forecastLine:
-      `${run.issued ? 'Forecast made ' : ''}${issuedWords(run)}: ${Math.round(run.rain_mm)} mm of rain over ` +
-      `${formatWeek(run.window.start, run.window.end)} on the river basins that drain into Quezon City, ` +
-      `${positionWords(run)}.`,
+      `${run.issued ? `Forecast made ${issuedWords(run)}` : `The rain that fell (${run.rain_product})`}: ` +
+      `${Math.round(run.rain_mm)} mm of rain over ${formatWeek(run.window.start, run.window.end)} on the river ` +
+      `basins that drain into Quezon City, ${positionWords(run)}.`,
     cityLine: cityLine(input, lead, barangay),
     figures: figures(barangay, units),
     figuresNote:
       (barangay.exposed === 0
-        ? `Nobody in ${name} lives in a zone this forecast's rain floods, so it needs no stock for this forecast. `
+        ? `Nobody in ${name} lives in a zone ${rainName(run)} floods, so it needs no stock for ${runName(run)}. `
         : '') +
       `For a ${floodName(flood)}${flood.w !== null ? ` with w = ${flood.w}` : ''}, as on the map ` +
       '(w: the share of exposed adults with a wound, or with floodwater in the eyes, nose or mouth).',
@@ -558,7 +580,7 @@ export function reportContent(input: ReportInput): ReportContent {
       classes: new Map([...lead.barangays].map(([each, row]) => [each, row.class])),
       legend: storms.classes.map((share) => ({ cls: share.class, label: classLabel(share, storms.classes) })),
       caption:
-        "Shades: the share of each barangay's residents in zones this forecast's rain floods. Outlined in black: " +
+        `Shades: the share of each barangay's residents in zones ${rainName(run)} floods. Outlined in black: ` +
         `${name}. Numbered: the health centers that hold its stock, as in the table. Boundaries: PSA and NAMRIA ` +
         'via OCHA (CC BY-IGO).',
     },

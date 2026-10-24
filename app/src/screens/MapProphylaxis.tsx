@@ -12,8 +12,16 @@ import { useMapContext } from '../map/mapContext.ts'
 import { shortName } from '../map/mapData.ts'
 import MapList, { type MapListHandle, type MapListItem } from '../map/MapList.tsx'
 import { SHEET_BELOW, panelCover } from '../map/motion.ts'
-import { PLAN_FLOOD, chosenRun, formatShare, joinRun, stormOn, waveOrder } from '../map/plan.ts'
-import { loadRun, type BarangayRun, type BarangayShapes, type RunFile, type loadPlanData } from '../map/planData.ts'
+import { PLAN_FLOOD, chosenRun, dayOn, formatShare, joinRun, stormOn, waveOrder, withDayNeeds } from '../map/plan.ts'
+import {
+  loadDays,
+  loadRun,
+  type BarangayRun,
+  type BarangayShapes,
+  type DaysFile,
+  type RunFile,
+  type loadPlanData,
+} from '../map/planData.ts'
 import PlanPanel from '../map/PlanPanel.tsx'
 import { PLAN_PARAMS, QC_PSGC } from '../map/routes.ts'
 import { placeTooltip } from '../map/tooltip.ts'
@@ -30,18 +38,28 @@ export default function MapProphylaxis() {
   const [pinned, setPinned] = useState<PinnedBarangay | null>(null)
   const list = useRef<MapListHandle>(null)
   const dateStorm = stormOn(storms.storms, date)
+  const days = useDaysFile(Number(date.slice(0, 4)))
+  const dateDay = days ? dayOn(days, date) : undefined
+  const datePlan = dateStorm ?? dateDay
+  // The date's own plan is on its way: its year's file has not come yet (null: it could not be fetched)
+  const loading = datePlan === undefined && days === undefined
   const listing = searchParams.get(PLAN_PARAMS.list) === 'all'
-  const storm = listing ? undefined : dateStorm
+  const storm = listing ? undefined : datePlan
   const run = storm ? chosenRun(storm, searchParams.get(PLAN_PARAMS.lead)) : undefined
   const runFile = useRunFile(run?.file)
   const qc = cities.features.find((feature) => feature.properties.psgc === QC_PSGC)!.properties
+  // A day's plan reads its runs' needs per health center as a storm's are read, from centers.json
+  const planCenters = useMemo(
+    () => (days && storm && storm === dateDay ? withDayNeeds(centers, days, storm) : centers),
+    [centers, days, storm, dateDay],
+  )
 
   // The barangays of the run on the map: the one chosen, or until its file comes the one before
   const drawn = useMemo(() => (runFile ? joinRun(shapes, runFile) : undefined), [shapes, runFile])
   const hasStorm = storm !== undefined
   const view = useMemo(
-    () => (hasStorm ? (drawn ? runView(drawn) : null) : noDataView(shapes)),
-    [hasStorm, drawn, shapes],
+    () => (hasStorm ? (drawn ? runView(drawn) : null) : loading ? null : noDataView(shapes)),
+    [hasStorm, drawn, loading, shapes],
   )
 
   // The barangays join the map when the plan opens, and leave it, in reverse, when it closes
@@ -112,12 +130,16 @@ export default function MapProphylaxis() {
 
   // The barangays' numbers in the run on the map, while a storm is shown.
   const numbers = hasStorm ? drawn : undefined
-  const none = dateStorm ? 'Choose a storm to see its numbers' : 'No storm forecast for this date'
+  const none = loading
+    ? 'Loading the plan for this date'
+    : datePlan
+      ? 'Choose a storm to see its numbers'
+      : 'No plan for this date'
 
   // What a barangay's report is made from, while a storm's forecast is shown
   const report: ReportRequest | undefined = useMemo(
-    () => (storm && run ? { storms, centers, shapes, storm, run, forecast, week, date } : undefined),
-    [storms, centers, shapes, storm, run, forecast, week, date],
+    () => (storm && run ? { storms, centers: planCenters, shapes, storm, run, forecast, week, date } : undefined),
+    [storms, planCenters, shapes, storm, run, forecast, week, date],
   )
 
   return (
@@ -126,11 +148,12 @@ export default function MapProphylaxis() {
       <PlanPanel
         city={shortName(qc)}
         storms={storms}
-        centers={centers}
+        centers={planCenters}
         storm={storm}
         run={run}
         date={date}
-        stormOnDate={dateStorm !== undefined}
+        planOnDate={datePlan !== undefined || loading}
+        loading={loading && !listing}
         barangays={shapes.features.length}
         onLead={changeLead}
       />
@@ -254,6 +277,30 @@ function useRunFile(file: string | undefined): RunFile | undefined {
     throw failed
   }
   return loaded
+}
+
+/** The daily plans of `year` (days/<year>.json), fetched when the date first reaches that year. */
+function useDaysFile(year: number): DaysFile | null | undefined {
+  const [loaded, setLoaded] = useState<{ year: number; file: DaysFile | null }>()
+  useEffect(() => {
+    let current = true // False once the year changes again: a late file is dropped
+    loadDays(year).then(
+      (file) => {
+        if (current) {
+          setLoaded({ year, file })
+        }
+      },
+      () => {
+        if (current) {
+          setLoaded({ year, file: null })
+        }
+      },
+    )
+    return () => {
+      current = false
+    }
+  }, [year])
+  return loaded?.year === year ? loaded.file : undefined
 }
 
 type HoverTooltipProps = {
