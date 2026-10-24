@@ -297,7 +297,6 @@ export default function HowItWorks() {
   const reveal = useReveal<HTMLElement>()
   return (
     <>
-      <title>How it works · LEPTON</title>
       <SiteHeader />
       <main ref={reveal}>
         <Intro current={current} />

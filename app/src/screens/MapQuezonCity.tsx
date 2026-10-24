@@ -9,7 +9,6 @@ export default function MapQuezonCity() {
   const qc = cities.features.find((feature) => feature.properties.psgc === QC_PSGC)!.properties
   return (
     <>
-      <title>Quezon City · LEPTON</title>
       <ForecastPanel city={shortName(qc)} forecast={forecast} week={week} />
     </>
   )

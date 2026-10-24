@@ -69,7 +69,6 @@ export default function Home() {
   const reveal = useReveal<HTMLElement>()
   return (
     <>
-      <title>LEPTON · Leptospirosis forecasts for the Philippines, starting with Quezon City</title>
       <SiteHeader />
       <main ref={reveal} className="home">
         <section className="home-hero" aria-labelledby="home-hero-title">

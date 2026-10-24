@@ -144,7 +144,6 @@ export default function MapProphylaxis() {
 
   return (
     <>
-      <title>Prophylaxis plan · LEPTON</title>
       <PlanPanel
         city={shortName(qc)}
         storms={storms}

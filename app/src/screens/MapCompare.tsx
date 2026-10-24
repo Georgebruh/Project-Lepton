@@ -55,7 +55,6 @@ export default function MapCompare() {
   const counted = forecast.weeks.filter((week) => week.y !== null)
   return (
     <div className="map-compare">
-      <title>Compare models · LEPTON</title>
       <PanelModes mode="compare" />
       <div className="map-compare-heading">
         {/* Takes the keyboard when the city opens (MapLayout) */}
