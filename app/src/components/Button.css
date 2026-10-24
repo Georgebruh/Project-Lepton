@@ -1,4 +1,4 @@
-/* F3: buttons (Button.tsx), Figma node 3:65. The label is Label/UI (.label-ui). */
+/* Buttons (Button.tsx). The label is Label/UI (.label-ui). */
 .button {
   display: inline-flex;
   align-items: center;
@@ -19,7 +19,7 @@
   color: var(--color-text-on-accent);
 }
 
-/* Secondary: outlined. As in Figma, the 1 px border adds to the size (46 px tall, not 44). */
+/* Secondary: outlined. The 1 px border adds to the size (46 px tall, not 44). */
 .button-secondary {
   border: 1px solid var(--color-border-strong);
   color: var(--color-text-primary);

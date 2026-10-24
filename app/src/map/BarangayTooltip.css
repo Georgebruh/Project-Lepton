@@ -1,18 +1,15 @@
-/*
- * F5: the barangay tooltip (BarangayTooltip.tsx), Figma frame 3a's "Tooltip" (node 57:1020). It
- * fades in like the city tooltip (CityMap.css); --map-hover comes from MapLayout.
- */
+/* The barangay tooltip (BarangayTooltip.tsx). */
 .barangay-tooltip {
   position: absolute;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Figma's 12 px by 14 px, between the spacing steps */
+  /* 12 px by 14 px, between the spacing steps */
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
   background: var(--color-bg-surface);
-  /* Figma's shadow: 0 6 20, the dark text color at 14% */
+  /* shadow: 0 6 20, the dark text color at 14% */
   box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
   pointer-events: none;
   animation: barangay-tooltip-in var(--map-hover) linear;

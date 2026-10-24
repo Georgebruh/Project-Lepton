@@ -1,67 +1,4 @@
-"""The backtest loop (task B10).
-
-One forecast day T per week, from the first week of 2018 to the last week whose target
-the data can score. At each forecast day:
-
-  1. B2's view: the cutoff, the last week a model may see (T in option B, T - g in
-     option C), and M4's training and forecast rows (view.training_rows, prediction_row).
-  2. Refit every model on what it may see and forecast the target week T + 1:
-       M0       the count 52 weeks before the target (B8)
-       M1       the mean of the target's week over the threshold reference years (B8)
-       M3       Prophet + XGBoost, refitted on the seen weeks (B9)
-       M4       the negative binomial model (B5), and M4_no_EI2, M4 without EI2 (the
-                flood test, D6), fitted on the same rows
-  3. Turn each forecast mean mu into a forecast range NB(mu, theta) (B6): theta from the
-     model's own last 104 non-COVID past forecasts that the cutoff lets it score, or the
-     training fit's theta while it has fewer than 26 (forecast_range.theta_for).
-  4. Store mu, theta, the 23 quantiles behind WIS's 11 central ranges (config.WIS_ALPHAS:
-     alpha / 2 and 1 - alpha / 2 for each alpha, and the median), the threshold T_w and
-     Pr(breach) = Pr(Y > T_w) (B7).
-
-Rain return levels are refitted at the first forecast day of each year (C3): each
-forecast day reads Rcum2 and EI2 from features_weekly.csv rows with fit_year = the
-forecast day's year (B4; Notes.md section 4). Rain is never guarded (B2).
-
-After the loop each row gets its outcome: y, the target's final count, and breached,
-y > T_w with the T_w stored on the row (rule 6). y is read only after every forecast is
-made, so no model ever sees it.
-
-The training fit's theta (used before 26 past forecasts; assumption, the plan gives it
-only for M4):
-  M0  estimate_theta on M0's guesses for the weeks it can see, y(s) against y(s - 52),
-      over the last 104 non-COVID target weeks s with both counts seen.
-  M1  estimate_theta on the reference years' counts against their week means: M1's own
-      fit. A little narrow (the means are fitted on the same counts), and used only for
-      the first 26 forecast days.
-  M3  Prophet's in-sample theta (m3_port.m3_forecast's fit_theta; B9 says why).
-  M4  1 / alpha of the fit (B5).
-
-First and last forecast day:
-  - First: 2018 week 1. In option C its target (2018 week 2) has only 2015 and 2016 as
-    complete reference years (2017's last g weeks are still hidden), fewer than the 3 B7
-    needs, so the first forecast day moves to the first week with 3 (2018 week 2 at
-    g = 2). The run prints it when it moves.
-  - Last: the last week of 2026 at most, and no later than the last week whose target
-    has a count and whose rain and EI are in features_weekly.csv.
-
-Rules this file follows: every model forecasts on every forecast day or the run stops
-(rule 5); a NaN anywhere stops the run (theta may be infinity: a Poisson range, B6);
-models read counts only through the cutoff (rule 1), which check S11 tests by
-overwriting every unseen count with -999.
-
-Until A13's cases_weekly.csv arrives, --simulate runs the loop on made-up QC-shaped
-counts (simulated_cases) and writes forecasts_simulated_B.csv or _C.csv, never forecasts.csv.
-
-Run from the repository root:
-    python -m src.backtest                           # A13's counts, config.DATA_OPTION and g
-    python -m src.backtest --g 1                     # the guard reruns (option C): forecasts_g1.csv
-    python -m src.backtest --simulate --option C     # made-up counts: forecasts_simulated_C.csv
-    python -m src.backtest --simulate --option B --days 10 --models M0 M1 M4   # a quick test
-Needs B1 (pop_weekly.csv, or it is rebuilt), B4 (features_weekly.csv: python -m src.features)
-and, without --simulate, A13. M3 refits Prophet every forecast day: a full run takes minutes.
-
-Check: python -m src.checks (S11 leakage).
-"""
+"""The backtest loop."""
 
 import argparse
 import time
@@ -73,7 +10,7 @@ import pandas as pd
 import config
 from src import baselines, forecast_range, m4, population, scores, thresholds, view, weeks
 
-M4_NO_EI2 = config.FLOOD_TEST[1]   # "M4_no_EI2", M4 without EI2: the name D6, D8 and the app read
+M4_NO_EI2 = config.FLOOD_TEST[1]   # "M4_no_EI2", M4 without EI2: the name the comparisons, figures and app read
 MODELS = ("M0", "M1", "M3", "M4", M4_NO_EI2)
 # The quantiles behind WIS's 11 central ranges, plus the median: 0.01, 0.025, ..., 0.5, ..., 0.99
 QUANTILES = sorted({0.5} | {round(a / 2, 4) for a in config.WIS_ALPHAS} | {round(1 - a / 2, 4) for a in config.WIS_ALPHAS})
@@ -81,19 +18,17 @@ QUANTILE_COLUMNS = [f"q{q:.3f}" for q in QUANTILES]
 PROGRESS_EVERY = 26   # print a line every half year of forecast days
 
 
-# ---------------------------------------------------------------------------
 # Inputs
-# ---------------------------------------------------------------------------
 
 def load_cases(path=config.CASES_WEEKLY):
-    """A13's weekly table (week_index, year, week, cases). Stops if A13 has not made it yet."""
+    """The weekly table (week_index, year, week, cases)."""
     if not path.exists():
         raise FileNotFoundError(f"{path} not found: run task A13, or test with --simulate")
     return pd.read_csv(path)[view.COLUMNS]
 
 
 def load_features(path=config.FEATURES_WEEKLY):
-    """B4's weekly rain and exposure: fit_year, week_index, rcum2 (mm) and ei2 (%), for M4."""
+    """The weekly rain and exposure: fit_year, week_index, rcum2 (mm) and ei2 (%), for M4."""
     if not path.exists():
         raise FileNotFoundError(f"{path} not found: run python -m src.features (B4)")
     table = pd.read_csv(path)
@@ -101,13 +36,13 @@ def load_features(path=config.FEATURES_WEEKLY):
 
 
 def load_population(path=config.POP_WEEKLY):
-    """B1's weekly population (week_index, pop); rebuilt with population.weekly_population if absent."""
+    """The weekly population (week_index, pop); rebuilt with population.weekly_population if absent."""
     table = pd.read_csv(path) if path.exists() else population.weekly_population()
     return table[["week_index", "pop"]]
 
 
 def features_for(features, fit_year):
-    """The rain and exposure rows of one fit year: return levels fitted on the years before it (C3)."""
+    """The rain and exposure rows of one fit year: return levels fitted on the years before it."""
     rows = features[features["fit_year"] == fit_year]
     if rows.empty:
         raise ValueError(f"features_weekly.csv has no rows with fit_year {fit_year}: rerun C3 and B4")
@@ -115,16 +50,7 @@ def features_for(features, fit_year):
 
 
 def simulated_cases(features, pop, seed=config.RANDOM_SEED):
-    """Made-up QC-shaped weekly counts, 2015 week 1 to the last week with rain, to test B10 before A13.
-
-    The counts follow M4 with S5's true values (config.S5_TRUE, S5_BASE, theta S5_THETA),
-    week by week, because each week's y~ is the two counts before it:
-        mu(s) = P(s - 1) exp(b0 + season(s) + rho log(1 + y(s-1) + y(s-2))
-                             + b1 Rcum2(s-1) / 50 + b2 EI2(s-1) + delta COVID(s)),   y(s) ~ NB(mu(s), 5)
-    with B1's population and B4's real Rcum2 and EI2 (the last fit year's EI, one fixed
-    "truth"). About 20-60 cases a week, more after wet weeks. Not real data: never
-    written to cases_weekly.csv.
-    """
+    """Made-up QC-shaped weekly counts, 2015 week 1 to the last week with rain, for testing."""
     rng = np.random.default_rng(seed)
     true, base, theta = config.S5_TRUE, config.S5_BASE, config.S5_THETA
     rain = features_for(features, features["fit_year"].max()).set_index("week_index")
@@ -152,16 +78,10 @@ def simulated_cases(features, pop, seed=config.RANDOM_SEED):
                          "week": [yw[1] for yw in year_week], "cases": y})
 
 
-# ---------------------------------------------------------------------------
-# The training fit's theta for M0 and M1 (B6's fallback before 26 past forecasts)
-# ---------------------------------------------------------------------------
+# The training fit's theta for M0 and M1
 
 def m0_fit_theta(cases, cut):
-    """M0's training-fit theta: estimate_theta of y(s) against y(s - 52) over the weeks it can see.
-
-    Uses the last 104 (config.THETA_WINDOW) non-COVID target weeks s up to the cutoff
-    with both counts seen.
-    """
+    """M0's training-fit theta: estimate_theta of y(s) against y(s - 52) over the weeks it can see."""
     seen = cases[(cases["week_index"] <= cut) & cases["cases"].notna()]
     counts = seen.set_index("week_index")["cases"]
     pairs = pd.DataFrame({"year": seen["year"].to_numpy(), "y": counts.to_numpy(),
@@ -171,27 +91,17 @@ def m0_fit_theta(cases, cut):
 
 
 def m1_fit_theta(target_year, cases, cut):
-    """M1's training-fit theta: estimate_theta of the reference years' counts against their week means.
-
-    In plain words: how far each reference year's week w strayed from M1's guess for week
-    w, the mean of week w over those years (weeks 1-52; a year's week 53 is not used).
-    """
+    """M1's training-fit theta: estimate_theta of the reference years' counts against their week means."""
     years = thresholds.reference_years(target_year, cases, cut)
     rows = cases[cases["year"].isin(years) & (cases["week"] <= config.MAX_WEEK)]
     means = rows.groupby("week")["cases"].transform("mean")
     return forecast_range.estimate_theta(rows["cases"], means)
 
 
-# ---------------------------------------------------------------------------
 # One forecast day
-# ---------------------------------------------------------------------------
 
 def model_means(T, cases, features, pop, option, g, models=MODELS):
-    """Each model's forecast mean for target week T + h: {model: (mu, fit_theta, detail)}.
-
-    Every model reads only what B2 lets it see at forecast day T. M4 and M4_no_EI2 read
-    rain and EI of the forecast day's fit year (C3, B4).
-    """
+    """Each model's forecast mean for target week T + h: {model: (mu, fit_theta, detail)}."""
     cut = view.cutoff(T, option, g)
     year, week = weeks.year_week(T + config.FORECAST_HORIZON_WEEKS)
     out = {}
@@ -218,11 +128,7 @@ def model_means(T, cases, features, pop, option, g, models=MODELS):
 
 
 def forecast_day(T, cases, features, pop, past, option, g, models=MODELS):
-    """Every model's forecast at forecast day T: one row per model (B10 steps 1-4).
-
-    past: {model: its earlier forecasts in this run, a table with week_index (the target)
-    and mu}. Rows hold no outcome: forecast_day never reads a count after the cutoff.
-    """
+    """Every model's forecast at forecast day T: one row per model."""
     h = config.FORECAST_HORIZON_WEEKS
     cut = view.cutoff(T, option, g)
     year, week = weeks.year_week(T + h)
@@ -245,7 +151,7 @@ def forecast_day(T, cases, features, pop, past, option, g, models=MODELS):
 
 
 def check_numbers(table):
-    """Stop on a NaN in any number column (rule 5). theta may be infinity (a Poisson range, B6)."""
+    """Stop on a NaN in any number column; theta may be infinity (a Poisson range)."""
     numbers = table.select_dtypes("number")
     bad = numbers.columns[numbers.isna().any()].tolist()
     finite = numbers.drop(columns=["theta"])
@@ -255,12 +161,10 @@ def check_numbers(table):
                          f"NaN or infinite values in {sorted(set(bad))}")
 
 
-# ---------------------------------------------------------------------------
 # The loop
-# ---------------------------------------------------------------------------
 
 def forecast_days(cases, features, option, g):
-    """The forecast days T (week indexes), first to last (see the module docstring)."""
+    """The forecast days T (week indexes), first to last."""
     h = config.FORECAST_HORIZON_WEEKS
     first = weeks.week_index_of(config.BACKTEST_FIRST_YEAR, 1)
     last_count = int(cases.loc[cases["cases"].notna(), "week_index"].max())
@@ -282,11 +186,7 @@ def forecast_days(cases, features, option, g):
 
 
 def run_backtest(cases, features, pop, option, g=config.DELAY_GUARD_G, models=MODELS, days=None):
-    """The whole loop: every forecast day's forecasts, then each row's outcome (y, breached).
-
-    days: run only the first `days` forecast days (a quick test). Stops on any error;
-    a run never skips a forecast day or a model (rule 5).
-    """
+    """The whole loop: every forecast day's forecasts, then each row's outcome (y, breached)."""
     view.guard_weeks(option, g)   # stops on an option not set (None) or not built (A)
     plan = forecast_days(cases, features, option, g)[:days]
     past = {model: pd.DataFrame({"week_index": pd.Series(dtype=int), "mu": pd.Series(dtype=float)}) for model in models}
@@ -307,7 +207,7 @@ def run_backtest(cases, features, pop, option, g=config.DELAY_GUARD_G, models=MO
 
 
 def add_outcomes(table, cases):
-    """Each row's final count y and breached = y > the row's own T_w (rule 6). Stops on a missing count."""
+    """Each row's final count y and breached = y > the row's own T_w."""
     counts = cases.set_index("week_index")["cases"]
     out = table.copy()
     out["y"] = counts.reindex(out["week_index"]).to_numpy()
@@ -340,7 +240,7 @@ def write(table, path):
 
 
 def summary(table):
-    """Each model's scores (D1) over the MAE years the run holds: a first look, not the D results."""
+    """Each model's scores over the MAE years the run holds: a first look, not the D results."""
     years = [year for year in config.MAE_YEARS if year in set(table["year"])]
     if not years:
         return "no target week in the MAE years yet"

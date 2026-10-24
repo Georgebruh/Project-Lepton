@@ -1,10 +1,6 @@
-/*
- * F7: the Leptospirosis page for residents (Leptospirosis.tsx), Figma frame "Leptospirosis"
- * (node 38:277). Figma's own values between the spacing steps (80, 112, 28, 20, 36 and 14 px)
- * are written in px, as Footer.css does.
- */
+/* The Leptospirosis page for residents (Leptospirosis.tsx). */
 
-/* Every block keeps Figma's 96 px side margin */
+/* Every block keeps 96 px side margin */
 .leptospirosis-hero,
 .leptospirosis-facts,
 .leptospirosis-section,
@@ -38,7 +34,7 @@
   padding-bottom: 80px;
 }
 
-/* Figma's text column is 624 px wide beside the photo; it keeps that width without one */
+/* Text column is 624 px wide beside the photo; it keeps that width without one */
 .leptospirosis-hero-text {
   flex: 1;
   max-width: 624px;
@@ -182,7 +178,7 @@
   list-style: none;
 }
 
-/* Each sign has an 8 px square bullet, 9 px down as in Figma */
+/* Each sign has an 8 px square bullet, 9 px down */
 .leptospirosis-signs-list li {
   display: flex;
   align-items: flex-start;
@@ -294,7 +290,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Footer: Figma's closing line, then the numbered sources */
+/* Footer: closing line, then the numbered sources */
 .leptospirosis-footer {
   display: flex;
   flex-direction: column;
@@ -320,7 +316,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Below 1024 px the columns stack (the plan's rule for Home, kept here) */
+/* Below 1024 px the columns stack */
 @media (max-width: 1023px) {
   .leptospirosis-hero,
   .leptospirosis-facts,

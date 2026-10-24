@@ -1,7 +1,6 @@
-/* F14: the map's search (MapSearch.tsx), beside the logo. Not in Figma: a card like the logo's. */
+/* The map's search (MapSearch.tsx), beside the logo: a card like the logo's. */
 
-/* Closed: a square card as tall as the logo's (the row stretches it, MapLayout.css): the logo's
-   22 px, with 12 px of padding and a 1 px border above and below */
+/* Closed: a square card as tall as the logo's (the row stretches it, MapLayout.css). */
 .map-search-button {
   display: flex;
   flex-shrink: 0;
@@ -75,8 +74,7 @@
   cursor: pointer;
 }
 
-/* The matches: a card under the field, over the map and the plan's list of barangays. It shows
-   only when it holds a match or a count to read */
+/* The matches: a card under the field, over the map and the plan's list of barangays. */
 .map-search-results {
   position: absolute;
   top: calc(100% + var(--space-1));

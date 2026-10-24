@@ -15,12 +15,7 @@ type YourResultProps = {
   titleRef: Ref<HTMLHeadingElement>
 }
 
-/**
- * F8: step 2 of the guide, Figma frame "2 Your result" (39:361): the risk group and what it
- * means (risk.ts), what to do, and the emergency box, which every result keeps. Fever, muscle
- * pain or red eyes now put "See a doctor today" first. Its buttons find the nearest health
- * centers or call QC Helpline 122.
- */
+/** Step 2 of the guide: the risk group and what it means. */
 export default function YourResult({ answers, onFindCenters, onBack, titleRef }: YourResultProps) {
   const result = resultFor(answers)
   const badge = LEVEL_BADGES[result.level]

@@ -1,9 +1,4 @@
-/*
- * F4: the map (CityMap.tsx): MapLibre's canvas, the city names and the city tooltip, Figma
- * frames 1, 1a, 1b and 2. The durations and the curve (--map-hover, --map-move, --map-ease)
- * come from MapLayout.css, which takes them from map/motion.ts. F14: the hint and the list of
- * cities are gone; Methods and the credits sit in the bottom right corner.
- */
+/* The map (CityMap.tsx): MapLibre's canvas, the city names and the city tooltip. */
 .city-map {
   position: absolute;
   inset: 0;
@@ -12,20 +7,16 @@
 .city-map-canvas {
   position: absolute;
   inset: 0;
-  /* F13: beyond the world's edges, when the map is zoomed out to all of it (MapLibre leaves it clear) */
+  /* Beyond the world's edges, when the map is zoomed out to all of it (MapLibre leaves it clear) */
   background: var(--color-map-space);
 }
 
-/* F13: in the 3D view, past the tilted map's far edge, where tiles have not come yet: the land's
-   color, not the dark beyond the world */
+/* In the 3D view, past the tilted map's far edge, where tiles have not come yet. */
 .city-map[data-view='3d'] .city-map-canvas {
   background: var(--color-map-land);
 }
 
-/* F13: the sources' credits (MapLibre's attribution control): an "i" button that opens them over
-   the map. It is MapLibre's element and cannot take the body-s class, so it copies body-s here.
-   F14: in the bottom right corner, after Methods, one row along the map's foot (--map-edge and
-   --map-credits-room come from MapLayout.css). Opened, the credits wrap within the map. */
+/* The sources' credits (MapLibre's attribution control): an "i" button that opens them over the map. */
 .city-map .maplibregl-ctrl-bottom-right {
   left: 0;
   display: flex;
@@ -53,7 +44,7 @@
   color: inherit;
 }
 
-/* F14: Methods, beside the credits: How it works, where the methods are told */
+/* Methods, beside the credits: How it works, where the methods are told */
 .city-map-methods-link {
   display: block;
   padding: 2px var(--space-2);
@@ -62,8 +53,7 @@
   color: var(--color-text-secondary);
 }
 
-/* F11: MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom); it fills the map,
-   whose edges clip, so its focus ring sits inside it */
+/* MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom). */
 .city-map-canvas canvas:focus-visible {
   outline-offset: -2px;
 }
@@ -73,8 +63,7 @@
   pointer-events: none;
 }
 
-/* A city's name, grey; dark while the city is under the pointer (Figma 1a). F13: with a halo, so
-   it reads where an outline, a road, satellite imagery or NOAH's flood zones run under it */
+/* A city's name, grey; dark while the city is under the pointer. */
 .city-map-label {
   display: block;
   color: var(--color-text-tertiary);
@@ -92,7 +81,7 @@
   color: var(--color-text-primary);
 }
 
-/* A city with data: its name over next week's expected cases (Figma "Quezon City", node 55:445) */
+/* A city with data: its name over next week's expected cases */
 .city-map-label-open {
   display: flex;
   flex-direction: column;
@@ -101,9 +90,7 @@
   text-decoration: none;
 }
 
-/* F14: the cases show only while the city or its name is hovered, or the name has the keyboard
-   (it is a link, so screen readers still hear them). Hidden, they keep their room, so the name
-   does not move, and the street map's names stay off it (addNameRoom) */
+/* The cases show only while the city or its name is hovered, or the name has the keyboard. */
 .city-map-label-cases {
   color: var(--color-text-secondary);
   opacity: 0;
@@ -125,18 +112,18 @@
     visibility 0s linear var(--map-move);
 }
 
-/* The city under the pointer (Figma "Tooltip", nodes 55:621 and 55:776); it fades in */
+/* The city under the pointer; it fades in */
 .city-map-tooltip {
   position: absolute;
   display: flex;
   flex-direction: column;
-  /* Figma's 6 px between rows and 14 px sides, between the spacing steps */
+  /* 6 px between rows and 14 px sides, between the spacing steps */
   gap: 6px;
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
   background: var(--color-bg-surface);
-  /* Figma's shadow: 0 6 20, the dark text color at 14% */
+  /* shadow: 0 6 20, the dark text color at 14% */
   box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
   pointer-events: none;
   animation: city-map-tooltip-in var(--map-hover) linear;

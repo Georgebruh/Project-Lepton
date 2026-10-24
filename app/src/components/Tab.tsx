@@ -7,16 +7,9 @@ type TabProps = {
   to?: string
   /** With `to`: select the tab only on that exact route, not the routes under it. */
   end?: boolean
-  /**
-   * Whether the tab is selected. With `to`, leave it out to select the tab on its route; F4's
-   * map panel sets it, so its tab stays selected while the panel slides away after Back, and
-   * its Cases forecast tab is not selected on the prophylaxis plan, whose route lies under it.
-   */
+  /** Whether the tab is selected. */
   selected?: boolean
-  /**
-   * A place on the same page, e.g. '#models' (How it works' section tabs, F10): the tab is a
-   * plain link to it, and `selected` marks the part being read.
-   */
+  /** A place on the same page, e.g. '#models': the tab is a plain link to it. */
   href?: string
   /** Without `to` or `href`: what happens on click. */
   onClick?: () => void
@@ -24,20 +17,14 @@ type TabProps = {
   children: ReactNode
 }
 
-/**
- * F3: the Figma component "Tab" (node 3:83), Default or Selected. With `to` it is a link to a
- * route (the city panel's Cases forecast, Compare models and Prophylaxis plan), with `href` a link to a
- * part of the same page (F10); otherwise a button that reports its state to screen readers
- * with aria-pressed.
- */
+/** The "Tab" component, Default or Selected. */
 export default function Tab({ to, end, selected, href, onClick, children }: TabProps) {
   if (to) {
     return (
       <NavLink
         to={to}
         end={end}
-        // NavLink marks the link as the current page whenever its route is open; "false" keeps
-        // a tab that `selected` turns off from being read out as the current page as well
+        // NavLink marks the link as the current page whenever its route is open.
         aria-current={selected === false ? 'false' : 'page'}
         className={({ isActive }) => ((selected ?? isActive) ? 'tab tab-selected label-ui' : 'tab label-ui')}
       >

@@ -1,4 +1,4 @@
-/* F9: the chart's table view (WeeksTable.tsx). Figma has none; it follows the How it works table (node 12:1482). */
+/* The chart's table view (WeeksTable.tsx). The design has none; it follows the How it works table. */
 .weeks-table-summary {
   width: fit-content;
   color: var(--color-accent-primary);

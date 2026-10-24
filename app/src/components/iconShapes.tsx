@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react'
 
-/**
- * The 20 icons' names, as on the Figma Components page without "icon/" (icon/play is 'play').
- * F14: 'search' is not in Figma: drawn on the same grid with the same 1.75 px line.
- */
+/** The 20 icons' names without "icon/" (icon/play is 'play'). */
 export const ICON_NAMES = [
   'play',
   'pause',
@@ -29,16 +26,11 @@ export const ICON_NAMES = [
 
 export type IconName = (typeof ICON_NAMES)[number]
 
-/*
- * F3: each icon's shapes, copied from its SVG export on the Figma Components page (the Figma
- * node id is in the comment). They are drawn on a 24 × 24 grid. Two changes from the export:
- * the dark background square is dropped, and every color is currentColor, so an icon takes
- * the text color of the element around it.
- */
+/* Each icon's shapes, copied from its SVG export. */
 export const ICON_SHAPES: Record<IconName, ReactNode> = {
   // icon/play, 3:6
   play: <path d="M8 5.5V18.5L18.5 12L8 5.5Z" fill="currentColor" />,
-  // icon/pause, 141:445 (F13, the weather timeline)
+  // icon/pause
   pause: <path d="M9 6V18M15 6V18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />,
   // icon/chevron-left, 3:9
   'chevron-left': (
@@ -200,7 +192,7 @@ export const ICON_SHAPES: Record<IconName, ReactNode> = {
       <path d="M5.64 5.64L18.36 18.36" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </>
   ),
-  // F14: a magnifying glass, the map's search (not in Figma)
+  // A magnifying glass, the map's search
   search: (
     <>
       <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.75" />

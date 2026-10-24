@@ -1,10 +1,6 @@
 import './Logo.css'
 
-/**
- * F3: the LEPTON logo, Figma component "Logo" (node 3:47): three rising teal bars and the
- * wordmark. It is a picture of the name, so the headers wrap it in a link to the home page
- * that carries the words.
- */
+/** The LEPTON logo, the "Logo" component: three rising teal bars and the wordmark. */
 export default function Logo() {
   return (
     <span className="logo">

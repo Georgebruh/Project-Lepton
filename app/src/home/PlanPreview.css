@@ -1,4 +1,4 @@
-/* F6: Home's preview of the prophylaxis plan (PlanPreview.tsx), Figma nodes 19:291 and 19:553. */
+/* Home's preview of the prophylaxis plan. */
 .plan-preview {
   display: flex;
   flex-direction: column;
@@ -6,9 +6,7 @@
   margin: 0;
 }
 
-/* The box: the map's inset color under a 96 px grid of thin lines, the map on the left and the
-   stock list on the right. The map's column runs from the box's left edge, so Quezon City sits in
-   the middle of the space left of the stock list, as in Figma. */
+/* The box: the map's inset color under a 96 px grid of thin lines. */
 .plan-preview-frame {
   position: relative;
   display: grid;
@@ -50,9 +48,7 @@
   height: 500px;
 }
 
-/* The barangays: a fill per class, thin lines in the map's boundary color (Figma: 0.54 px at
-   this size), the flagged outlined in teal (0.89 px) and the selected one in black (1.61 px).
-   The lines keep their width when the map is drawn smaller. */
+/* The barangays: a fill per class. */
 .plan-preview-barangay,
 .plan-preview-flagged,
 .plan-preview-selected {
@@ -104,7 +100,7 @@
   background: var(--color-data-ramp-5);
 }
 
-/* The legend, top left (Figma: 8 px by 12 px inside, 10 px between the words and the ramp) */
+/* The legend, top left */
 .plan-preview-legend {
   position: absolute;
   top: var(--space-5);
@@ -134,7 +130,7 @@
   border-radius: 1px;
 }
 
-/* The stock list (Figma: 20 px inside, 14 px between its parts, between the spacing steps) */
+/* The stock list */
 .plan-preview-stock {
   align-self: start;
   display: flex;
@@ -161,7 +157,7 @@
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
-  /* Figma's 10 px top and bottom, between the spacing steps */
+  /* 10 px top and bottom, between the spacing steps */
   padding: 10px var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-bg-raised);

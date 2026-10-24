@@ -16,7 +16,7 @@ import PanelModes from './PanelModes.tsx'
 import WeeklyCasesChart from './WeeklyCasesChart.tsx'
 import './ForecastPanel.css'
 
-/** How many past weeks the chart shows (Figma: "Last 15 weeks"). */
+/** How many past weeks the chart shows. */
 const PAST_WEEKS = 15
 
 type ForecastPanelProps = {
@@ -27,17 +27,7 @@ type ForecastPanelProps = {
   week: ForecastWeek | undefined
 }
 
-/**
- * F4: the city panel's case forecast, Figma frame 2's "Panel" (node 53:316): next week's
- * expected cases with the range, the chance of an outbreak (a count above the epidemic
- * threshold) with its level, the last 15 weeks and next week's range. Every number is the map
- * model's (M4) for the chosen week in city_forecast.json; the expected count is rounded to whole
- * cases. While the file says simulated, the amber badge sits above the numbers.
- *
- * F14: Figma's Prophylaxis plan and Compare models buttons are tabs at the top (PanelModes). A
- * week the Simulation mode added carries the amber "Simulated" badge, and its made-up counts are
- * outlined bars in the chart.
- */
+/** The city panel's case forecast. */
 export default function ForecastPanel({ city, forecast, week }: ForecastPanelProps) {
   const model = week?.forecasts[forecast.map_model]
   const simulated = isSimulated(forecast, week)
@@ -45,7 +35,7 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
     <div className="forecast-panel">
       <PanelModes mode="cases" />
       <div className="forecast-panel-heading">
-        {/* F11: takes the keyboard when the city opens (MapLayout) */}
+        {/* Takes the keyboard when the city opens (MapLayout) */}
         <h2 className="forecast-panel-title heading-l" tabIndex={-1}>
           {city}
         </h2>
@@ -63,8 +53,7 @@ export default function ForecastPanel({ city, forecast, week }: ForecastPanelPro
           No forecast for the week after this date. Choose another date.
         </p>
       )}
-      {/* Read out when the reader picks another date (Figma has no text here). F11: always in the
-          page, so a date without a forecast is read out too. */}
+      {/* Read out when the reader picks another date. */}
       <p className="visually-hidden" aria-live="polite">
         {week && model ? forecastWords(forecast, week) : 'No forecast for the week after this date.'}
       </p>
@@ -124,7 +113,7 @@ function ForecastNumbers({ forecast, week }: ForecastNumbersProps) {
   )
 }
 
-/** The panel's numbers for one week in one sentence, as a screen reader hears them when the date changes. */
+/** The panel's numbers for one week in one sentence. */
 function forecastWords(forecast: CityForecast, week: ForecastWeek): string {
   const model = week.forecasts[forecast.map_model]
   const level = levelOf(model.p_breach, forecast.levels)

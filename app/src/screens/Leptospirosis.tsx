@@ -5,12 +5,7 @@ import Button from '../components/Button.tsx'
 import SiteHeader from '../components/SiteHeader.tsx'
 import './Leptospirosis.css'
 
-/**
- * The pages each fact on this page comes from, numbered in the order the page first cites
- * them. Every medical fact links to its DOH source (F7); the team checks each one against it
- * before launch. DOH's own site turns away scripts, so its pages were read on 20 Oct 2026
- * through the Internet Archive (the disease page as of 11 June 2025).
- */
+/** The pages each fact on this page comes from, numbered in the order the page first cites them. */
 const SOURCES = [
   {
     id: 'doh-disease',
@@ -53,12 +48,7 @@ function sourceNumber(id: SourceId) {
   return SOURCES.findIndex((source) => source.id === id) + 1
 }
 
-/**
- * The hero's photo, or null for none. Figma's is AI-generated and no AI image ships (check
- * U7), so the hero shows its text alone until a real, licensed photo arrives (F6 finds Home's).
- * Then put the file in src/assets/, import it here as `src` with its `alt` text and `credit`,
- * and the photo and its credit appear (check U8).
- */
+/** The hero's photo, or null for none. */
 const HERO_PHOTO: { src: string; alt: string; credit: string } | null = null
 
 /** The three key facts under the hero. */
@@ -115,11 +105,7 @@ const SEVERE_SIGNS = [
   'Trouble breathing',
 ]
 
-/**
- * DM 2023-0309 Table 1's three groups, in plain words: a single exposure with no break in the
- * skin; a wound or water in the eyes, nose or mouth; repeated or continuous exposure. The
- * memo names the first "mild"; DOH's advisories and this page call it low risk.
- */
+/** DM 2023-0309 Table 1's three groups, in plain words. */
 const RISK_LEVELS = [
   {
     tone: 'accent',
@@ -174,7 +160,7 @@ function Cite({ sources }: { sources: readonly SourceId[] }) {
   )
 }
 
-/** A section with Figma's heading over a rule; `id` names it for screen readers. */
+/** A section with heading over a rule; `id` names it for screen readers. */
 function Section({ id, title, children }: { id: string; title: ReactNode; children: ReactNode }) {
   return (
     <section className="leptospirosis-section" aria-labelledby={id}>
@@ -328,7 +314,7 @@ function ExposedCta() {
   )
 }
 
-/** Figma's closing line, then the numbered sources the facts link to. */
+/** Closing line, then the numbered sources the facts link to. */
 function PageFooter() {
   return (
     <footer className="leptospirosis-footer body-s">
@@ -347,20 +333,7 @@ function PageFooter() {
   )
 }
 
-/**
- * Leptospirosis, for residents (route /leptospirosis). Task F7 builds it from the Figma frame
- * "Leptospirosis" (node 38:277) and its notes (40:338): plain words for residents, whose main
- * action is the "I have been exposed to floodwater" button (/exposed, F8). The medical text
- * follows DOH's advisories and DM 2023-0309's low, moderate and high risk groups. It never
- * gives doses, and says a doctor decides on preventive medicine, as the memo requires.
- *
- * Changes from the frame's text, so every fact matches its source: incubation "2 to 30 days,
- * usually 1 to 2 weeks" (DOH, 7 Aug 2024; Figma had 2 days to 4 weeks, usually 7 to 10);
- * "infected animals, especially rats" (no DOH source names dogs or pigs); "Fever", not
- * "Sudden fever"; high risk is the memo's repeated or continuous exposure (Figma's "two days or
- * more" is LEPTON's own cut-off, config.py); "a doctor decides", not "a doctor or nurse"
- * (the memo requires a physician). Each fact's source links sit after it as [n].
- */
+/** Leptospirosis, for residents (route /leptospirosis). */
 export default function Leptospirosis() {
   return (
     <>

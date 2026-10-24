@@ -8,27 +8,13 @@ import { CROSSFADE_MS } from './motion.ts'
 import { isSourceError, whenSourceReady } from './sourceReady.ts'
 import { tokenColor } from './tokens.ts'
 
-/*
- * F13: NOAH's flood zones on the map, from the Layers panel: the flood hazard map for a 5-,
- * 25- or 100-year rain (UP NOAH Center, ODbL). Each map is one source and one fill layer, added
- * the first time it is chosen, in the flood slot (layerOrder.ts): over LEPTON's fills and under
- * the street map's names. Each hazard level takes its blue (map/hazard-low, -medium, -high in
- * Figma), and the city and barangay colors show a little through.
- *
- * F14: the whole Philippines, every province NOAH has mapped, not only Metro Manila. Each map is
- * one PMTiles file of vector tiles (public/data/noah_flood_<T>yr.pmtiles, written by
- * src/noah_national.py with tippecanoe): the browser asks the file for the tiles in view only,
- * with HTTP range requests, through the pmtiles protocol added to MapLibre (Vercel and Vite both
- * answer range requests). The tiles stop at zoom 11 (about 10 m a unit); MapLibre stretches them
- * further in. useFloodZones tells the panel and the legend how the chosen map is doing: loading,
- * shown, or failed (the rest of the map works as usual).
- */
+/* NOAH's flood zones on the map, from the Layers panel. */
 
 /** NOAH's maps, by how rare their rain is: once in 5, 25 or 100 years on average. */
 export const FLOOD_PERIODS = [5, 25, 100] as const
 export type FloodPeriod = (typeof FLOOD_PERIODS)[number]
 
-/** The map the flood switch shows until the reader picks another: the 25-year map, as in Figma. */
+/** The map the flood switch shows until the reader picks another: the 25-year map. */
 export const DEFAULT_FLOOD: FloodPeriod = 25
 
 /** NOAH's hazard levels (the files' `var`), their depths (NOAH's metadata_flood.txt) and their tokens. */
@@ -46,10 +32,10 @@ const FLOOD_OPACITY = 0.8
 
 const CREDIT = 'Flood hazard: <a href="https://noah.up.edu.ph" target="_blank" rel="noopener">UP NOAH Center</a> (ODbL)'
 
-/** F14: the tiles' layer in each PMTiles file (src/noah_national.py's tippecanoe -l). */
+/** The tiles' layer in each PMTiles file (src/noah_national.py's tippecanoe -l). */
 const TILE_LAYER = 'flood'
 
-/** F14: lets MapLibre read pmtiles:// addresses, once per page. */
+/** Lets MapLibre read pmtiles:// addresses, once per page. */
 let protocolAdded = false
 function addPmtilesProtocol() {
   if (!protocolAdded) {
@@ -69,12 +55,7 @@ function fillColor(element: HTMLElement): ExpressionSpecification {
   return ['match', ['get', 'var'], 1, low, 2, medium, high]
 }
 
-/**
- * Adds NOAH's map for `period`, hidden. If its file does not load, the map is removed again,
- * whichever map is shown by then, so choosing it again fetches it again. F14: a single tile
- * that fails (a dropped range request while panning) is not the file failing: MapLibre draws
- * that tile as nothing and asks again later, and the rest of the country stays.
- */
+/** Adds NOAH's map for `period`, hidden. */
 function addFlood(map: MapLibreMap, period: FloodPeriod) {
   const id = floodId(period)
   addPmtilesProtocol()
@@ -108,11 +89,7 @@ function addFlood(map: MapLibreMap, period: FloodPeriod) {
   map.on('error', onError)
 }
 
-/**
- * Shows NOAH's map for `period` (null: none) and hides the others: hidden, MapLibre does not cut
- * their tiles. A map shown before fades back in; a new one draws as its tiles come. Tells
- * `onStatus` how the map is doing until the returned function is called.
- */
+/** Shows NOAH's map for `period` (null: none) and hides the others. */
 function showFlood(map: MapLibreMap, period: FloodPeriod | null, onStatus: (status: FloodStatus) => void): () => void {
   const shown = period === null ? null : floodId(period)
   if (period !== null && !map.getLayer(floodId(period))) {
@@ -138,11 +115,7 @@ function showFlood(map: MapLibreMap, period: FloodPeriod | null, onStatus: (stat
   )
 }
 
-/**
- * Shows NOAH's map for `period` on `map` (null: none) and says how it is doing: 'off' with none
- * chosen, 'loading' until its file has come and its tiles are cut, then 'shown', or 'failed'.
- * retry() fetches a failed map again.
- */
+/** Shows NOAH's map for `period` on `map` (null: none) and says how it is doing. */
 export function useFloodZones(
   map: MapLibreMap | null,
   period: FloodPeriod | null,

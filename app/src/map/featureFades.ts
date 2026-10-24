@@ -1,20 +1,11 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
-/*
- * F4 and F5: animations of the map's feature states. MapLibre redraws a feature-state change at
- * once: its paint transitions skip any value that differs from feature to feature. So a fade of
- * one feature (a hover, F4) or of many in turn (the barangays' wave, F5) is played here, a step
- * each frame.
- */
+/* Animations of the map's feature states. */
 
-/**
- * Fades one feature state, `key`, of a source's features between 0 and 1, taking `duration` ms
- * for the whole way (F4's hoverFader). fade(id, 1) starts a feature's fade in, fade(id, 0) its
- * fade out; a fade under way turns round from where it is.
- */
+/** Fades one feature state. */
 export function featureFader(map: MapLibreMap, source: string, key: string, duration: number) {
-  const now = new Map<string, number>() // each feature's value at this frame
-  const goal = new Map<string, number>() // where each fading feature is going
+  const now = new Map<string, number>() // Each feature's value at this frame
+  const goal = new Map<string, number>() // Where each fading feature is going
   let frame = 0
   let last = 0
   function step(time: number) {
@@ -51,14 +42,7 @@ export function featureFader(map: MapLibreMap, source: string, key: string, dura
   }
 }
 
-/**
- * Plays a wave over features (F5): each id in `order` moves from 0 to 1 in `each` ms, and the
- * starts are spread evenly over the first `total - each` ms, so the first starts at once and the
- * last ends at `total`. Every frame, step(id, p) gets each moving feature's new p (0 to 1), and
- * done() is called once the last has reached 1. Returns stop(), which ends the wave where it is.
- *
- * With `total` equal to `each`, every feature moves at once: a crossfade, for reduced motion.
- */
+/** Plays a wave over features. */
 export function stagger(
   order: string[],
   total: number,
@@ -67,7 +51,7 @@ export function stagger(
   done?: () => void,
 ): () => void {
   const apart = order.length > 1 ? Math.max(0, total - each) / (order.length - 1) : 0
-  let first = 0 // the first feature still moving: every one before it has reached 1
+  let first = 0 // The first feature still moving: every one before it has reached 1
   let start: number | undefined
   let frame = requestAnimationFrame(tick)
   function tick(time: number) {
@@ -76,7 +60,7 @@ export function stagger(
     for (let i = first; i < order.length; i++) {
       const begins = i * apart
       if (begins > elapsed) {
-        break // this feature and the ones after it have not started yet
+        break // This feature and the ones after it have not started yet
       }
       const p = each > 0 ? Math.min(1, (elapsed - begins) / each) : 1
       step(order[i], p)

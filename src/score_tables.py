@@ -1,45 +1,4 @@
-"""Every score the paper's results quote, from B10's forecasts (D1-D4, D5-D6's checks; for E6).
-
-D1-D6 are functions in src/scores.py, src/breach_scores.py and src/compare.py. This file
-applies them to B10's results/forecasts.csv and writes the tables E6 quotes, so every number
-in the paper's results traces to a file in results/. It adds no new method. D8's figure 2
-table (results/d8_fig2_mae.csv) already holds the headline MAEs and D5's and D6's tests.
-
-1. d1_scores.csv: each model's scores in three windows (lepton-plan.md, Workstream D's table):
-     MAE years   2018-2019 and 2022-2026 (config.MAE_YEARS): MAE, RMSE, bias and MASE are
-                 headline here; they need no forecast spread, so the spread's warm-up counts
-     prob years  2022-2026 (config.PROB_SCORE_YEARS): WIS, 50% and 90% coverage, the Brier
-                 score and the Brier skill score are headline here, after the warm-up
-     all years   2018-2026 (config.ALL_YEARS): every score, COVID years included, a check
-   Each window's row holds every score; read each score from its headline window.
-       Brier skill score = 1 - BS / mean (obar_t - o_t)^2, where obar_t is the share of
-       non-COVID weeks from 2018 up to forecast t's cutoff that breached (D3). The first
-       forecast days of 2018 see no such week yet, so they have no obar_t; the all-years
-       BSS leaves them out, and bss_weeks counts the forecasts it uses.
-2. d1_mae_by_year.csv: each model's MAE in each target year (D1), to show which years drive
-   the differences. The COVID years are listed but are not in any headline score.
-3. d3_alarms.csv: per model, the alarm test (D3) and lead time (D4) over 2022-2026:
-       p* = the cut-off with the best F1 on the first half of the forecast days (in time
-       order); precision, sensitivity and F1 on both halves. Then the second half's outbreak
-       episodes (breach weeks at most config.EPISODE_GAP_WEEKS apart): how many had an alarm
-       for one of their breach weeks, and how many were caught in advance (lead time at
-       least 1 week, D4), each "k of n" with an exact 95% interval, and the median lead time.
-4. d3_precision_recall.csv: the full precision-recall curve behind p* (the assumptions
-   table's test of it): per model, for every cut-off among its own 2022-2026 breach
-   probabilities, the alarms, precision, sensitivity and F1 over those forecasts.
-5. d5_d6_all_years.csv: D5's and D6's comparisons again over 2018-2026, COVID years in.
-6. d5_guard_reruns.csv, when B10's guard reruns are on disk (python -m src.backtest --g 1 and
-   --g 3): for g = 1, 2 and 3 (config.DELAY_GUARD_G_TESTS), D8's figure 2 numbers (each
-   model's MAE over the MAE years, then D5's and D6's comparisons, 8-week blocks), each run
-   on its own forecast days.
-
-Rule 5: every table is built from forecasts that D8's loader has checked (every model on the
-same weeks, nothing missing), with the three columns only these tables read checked too
-(load_run), and every table is built before any file is written.
-
-Run from the repository root, after B10 (and, if wanted, its guard reruns); seconds:
-    python -m src.score_tables
-"""
+"""Every score the paper's results quote, from the forecasts."""
 
 import numpy as np
 import pandas as pd
@@ -51,21 +10,14 @@ from src.paper_figures import figure2_table, load_forecasts, ordered_models
 WINDOWS = {"MAE years": config.MAE_YEARS, "prob years": config.PROB_SCORE_YEARS, "all years": config.ALL_YEARS}
 SCORE_COLUMNS = ["window", "model", "weeks", "mae", "rmse", "bias", "mase", "wis", "coverage_50", "coverage_90",
                  "breaches", "brier", "bss", "bss_weeks"]
-# Columns these tables read beyond the ones D8's loader checks: D3's usual breach rate needs
-# each forecast's cutoff, and D4's lead time the run's option and g.
+# Columns these tables read beyond the ones the loader checks.
 RUN_COLUMNS = ["cutoff", "option", "g"]
 
 
-# ---------------------------------------------------------------------------
-# 1. Scores per window (D1, D2, D3)
-# ---------------------------------------------------------------------------
+# 1. Scores per window
 
 def week_outcomes(table):
-    """One row per target week: week_index, year and breached, which every model shares.
-
-    The threshold T_w comes from the counts alone (B7), so every model's row for a week
-    has the same outcome; stops if they do not.
-    """
+    """One row per target week: week_index, year and breached, which every model shares."""
     weeks = table[["week_index", "year", "breached"]].drop_duplicates()
     if weeks["week_index"].duplicated().any():
         raise ValueError("models disagree on whether a week breached: T_w must not depend on the model")
@@ -73,18 +25,14 @@ def week_outcomes(table):
 
 
 def usual_rates(cutoffs, outcomes):
-    """obar at each forecast day (breach_scores.base_rate), NaN where no week from 2018 is visible yet.
-
-    In plain words: the usual breach rate is the share of non-COVID weeks from 2018 up to
-    the forecast's cutoff that breached; before the first such week is visible it is undefined.
-    """
+    """obar at each forecast day (breach_scores.base_rate), NaN where no week from 2018 is visible yet."""
     counted = outcomes[(outcomes["year"] >= config.BACKTEST_FIRST_YEAR) & ~outcomes["year"].isin(config.COVID_YEARS)]
     first = counted["week_index"].min()
     return np.array([breach_scores.base_rate(outcomes, cut) if cut >= first else np.nan for cut in cutoffs])
 
 
 def breach_window_scores(group, outcomes):
-    """Breaches, Brier score and Brier skill score of one model's forecasts in one window (D3)."""
+    """Breaches, Brier score and Brier skill score of one model's forecasts in one window."""
     group = group.sort_values("week_index")
     p = group["p_breach"].to_numpy(dtype=float)
     o = group["breached"].to_numpy(dtype=float)
@@ -95,7 +43,7 @@ def breach_window_scores(group, outcomes):
 
 
 def window_scores(table, years, window, denominator, outcomes):
-    """Every model's D1 scores, MASE (D2) and breach scores (D3) over the target weeks in `years`."""
+    """Every model's scores, MASE and breach scores over the target weeks in `years`."""
     by_model = scores.add_mase(scores.score_models(table, years), denominator)
     rows = table[table["year"].isin(years)]
     breach = pd.DataFrame.from_dict({model: breach_window_scores(group, outcomes)
@@ -106,7 +54,7 @@ def window_scores(table, years, window, denominator, outcomes):
 
 
 def score_table(table, cases):
-    """d1_scores.csv: one row per window and model, D8's model order within each window."""
+    """d1_scores.csv: one row per window and model, the model order within each window."""
     denominator = scores.mase_denominator(cases)
     outcomes = week_outcomes(table)
     parts = [window_scores(table, years, window, denominator, outcomes) for window, years in WINDOWS.items()]
@@ -114,7 +62,7 @@ def score_table(table, cases):
 
 
 def mae_by_year(table):
-    """d1_mae_by_year.csv: each model's MAE in each target year, one row per year (D1)."""
+    """d1_mae_by_year.csv: each model's MAE in each target year, one row per year."""
     scores.check_same_weeks(table)
     table = table.assign(miss=(table["y"] - table["mu"]).abs())
     out = table.pivot_table(index="year", columns="model", values="miss", aggfunc="mean")
@@ -124,12 +72,10 @@ def mae_by_year(table):
     return out.reset_index()
 
 
-# ---------------------------------------------------------------------------
-# 2. Alarms, episodes and lead time (D3, D4)
-# ---------------------------------------------------------------------------
+# 2. Alarms, episodes and lead time
 
 def alarm_row(group, option, g):
-    """One model's alarm test (D3) and, on the second half, its episodes and lead time (D4)."""
+    """One model's alarm test and, on the second half, its episodes and lead time."""
     group = group.sort_values("week_index")
     test = breach_scores.alarm_test(group["p_breach"], group["breached"].astype(float))
     p_star = test["first_half"]["p_star"]
@@ -170,18 +116,16 @@ def precision_recall(table, years=config.PROB_SCORE_YEARS):
     return out[["model", "forecasts", "cutoff", "alarms", "breaches", "precision", "sensitivity", "f1"]]
 
 
-# ---------------------------------------------------------------------------
-# 3. The all-years check and the guard reruns (D5, D6)
-# ---------------------------------------------------------------------------
+# 3. The all-years check and the guard reruns
 
 def all_years_tests(table):
-    """d5_d6_all_years.csv: D5's and D6's comparisons over 2018-2026, every block length."""
+    """d5_d6_all_years.csv: the comparisons over 2018-2026, every block length."""
     return pd.concat([compare.primary_endpoint(table, config.ALL_YEARS),
                       compare.flood_and_practical_tests(table, config.ALL_YEARS)], ignore_index=True)
 
 
 def guard_paths():
-    """B10's forecasts for g = 2 and each guard rerun that is on disk: {g: path}; prints any rerun missing."""
+    """The forecasts for g = 2 and each guard rerun that is on disk: {g: path}; prints any rerun missing."""
     paths = {config.DELAY_GUARD_G: config.FORECASTS}
     for g in config.DELAY_GUARD_G_TESTS:
         path = backtest.output_path(False, "C", g, False)
@@ -193,7 +137,7 @@ def guard_paths():
 
 
 def guard_table(paths):
-    """d5_guard_reruns.csv: D8's figure 2 numbers (8-week blocks) for each g, None with no rerun on disk."""
+    """d5_guard_reruns.csv: the figure 2 numbers (8-week blocks) for each g, None with no rerun on disk."""
     if len(paths) == 1:
         return None
     parts = []
@@ -204,18 +148,10 @@ def guard_table(paths):
     return out[["g", "source", *[col for col in out.columns if col not in ("g", "source")]]]
 
 
-# ---------------------------------------------------------------------------
 # Running it
-# ---------------------------------------------------------------------------
 
 def load_run(path):
-    """B10's forecasts, checked as D8 checks them, and then the three columns only these tables read (rule 5).
-
-    D8's loader (paper_figures.load_forecasts) checks the columns D8 reads. These tables also
-    read each forecast's cutoff (D3's usual breach rate) and the run's option and g (D4's lead
-    time). A missing cutoff would read as "no week visible yet" in usual_rates and drop that
-    forecast from the Brier skill score without a word, so a missing column or value stops.
-    """
+    """The forecasts, checked as the figures check them, then the three columns only these tables read."""
     table = load_forecasts(path)
     absent = [col for col in RUN_COLUMNS if col not in table]
     if absent:

@@ -1,9 +1,9 @@
-/* F13: the flood zones' legend (FloodLegend.tsx), Figma "Flood legend" (Components page). */
+/* The flood zones' legend (FloodLegend.tsx). */
 .flood-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Figma's 12 px by 14 px, between the spacing steps */
+  /* 12 px by 14 px, between the spacing steps */
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -18,7 +18,7 @@
   display: flex;
   /* On a narrow map a level moves to the next line whole */
   flex-wrap: wrap;
-  /* Figma's 12 px between the levels, 6 px between a swatch and its name */
+  /* 12 px between the levels, 6 px between a swatch and its name */
   gap: var(--space-1) var(--space-3);
   margin: 0;
   padding: 0;
@@ -57,10 +57,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* F11's phone width (motion.ts's SHEET_BELOW): the map left above a sheet is short, so the legend
-   keeps to two lines. The levels' depths are only read out (as .visually-hidden does), and the
-   credit is left to the map's own credits (the "i" in its corner names UP NOAH Center and the
-   licence). */
+/* The phone width (motion.ts's SHEET_BELOW). */
 @media (max-width: 599px) {
   .flood-legend-depth {
     position: absolute;

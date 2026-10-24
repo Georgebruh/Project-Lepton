@@ -1,52 +1,4 @@
-"""Breach scores: Brier, Brier skill, reliability, alarms and outbreak episodes (task D3), lead time (D4).
-
-B7 gives each forecast a breach probability p = Pr(Y > T_w). The scored outcome is o = 1
-when the final count is strictly above the same T_w, else 0 (rule 6; thresholds.breached).
-
-    BS  = mean (p_t - o_t)^2                     Brier score: 0 is perfect
-    BSS = 1 - BS / mean (obar_t - o_t)^2         above 0 beats always quoting the usual rate
-
-obar_t, the usual breach rate at forecast day T, is the share of non-COVID weeks from 2018
-up to the cutoff (T in option B, T - g in option C) that breached (correction 12): only
-weeks the model could have seen.
-
-Reliability (CORP; Dimitriadis, Gneiting & Jordan 2021): sort the forecasts by p, then fit
-the best step curve that never goes down to their outcomes (pool-adjacent-violators). Each
-step is a range of p with the breach rate actually seen there and how many forecasts it
-holds. A reliable forecast's steps sit on the diagonal.
-
-Alarms: an alarm is raised when p >= p*. p* is the threshold with the best F1 on the first
-half of the forecast days; precision and sensitivity are then reported on the second half:
-    precision = alarms that breached / alarms;  sensitivity = breaches alarmed / breaches
-    F1 = 2 * precision * sensitivity / (precision + sensitivity)
-
-Outbreak episodes: runs of breach weeks, where a breach week at most
-config.EPISODE_GAP_WEEKS after the previous one joins its episode (S7: weeks 3, 4, 6, 10,
-11 give [3, 4, 6] and [10, 11]). "k of n episodes caught" gets an exact 95% interval
-(Clopper-Pearson: proportion_confint(k, n, method="beta")).
-
-Lead time (D4), per outbreak episode:
-
-    lead time = the week surveillance shows the breach - the forecast day of the first alarm
-
-The breach shows when the episode's first breach week has ended (option B), or g weeks
-later in option C, when its count clears the delay guard (view.guard_weeks; an
-assumption, matching the guard). The first alarm is the earliest forecast with p >= p*
-whose target is one of the episode's breach weeks; its forecast day is the target week
-minus config.FORECAST_HORIZON_WEEKS. An alarm for a week that did not breach (before the
-episode, or a quiet week inside it) was wrong about its own week and does not count
-(assumption). An episode is caught in advance if its lead time is at least 1 week
-(config.LEAD_TIME_IN_ADVANCE_WEEKS). In plain words: did the model raise the alarm before
-surveillance could have shown the outbreak, and by how many weeks?
-
-With 1-week forecasts the earliest alarm for a breach week comes 1 week before that week
-ends, so in option B a lead time is at most 1 week, and in option C at most 1 + g. Lead
-times of 0 or less (the alarm came no earlier than surveillance) are kept and reported.
-Episodes are scored over config.PROB_SCORE_YEARS (2022-2026), as the breach scores are;
-pass the forecast days not used to choose p* (alarm_test's second half).
-
-Checks: python -m src.checks ("S7 scores"; "D4 lead time": worked by hand).
-"""
+"""Breach scores: Brier, Brier skill, reliability, alarms and outbreak episodes, lead time."""
 
 import numpy as np
 import pandas as pd
@@ -70,17 +22,13 @@ def check_probabilities(p, o):
 
 
 def brier(p, o):
-    """BS = mean (p - o)^2: the mean squared error of the breach probabilities (D3)."""
+    """BS = mean (p - o)^2: the mean squared error of the breach probabilities."""
     p, o = check_probabilities(p, o)
     return np.mean((p - o) ** 2)
 
 
 def base_rate(outcomes, cutoff):
-    """obar at one forecast day: the share of non-COVID weeks from 2018 to week index `cutoff` that breached.
-
-    outcomes: one row per week with week_index, year and breached (True or False, B7's rule).
-    Stops when no such week exists yet (the rate would be undefined).
-    """
+    """obar at one forecast day: the share of non-COVID weeks from 2018 to week index `cutoff` that breached."""
     seen = outcomes[(outcomes["week_index"] <= cutoff)
                     & (outcomes["year"] >= config.BACKTEST_FIRST_YEAR)
                     & ~outcomes["year"].isin(config.COVID_YEARS)]
@@ -90,7 +38,7 @@ def base_rate(outcomes, cutoff):
 
 
 def brier_skill_score(p, o, obar):
-    """BSS = 1 - BS / mean (obar - o)^2 (D3). obar: the usual breach rate at each forecast day (base_rate)."""
+    """BSS = 1 - BS / mean (obar - o)^2. obar: the usual breach rate at each forecast day (base_rate)."""
     p, o = check_probabilities(p, o)
     obar, _ = check_probabilities(obar, o)
     reference = np.mean((obar - o) ** 2)
@@ -100,11 +48,7 @@ def brier_skill_score(p, o, obar):
 
 
 def reliability(p, o):
-    """CORP reliability steps: p_low, p_high, observed (breach rate) and forecasts (how many), lowest p first.
-
-    Forecasts with the same p are pooled first; then neighbouring groups are pooled while
-    an observed rate is above the next one (pool-adjacent-violators).
-    """
+    """CORP reliability steps: p_low, p_high, observed (breach rate) and forecasts (how many), lowest p first."""
     p, o = check_probabilities(p, o)
     groups = pd.DataFrame({"p": p, "o": o}).groupby("p")["o"].agg(["sum", "count"]).reset_index()
     steps = []   # each step: [p_low, p_high, breaches, forecasts]
@@ -119,11 +63,7 @@ def reliability(p, o):
 
 
 def alarm_scores(p, o, p_star):
-    """Precision, sensitivity and F1 of alarms raised when p >= p_star.
-
-    Precision is None when no alarm is raised and sensitivity None when nothing breached:
-    neither can be computed then.
-    """
+    """Precision, sensitivity and F1 of alarms raised when p >= p_star."""
     p, o = check_probabilities(p, o)
     alarm = p >= p_star
     hits = int((alarm & (o == 1)).sum())
@@ -146,7 +86,7 @@ def best_p_star(p, o):
 
 
 def alarm_test(p, o):
-    """p* from the first half of the forecast days (in order), scored on the second half (D3)."""
+    """p* from the first half of the forecast days (in order), scored on the second half."""
     p, o = check_probabilities(p, o)
     half = len(p) // 2
     p_star = best_p_star(p[:half], o[:half])
@@ -155,11 +95,7 @@ def alarm_test(p, o):
 
 
 def episodes(breach_weeks, gap=config.EPISODE_GAP_WEEKS):
-    """Group breach weeks into outbreak episodes: a week at most `gap` after the last one joins it.
-
-    breach_weeks: week indexes of breached weeks, in any order. episodes([]) is [] (v2's
-    version crashed on an empty list).
-    """
+    """Group breach weeks into outbreak episodes: a week at most `gap` after the last one joins it."""
     if not breach_weeks:
         return []
     out = [[]]
@@ -180,19 +116,7 @@ def caught_share(k, n):
 
 def lead_times(forecasts, p_star, option=config.DATA_OPTION, g=config.DELAY_GUARD_G,
                horizon=config.FORECAST_HORIZON_WEEKS, years=config.PROB_SCORE_YEARS):
-    """Lead time of each outbreak episode, for one model's forecasts (D4).
-
-    forecasts: one row per target week with week_index, year, p (the breach probability)
-    and breached (the outcome, 0 or 1); only target weeks in `years` are scored. p_star:
-    the alarm cut-off (alarm_test's p*). horizon: weeks from forecast day to target week
-    (2 for the B11 stretch).
-    Returns one row per episode: first_week and last_week (its breach weeks), shown_week
-    (when surveillance shows the breach), first_alarm_day (the forecast day of the first
-    alarm for one of its breach weeks; NaN if none), lead_weeks (shown_week -
-    first_alarm_day; NaN if no alarm) and in_advance (lead time of at least 1 week).
-    Stops on a p* outside 0-1, two forecasts for one target week, and missing or
-    impossible p or outcomes.
-    """
+    """Lead time of each outbreak episode, for one model's forecasts."""
     if not 0 <= p_star <= 1:   # also stops on NaN
         raise ValueError(f"the alarm cut-off p* is {p_star}: it must lie in 0-1")
     forecasts = forecasts[forecasts["year"].isin(years)]
@@ -215,12 +139,7 @@ def lead_times(forecasts, p_star, option=config.DATA_OPTION, g=config.DELAY_GUAR
 
 
 def caught_in_advance(lead_table):
-    """k of n episodes caught in advance (caught_share, exact 95% interval) and the median lead time (D4).
-
-    lead_table: lead_times' result. alarmed: episodes with any alarm for their breach weeks;
-    the median lead time is over those, early or late (NaN if none). Stops when there is
-    no episode to score.
-    """
+    """k of n episodes caught in advance (caught_share, exact 95% interval) and the median lead time."""
     if lead_table.empty:
         raise ValueError("no outbreak episode in these forecasts: lead time cannot be scored")
     alarmed = lead_table["lead_weeks"].dropna()

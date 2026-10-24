@@ -7,19 +7,15 @@ type MapButtonProps = {
   /** What the button does: read out by screen readers and shown as its tooltip. */
   label: string
   onClick: () => void
-  /** For a button that opens a panel (the Layers button): whether the panel is open, Figma's Open state. */
+  /** For a button that opens a panel (the Layers button): whether the panel is open, Open state. */
   open?: boolean
-  /** The id of the panel the button opens, named only while it is open (the panel is in the page only then). */
+  /** The id of the panel the button opens, named only while it is open. */
   controls?: string
   /** The button element, for the layout to give the keyboard back to it when its panel closes. */
   ref?: Ref<HTMLButtonElement>
 }
 
-/**
- * F13: a map control above the Zoom buttons, Figma "Map button" (Components page): a 36 px
- * square, as wide as the Zoom box. The pin brings the open level back into view; the Layers
- * button opens the Layers panel and shows Figma's Open state while it is open.
- */
+/** A map control above the Zoom buttons: a 36 px square, as wide as the Zoom box. */
 export default function MapButton({ icon, label, onClick, open, controls, ref }: MapButtonProps) {
   return (
     <button

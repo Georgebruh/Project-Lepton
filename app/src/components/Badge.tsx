@@ -2,10 +2,7 @@ import type { ReactNode } from 'react'
 import './Badge.css'
 
 type BadgeProps = {
-  /**
-   * The color, by meaning (Design notes): accent = teal, for action and exposure; warn =
-   * amber, for warnings and simulated data; alert = red, for alerts only; neutral = grey.
-   */
+  /** The color, by meaning. */
   tone?: 'neutral' | 'accent' | 'warn' | 'alert'
   /** Extra classes, e.g. to place the badge in a layout. */
   className?: string
@@ -13,7 +10,7 @@ type BadgeProps = {
   children: ReactNode
 }
 
-/** F3: the Figma component "Badge" (node 3:78): a small square dot and a short label. */
+/** The "Badge" component: a small square dot and a short label. */
 export default function Badge({ tone = 'neutral', className, children }: BadgeProps) {
   const classes = ['badge', `badge-${tone}`, 'label-eyebrow', className].filter(Boolean).join(' ')
   return (

@@ -1,38 +1,4 @@
-"""ERA5 hourly rain over the catchments, added up into UTC days (task A14).
-
-C9 matches each archived ECMWF forecast (A15) against return levels fitted on ERA5,
-never on IMERG, because each rain product needs its own scale (rule 3). This script
-gets the ERA5 record those return levels are fitted on, from Open-Meteo's Historical
-Weather API (https://open-meteo.com/en/docs/historical-weather-api) with models=era5,
-the plain ERA5 reanalysis at 0.25 degrees.
-
-Where: the same 0.25 degree cells as A15, every cell that overlaps the A7 catchments,
-with its share of the catchment area as its weight (catchments.grid_cells). ERA5 and
-the ECMWF forecasts sit on the same 0.25 degree grid, so both cover the same area.
-
-When: config.ERA5_START (1 June 2000, the day IMERG starts) to the end of
-config.ERA5_YEARS[1] (2025). Starting on IMERG's first day keeps the fit years the same
-for both products, so only the product differs between the IMERG and the ERA5 fits.
-
-Hours to UTC days: Open-Meteo labels each hourly total with the end of its hour, so
-the labels move back 1 hour before each day's 24 hours are added up (ecmwf.utc_day_totals,
-the same function A15 uses). Each year's request runs to 1 January of the next year,
-for the 00:00 value that is the last hour of 31 December.
-
-One request per year, all cells at once. Each reply is saved unchanged in
-data/raw/era5_open_meteo/, one JSON file per year; a file already there is not fetched
-again (delete it to refresh). Open-Meteo's free API limits how much can be requested per
-minute, so the script waits PAUSE_S between requests and waits longer when it is told
-to slow down (HTTP 429).
-
-Output: data/clean/era5_daily.csv, one row per UTC day and cell:
-    date, lat, lon, weight, rain_mm
-The catchment rain for one day is sum(weight x rain_mm) over the cells. The script stops
-before writing if any day misses an hour, or any value is negative.
-
-Run from the repository root (needs A7's catchments_qc.gpkg):
-    python -m src.era5
-"""
+"""ERA5 hourly rain over the catchments, added up into UTC days."""
 
 import json
 import time
@@ -57,7 +23,7 @@ COLUMNS = ["date", "lat", "lon", "weight", "rain_mm"]
 
 
 class RequestRefused(Exception):
-    """Open-Meteo answered HTTP 400 (a bad date or parameter). Retrying will not help."""
+    """Open-Meteo answered HTTP 400 (a bad date or parameter)."""
 
 
 def year_span(year):
@@ -71,11 +37,7 @@ def raw_path(year):
 
 
 def request_params(cells, first, last):
-    """The Historical Weather request for one year: every cell, hourly rain, in UTC.
-
-    end_date is the day after the last day, for that day's 00:00 value (see the top of
-    this file). cell_selection=nearest returns the grid point itself.
-    """
+    """The Historical Weather request for one year: every cell, hourly rain, in UTC."""
     return {
         "latitude": ",".join(str(v) for v in cells["lat"]),
         "longitude": ",".join(str(v) for v in cells["lon"]),
@@ -89,11 +51,7 @@ def request_params(cells, first, last):
 
 
 def fetch(cells, first, last, path):
-    """Request one year from Open-Meteo and save the reply at path, byte for byte as received.
-
-    The file is written under a temporary name first, so a stopped run never leaves half
-    a file that a rerun would read.
-    """
+    """Request one year from Open-Meteo and save the reply at path, byte for byte as received."""
     r = requests.get(HISTORICAL_API, params=request_params(cells, first, last), timeout=TIMEOUT_S)
     if r.status_code == 400:
         raise RequestRefused(r.text[:300])  # Open-Meteo's reply names the reason
@@ -108,12 +66,7 @@ def fetch(cells, first, last, path):
 
 
 def download(year, cells):
-    """One year's reply from Open-Meteo, as a list with one entry per cell.
-
-    The reply is saved unchanged before it is read, and a saved reply is reused.
-    fetch() gets up to RETRIES tries, waiting a little longer after each failure;
-    RequestRefused is raised at once.
-    """
+    """One year's reply from Open-Meteo, as a list with one entry per cell."""
     path = raw_path(year)
     first, last = year_span(year)
     if path.exists():
@@ -151,11 +104,7 @@ def check_reply(replies, cells, path):
 
 
 def year_table(year, replies, cells):
-    """One year's daily rain: date, lat, lon, weight, rain_mm.
-
-    Days outside the year are dropped (the request's extra day and the hour before the
-    first day). rain_mm is NaN on a day that misses an hour.
-    """
+    """One year's daily rain: date, lat, lon, weight, rain_mm."""
     first, last = year_span(year)
     days = pd.date_range(first, last, freq="D")
     rows = []
@@ -210,8 +159,7 @@ def main():
     part.replace(config.ERA5_DAILY)
     print(f"\nwrote {config.ERA5_DAILY} ({len(out)} rows)")
 
-    # A quick look for the person running it: each year's wettest catchment n-day total
-    # (config.RAIN_ACCUM_DAYS), the rain measure C3 and C9 use.
+    # A quick look: each year's wettest catchment n-day total.
     days = config.RAIN_ACCUM_DAYS
     rain = catchment_rain(out)
     rain.index = pd.to_datetime(rain.index)

@@ -1,72 +1,4 @@
-"""The data files the web app reads (task F2). Stock planning, not prescriptions.
-
-The LEPTON app (app/, Workstream F) is a static site with no server: it only draws the
-numbers this script writes, so the app and the model never disagree. Every number comes
-from results/ (C8, C9 and B10's backtest) or from A5's and
-A10's files. Nothing about rain, exposure, doses or forecasts is computed again here, and
-barangays and cities join on their 10-digit PSGC.
-
-Files written to app/public/data/ (config.APP_DATA), which the app fetches as /data/<file>:
-
-  ph_cities.json        F14: the outlines of the Philippines' 1,642 cities and municipalities
-                        (PSGC as of 2023, from faeldon/philippines-json-maps, MIT): psgc, name,
-                        province and has_data (only Quezon City has data). NCR's 17 are cleaned
-                        into one coverage with no gaps or overlaps, Quezon City's outline being
-                        A5's barangays joined, so the map lines up when it drills down
-                        (map_shapes); the others are simplified province by province
-                        (province_cities, towns_apart). Also label_lon and label_lat, where the
-                        map writes the name of a city with data (F4, label_points). It replaces
-                        F4's ncr_cities.geojson
-  ph_islands.json       F14: the coastline of every island of 1 km2 or more, the cities and
-                        municipalities joined (island_outlines), for the map zoomed out
-  qc_barangays.geojson  A5's 142 barangays: psgc and name
-  storms.json           C9's runs of each storm: the rain that fell (observed, IMERG) and
-                        the forecasts 1, 2 and 3 days ahead (ECMWF). Each run gives its
-                        3-day window, rain, where the rain falls against the return levels,
-                        EI and the barangays flagged, then residents exposed and the three
-                        units for each flood: a short one (key D1: D = 1, w = 0.5) and a long
-                        one (D7), the two C9 runs every forecast at; the observed run has
-                        A11's D. Also (F15) C6's units per person, for the barangay report
-  barangays/<storm>_<run>.json   one per run: each barangay's residents exposed, their share
-                        of its 2024 residents, the map class, flagged, and the units per flood
-  centers.json          A10's health centers (name, type, lat, lon, barangay), each run's
-                        need per center and flood, and (F15) each barangay's health centers:
-                        the share of its need each one holds, as C7 sends it
-  city_forecast.json    B10's forecasts per target week: the week's dates, the count y, the
-                        threshold, and each model's mean, 90% range (the 5% and 95%
-                        quantiles) and Pr(breach). From results/forecasts.csv; until it
-                        exists, from the made-up-count run (config.FORECASTS_SIMULATED) with
-                        "simulated": true. Also the map's model and outbreak levels (F4:
-                        config.APP_LEVEL_MODEL, config.APP_LEVELS)
-  scores.json           only from the real run: each model's MAE and MASE (2018-2019 and
-                        2022-2026), WIS, 90% coverage and Brier score (2022-2026), and D5's
-                        M4 - M3 difference with its 95% interval
-
-The words behind the numbers:
-  - residents exposed: C5's exposed people. share: the residents in zones the rain floods
-    over the barangay's 2024 residents (C3's graded exposure), the measure behind the map
-    class and the flag. A barangay is flagged at config.APP_FLAG_SHARE (25%) or more, as
-    forecast_run.flagged decides. The classes break at config.APP_SHARE_BREAKS, and a share
-    on a break goes to the class above (as on D7's maps), so classes 3 and 4 are the flagged.
-  - units: doxy100 (doxycycline 100 mg capsules, adults), courses (children's courses) and
-    amox500 (amoxicillin 500 mg tablets, pregnant women), as C6 counts them.
-  - rounding: people and units are whole numbers. QC's and each barangay's are rounded to
-    the nearest one; a health center's are rounded up, the level stock is ordered at
-    (allocation.round_up, as D7 does), so the centers add up to a little more than QC.
-
-Every file with doses carries doses.LABEL: stock-planning figures, not prescriptions (rule 10).
-
-Two more of the app's files have their own scripts (F14): NOAH's flood tiles for the whole
-country (python -m src.noah_national) and the Simulation mode's weeks (python -m src.app_simulation).
-F13's Metro Manila overlays (noah_<T>yr.json) are gone: the tiles replace them.
-
-Run from the repository root after C8 and C9 (and B10, or its --simulate run, for
-city_forecast.json); a few seconds:
-    python -m src.app_data
-It downloads the NCR outlines once into data/raw/ncr_cities/, and the rest of the country's into
-data/raw/ph_cities/. Commit app/public/data/ afterwards, so the deployed app gets the new files.
-Check: python -m src.checks ("F2 app data").
-"""
+"""The data files the web app reads."""
 
 import json
 from datetime import timedelta
@@ -83,12 +15,12 @@ from src import (allocation, backtest, breach_scores, compare, doses, exposed, f
                  layer2_results, observed_run, scores, weeks)
 
 UNITS = list(doses.UNITS)                         # doxy100, courses, amox500
-OBSERVED = forecast_run.OBSERVED                  # C9's name for its observed (IMERG) run
-FLAG_COLUMN = f"flagged_{100 * config.APP_FLAG_SHARE:.0f}"   # C9's count of barangays flagged at that share
-MODEL_NAMES = {"M4_noEI": config.FLOOD_TEST[1]}   # B10's old name, in forecasts files written before Oct 21 (Notes.md 1.4)
+OBSERVED = forecast_run.OBSERVED                  # the name for its observed (IMERG) run
+FLAG_COLUMN = f"flagged_{100 * config.APP_FLAG_SHARE:.0f}"   # the count of barangays flagged at that share
+MODEL_NAMES = {"M4_noEI": config.FLOOD_TEST[1]}   # the old name, in forecasts files written before Oct 21
 MODELS = list(backtest.MODELS)                    # the order the app lists them in
 SIMULATED_NOTE = "Made-up QC-shaped counts from B10's --simulate run, not QC data: no number here is a result."
-INPUTS = {                                        # the files F2 reads, and the task that makes each
+INPUTS = {                                        # the files this step reads, and the task that makes each
     config.C8_BARANGAYS: "C8: python -m src.observed_run",
     config.C9_RUNS: "C9: python -m src.forecast_run",
     config.C9_BARANGAYS: "C9: python -m src.forecast_run",
@@ -119,16 +51,10 @@ def units_of(row):
     return {unit: whole(row[unit]) for unit in UNITS}
 
 
-# ---------------------------------------------------------------------------
 # Map shapes
-# ---------------------------------------------------------------------------
 
 def download_ncr_cities():
-    """The four NCR district files of city outlines, downloaded once into data/raw/ncr_cities/, unchanged.
-
-    Stops unless each file has the pinned file's size (config.NCR_CITIES_BYTES), so a cut-off
-    download, or a file from another commit, is never used.
-    """
+    """The four NCR district files of city outlines, downloaded once into data/raw/ncr_cities/, unchanged."""
     config.NCR_CITIES_RAW.mkdir(parents=True, exist_ok=True)
     paths = []
     for district in config.NCR_DISTRICTS:
@@ -161,7 +87,7 @@ def load_cities(paths):
 
 
 def load_barangays():
-    """A5's 142 barangays: psgc, name and the shape (EPSG:4326, not simplified)."""
+    """The 142 barangays: psgc, name and the shape (EPSG:4326, not simplified)."""
     shapes = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc", "adm4_name"])
     if len(shapes) != config.QC_BARANGAYS or not shapes["psgc"].is_unique:
         raise ValueError(f"{config.BARANGAYS_QC.name} must hold {config.QC_BARANGAYS} barangays, one each")
@@ -178,25 +104,7 @@ def biggest_neighbour(i, pieces, tree, owner, allowed):
 
 
 def map_shapes(cities, barangays):
-    """NCR's cities and Quezon City's barangays as one clean coverage, simplified once: (cities, barangays).
-
-    faeldon simplified its four district files one at a time, so where two districts meet
-    their borders do not match: about 90 slivers of gap and 0.2 km2 of overlap, up to about
-    100 m wide. Its Quezon City also lies up to 161 m from A5's barangays, which the map
-    shows when it drills down. So Quezon City is drawn from A5's barangays (EPSG:32651, metres):
-      1. the borders of the other 16 cities and of the 142 barangays cut NCR into pieces;
-      2. a piece inside a barangay goes to that barangay; any other piece to the city it lies
-         in (an overlap goes to the first of the two, by PSGC);
-      3. a piece in neither (a gap) goes to the neighbouring city it shares the longest border
-         with, or failing one, to the neighbouring barangay; a piece with neither lies outside
-         NCR and is dropped;
-      4. each city and barangay is its pieces joined, and all of them are simplified together
-         (GeoPandas simplify_coverage, Visvalingam-Whyatt): a point goes when the triangle it
-         makes with its two neighbours is smaller than about config.MAP_SIMPLIFY_M squared,
-         and a border two shapes share is simplified once, so it stays one line;
-      5. Quezon City is its simplified barangays joined, so the city and barangay maps line up exactly.
-    Returns two GeoDataFrames in EPSG:4326: cities (psgc, name, has_data) and barangays (psgc, name).
-    """
+    """NCR's cities and Quezon City's barangays as one clean coverage, simplified once: (cities, barangays)."""
     others = cities[cities["psgc"] != config.QC_CITY_PSGC].to_crs(config.CRS_OVERLAY).reset_index(drop=True)
     flat_barangays = barangays.to_crs(config.CRS_OVERLAY)
     keys = [("city", psgc) for psgc in others["psgc"]] + [("barangay", psgc) for psgc in flat_barangays["psgc"]]
@@ -243,11 +151,7 @@ def map_shapes(cities, barangays):
 
 
 def faeldon_file(path):
-    """One of faeldon's files (config.FAELDON_URL), downloaded once into data/raw/ph_cities/, unchanged.
-
-    The address names one commit, so the file never changes; a download that is not whole
-    JSON (cut off) is not kept.
-    """
+    """One of faeldon's files (config.FAELDON_URL), downloaded once into data/raw/ph_cities/, unchanged."""
     config.PH_CITIES_RAW.mkdir(parents=True, exist_ok=True)
     local = config.PH_CITIES_RAW / path.rsplit("/", 1)[1]
     if not local.exists():
@@ -268,11 +172,7 @@ def faeldon_file(path):
 
 
 def download_province_cities():
-    """F14: every province's file of city and municipality outlines but NCR's, as the region files list them.
-
-    Returns (paths, province names by PSGC). NCR's four district files come from
-    download_ncr_cities, so the Metro Manila outlines are made as before.
-    """
+    """Every province's file of city and municipality outlines but NCR's, as the region files list them."""
     paths, provinces = [], {}
     for region in config.PH_REGIONS:
         listing = gpd.read_file(faeldon_file(f"regions/lowres/provdists-region-{region}.0.001.json"),
@@ -285,13 +185,7 @@ def download_province_cities():
 
 
 def province_cities(paths, provinces):
-    """F14: the cities and municipalities outside NCR, each province simplified on its own (EPSG:4326).
-
-    Within a province the outlines are one coverage, so they are simplified together, as
-    map_shapes does for NCR (simplify_coverage, about config.PH_SIMPLIFY_M): a border two
-    towns share stays one line. Provinces are simplified apart, since faeldon's files do not
-    quite meet at province borders.
-    """
+    """The cities and municipalities outside NCR, each province simplified on its own (EPSG:4326)."""
     parts = []
     for path in paths:
         raw = gpd.read_file(path)
@@ -308,7 +202,7 @@ def province_cities(paths, provinces):
 
 
 def towns_apart():
-    """F14: the towns no province file holds (config.PH_TOWNS_APART), each its barangays joined and simplified (EPSG:4326)."""
+    """The towns no province file holds, each built from its barangays (EPSG:4326)."""
     rows = []
     for psgc, (name, province) in config.PH_TOWNS_APART.items():
         barangays = gpd.read_file(faeldon_file(f"municities/hires/bgysubmuns-municity-{int(psgc)}.0.1.json"))
@@ -319,10 +213,7 @@ def towns_apart():
 
 
 def country_cities(ncr_cities, others):
-    """F14: every city and municipality of the Philippines: NCR's from map_shapes, the others from province_cities.
-
-    Stops unless there are config.PH_CITY_COUNT of them, one PSGC each.
-    """
+    """Every city and municipality of the Philippines: NCR's from map_shapes, the others from province_cities."""
     ncr = ncr_cities.assign(province="National Capital Region")
     cities = gpd.GeoDataFrame(pd.concat([ncr, others.assign(has_data=False)], ignore_index=True),
                               crs=config.CRS_LONLAT)
@@ -332,14 +223,7 @@ def country_cities(ncr_cities, others):
 
 
 def label_points(cities):
-    """Where the map writes each city's name (F4): cities with label_lon and label_lat added.
-
-    The point is the one farthest inside the city's largest part (shapely's polylabel, found
-    to within config.MAP_SIMPLIFY_M), so the name sits inside even a thin or curved city,
-    where its centre point might fall outside. A city smaller than config.APP_LABEL_MIN_KM2
-    gets none (empty), as in Figma. F14: only a city with data gets one; the street map writes
-    the others' names.
-    """
+    """Where the map writes each city's name: cities with label_lon and label_lat added."""
     points = []
     for shape, has_data in zip(cities.to_crs(config.CRS_OVERLAY).geometry, cities["has_data"]):   # in metres
         largest = max(shapely.get_parts(shape), key=lambda part: part.area)
@@ -351,17 +235,7 @@ def label_points(cities):
 
 
 def island_outlines(cities):
-    """F14: the coastline of every island, which the map draws zoomed out (EPSG:4326).
-
-    Every city and municipality joined into land. faeldon's province files do not quite meet,
-    so the gaps between them are closed first: the land grown by config.PH_ISLANDS_GAP_M, then
-    shrunk by as much. Each island keeps only its outer coast. The holes left inside are lakes,
-    which the street map already draws as water, or gaps in faeldon's maps (221 km2 inside
-    Zamboanga City), which would draw lines across the land. Islands under
-    config.PH_ISLANDS_MIN_KM2 are left out, and the coasts simplified to
-    config.PH_ISLANDS_SIMPLIFY_M: the map draws these lines only between the country's view and
-    the towns' borders (app/src/map/borders.ts), where both are under a pixel.
-    """
+    """The coastline of every island, which the map draws zoomed out (EPSG:4326)."""
     land = shapely.union_all(cities.to_crs(config.CRS_OVERLAY).geometry.make_valid().values)   # in metres
     gap = config.PH_ISLANDS_GAP_M
     closed = land.buffer(gap, join_style="mitre").buffer(-gap, join_style="mitre")
@@ -379,9 +253,7 @@ def write_geojson(shapes, path):
     part.replace(path)
 
 
-# ---------------------------------------------------------------------------
-# Layer 2: storms, barangays and health centers (C8, C9)
-# ---------------------------------------------------------------------------
+# Layer 2: storms, barangays and health centers
 
 def run_slug(run):
     """A run's name in file names: "observed", "lead1", "lead2" or "lead3"."""
@@ -399,12 +271,7 @@ def flood_key(days):
 
 
 def app_floods(table):
-    """The rows of a C9 table that the app shows: a short flood at w = 0.5, a long one at any w.
-
-    A flood of D >= config.CONTINUOUS_EXPOSURE_DAYS has one row, since w does not matter
-    there (every exposed adult is high risk, C5); a shorter one has a row per w, and the
-    app shows config.APP_SHORT_FLOOD_W.
-    """
+    """The rows of a forecast-run table that the app shows: a short flood at w = 0.5, a long one at any w."""
     long_flood = table["D"] >= config.CONTINUOUS_EXPOSURE_DAYS
     return table[long_flood | np.isclose(table["w"], config.APP_SHORT_FLOOD_W)]
 
@@ -433,9 +300,9 @@ def run_entry(rows):
         "run": first["run"],
         "file": barangay_file_name(first["storm"], first["run"]),
         "rain_product": first["product"],
-        "levels_product": "IMERG" if first["run"] == OBSERVED else "ERA5",   # each product on its own levels (rule 3, as D7)
+        "levels_product": "IMERG" if first["run"] == OBSERVED else "ERA5",   # each product on its own levels
         "lead_days": lead,
-        # a lead-L forecast comes from model runs started L days before the window (C9)
+        # a lead-L forecast comes from model runs started L days before the window
         "issued": None if lead is None else f"{start - pd.Timedelta(days=lead):%Y-%m-%d}",
         "window": {"start": f"{start:%Y-%m-%d}", "end": f"{end:%Y-%m-%d}"},
         "rain_mm": round(float(first["rain_mm"]), 1),
@@ -450,7 +317,7 @@ def run_entry(rows):
 
 
 def storms_file(c9_runs):
-    """storms.json: every storm C9 ran, in config.STORMS' order, each with its runs (observed first, then leads)."""
+    """storms.json: every storm, in config.STORMS' order, with its runs (observed first, then leads)."""
     shown = layer2_results.in_order(app_floods(c9_runs), by=["D"])
     storms = []
     for storm, storm_rows in shown.groupby("storm", sort=False):
@@ -469,21 +336,14 @@ def storms_file(c9_runs):
 
 
 def counting_rules():
-    """F15: how C6 counts units per person, which the app's barangay report explains (config.py's values).
-
-    doxy100_low, doxy100_moderate: capsules per adult at low and moderate risk;
-    doxy100_high_per_week: per high-risk adult and week of flooding (week_days days, rounded
-    up); amox500_pregnant: tablets per pregnant woman; high_risk_days: a flood this long or
-    longer makes every exposed adult high risk. Children get one course per week of flooding,
-    at least one.
-    """
+    """How units per person are counted, as the app's barangay report explains."""
     return {"doxy100_low": config.DOXY_CAPS_LOW, "doxy100_moderate": config.DOXY_CAPS_MOD,
             "doxy100_high_per_week": config.DOXY_CAPS_HIGH_PER_WEEK, "amox500_pregnant": config.AMOX_TABS_PREG,
             "week_days": config.DOSE_WEEK_DAYS, "high_risk_days": config.CONTINUOUS_EXPOSURE_DAYS}
 
 
 def barangay_population():
-    """Each barangay's name and 2024 residents, from C8's main run; stops unless there is one value per barangay."""
+    """Each barangay's name and 2024 residents, from the main run; stops unless there is one value per barangay."""
     c8 = pd.read_csv(config.C8_BARANGAYS, dtype={"psgc": str})
     main = c8[c8["test"] == observed_run.MAIN]
     pop = main.drop_duplicates("psgc").set_index("psgc")[["adm4_name", "pop_2024"]]
@@ -494,12 +354,7 @@ def barangay_population():
 
 
 def barangay_file(rows, pop, storm, run):
-    """One run's barangay file: each barangay's residents exposed, share, class, flag and units per flood.
-
-    rows: C9's barangay rows of the run, for the floods the app shows. The residents in
-    flood zones (and so the share, class and flag) depend on the rain only, so every flood
-    of a run must have the same; the units differ by flood.
-    """
+    """One run's barangay file: each barangay's residents exposed, share, class, flag and units per flood."""
     floods = {flood_key(days): part.set_index("psgc") for days, part in rows.groupby("D")}
     first = next(iter(floods.values()))
     for part in floods.values():
@@ -520,11 +375,7 @@ def barangay_file(rows, pop, storm, run):
 
 
 def center_list():
-    """A10's health centers (config.CENTER_FACILITY_TYPES), by name: those C7 sends stock to, and any it left out, with why.
-
-    Each center's barangay is named as on the map, A5's name for its PSGC: A10's registry
-    names lose the ñ ("DO?A IMELDA").
-    """
+    """The health centers by name: those that get stock, and any left out, with why."""
     barangays = allocation.load_barangays()
     placed, left_out = allocation.load_centers(barangays)
     facilities = pd.read_csv(config.FACILITIES_QC, dtype={"psgc": str, "facility_code": str})
@@ -548,12 +399,7 @@ def center_list():
 
 
 def center_needs(c9_centers, c9_runs):
-    """Each run's need per health center and flood: {storm: {run: {flood key: {facility_code: units}}}}.
-
-    Each pool's three tiers are added up, then rounded up to whole units (as D7). Stops
-    unless every center has all three pools and, before rounding, the centers add up to
-    C9's QC totals (C9 saved each tier to 2 decimals, so up to 0.005 per tier and center apart).
-    """
+    """Each run's need per health center and flood: {storm: {run: {flood key: {facility_code: units}}}}."""
     rows = app_floods(c9_centers)
     need = rows.assign(units=rows[exposed.TIERS].sum(axis=1)).pivot(
         index=["storm", "run", "D", "facility_code"], columns="pool", values="units")
@@ -573,15 +419,7 @@ def center_needs(c9_centers, c9_runs):
 
 
 def barangay_centers(stocked):
-    """F15: each barangay's health centers, as C7 sends its need: {psgc: [center, ...]}, the barangay report's stock.
-
-    Each center is {facility_code, rule, share, km}. rule is C7's: "own" (the barangay's one
-    health center), "split" (one of its several centers, which takes the share of its
-    residents who live nearest it) or "nearest" (a barangay with none sends all of its need
-    to the nearest center, km from the barangay's centroid; km is null for the other rules).
-    The largest share comes first. Stops unless each of the 142 barangays has centers whose
-    shares add up to 1, and the centers named are exactly those C7 sends stock to (`stocked`).
-    """
+    """Each barangay's health centers, as its need is sent: {psgc: [center, ...]}."""
     table = allocation.load_center_shares()
     if table["psgc"].nunique() != config.QC_BARANGAYS or not set(table["rule"]) <= {"own", "split", "nearest"}:
         raise ValueError(f"C7's shares must name each of the {config.QC_BARANGAYS} barangays, by its rules: "
@@ -616,10 +454,7 @@ def centers_file(c9_centers, c9_runs):
 
 
 def layer2_files():
-    """storms.json, centers.json and one barangay file per run, from C8's and C9's results: {name: content}.
-
-    Stops unless each run's barangay file flags as many barangays as C9 counted.
-    """
+    """storms.json, centers.json and one barangay file per run, from the results: {name: content}."""
     c9_runs = pd.read_csv(config.C9_RUNS)
     c9_barangays = pd.read_csv(config.C9_BARANGAYS, dtype={"psgc": str})
     c9_centers = pd.read_csv(config.C9_CENTERS, dtype={"facility_code": str})
@@ -630,8 +465,7 @@ def layer2_files():
         content = barangay_file(rows, pop, storm, run)
         count = sum(barangay["flagged"] for barangay in content["barangays"])
         if count != flagged[(storm, run)]:
-            # Either the two files are from different C9 runs, or a barangay sits on the flag
-            # line, where the barangay file's 2-decimal residents decide differently.
+            # Either the files come from different forecast runs, or a barangay sits on the flag line.
             raise ValueError(f"{storm}, {run}: {count} barangays flagged from C9's barangay file, "
                              f"{flagged[(storm, run)]} in its runs file: rerun python -m src.forecast_run; if "
                              f"that does not help, a barangay sits on the {config.APP_FLAG_SHARE:.0%} line and "
@@ -641,16 +475,10 @@ def layer2_files():
     return files
 
 
-# ---------------------------------------------------------------------------
-# Layer 1: the city forecast (B10) and its scores (D1-D3, D5)
-# ---------------------------------------------------------------------------
+# Layer 1: the city forecast and its scores
 
 def load_forecasts():
-    """B10's forecasts and where they came from: (table, simulated, path), or (None, None, None).
-
-    results/forecasts.csv, the real run, once it exists; until then the made-up-count run
-    (config.FORECASTS_SIMULATED). Model names follow D6 (MODEL_NAMES).
-    """
+    """The forecasts and where they came from: (table, simulated, path), or (None, None, None)."""
     for path, simulated in ((config.FORECASTS, False), (config.FORECASTS_SIMULATED, True)):
         if path.exists():
             table = pd.read_csv(path)
@@ -659,16 +487,7 @@ def load_forecasts():
 
 
 def city_forecast(table, simulated, path):
-    """city_forecast.json: per target week its dates, count y, threshold and breach, then each model's forecast.
-
-    A model's forecast is its mean mu, the 90% range (the 5% and 95% quantiles of
-    NB(mu, theta), B6) and Pr(breach) (B7). The forecast for week i was made at week
-    i - config.FORECAST_HORIZON_WEEKS. Stops unless every model has a forecast for exactly
-    the same weeks (rule 5) and the models agree on each week's y and threshold, and on a
-    missing value in a column it reads (rule 5).
-    The map (F4) colors Quezon City by config.APP_LEVEL_MODEL's Pr(breach): "levels" lists
-    each outbreak level with the Pr(breach) it starts at (config.APP_LEVELS).
-    """
+    """city_forecast.json: per target week its dates, count y, threshold and breach, then each model's forecast."""
     scores.check_same_weeks(table)
     unknown = sorted(set(table["model"]) - set(MODELS))
     if unknown:
@@ -706,21 +525,13 @@ def city_forecast(table, simulated, path):
 
 
 def scores_file(table, cases):
-    """scores.json, from the real run only: each model's D1-D3 scores and D5's primary endpoint.
-
-    MAE and MASE over config.MAE_YEARS; WIS, 90% coverage and the Brier score over
-    config.PROB_SCORE_YEARS (the plan's windows, which leave out the COVID years and, for
-    the range scores, theta's warm-up). D5: the mean of |error M4| - |error M3| with its
-    95% block-bootstrap interval, the 8-week row of compare.primary_endpoint (and of D8's
-    figure 2); below 0 means M4 misses less.
-    cases: A13's weekly counts, for MASE's fixed denominator (D2).
-    """
+    """scores.json, from the real run only: each model's scores and the primary endpoint."""
     point = scores.add_mase(scores.score_models(table, config.MAE_YEARS), scores.mase_denominator(cases))
     probability = scores.score_models(table, config.PROB_SCORE_YEARS)
     window = table[table["year"].isin(config.PROB_SCORE_YEARS)]
     brier = {model: breach_scores.brier(rows["p_breach"], rows["breached"].astype(float))
              for model, rows in window.groupby("model")}
-    head = compare.primary_endpoint(table).iloc[0]   # the 8-week row, D5's headline
+    head = compare.primary_endpoint(table).iloc[0]   # the 8-week row, the headline
     models = {model: {"mae": round(float(point.at[model, "mae"]), 4), "mase": round(float(point.at[model, "mase"]), 4),
                       "wis": round(float(probability.at[model, "wis"]), 4),
                       "coverage_90": round(float(probability.at[model, "coverage_90"]), 4),
@@ -735,12 +546,10 @@ def scores_file(table, cases):
                         "verdict": head["verdict"]}}
 
 
-# ---------------------------------------------------------------------------
 # Writing
-# ---------------------------------------------------------------------------
 
 def write_json(content, path):
-    """Write content as compact UTF-8 JSON via a .part file. Stops on a NaN or infinity (rule 5)."""
+    """Write content as compact UTF-8 JSON via a .part file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     part = path.with_name(path.name + ".part")
     try:
@@ -753,7 +562,7 @@ def write_json(content, path):
 
 
 def remove_stale_runs(names):
-    """Delete barangay files of runs no longer in C9's results, so the app cannot load an old run."""
+    """Delete barangay files of runs no longer in the results, so the app cannot load an old run."""
     for path in sorted(config.APP_BARANGAY_RUNS.glob("*.json")):
         if f"{config.APP_BARANGAY_RUNS.name}/{path.name}" not in names:
             path.unlink()
@@ -761,12 +570,7 @@ def remove_stale_runs(names):
 
 
 def write_layer1():
-    """city_forecast.json from B10's forecasts, and scores.json beside the real run only; returns what it did.
-
-    Both files are made before either is written, so a failure leaves the old pair as it was.
-    Without A13's cases_weekly.csv (scores.json's MASE needs it) both are left as they were:
-    a copy without QC's case data still runs (E10).
-    """
+    """city_forecast.json from the forecasts, and scores.json beside the real run only; returns what it did."""
     table, simulated, path = load_forecasts()
     if table is None:
         return ("city_forecast.json left as it was: no B10 forecasts on this computer (results/forecasts.csv, "
@@ -810,7 +614,7 @@ def main():
     write_geojson(label_points(country), config.APP_DATA / config.APP_CITIES_FILE)
     write_geojson(island_outlines(country), config.APP_DATA / config.APP_ISLANDS_FILE)
     for old in ("ncr_cities.geojson", *(f"noah_{t}yr.json" for t in config.NOAH_RETURN_PERIODS)):
-        (config.APP_DATA / old).unlink(missing_ok=True)   # F14: ph_cities.json and NOAH's national tiles replace them
+        (config.APP_DATA / old).unlink(missing_ok=True)   # ph_cities.json and NOAH's national tiles replace them
     write_geojson(barangays, config.APP_DATA / "qc_barangays.geojson")
     files = layer2_files()
     for name, content in files.items():

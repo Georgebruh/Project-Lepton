@@ -1,4 +1,4 @@
-/* F8: step 2 of the exposure guide (YourResult.tsx), Figma frame 39:361. */
+/* Step 2 of the exposure guide (YourResult.tsx). */
 .your-result {
   display: flex;
   flex-direction: column;
@@ -64,7 +64,7 @@
   color: var(--color-accent-primary);
 }
 
-/* The emergency box, in every result: red outline, red icon (Figma's 1.5 px border, 14 px padding) */
+/* The emergency box, in every result: red outline, red icon */
 .your-result-urgent {
   display: flex;
   align-items: flex-start;

@@ -1,58 +1,4 @@
-"""Comparing two models week by week: the primary endpoint (task D5), the flood and practical tests (D6).
-
-For each scored target week t, the loss difference of model a against model b is
-
-    d_t = |y_t - mu_a,t| - |y_t - mu_b,t|
-
-so mean(d) = MAE_a - MAE_b. Below 0, model a misses less on average.
-
-How sure is that mean? Misses come in runs (an outbreak lasts several weeks), so the weeks
-are not independent and resampling single weeks would give too narrow an interval. The
-moving-block bootstrap (Kunsch 1989) resamples whole runs of weeks instead:
-
-  1. every run of L consecutive weeks of d is a block (L = 8, config.BOOT_BLOCK_WEEKS);
-  2. pick ceil(n / L) blocks at random, with replacement, put them end to end and keep the
-     first n weeks;
-  3. take the mean; repeat 2,000 times (config.BOOT_RESAMPLES; seed config.RANDOM_SEED, so
-     every run gives the same interval);
-  4. the 95% interval runs from the 2.5% point to the 97.5% point of those means.
-
-Wholly below 0: model a misses less. Wholly above 0: model b misses less. Across 0: these
-weeks cannot tell the two apart. The weeks are in time order with the COVID years left
-out, so a block can join 2019's last weeks to 2022's first; that join happens once in
-about 350 weeks, a small effect the paper mentions. Reruns with 4- and 13-week blocks
-(config.BOOT_BLOCK_WEEKS_TESTS) show whether the answer hangs on L.
-
-The Diebold-Mariano test (h = 1), reported beside it, asks the same question with a
-formula: DM = mean(d) / (sd(d) / sqrt(n)), two-sided p-value from a t distribution with
-n - 1 degrees of freedom (with h = 1 this is a paired t test on the misses). It treats
-the weeks as independent, so when misses come in runs its p-value can be too small; that
-is why the block-bootstrap interval is the headline and DM only sits beside it. B3's
-m3.dm_test is the paper's one-sided version of the same statistic. Implementation Plan
-v2's block_bootstrap and dm_test are not in the repository or on the team drive, so both
-are written here from the plan's description.
-
-D5, the primary endpoint: M4 against M3 (config.PRIMARY_COMPARISON) over the MAE window
-(config.MAE_YEARS: 2018-2019 and 2022-2026). M5 (stretch task B12) is not built; if it
-is, the plan adds M5 against M3 and Holm-corrects the two.
-
-D6, with the same bootstrap and window:
-  - the flood test, M4 against M4 without EI2 (config.FLOOD_TEST): does the flood exposure
-    index make the city forecast more accurate? On most forecast days the two models are
-    nested (M4 without EI2 is M4 minus one term), and for nested models DM's p-value is
-    not valid: when the extra term adds nothing, the two forecasts nearly coincide (Clark
-    & McCracken 2001). So this test has no DM, as the plan says. On days when rain and
-    EI2 correlate above 0.8, M4 leaves rain out and keeps EI2 while M4 without EI2 keeps
-    rain (src/m4.py), so there the test compares the flood index with rain. B10 should
-    record those days (fit_m4's corr_rain_ei) so the paper can say how many there were.
-    flood_finding states the answer in one sentence; if EI2 adds nothing, it says so
-    plainly: the flood maps then earn their place in Layer 2, not Layer 1.
-  - the practical test, M4 against M1 (config.PRACTICAL_TEST): does M4 beat the same-week
-    average health offices use now? Not nested, so DM is reported.
-
-Checks: python -m src.checks ("D5 primary endpoint" and "D6 flood test": made-up misses
-worked by hand).
-"""
+"""Comparing two models week by week: the primary endpoint, the flood and practical tests."""
 
 import numpy as np
 import pandas as pd
@@ -63,13 +9,7 @@ from src import scores
 
 
 def loss_differences(table, model_a, model_b, years):
-    """d_t = |y_t - mu_a| - |y_t - mu_b| for each target week in `years`, oldest first.
-
-    table: B10's forecasts, one row per model and target week (model, week_index, year,
-    y, mu). Returns week_index, year and d. Stops unless both models have one forecast
-    for exactly the same weeks (scores.check_same_weeks) against the same count y, and
-    on a missing value (rule 5).
-    """
+    """d_t = |y_t - mu_a| - |y_t - mu_b| for each target week in `years`, oldest first."""
     rows = table[table["model"].isin([model_a, model_b]) & table["year"].isin(years)]
     if set(rows["model"]) != {model_a, model_b}:
         raise ValueError(f"need forecasts of both {model_a} and {model_b} in {years}")
@@ -85,11 +25,7 @@ def loss_differences(table, model_a, model_b, years):
 
 
 def block_bootstrap(d, block=config.BOOT_BLOCK_WEEKS, resamples=config.BOOT_RESAMPLES, seed=config.RANDOM_SEED):
-    """Moving-block bootstrap of mean(d): the mean and its 95% interval, low and high (D5).
-
-    d: the loss differences in time order. See the module docstring for the four steps.
-    Stops on a missing value and on fewer values than one block.
-    """
+    """Moving-block bootstrap of mean(d): the mean and its 95% interval, low and high."""
     d = np.asarray(d, dtype=float)
     n = len(d)
     if np.isnan(d).any():
@@ -108,11 +44,7 @@ def block_bootstrap(d, block=config.BOOT_BLOCK_WEEKS, resamples=config.BOOT_RESA
 
 
 def dm_test(d):
-    """Diebold-Mariano (h = 1) on loss differences d: DM = mean / (sd / sqrt(n)), two-sided p (D5).
-
-    Stops on a missing value, on fewer than 2 values, and when every d is the same (sd = 0:
-    DM is undefined).
-    """
+    """Diebold-Mariano (h = 1) on loss differences d: DM = mean / (sd / sqrt(n)), two-sided p."""
     d = np.asarray(d, dtype=float)
     n = len(d)
     if np.isnan(d).any():
@@ -133,11 +65,7 @@ def verdict(low, high, model_a, model_b):
 
 
 def compare(table, model_a, model_b, years=config.MAE_YEARS, dm=True):
-    """Model a against model b: mean of d and its interval for 8-week blocks, then 4 and 13 (D5).
-
-    Returns one row per block length: comparison, block_weeks, weeks, mean_diff, low,
-    high, verdict, and with dm=True the Diebold-Mariano dm_stat and dm_p.
-    """
+    """Model a against model b: mean of d and its interval for 8-week blocks, then 4 and 13."""
     d = loss_differences(table, model_a, model_b, years)["d"]
     test = dm_test(d) if dm else {}
     rows = []
@@ -150,32 +78,19 @@ def compare(table, model_a, model_b, years=config.MAE_YEARS, dm=True):
 
 
 def primary_endpoint(table, years=config.MAE_YEARS):
-    """D5: M4 against M3 over the MAE window, with the Diebold-Mariano test beside it.
-
-    The first row (8-week blocks) is the headline: mean of |error M4| - |error M3| and its
-    95% interval; below 0 means M4 misses less. The 4- and 13-week rows are the checks.
-    years: the MAE window; pass 2018-2026 for the all-years check (COVID years included).
-    """
+    """M4 against M3 over the MAE window, with the Diebold-Mariano test beside it."""
     return compare(table, *config.PRIMARY_COMPARISON, years=years)
 
 
 def flood_and_practical_tests(table, years=config.MAE_YEARS):
-    """D6: M4 against M4 without EI2 (no DM: nested models), then M4 against M1.
-
-    years: the MAE window; pass 2018-2026 for the all-years check. Same columns as
-    compare; the flood test's dm_stat and dm_p are empty (NaN).
-    """
+    """M4 against M4 without EI2 (no DM: nested models), then M4 against M1."""
     flood = compare(table, *config.FLOOD_TEST, years=years, dm=False)
     practical = compare(table, *config.PRACTICAL_TEST, years=years)
     return pd.concat([flood, practical], ignore_index=True)
 
 
 def flood_finding(result):
-    """The flood test in one plain sentence (D6), from flood_and_practical_tests' result.
-
-    The sentence comes from the 8-week row; it ends by saying whether the 4- and 13-week
-    checks reach the same verdict.
-    """
+    """The flood test in one plain sentence, from flood_and_practical_tests' result."""
     with_ei, without_ei = config.FLOOD_TEST
     rows = result[result["comparison"] == f"{with_ei} vs {without_ei}"].set_index("block_weeks")
     row = rows.loc[config.BOOT_BLOCK_WEEKS]

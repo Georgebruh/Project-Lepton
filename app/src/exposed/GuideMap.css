@@ -1,7 +1,7 @@
-/* F8: the map of the guide's step 3 (GuideMap.tsx), Figma node 39:430. */
+/* The map of the guide's step 3 (GuideMap.tsx). */
 .guide-map {
   position: relative;
-  /* Figma's 390 by 280 px, at the width of the phone */
+  /* 390 by 280 px, at the width of the phone */
   aspect-ratio: 390 / 280;
   overflow: hidden;
   background: var(--color-bg-inset);
@@ -23,7 +23,7 @@
   vector-effect: non-scaling-stroke;
 }
 
-/* The reader's barangay: Figma's thick dark outline */
+/* The reader's barangay: thick dark outline */
 .guide-map-focus {
   fill: none;
   stroke: var(--color-text-primary);
@@ -32,7 +32,7 @@
   vector-effect: non-scaling-stroke;
 }
 
-/* Where the reader is: a 16 px teal square with a white edge (Figma's 3 px corners) */
+/* Where the reader is: a 16 px teal square with a white edge */
 .guide-map-you {
   position: absolute;
   width: 16px;

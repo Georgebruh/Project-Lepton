@@ -1,4 +1,4 @@
-/* F13: a map control (MapButton.tsx), Figma "Map button": a 36 px square, as wide as the Zoom box. */
+/* A map control (MapButton.tsx): a 36 px square, as wide as the Zoom box. */
 .map-button {
   display: flex;
   padding: var(--space-2);
@@ -9,7 +9,7 @@
   cursor: pointer;
 }
 
-/* Its panel is open (Figma's Open state) */
+/* Its panel is open */
 .map-button-open {
   border-color: var(--color-accent-primary);
   background: var(--color-accent-subtle);

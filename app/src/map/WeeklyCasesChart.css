@@ -1,8 +1,8 @@
-/* F4: the city panel's chart (WeeklyCasesChart.tsx), Figma node 53:345. */
+/* The city panel's chart (WeeklyCasesChart.tsx). */
 .weekly-cases-chart {
   display: flex;
   flex-direction: column;
-  /* Figma's caption sits 6 px under the bars */
+  /* Caption sits 6 px under the bars */
   gap: 6px;
   margin: 0;
 }
@@ -19,7 +19,7 @@
   opacity: 0.45;
 }
 
-/* F14: a simulated week's count: outlined, dashed, so it never reads as a real count */
+/* A simulated week's count: outlined, dashed, so it never reads as a real count */
 .weekly-cases-chart-bar-simulated {
   fill: none;
   stroke: var(--color-text-secondary);

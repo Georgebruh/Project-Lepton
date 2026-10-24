@@ -1,72 +1,4 @@
-"""The paper's figures (task D8). Dose figures are stock planning, not prescriptions.
-
-The plan's five figures, one function each. Every figure is drawn by this file from the
-results files of earlier tasks, never by hand, so rerunning it after a result changes
-redraws the paper's figures. D8 computes no new result: figures 1-3 apply D1's, D3's and
-D5/D6's functions to B10's forecasts, and figures 4-5 read C8's storm runs.
-
-1. forecast_figure: QC's weekly cases with M4's and M3's 1-week-ahead forecasts and M4's
-   90% forecast range, every forecast day of B10's backtest (2018-2026). The range runs
-   from the 5% to the 95% point of the forecast NB(mu, theta) (forecast_range.range_90),
-   the same range D1 scores. The COVID years 2020-2021 are shaded: forecast, but left out
-   of the headline scores.
-
-2. mae_figure, two panels over the MAE window (config.MAE_YEARS: 2018-2019 and 2022-2026).
-   Left: each model's MAE with a 95% interval. The interval is D5's moving-block bootstrap
-   (compare.block_bootstrap: 8-week blocks, 2,000 resamples, fixed seed) on the model's own
-   weekly misses |y - mu|, whose mean is the MAE.
-   Right: the comparisons the paper tests, mean of |error M4| - |error other| with the same
-   bootstrap's interval: D5's primary endpoint (M4 vs M3), D6's flood test (M4 vs M4
-   without EI2) and practical test (M4 vs M1). Below 0, M4 misses less. The right panel is
-   not in the plan's list; it is there because the left one cannot answer D5's question.
-   Every model misses most in the same outbreak weeks, so two MAE intervals can overlap
-   even when one model misses less almost every week; the paired difference is the test.
-
-3. reliability_figure: D3's CORP reliability curve (breach_scores.reliability) of M4's and
-   M3's breach probabilities over D3's window (config.D8_RELIABILITY_YEARS, 2022-2026), with
-   the number of forecasts in each step below it, as the plan asks. A reliable forecast's
-   steps sit on the diagonal: of the weeks given a 30% chance of a breach, about 30% breached.
-
-4. exposure_map: residents in zones the storm's observed rain floods (C8's main run, C3's
-   graded exposure), as a share of each barangay's 2024 residents: the measure D7 maps and
-   C8 flags with, in D7's classes and colours (config.D7_MAP_SHARE_BREAKS). A11's flooded
-   barangays are outlined. One panel per storm in config.D8_MAP_STORMS: Carina, as the plan
-   asks, and Kristine on the same scale (an assumption; config.py says why).
-
-5. doses_table: QC's stock on observed rain, one row per storm (and per w in a short flood):
-   the 3-day rain and where it falls against IMERG's return levels, the EI, exposed people
-   and the three units (C8's main run). Units are rounded up to whole units, the level stock
-   is ordered at (allocation.round_up); exposed people are rounded to whole people. Written
-   as a CSV for the paper's table and as a picture; both carry the stock-planning label
-   (rule 10).
-
-Each chart has a CSV beside it with the numbers it shows (config.D8_FIG*_TABLE), so the
-paper's text can quote them and E11 can check them. Figure 1's numbers are B10's
-forecasts.csv itself, and figure 4's are C8's c8_observed_barangays.csv.
-
-Inputs. Figures 1-3 need B10's results/forecasts.csv, which needs A13's case data; without
-it the default run stops and says so. Two flags:
-    --layer2          figures 4 and 5 only (C8's files and A5's shapes; no case data needed)
-    --preview FILE    figures 1-3 from another B10 file, such as its made-up-count run
-                      (python -m src.backtest --simulate --option C writes
-                      results/forecasts_simulated_C.csv). The files are named d8_preview_*,
-                      say "Preview" across the top and are not for the paper; .gitignore
-                      keeps them out of git.
-Figures 1-3 stop unless B10's file has the models config.PRIMARY_COMPARISON, FLOOD_TEST and
-PRACTICAL_TEST name, every model has a forecast on exactly the same weeks and no number is
-missing (rule 5).
-
-Outputs in results/ (weekly city counts only, nothing case-level):
-    d8_fig1_forecasts.png
-    d8_fig2_mae.png          d8_fig2_mae.csv
-    d8_fig3_reliability.png  d8_fig3_reliability.csv
-    d8_fig4_exposure_map.png
-    d8_fig5_doses.png        d8_fig5_doses.csv
-
-Run from the repository root; a few seconds:
-    python -m src.paper_figures             # all five; needs B10's forecasts.csv
-    python -m src.paper_figures --layer2    # figures 4 and 5
-"""
+"""The paper's figures."""
 
 import argparse
 import textwrap
@@ -87,10 +19,10 @@ import config
 from src import (allocation, breach_scores, compare, doses, forecast_range, forecast_run, layer2_results,
                  observed_run, scores, weeks)
 
-L2 = layer2_results                   # D7: map helpers, storm names, colours and save_png
+L2 = layer2_results                   # map helpers, storm names, colours and save_png
 BAND_MODEL, OTHER_MODEL = config.PRIMARY_COMPARISON     # M4 (with its range in figure 1) and M3
 NEEDED_MODELS = sorted({*config.PRIMARY_COMPARISON, *config.FLOOD_TEST, *config.PRACTICAL_TEST})
-FORECAST_COLUMNS = ["model", "week_index", "year", "y", "mu", "theta", "p_breach", "breached"]   # what D8 reads from B10
+FORECAST_COLUMNS = ["model", "week_index", "year", "y", "mu", "theta", "p_breach", "breached"]   # the columns read from the forecasts
 MODEL_NAMES = {                       # figure labels; figure 2's rows run in this order
     "M0": "M0, same week last year",
     "M1": "M1, same-week average",
@@ -98,7 +30,7 @@ MODEL_NAMES = {                       # figure labels; figure 2's rows run in th
     "M4": "M4, negative binomial",
     config.FLOOD_TEST[1]: "M4 without EI2",
 }
-TEST_NAMES = {                        # figure 2's right panel: D5's and D6's comparisons
+TEST_NAMES = {                        # figure 2's right panel: the comparisons
     " vs ".join(config.PRIMARY_COMPARISON): "M4 vs M3 (primary endpoint, D5)",
     " vs ".join(config.FLOOD_TEST): "M4 vs M4 without EI2 (flood test, D6)",
     " vs ".join(config.PRACTICAL_TEST): "M4 vs M1 (practical test, D6)",
@@ -109,7 +41,7 @@ INPUTS_LAYER2 = {                     # the files figures 4 and 5 read, and the 
     config.BARANGAYS_QC: "A5: python -m src.census",
 }
 
-# Chart style, from the team's chart palette (D7 uses the same ink, surface and blue ramp).
+# Chart style, from the team's chart palette.
 INK, INK_2, SURFACE = L2.INK, L2.INK_2, L2.SURFACE
 MUTED, GRID, BASELINE, SHADE = "#898781", "#e1e0d9", "#c3c2b7", "#f0efec"
 SERIES = {BAND_MODEL: "#2a78d6", OTHER_MODEL: "#eb6834"}   # palette slots 1 and 2 (validated); other models muted
@@ -117,9 +49,7 @@ BAND_ALPHA = 0.15                     # M4's 90% range: a wash of its line colou
 MIN_STEP_WIDTH = 0.01                 # figure 3: a reliability step holding one probability is drawn this wide
 
 
-# ---------------------------------------------------------------------------
 # Inputs
-# ---------------------------------------------------------------------------
 
 def check_inputs(paths):
     """Stop with one clear message that lists every input file not on this computer."""
@@ -130,7 +60,7 @@ def check_inputs(paths):
 
 
 def check_forecasts_exist(path, preview):
-    """Stop when B10's forecasts are missing, saying how to draw what can be drawn now."""
+    """Stop when the forecasts are missing, saying how to draw what can be drawn now."""
     if Path(path).exists():
         return
     if preview:
@@ -143,12 +73,7 @@ def check_forecasts_exist(path, preview):
 
 
 def load_forecasts(path):
-    """B10's forecasts, checked: the columns D8 reads, the models it compares, nothing missing, the same weeks.
-
-    One row per model and target week (model, week_index, year, y, mu, theta, p_breach,
-    breached). theta may be infinity (a Poisson range, B6). Stops on a missing column or
-    model, a missing number, or models forecast on different weeks (rule 5).
-    """
+    """The forecasts, checked: the columns read, the models compared, nothing missing, the same weeks."""
     table = pd.read_csv(path)
     missing = [col for col in FORECAST_COLUMNS if col not in table]
     if missing:
@@ -201,9 +126,7 @@ def output(path, preview):
     return path.with_name(config.D8_PREVIEW_PREFIX + path.name.removeprefix("d8_")) if preview else path
 
 
-# ---------------------------------------------------------------------------
 # Chart chrome shared by the figures
-# ---------------------------------------------------------------------------
 
 def style_axes(ax, grid_axis="y"):
     """Recessive chrome: no top or right spine, hairline grid on one axis, secondary-ink ticks."""
@@ -230,9 +153,7 @@ def footer(fig, text, width=170):
     fig.text(0.01, 0.005, textwrap.fill(text, width), fontsize=7.5, color=INK_2, va="bottom")
 
 
-# ---------------------------------------------------------------------------
 # Figure 1: weekly cases with M4's and M3's forecasts and M4's 90% range
-# ---------------------------------------------------------------------------
 
 def forecast_series(table, model):
     """One model's forecasts, oldest first: week_index, year, date (the week's Sunday), y, mu and its 90% range."""
@@ -246,7 +167,7 @@ def forecast_series(table, model):
 
 
 def coverage_words(table):
-    """D1's 90% coverage of M4's range over the probability-score window, in words ("" if no such week)."""
+    """The 90% coverage of M4's range over the probability-score window, in words ("" if no such week)."""
     years = [year for year in config.PROB_SCORE_YEARS if year in set(table["year"])]
     if not years:
         return ""
@@ -302,16 +223,10 @@ def forecast_figure(table, path, source, preview=None):
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
-# Figure 2: MAE by model with intervals, and D5's and D6's comparisons
-# ---------------------------------------------------------------------------
+# Figure 2: MAE by model with intervals, and the comparisons
 
 def mae_by_model(table, years=config.MAE_YEARS):
-    """Each model's MAE over `years` with its 95% moving-block bootstrap interval (D1's MAE, D5's bootstrap).
-
-    The bootstrap runs on the model's weekly misses |y - mu| in time order; their mean is
-    the MAE, which scores.point_scores computes too, so the two are checked against each other.
-    """
+    """Each model's MAE over `years` with its 95% moving-block bootstrap interval."""
     rows = table[table["year"].isin(years)]
     if rows.empty:
         raise ValueError(f"no forecasts with target weeks in {years}")
@@ -330,7 +245,7 @@ def mae_by_model(table, years=config.MAE_YEARS):
 
 
 def model_tests(table, years=config.MAE_YEARS):
-    """D5's primary endpoint and D6's two tests, every block length (compare.py), in figure 2's columns."""
+    """The primary endpoint and the two tests, every block length (compare.py), in figure 2's columns."""
     tests = pd.concat([compare.primary_endpoint(table, years), compare.flood_and_practical_tests(table, years)],
                       ignore_index=True)
     return tests.rename(columns={"comparison": "name", "mean_diff": "value"}).assign(
@@ -359,7 +274,7 @@ def interval_panel(ax, rows, names, colors, label):
 
 
 def mae_figure(fig2, path, source, years=config.MAE_YEARS, preview=None):
-    """Draw figure 2: left each model's MAE with its interval, right D5's and D6's differences (8-week blocks)."""
+    """Draw figure 2: left each model's MAE with its interval, right the differences (8-week blocks)."""
     by_model = fig2[fig2["part"] == "MAE by model"]
     tests = fig2[(fig2["part"] != "MAE by model") & (fig2["block_weeks"] == config.BOOT_BLOCK_WEEKS)]
     fig, (left, right) = plt.subplots(1, 2, figsize=(11.5, 4.4), facecolor=SURFACE,
@@ -388,28 +303,17 @@ def mae_figure(fig2, path, source, years=config.MAE_YEARS, preview=None):
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
 # Figure 3: reliability of the breach probabilities
-# ---------------------------------------------------------------------------
 
 def join_equal_steps(steps):
-    """Neighbouring reliability steps with the same breach rate joined into one, their forecasts added up.
-
-    D3's pool-adjacent-violators pools two steps only when the first rate is higher, so
-    steps with equal rates stay apart (M4 on made-up counts: 49 steps at rate 0). Joining
-    them draws the same curve, with one bar per rate in the panel below.
-    """
+    """Neighbouring reliability steps with the same breach rate joined into one, their forecasts added up."""
     run = (steps["observed"] != steps["observed"].shift()).cumsum()
     return steps.groupby(run).agg(p_low=("p_low", "min"), p_high=("p_high", "max"), observed=("observed", "first"),
                                   forecasts=("forecasts", "sum")).reset_index(drop=True)
 
 
 def reliability_table(table, models=config.PRIMARY_COMPARISON, years=config.D8_RELIABILITY_YEARS):
-    """D3's CORP reliability steps for each model over `years`: model, p_low, p_high, observed, forecasts.
-
-    Steps with the same rate next to each other are joined (join_equal_steps). Also each
-    model's forecasts, breaches and Brier score (D3), repeated on its rows.
-    """
+    """The CORP reliability steps for each model over `years`: model, p_low, p_high, observed, forecasts."""
     rows = table[table["year"].isin(years)]
     if rows.empty:
         raise ValueError(f"no forecasts with target weeks in {years}")
@@ -465,12 +369,10 @@ def reliability_figure(steps, path, source, years=config.D8_RELIABILITY_YEARS, p
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
 # Figure 4: the exposure map
-# ---------------------------------------------------------------------------
 
 def map_tables(c8_runs, c8_barangays, shapes, storms=config.D8_MAP_STORMS):
-    """For each storm to map, C8's main-run row and A5's shapes joined to its barangays (D7's map_run and map_table)."""
+    """For each storm to map, the main-run row and the shapes joined to its barangays."""
     unknown = [storm for storm in storms if storm not in config.STORMS]
     if unknown or not storms:
         raise ValueError(f"config.D8_MAP_STORMS must name storms in config.STORMS; unknown: {unknown}")
@@ -515,17 +417,10 @@ def exposure_map(maps, path):
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
 # Figure 5: the doses table
-# ---------------------------------------------------------------------------
 
 def doses_table(c8_runs):
-    """QC's stock on observed rain, one row per storm (and w in a short flood), from C8's main run.
-
-    rain_mm to 1 decimal, return_period to 1, ei_pct to 2; exposed to whole people; units
-    rounded up to whole units. w is empty when D is at or above the cut-off: every exposed
-    adult is then high risk and w changes nothing (C5). Stops unless C8 ran every storm.
-    """
+    """QC's stock on observed rain, one row per storm (and w in a short flood), from the main run."""
     runs = L2.main_runs(c8_runs)
     missing = sorted(set(config.STORMS) - set(runs["storm"]))
     if missing:
@@ -577,9 +472,7 @@ def doses_figure(table, path):
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
 # Running it
-# ---------------------------------------------------------------------------
 
 def report(fig2, steps, doses_rows, written):
     """Print the numbers in figures 2, 3 and 5 (labelled where they hold doses) and every file written."""

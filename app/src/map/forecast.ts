@@ -1,31 +1,24 @@
 import type { CityForecast, ForecastWeek, OutbreakLevel } from './mapData.ts'
 
-/**
- * F4: reading Quezon City's forecast for the date the reader picks. Plain functions, no React.
- *
- * Dates are YYYY-MM-DD strings, and weeks are CDC/MMWR weeks, Sunday to Saturday, as everywhere
- * in LEPTON. The date picks the forecast day: the week that holds it. The panel shows the
- * forecast made that week for the week after it, "next week", as Figma frame 2 does: Tue 22 Oct
- * 2024 shows the week of 27 Oct – 2 Nov 2024.
- */
+/** Reading Quezon City's forecast for the date the reader picks. */
 
-/** Shown with every Layer 1 number while city_forecast.json says simulated (app check U2). */
+/** Shown with every Layer 1 number while city_forecast.json says simulated. */
 export const SIMULATED_LABEL = 'Simulated until QCESD data'
 
-/** F14: shown with every number of a week from the Simulation mode (made-up counts, or forecasts made on them). */
+/** Shown with every number of a week from the Simulation mode. */
 export const SIMULATION_LABEL = 'Simulated'
 
-/** F14: whether a week's numbers are simulated: the whole file made up, or a week the Simulation mode added. */
+/** Whether a week's numbers are simulated: the whole file made up, or a week the Simulation mode added. */
 export function isSimulated(forecast: CityForecast, week: ForecastWeek | undefined): boolean {
   return forecast.simulated || week?.simulated === true
 }
 
-/** F14: the badge's words for simulated numbers: the made-up file's (`fileSimulated`), or the Simulation mode's. */
+/** The badge's words for simulated numbers. */
 export function badgeWords(fileSimulated: boolean): string {
   return fileSimulated ? SIMULATED_LABEL : SIMULATION_LABEL
 }
 
-/** F14: the badge a week's numbers carry when isSimulated. */
+/** The badge a week's numbers carry when isSimulated. */
 export function simulatedLabel(forecast: CityForecast): string {
   return badgeWords(forecast.simulated)
 }
@@ -33,7 +26,7 @@ export function simulatedLabel(forecast: CityForecast): string {
 /** Each outbreak level's name, as the legend and the badges write it. */
 export const LEVEL_NAMES: Record<OutbreakLevel, string> = { low: 'Low', watch: 'Watch', high: 'High' }
 
-/** Each level's badge tone (Design notes: teal for the calm end, amber for warnings, red for alerts). */
+/** Each level's badge tone. */
 export const LEVEL_TONES: Record<OutbreakLevel, 'accent' | 'warn' | 'alert'> = {
   low: 'accent',
   watch: 'warn',
@@ -68,34 +61,27 @@ export function weekStart(day: string): string {
   return addDays(day, -utc(day).getUTCDay())
 }
 
-/**
- * The dates the picker offers: from the Sunday of the first week a forecast was made to the
- * Saturday of the last. A forecast for week t was made horizon_weeks (1) weeks before it.
- */
+/** The dates the picker offers. */
 export function dateRange(forecast: CityForecast): { first: string; last: string } {
   const lead = 7 * forecast.horizon_weeks
   const weeks = forecast.weeks
   return { first: addDays(weeks[0].start, -lead), last: addDays(weeks[weeks.length - 1].start, -lead + 6) }
 }
 
-/** F14: today's date where the reader is, YYYY-MM-DD. */
+/** Today's date where the reader is, YYYY-MM-DD. */
 export function today(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-/**
- * The date the map shows: the one in the address, moved inside the backtest's dates if it
- * falls outside them. F14: if the address names none, or no real date, today, moved inside
- * them too: in Simulation mode the simulation runs to today; Real data ends at QCESD's last week.
- */
+/** The date the map shows. */
 export function chosenDate(forecast: CityForecast, requested: string | null): string {
   const { first, last } = dateRange(forecast)
   const day = requested && isDay(requested) ? requested : today()
   return day < first ? first : day > last ? last : day
 }
 
-/** The forecast made in the week holding `day`, for the week after it; undefined if the backtest has none. */
+/** The forecast made in the week holding `day`, for the week after it. */
 export function forecastFor(forecast: CityForecast, day: string): ForecastWeek | undefined {
   const target = addDays(weekStart(day), 7 * forecast.horizon_weeks)
   return forecast.weeks.find((week) => week.start === target)
@@ -108,10 +94,7 @@ export function weeksBefore(forecast: CityForecast, week: ForecastWeek, count: n
   )
 }
 
-/**
- * Pr(breach) as the panel writes it, a whole percentage: "22%". Under 0.5% it reads "<1%" and
- * from 99.5% ">99%", because an outbreak is never certain either way.
- */
+/** Pr(breach) as the panel writes it, a whole percentage: "22%". */
 export function formatChance(p: number): string {
   if (p < 0.005) {
     return '<1%'
@@ -122,11 +105,7 @@ export function formatChance(p: number): string {
   return `${Math.round(p * 100)}%`
 }
 
-/**
- * The outbreak level of a chance of an outbreak: the highest level whose starting chance it
- * reaches (city_forecast.json's levels, set in config.py). The chance is first rounded to a
- * whole percent, as the panel writes it, so a chance shown as "10%" never reads Low.
- */
+/** The outbreak level of a chance of an outbreak. */
 export function levelOf(p: number, levels: CityForecast['levels']): OutbreakLevel {
   const percent = Math.round(p * 100)
   let level = levels[0].level
@@ -138,10 +117,7 @@ export function levelOf(p: number, levels: CityForecast['levels']): OutbreakLeve
   return level
 }
 
-/**
- * The epidemic threshold as a whole count. A week breaches when its count is strictly above
- * T_w, which for whole counts means above T_w rounded down (B7: Pr(breach) = sf(floor(T_w))).
- */
+/** The epidemic threshold as a whole count. */
 export function thresholdCount(threshold: number): number {
   return Math.floor(threshold)
 }
@@ -162,7 +138,7 @@ export function formatDay(day: string): string {
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
 }
 
-/** A date as day and month, for a year the reader already sees (F5's "Issued 21 Oct"). */
+/** A date as day and month, for a year the reader already sees. */
 export function formatDayMonth(day: string): string {
   const date = utc(day)
   return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`

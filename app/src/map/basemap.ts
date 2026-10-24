@@ -13,40 +13,13 @@ import { SLOTS } from './layerOrder.ts'
 import type { Cities } from './mapData.ts'
 import { tokenColor } from './tokens.ts'
 
-/*
- * F13: the street map under LEPTON's data, OpenFreeMap's "Positron" style: OpenStreetMap data
- * in the OpenMapTiles schema, free and with no key. The /map route's loader fetches the style
- * once (fetchBaseStyle); CityMap adapts it to the app before making the map (mapStyle):
- *   - land, water and roads take the Figma map colors (map/land, bg/inset, map/boundary);
- *   - the base map's own city and town names inside a city with data (Quezon City) are hidden,
- *     since LEPTON writes its name itself, in Figtree, with next week's cases. F14: at every
- *     zoom, so a reader finds the one city with data on the map of the whole country (F13 hid
- *     LEPTON's 17 NCR names zoomed out, where they piled up); everywhere else the base map
- *     names the Philippines' cities and towns;
- *   - the flat (Mercator) map of the whole world: zoomed out, it shows every continent. A globe
- *     looked better zoomed out but cost a freeze: MapLibre compiles each of its shaders twice
- *     for a globe (once round, once flat for close up), and on an integrated GPU each compile
- *     holds the page up to a third of a second (measured 22 October 2026: 31 shaders and 1.6 s
- *     frozen at the plan level, against 10 and 0.3 s before F13);
- *   - F14: no lines on the country's view. The street map's roads and rivers start at
- *     ISLANDS_ZOOM, fading in with the islands' coastlines (borders.ts, fromIslandsZoom), and its
- *     borders are left out at every zoom: LEPTON draws the coastlines and the towns' borders.
- * If the style cannot be fetched, the map draws on the plain background it had before F13, so
- * LEPTON's data always shows.
- *
- * The Layers panel offers three base maps (setBase): the street map; satellite imagery
- * (Sentinel-2 cloudless 2024 by EOX, 10 m pixels), with the street map's roads and names kept
- * over it; and terrain, the street map with hill shading from elevation tiles (Mapzen Terrain
- * Tiles on AWS). Each is added the first time it is chosen, in the base slot (layerOrder.ts).
- * In the 3D view the street map gets the hill shading too: MapLibre does not light the ground
- * it raises, so without shading the relief would show only at its edges.
- */
+/* The street map under LEPTON's data, OpenFreeMap's "Positron" style. */
 
 /** The base maps the Layers panel offers, the street map first (the address leaves it out). */
 export const BASE_MAPS = ['map', 'satellite', 'terrain'] as const
 export type BaseMap = (typeof BASE_MAPS)[number]
 
-/** How opaque LEPTON's fills are on each base map: over imagery or shading they let it show through (Figma notes). */
+/** How opaque LEPTON's fills are on each base map: over imagery or shading they let it show through. */
 export const DATA_OPACITY: Record<BaseMap, number> = { map: 1, terrain: 0.75, satellite: 0.6 }
 
 /** Satellite imagery: EOX's Sentinel-2 cloudless mosaic of 2024 (CC BY-NC-SA 4.0), sharpest at zoom 14. */
@@ -59,11 +32,7 @@ const SATELLITE_CREDIT =
   '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless 2024</a> by EOX ' +
   '(contains modified Copernicus Sentinel data 2024)'
 
-/**
- * Elevation for the hill shading and the 3D view (terrain.ts): Mapzen's Terrain Tiles on AWS
- * (terrarium encoding, SRTM in the Philippines). Each makes its own source from it, as MapLibre
- * advises for hill shading and terrain.
- */
+/** Elevation for the hill shading and the 3D view (terrain.ts). */
 export const ELEVATION_SOURCE: RasterDEMSourceSpecification = {
   type: 'raster-dem',
   tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
@@ -76,7 +45,7 @@ export const ELEVATION_SOURCE: RasterDEMSourceSpecification = {
 const HILLSHADE = 'hillshade'
 const ELEVATION = 'elevation-hillshade'
 
-/** How strongly the hills are shaded, 0 to 1: Metro Manila is low, but Marikina's valley and the Sierra Madre's foothills show. */
+/** How strongly the hills are shaded, 0 to 1. */
 const HILLSHADE_STRENGTH = 0.5
 
 /** The street map's ground the satellite imagery replaces; its roads and names stay over the imagery. */
@@ -95,14 +64,10 @@ const hiddenGround = new WeakMap<MapLibreMap, string[]>()
 /** OpenFreeMap's Positron style (checked 2026-10-21: no key, open to other sites). */
 const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
 
-/**
- * How long the loader waits for the style before drawing the map without it, in ms. The map
- * waits for the style, so this is the most a slow or blocked street map can delay LEPTON's
- * data; the style is small and cached for a day, so it usually comes in well under a second.
- */
+/** How long the loader waits for the style before drawing the map without it, in ms. */
 const BASE_STYLE_TIMEOUT_MS = 2000
 
-/** The style's tile source (terrain.ts raises its buildings), and the credit its tiles need (OpenFreeMap's style leaves it empty). */
+/** The style's tile source. */
 export const BASE_SOURCE = 'openmaptiles'
 const BASE_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
@@ -113,7 +78,7 @@ const BASE_ATTRIBUTION =
 const PLACE_NAME_LAYERS = ['label_city', 'label_city_capital', 'label_town']
 
 
-/** Fetches the street map's style; null if it does not come within BASE_STYLE_TIMEOUT_MS or is not a style. */
+/** Fetches the street map's style. */
 export async function fetchBaseStyle(): Promise<StyleSpecification | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), BASE_STYLE_TIMEOUT_MS)
@@ -204,11 +169,7 @@ function groundShown(map: MapLibreMap): string[] {
   })
 }
 
-/**
- * Shows the base map `base`: the street map alone, the satellite imagery under the street map's
- * roads and names (its ground hidden), or the street map with hill shading. Leaving the imagery
- * shows again exactly the ground it hid. In the 3D view (`view3d`) the street map is shaded too.
- */
+/** Shows the base map `base`. */
 export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
   const shaded = base === 'terrain' || (base === 'map' && view3d)
   if (base === 'satellite' && !map.getLayer(SATELLITE)) {
@@ -231,11 +192,7 @@ export function setBase(map: MapLibreMap, base: BaseMap, view3d: boolean) {
   }
 }
 
-/**
- * F14: a street map line (a road, a river) that would show on the country's view starts at
- * ISLANDS_ZOOM instead, fading in with the coastlines (borders.ts). One that starts closer in is
- * left as it is. Positron's line opacities are plain numbers, which the fade ends at.
- */
+/** A street map line (a road, a river) that would show on the country's view starts at ISLANDS_ZOOM. */
 function fromIslandsZoom(layer: LineLayerSpecification): LineLayerSpecification {
   if ((layer.minzoom ?? 0) >= ISLANDS_ZOOM) {
     return layer
@@ -245,7 +202,7 @@ function fromIslandsZoom(layer: LineLayerSpecification): LineLayerSpecification 
   return { ...layer, minzoom: ISLANDS_ZOOM, paint: { ...layer.paint, ...fade } }
 }
 
-/** One base map layer in the app's colors; a layer of names LEPTON writes itself, without those inside the cities with data. */
+/** One base map layer in the app's colors. */
 function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPolygon): LayerSpecification[] {
   if (layer.type === 'background') {
     return [{ ...layer, paint: { ...layer.paint, 'background-color': colors.land } }]
@@ -253,7 +210,7 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPo
   if (layer.type === 'fill' && layer['source-layer'] === 'water') {
     return [{ ...layer, paint: { ...layer.paint, 'fill-color': colors.water } }]
   }
-  // F14: the borders are LEPTON's own (borders.ts and CityMap)
+  // The borders are LEPTON's own (borders.ts and CityMap)
   if (layer.type === 'line' && layer['source-layer'] === 'boundary') {
     return []
   }
@@ -271,11 +228,7 @@ function adaptLayer(layer: LayerSpecification, colors: MapColors, named: MultiPo
   return [layer]
 }
 
-/**
- * The style CityMap makes the map with: the street map adapted to the app, or, without one,
- * the plain background the map had before F13 (bg/inset). Both are flat (Mercator) maps.
- * `element` is the map's element, for the token colors.
- */
+/** The style CityMap makes the map with. */
 export function mapStyle(base: StyleSpecification | null, element: HTMLElement, cities: Cities): StyleSpecification {
   const colors = mapColors(element)
   const flat: Pick<StyleSpecification, 'projection'> = { projection: { type: 'mercator' } }

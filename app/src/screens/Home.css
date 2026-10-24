@@ -1,21 +1,13 @@
-/*
- * F6: Home (Home.tsx), Figma frame "Home" (node 19:256), drawn at 1440 px. Sizes between the
- * spacing steps are Figma's own (the 120 and 140 px above each section, the hero's 152 and 22).
- * Below 1024 px the sections stack in one column; below 600 px the large text steps down to the
- * next text style's size.
- */
+/* Home (Home.tsx), drawn at 1440 px. */
 
-/* Each section's sides: Figma's 96 px; on screens wider than the frame, the content stays
-   1248 px wide in the middle while the backgrounds run the full width. */
+/* Each section's sides. */
 .home {
   --home-side: max(var(--space-9), calc((100% - 1248px) / 2));
 }
 
 /* --- Hero --------------------------------------------------------------- */
 
-/* The photo's own colors are the same in every theme: white text over a dark shade (Design
-   notes), Figma's near-black teal at 45%, 50% and 70%. The dark behind it shows while the photo
-   loads, so the white text stays readable. */
+/* The photo's own colors are the same in every theme. */
 .home-hero {
   position: relative;
   display: flex;
@@ -42,8 +34,7 @@
   background: linear-gradient(to bottom, rgb(5 13 15 / 45%), rgb(5 13 15 / 50%) 50%, rgb(5 13 15 / 70%));
 }
 
-/* Figma's three waterlines, kept at their size along the hero's bottom (cut at the sides on a
-   narrow screen) so the waves keep their shape */
+/* Three waterlines, kept at their size along the hero's bottom. */
 .home-hero-waterlines {
   position: absolute;
   bottom: 0;
@@ -69,7 +60,7 @@
   text-shadow: 0 2px 24px rgb(0 0 0 / 35%);
 }
 
-/* One line each, as in Figma */
+/* One line each */
 .home-hero-title span {
   display: block;
 }
@@ -80,7 +71,7 @@
   text-shadow: 0 1px 16px rgb(0 0 0 / 35%);
 }
 
-/* Figma's "Hero button": glass over the photo, not one of the three Button styles */
+/* Glass over the photo, not one of the three Button styles */
 .home .home-hero-button {
   padding: var(--space-3) 20px;
   border: 1px solid rgb(255 255 255 / 35%);
@@ -310,7 +301,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The 88 px teal square with the arrow (Figma "Go") */
+/* The 88 px teal square with the arrow */
 .home-try-go {
   display: flex;
   flex-shrink: 0;

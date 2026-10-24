@@ -1,8 +1,8 @@
-/* F3: the logo (Logo.tsx), Figma node 3:47. */
+/* The logo (Logo.tsx). */
 .logo {
   display: inline-flex;
   align-items: center;
-  /* Figma's 10 px, between the spacing steps */
+  /* 10 px, between the spacing steps */
   gap: 10px;
 }
 
@@ -33,8 +33,7 @@
   height: 22px;
 }
 
-/* The wordmark is set in Instrument Sans SemiBold, as in Figma; index.html loads only the six
-   letters of LEPTON. Its 2.24 px letter spacing is 14% of the 16 px size. */
+/* The wordmark is set in Instrument Sans SemiBold; index.html loads only the six letters of LEPTON. */
 .logo-word {
   font-family: 'Instrument Sans', var(--font-sans);
   font-weight: 600;

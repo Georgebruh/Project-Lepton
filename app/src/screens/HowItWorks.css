@@ -1,8 +1,4 @@
-/*
- * F10: How it works (HowItWorks.tsx), Figma frame "How it works" (node 12:1385). Figma's own
- * values between the spacing steps (56, 46, 6 and 2 px, the cards' 200 px) are written in px,
- * as Footer.css does.
- */
+/* How it works (HowItWorks.tsx). */
 
 /* Intro: eyebrow, title, lead and the section tabs */
 .how-it-works-intro {
@@ -22,7 +18,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The tabs sit in one outlined box, as Figma's "Section tabs" */
+/* The tabs sit in one outlined box */
 .how-it-works-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -73,7 +69,7 @@
   gap: var(--space-3);
 }
 
-/* Four columns with Figma's 56 px gaps, where the arrows run */
+/* Four columns with 56 px gaps, where the arrows run */
 .how-it-works-diagram {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -132,13 +128,12 @@
   color: var(--color-accent-primary);
 }
 
-/* The two models and what the office gets are Figma's 200 px tall, so their arrows line up */
+/* The two models and what the office gets are 200 px tall, so their arrows line up */
 .how-it-works-step:nth-child(n + 3) .how-it-works-card {
   min-height: 200px;
 }
 
-/* An arrow into every card after the inputs: a 32 px line and a 10 px head in the gap before
-   it, at the card's middle (Figma's "Arrows") */
+/* An arrow into every card after the inputs. */
 .how-it-works-step:nth-child(n + 2) .how-it-works-card::before,
 .how-it-works-step:nth-child(n + 2) .how-it-works-card::after {
   content: '';
@@ -194,8 +189,7 @@
   overflow: hidden;
 }
 
-/* Fixed layout keeps the columns at their widths, so a long equation scrolls in its box
-   instead of widening the table past its frame */
+/* Fixed layout keeps the columns at their widths. */
 .how-it-works-models {
   width: 100%;
   table-layout: fixed;
@@ -365,7 +359,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Sources: three lists of references, each a link (F12: QCESD's data, shared on request, has none) */
+/* Sources: three lists of references, each a link */
 .how-it-works-references {
   display: flex;
   flex-direction: column;

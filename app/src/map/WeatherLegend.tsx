@@ -8,12 +8,7 @@ type WeatherLegendProps = {
   day: string
 }
 
-/**
- * F13: the weather layer's legend, Figma "Weather legend" (Clouds, Radar, Rain): what its colors
- * mean, in the provider's own colors (weather.ts, WEATHER_LEGENDS), and its source. It stands
- * above the other legends while the layer is on (MapLayout). The satellite photo has no colors to
- * explain, so its legend is its name, date and source.
- */
+/** The weather layer's legend. */
 export default function WeatherLegend({ kind, day }: WeatherLegendProps) {
   const { title, stops, ends, credit } = WEATHER_LEGENDS[kind]
   const ramp = stops.map(([color, at]) => `${color} ${at}%`).join(', ')

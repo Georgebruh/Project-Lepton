@@ -1,43 +1,4 @@
-"""WorldPop's 2024 population map fitted to the 2024 census (task C1).
-
-WorldPop says where people live, pixel by pixel (A6); the PSA 2024 census says how many
-live in each barangay (A5). The two disagree: WorldPop puts about 3.19 million people in
-QC's 142 barangays and the census 3.08 million, and single barangays are off by far more,
-in both directions. C1 keeps WorldPop's pattern inside each barangay and scales it to the
-census total:
-
-    p'_i = p_i * P_b / W_b,    W_b = sum over pixels j of f_j(b) * p_j
-
-where p_i is WorldPop's count in pixel i, P_b the barangay's 2024 census total, and f_j(b)
-the share of pixel j that lies inside barangay b (1 inside, 0 outside, a fraction where the
-boundary cuts the pixel). In plain words: the map decides where people live inside a
-barangay; the census decides how many. s_b = P_b / W_b is the barangay's scale factor.
-
-Why the output is one factor per barangay and not a rescaled map: a pixel cut by a
-barangay boundary has a part in each barangay, and each part is scaled by its own
-barangay's factor, so no single new pixel value is right for both. C2 counts people with
-the same part-pixel rule (the plan's overlay rule), so its sum of rescaled pixels is
-
-    Pop_{b,k,T} = s_b * sum_i f_i(b and H_k,T) * p_i
-
-rescaled_residents() computes it, for C2 and for check S8. Because the factor is fitted
-with the same rule, a barangay's rescaled pixels add up to its census total exactly, and
-the hazard levels of one map, which do not overlap (A8), can never hold more people than
-the barangay.
-
-WorldPop's nodata pixels (no buildings) hold nobody, before and after the rescaling.
-
-Output: data/clean/worldpop_scale_qc.csv (config.WORLDPOP_SCALE_QC), one row per barangay:
-    psgc, adm4_name
-    pop_2024         P_b, the 2024 census total (A5)
-    worldpop_2024    W_b, WorldPop's people in the barangay (cut pixels by their share)
-    worldpop_pixels  pixels with a WorldPop value in the barangay (cut pixels by their share)
-    scale            s_b = pop_2024 / worldpop_2024
-
-Run from the repository root:  python -m src.rescale
-Needs A5 (python -m src.census) and A6 (python -m src.worldpop) first. Then run the
-checks; the first part of S8 tests this task:  python -m src.checks
-"""
+"""WorldPop's 2024 population map fitted to the 2024 census."""
 
 import geopandas as gpd
 import numpy as np
@@ -52,17 +13,7 @@ SHOW = 5    # barangays printed at each end of the scale factors, to inspect
 
 
 def worldpop_in(shapes):
-    """WorldPop's people inside each shape, counting a cut pixel by the share inside.
-
-    In plain words: sum over pixels of (share of the pixel inside the shape) x (WorldPop's
-    people in the pixel); exactextract computes the shares. Returns a table with the same
-    index as shapes and two columns: people (that sum) and pixels (the sum of the shares
-    alone, over pixels that have a WorldPop value).
-
-    The shapes are converted to EPSG:4326, the grid's CRS, first: exactextract does not
-    convert them, and shapes in metres (EPSG:32651) silently get 0 people. An empty shape
-    holds 0 people; exactextract cannot read one, so it is not sent.
-    """
+    """WorldPop's people inside each shape, counting a cut pixel by the share inside."""
     geoms = shapes.geometry.to_crs(config.CRS_EXACTEXTRACT)
     people = np.zeros(len(geoms))
     pixels = np.zeros(len(geoms))
@@ -81,11 +32,7 @@ def worldpop_in(shapes):
 
 
 def scale_factors(barangays):
-    """One row per barangay: its census total, WorldPop's people in it, and s_b = P_b / W_b.
-
-    Stops if WorldPop has nobody in a barangay: the map then gives no place to put the
-    census's people, and the factor would be infinite.
-    """
+    """One row per barangay: its census total, WorldPop's people in it, and s_b = P_b / W_b."""
     found = worldpop_in(barangays)
     table = pd.DataFrame({
         "psgc": barangays["psgc"].to_numpy(),
@@ -102,15 +49,7 @@ def scale_factors(barangays):
 
 
 def rescaled_residents(shapes):
-    """Census-fitted residents inside each shape: s_b x WorldPop's people in the shape.
-
-    shapes: a GeoDataFrame with a psgc column naming the barangay each shape lies in, e.g.
-    the barangays themselves (check S8) or one barangay's part of a hazard level (C2). In
-    plain words: count WorldPop's people in the shape, cut pixels by their share, then
-    multiply by that barangay's scale factor from config.WORLDPOP_SCALE_QC. A shape that
-    reaches outside its barangay would get the wrong factor out there, so C2 cuts each
-    hazard level by the barangay first. Returns a Series with the same index as shapes.
-    """
+    """Census-fitted residents inside each shape: s_b x WorldPop's people in the shape."""
     scale = pd.read_csv(config.WORLDPOP_SCALE_QC, dtype={"psgc": str}).set_index("psgc")["scale"]
     factor = shapes["psgc"].map(scale)
     if factor.isna().any():

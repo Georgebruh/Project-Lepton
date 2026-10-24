@@ -22,20 +22,7 @@ import { useMapContext } from '../map/mapContext.ts'
 import PanelModes from '../map/PanelModes.tsx'
 import './MapCompare.css'
 
-/**
- * Compare models in the city panel (route /map/quezon-city/compare, map level 2), task F14. It
- * was its own screen, /compare (F9, Figma frame "Compare models", node 12:966); now it is the
- * panel's middle tab, beside the case forecast and the prophylaxis plan, and /compare opens it.
- *
- * The chart, the Controls panel and the scores are F9's. The forecast is the map's, in the mode
- * shown: in Simulation mode the weeks after QCESD's last count are added, their made-up counts
- * outlined and badged "Simulated". The scores are always the real run's (scores.json, beside the
- * B10 file city_forecast.json names), and only over real weeks.
- *
- * The period is kept in the address (?period=12w, ?period=2024, ?period=all; the latest year
- * without one). The toggles start as in Figma: M4 and M3 on, the 90% range, the threshold and
- * the counts shown.
- */
+/** Compare models in the city panel (route /map/quezon-city/compare, map level 2). */
 export default function MapCompare() {
   const { forecast } = useMapContext()
   const { storms, scores } = useLoaderData<typeof loadCompareData>()
@@ -71,7 +58,7 @@ export default function MapCompare() {
       <title>Compare models · LEPTON</title>
       <PanelModes mode="compare" />
       <div className="map-compare-heading">
-        {/* F11: takes the keyboard when the city opens (MapLayout) */}
+        {/* Takes the keyboard when the city opens (MapLayout) */}
         <h2 className="map-compare-title heading-l" tabIndex={-1}>
           Quezon City
         </h2>

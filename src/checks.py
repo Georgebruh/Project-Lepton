@@ -1,16 +1,4 @@
-"""Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
-
-Also runs 14 checks with no S number, named by their task:
-  A11 storm facts; B2 what a model may see; B8 M0 and M1; B9 M3;
-  D2 MASE denominator; D4 lead time; D5 primary endpoint; D6 flood test;
-  F2 app data; F9 scores; E6 score tables; F14 NOAH tiles; F14 simulation;
-  E10 package.
-
-Run from the repository root:  python -m src.checks
-A check whose data file is not on this computer is reported as SKIP.
-Any FAIL stops work: the script exits with code 1.
-A check may return a short text, printed after PASS.
-"""
+"""Sanity checks S1-S11."""
 
 import sys
 from datetime import date
@@ -36,12 +24,7 @@ def need_file(path, task):
 
 
 def s1_calendar():
-    """S1 (A3): CDC/MMWR weeks.
-
-    9 Aug 2026 is 2026 week 32 (9-15 Aug); 2020 and 2025 have 53 weeks;
-    2015 week 1 starts 4 Jan 2015. Then the same on the A3 calendar table,
-    plus: every week index covers 7 days with no gaps, and week 53 maps to 52.
-    """
+    """S1: CDC/MMWR weeks."""
     wk = Week.fromdate(date(2026, 8, 9))
     assert (wk.year, wk.week) == (2026, 32), f"got {wk}"
     assert wk.startdate() == date(2026, 8, 9), wk.startdate()
@@ -51,7 +34,7 @@ def s1_calendar():
     assert Week(2015, 1).startdate() == config.FIRST_WEEK_START, (
         f"2015 week 1 starts {Week(2015, 1).startdate()}, expected {config.FIRST_WEEK_START}")
 
-    # The A3 table: the same answers, plus a gap-free week index.
+    # The calendar table: the same answers, plus a gap-free week index.
     table = weeks.build_calendar()
     row = table.set_index("date").loc[date(2026, 8, 9)]
     assert (row["year"], row["week"]) == (2026, 32), f"got {row['year']} week {row['week']}"
@@ -71,12 +54,7 @@ def s1_calendar():
 
 
 def s3_census():
-    """S3 (A5): boundaries, 2024 totals and 2020 age tables joined on PSGC.
-
-    142 QC barangays, each code once, matched in all three sources (a shape, a
-    2020 total and a 2024 total); barangay totals add up to QC's 2020 and 2024
-    census totals; the 2020 single ages add up to each barangay's 2020 total.
-    """
+    """S3: boundaries, 2024 totals and 2020 age tables joined on PSGC."""
     import geopandas as gpd
 
     if not config.BARANGAYS_QC.exists():
@@ -100,22 +78,12 @@ def s3_census():
 
 
 def s2_rain_file():
-    """S2 (A4): scan imerg_daily.nc in the A4 box.
-
-    Passes when: the cells are exactly the A4 box; there is one value per UTC day from
-    IMERG_START with no day missing; no value is a fill value (stored as missing) or
-    negative; and big storms show up as wet days, which proves the dates and the place
-    are right. Days are ranked by the plain average over the box's cells (1 = wettest):
-    Carina's wettest day (23-25 July 2024) must be in 2024's wettest 5% of days, and
-    each of S2_KNOWN_STORMS must have a day in the whole record's wettest 1%.
-    (IMERG ranks Carina only #10 of 2024: satellites under-read long monsoon rain.)
-    """
+    """S2: scan imerg_daily.nc in the rain box."""
     need_file(config.IMERG_DAILY, "A4 (python -m src.imerg)")
     with xr.open_dataset(config.IMERG_DAILY) as ds:
         rain = ds["precipitation"].load()
 
     # The box: cell centres run from half a cell inside one edge to half a cell inside the other.
-    # Rule 8: lon and lat are always picked by name.
     lon_min, lat_min, lon_max, lat_max = config.IMERG_BOX
     half = config.IMERG_CELL_DEG / 2
     for name, low, high in (("lon", lon_min, lon_max), ("lat", lat_min, lat_max)):
@@ -157,18 +125,7 @@ def s2_rain_file():
 
 
 def a11_storms():
-    """A11 (no S number): the storm facts in config.STORMS that C8 and C9 read.
-
-    For each storm: flooding starts on or before the day it ends, and D (days flooded) is
-    the days from start_date to end_date, both counted. The wettest UTC days lie in the
-    storm's year, in order, and hold at least config.RAIN_ACCUM_DAYS days, so C3 and C9
-    have a whole n-day total there (A15 fetches the forecasts for those days). The flooded
-    barangays are 10-digit QC PSGC codes, none listed twice. Then, with A5's census table:
-    every code is one of QC's 142 barangays. A wrong code would quietly lower C8's share of
-    flooded barangays that were flagged. Last, with A4's IMERG file: IMERG's wettest n-day
-    window ending during the flood (start_date to end_date) ends on one of the wettest days,
-    so C8 takes the storm's real peak and A15 fetches the forecasts for it.
-    """
+    """The storm facts in config.STORMS that the storm runs read."""
     for storm, facts in config.STORMS.items():
         start, end = facts["start_date"], facts["end_date"]
         assert start <= end, f"{storm}: flooding ends ({end}) before it starts ({start})"
@@ -206,18 +163,7 @@ def a11_storms():
 
 
 def s4_cases():
-    """S4 (A13): cases_weekly.csv, the weekly counts every Layer 1 model reads.
-
-    Passes when: the columns are week_index, year, week, cases; there is one row per week
-    from 2015 week 1 with no gap and no duplicate, each row's year and week match its week
-    index (A3); counts are whole numbers, 0 or more. Unconfirmed weeks are missing, not 0:
-    every week after the last complete one (cases.last_complete_week) is missing and none
-    before it is. Then, with QCESD's list: the file equals a fresh build (so it is not left
-    over from an older list), no case is lost (the weeks hold every case in the list), at
-    least 99% of onset-to-admission delays are within config.CASES_COMPLETE_DAYS (the
-    completeness rule still holds), and each published QCESD total is reproduced by onset
-    date within 5% (config.CASES_PUBLISHED).
-    """
+    """S4: cases_weekly.csv, the weekly counts every Layer 1 model reads."""
     from src import backtest, cases as case_list
 
     need_file(config.CASES_WEEKLY, "A13 (python -m src.cases)")
@@ -256,11 +202,7 @@ def s4_cases():
 
 
 def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
-    """Made-up weekly counts from `first_year` to `last_year` for S7 and B8: 10 x (year - 2014) + week.
-
-    COVID years get 10,000 in every week, so a threshold or M1 that wrongly
-    used them would be far off.
-    """
+    """Made-up weekly counts from `first_year` to `last_year`: 10 x (year - 2014) + week."""
     rows = []
     for year in range(first_year, last_year + 1):
         for wk in Year(year).iterweeks():
@@ -271,17 +213,14 @@ def toy_cases(last_year, first_year=config.FIRST_WEEK_START.year):
 
 
 def hide_after(cases, cutoff):
-    """Copy of `cases` with every count after week index `cutoff` overwritten, as S11 does (rule 1)."""
+    """Copy of `cases` with every count after week index `cutoff` overwritten, as S11 does."""
     hidden = cases.copy()
     hidden.loc[hidden["week_index"] > cutoff, "cases"] = config.S11_HIDDEN_COUNT
     return hidden
 
 
 def stops_with(text, func, *args):
-    """True when func(*args) stops with a ValueError whose message holds `text`.
-
-    Matching the message makes sure the guard under test fired, not some other error.
-    """
+    """True when func(*args) stops with a ValueError whose message holds `text`."""
     try:
         func(*args)
     except ValueError as e:
@@ -290,17 +229,7 @@ def stops_with(text, func, *args):
 
 
 def simulated_m4_rows(rng):
-    """One made-up S5 dataset: M4's rows for config.S5_WEEKS target weeks, and each row's true mu.
-
-    The weeks are real ones from 2015 week 3 (week index 2) on, so 2020-2021 are COVID
-    weeks and P is B1's population. Weekly rain is drawn from a gamma distribution, wetter
-    in the wet season; a wet-season week floods with a set chance, its EI drawn evenly in a
-    range (config.S5_SIM). Rcum2 and EI2 are built from them as B4 does. The counts follow
-    M4 with the true values (config.S5_TRUE and S5_BASE) week by week, because each week's
-    y~ is the two counts before it (option B): mu from the formula, then a draw from
-    NB(mu, theta = 5). The season waves are computed here, not with m4.season_terms, so a
-    mistake there would show up as a miss.
-    """
+    """One made-up S5 dataset: M4's rows for config.S5_WEEKS target weeks, and each row's true mu."""
     from src import m4, population
 
     sim, true, base, theta = config.S5_SIM, config.S5_TRUE, config.S5_BASE, config.S5_THETA
@@ -337,19 +266,7 @@ def simulated_m4_rows(rng):
 
 
 def s5_m4():
-    """S5 (B5): M4 gets back the true values of made-up data, and forecasts with the offset.
-
-    From the plan: fit M4 on 50 made-up datasets of 400 weeks with true rho 0.30, beta1
-    0.15, beta2 0.05, delta -0.40 and theta 5 (simulated_m4_rows). The average estimates
-    must be near those (the plan's run gave 0.302, 0.148, 0.053, -0.396 and 5.25; here
-    within config.S5_TOLERANCE and S5_THETA_RANGE), and the forecasts, made with the
-    offset, must match the true means (median miss below config.S5_PREDICTION_TOLERANCE).
-    Then, on the last dataset: doubling P doubles every forecast (the offset's coefficient
-    is 1); M4 without EI2 is fit on the same rows and keeps Rcum2; a row with a missing
-    input is dropped from the fit but stops a forecast; with EI2 almost a copy of Rcum2
-    (correlation above 0.8) M4 leaves Rcum2 out; on rows before 2020 the COVID term is
-    left out; a negative count (S11's -999) stops the fit.
-    """
+    """S5: M4 gets back the true values of made-up data, and forecasts with the offset."""
     from src import m4
 
     rng = np.random.default_rng(config.RANDOM_SEED)
@@ -394,20 +311,7 @@ def s5_m4():
 
 
 def s6_theta():
-    """S6 (B6): theta from past misses, and which past forecasts theta_for uses.
-
-    From the plan: 20,000 draws from forecast_dist(20, 5), compared with mu = 20, give
-    estimate_theta between 4.8 and 5.2 (the plan's run: 4.94); the forecast has mean 20
-    and variance 100; estimate_theta([5, 5, 5], [5, 5, 5]) is infinity, which gives the
-    Poisson forecast.
-    Then theta_for on made-up past forecasts (toy_cases counts, mu = count x 1.3 and
-    x 0.7 in turn; COVID weeks and weeks after the cutoff get mu = 1, far off), worked by hand:
-      - cutoff 2024 week 30: the last 104 non-COVID weeks are 2022 week 31 to 2024 week
-        30 (22 + 52 + 30), so theta_for equals estimate_theta on exactly those rows.
-      - every count after the cutoff overwritten with -999 (as S11 does): same theta.
-      - forecasts only from 2022 week 1, cutoff 2022 week 20: 20 rows, fewer than 26,
-        so the training fit's theta comes back.
-    """
+    """S6: theta from past misses, and which past forecasts theta_for uses."""
     dist = forecast_range.forecast_dist(20, 5)
     assert np.isclose(dist.mean(), 20) and np.isclose(dist.var(), 100), (
         f"forecast_dist(20, 5): mean {dist.mean()}, variance {dist.var()}")
@@ -445,20 +349,7 @@ def s6_theta():
 
 
 def s7_breach():
-    """S7, first part (B6's forecast_dist, B7): breach probability and thresholds.
-
-    From the plan: forecast_dist(20, 5) with threshold 12.4 gives sf(12) = 0.758
-    = P(Y >= 13); threshold 200 gives about 0. A count equal to the threshold is
-    not a breach, in the forecast and in the scored outcome alike.
-    Then thresholds on made-up counts (toy_cases), worked by hand:
-      - 2019 week 1, cutoff 2018 week 50: 2018 is not complete yet, so the years
-        are 2015-2017, with week-1 counts 11, 21, 31: mean 21, SD 10, T = 41.
-      - every count after the cutoff overwritten with -999 (as S11 does): still 41.
-      - 2025: the 5 most recent non-COVID years are 2018, 2019, 2022-2024, and
-        week 53 gets week 52's threshold. With 2023 missing a week, 2017 replaces it.
-      - 2017 has only 2 years before it, so it stops.
-    The second part, "S7 scores" (wis, episodes and the exact interval), is s7_scores (D1, D3).
-    """
+    """S7, first part: breach probability and thresholds."""
     dist = forecast_range.forecast_dist(20, 5)
     p = thresholds.breach_probability(dist, 12.4)
     assert round(p, 3) == 0.758, f"Pr(breach) at 12.4 = {p}"
@@ -492,23 +383,7 @@ def s7_breach():
 
 
 def s7_scores():
-    """S7, second part (D1, D3): WIS, episodes and the exact interval, then each score by hand.
-
-    From the plan: WIS of a forecast sitting on the truth = 0; forecast_dist(20, 5) has
-    WIS 2.12 at y = 20 and 32.0 at y = 60; the episodes of weeks [3, 4, 6, 10, 11] are
-    [[3, 4, 6], [10, 11]]; proportion_confint(5, 6, method='beta') = 0.359-0.996.
-    Worked by hand:
-      - counts 10, 20 with forecasts 12, 17: misses +2, -3, so MAE 2.5, RMSE sqrt(6.5), bias -0.5.
-      - forecast_dist(20, 5)'s 90% range holds 20 and not 60.
-      - p = 0.9, 0.2 with outcomes 1, 0: Brier (0.01 + 0.04) / 2 = 0.025; against a usual
-        rate of 0.5 (reference 0.25), BSS = 0.9.
-      - reliability of p = 0.1, 0.2, 0.3, 0.4 with outcomes 0, 1, 0, 1: the middle two pool,
-        giving observed rates 0, 0.5, 1 over 1, 2, 1 forecasts.
-      - alarms for p = 0.1, 0.4, 0.6, 0.9 with outcomes 0, 0, 1, 1: p* = 0.6, F1 = 1.
-      - usual rate: of 2018's weeks (breached, not), a COVID week and a 2017 week, only the
-        2018 ones count: 0.5.
-      - score_models on two made-up models: MAE as by hand; a model missing a week stops.
-    """
+    """S7, second part: WIS, episodes and the exact interval, then each score by hand."""
     assert scores.wis(7, stats.randint(7, 8)) == 0, "all weight on the truth must give WIS 0"
     dist = forecast_range.forecast_dist(20, 5)
     w20, w60 = scores.wis(20, dist), scores.wis(60, dist)
@@ -548,23 +423,7 @@ def s7_scores():
 
 
 def d4_lead_time():
-    """D4 (no S number): lead time per outbreak episode, worked by hand.
-
-    Made-up forecasts for 2023 weeks 1-16, alarm cut-off p* = 0.5. Breach weeks 4, 5, 7,
-    11, 12 and 15 form three episodes (gap 2): [4, 5, 7], [11, 12] and [15]. Alarms
-    (p >= 0.5) for weeks 3, 5, 7 and 11; week 3 did not breach, so it does not count.
-    Forecast day = target week - 1.
-      Option B (shown when the first breach week ends):
-        [4-7]: first alarm for week 5, made in week 4; shown week 4: lead 0, not in advance
-        [11-12]: alarm for week 11, made in week 10; shown week 11: lead 1, in advance
-        [15]: no alarm: not caught
-        -> 1 of 3 caught in advance; 2 alarmed, median lead 0.5
-      Option C, g = 2 (shown 2 weeks later): leads 2 and 3 -> 2 of 3, median lead 2.5
-    Counting the alarm for week 3 would give the first episode a lead of 2 in option B. An
-    alarm only for week 6, a quiet week inside the first episode, does not count either.
-    A 2021 episode with alarms lies outside the scored years (config.PROB_SCORE_YEARS).
-    A p* outside 0-1, two forecasts for one week, a missing p and no episode at all stop.
-    """
+    """Lead time per outbreak episode, worked by hand."""
     def week(n):
         return weeks.week_index_of(2023, n)
 
@@ -603,17 +462,7 @@ def d4_lead_time():
 
 
 def d2_mase():
-    """D2 (no S number): MASE's fixed denominator on made-up counts, worked by hand.
-
-    toy_cases from 2015 to 2018 (10 x (year - 2014) + week) with 52 added to 2017 week 5.
-    Every 2016 and 2017 week is 10 more than 52 weeks before, except 2017 week 5:
-    87 - 25 = 62. So the denominator is (103 x 10 + 62) / 104 = 10.5. Using 2018 too
-    (whose week 5 now misses by 42) or week numbers from the wrong year would change it.
-    Then MAE 21 and 5.25 give MASE 2 and 0.5. These stop: a missing count in 2016 or
-    in 2015 (looked back to), a negative count (S11's -999), a missing or repeated week,
-    week indexes that do not match their year and week, a table that starts in 2016
-    (nothing to look back to), no years at all, and a constant series (denominator 0).
-    """
+    """MASE's fixed denominator on made-up counts, worked by hand."""
     cases = toy_cases(2018)
     cases.loc[(cases["year"] == 2017) & (cases["week"] == 5), "cases"] += 52
     denominator = scores.mase_denominator(cases)
@@ -648,12 +497,7 @@ def d2_mase():
 
 
 def toy_forecasts(misses, years=(2022, 2023)):
-    """Made-up forecasts for D5 and D6: every week of `years`, count y = 20.
-
-    misses: {model: list of misses}; week i's forecast is 20 + misses[i % len(misses)], so
-    each week's loss difference is known by hand. In a COVID week and a 2017 week the first
-    model misses by 1,000: a comparison that wrongly used them would be far off.
-    """
+    """Made-up forecasts for the comparison checks: every week of `years`, count y = 20."""
     rows = []
     targets = [(year, wk) for year in years for wk in Year(year).iterweeks()]
     for i, (year, wk) in enumerate(targets):
@@ -668,23 +512,7 @@ def toy_forecasts(misses, years=(2022, 2023)):
 
 
 def d5_primary_endpoint():
-    """D5 (no S number): the block bootstrap, the Diebold-Mariano test and M4 vs M3, worked by hand.
-
-      - d = 1, 2, 3, 4 with 2-week blocks: the blocks are [1, 2], [2, 3], [3, 4] (means
-        1.5, 2.5, 3.5) and a resample joins two of them, so its mean runs from 1.5 to 3.5.
-        Each end has a 1-in-9 chance, more than 2.5%, so the interval is exactly
-        1.5-3.5. Resampling single weeks instead would reach 1 and 4.
-      - One block as long as d: every resample is d itself, so the interval is its mean.
-      - DM of d = 1, -1, 2, 0: mean 0.5, sd sqrt(5/3), so DM = 0.5 / (sqrt(5/3) / 2) =
-        sqrt(0.6); its p-value equals scipy's paired t test.
-      - M4 vs M3 over 2022-2023 (104 weeks): M3 hits every count, M4 misses by 1, 3, 1, 3,
-        ..., so d alternates 1 and 3: mean 2. An 8- or 4-week block always holds as many 1s
-        as 3s, so those intervals are exactly 2-2 and M3 misses less; a 13-week block holds
-        7 of one, so its interval spreads around 2. DM = 2 / (sqrt(104/103) / sqrt(104)) =
-        2 sqrt(103). The COVID and 2017 weeks (miss 1,000) are outside the MAE window.
-      - Stops: a model missing a week, two models scored against different counts, a model
-        with no forecasts, fewer weeks than a block, and DM when every d is the same.
-    """
+    """The block bootstrap, the Diebold-Mariano test and M4 vs M3, worked by hand."""
     boot = compare.block_bootstrap([1, 2, 3, 4], block=2)
     assert (boot["mean"], boot["low"], boot["high"]) == (2.5, 1.5, 3.5), f"d = 1-4, 2-week blocks: {boot}"
     one = compare.block_bootstrap([1, 5, 2, 8], block=4)
@@ -719,21 +547,7 @@ def d5_primary_endpoint():
 
 
 def d6_flood_test():
-    """D6 (no S number): the flood test and the practical test on made-up misses, worked by hand.
-
-    2022-2023 (104 weeks), count 20 every week (toy_forecasts).
-      - EI2 helps: M4 hits every count, M4 without EI2 misses by 1, 3, 1, 3, ...: d = -1, -3,
-        mean -2, and every 8-week block holds as many -1s as -3s, so the interval is
-        exactly -2 to -2: "makes M4 more accurate". M1 misses like M4 without EI2: M4 vs
-        M1 is also -2, with DM = -2 sqrt(103).
-      - EI2 adds nothing: M4 misses by 1, 0, ..., M4 without EI2 by 0, 1, ...: d = 1, -1,
-        mean 0, every 8-week block sums to 0, so the interval is 0 to 0: "adds no clear
-        accuracy ... Layer 2, not Layer 1".
-      - In both, the 4- and 13-week blocks reach the same verdict ("agree"). A made-up
-        result where the 13-week check finds no clear difference while the 8-week row
-        says M4 is more accurate must say the result depends on the block length.
-    The flood test never has a DM (nested models); the practical test always does.
-    """
+    """The flood test and the practical test on made-up misses, worked by hand."""
     helps = compare.flood_and_practical_tests(toy_forecasts({"M4": [0], "M4_no_EI2": [1, 3], "M1": [1, 3]}))
     eight = helps[helps["block_weeks"] == config.BOOT_BLOCK_WEEKS].set_index("comparison")
     for name in ("M4 vs M4_no_EI2", "M4 vs M1"):
@@ -760,14 +574,7 @@ def d6_flood_test():
 
 
 def b8_baselines():
-    """B8 (no S number): M0 and M1 on made-up counts, worked by hand.
-
-    toy_cases from 2021 to 2026: 10 x (year - 2014) + week, so 2022 week 10 = 90
-    and 2025 week 53 = 163; COVID year 2021 is 10,000 in every week. Each
-    forecast is rerun with every count after its cutoff hidden (hide_after, as
-    S11 does) and must not change; every cutoff hides some counts. Option B
-    cutoffs are the week before the target; the last M1 row is option C, g = 2.
-    """
+    """M0 and M1 on made-up counts, worked by hand."""
     cases = toy_cases(2026, first_year=2021)
     models = {"M0": baselines.m0_forecast, "M1": baselines.m1_forecast}
     worked = [
@@ -811,27 +618,7 @@ def b8_baselines():
 
 
 def b9_m3():
-    """B9 (no S number): M3's gap filling worked by hand, then its forecast on made-up counts.
-
-    toy_cases from 2015 to 2021: 10 x (year - 2014) + week; COVID years 2020 and 2021
-    are 10,000 in every week. Six counts are removed. 2015 weeks 1-2 come before the
-    first count, so training starts at 2015 week 3. With cutoff 2020 week 20:
-      2017 week 30 (July: monsoon)    mu_30 over 2015, 2016, 2018, 2019 = (40 + 50 + 70 + 80) / 4 = 60
-      2018 week 3 (January)           straight line between 42 and 44 = 43
-      2019 week 3 (January)           straight line between 52 and 54 = 53
-      2020 week 14 (2 April: lockdown) 0.5 x mu_14 = 0.5 x 44 = 22
-    B3's whole-series filling would also have used 2021's 10,000s. With cutoff 2019
-    week 3, 2019 week 30 is not seen yet, so mu_30 = (40 + 50 + 70) / 3 = 53.33, and
-    2019 week 3 has no later neighbour: 52, the last count. A table without the
-    (empty) 2015 week 1 row still trains from 2015 week 3.
-    Then M3 forecasts 2019 week 10 (true count 60, week starting 3 March 2019) with an
-    option B cutoff (week 9) and an option C cutoff (g = 2, week 7). Each forecast
-    must be within 10% of 60, and must not change when the counts after the cutoff are
-    hidden (S11) or when year and week come as floats. Last, on simulated counts
-    (negative binomial, theta 5, season peaking in August), fit_theta must be finite
-    and near 5 (config.B9_FIT_THETA_RANGE): the hybrid's own in-sample theta would be
-    infinite. Takes a few seconds: Prophet is fitted 7 times.
-    """
+    """M3's gap filling worked by hand, then its forecast on made-up counts."""
     from src import m3_port   # imports Prophet and xgboost; only this check needs them
 
     cases = toy_cases(2021)
@@ -907,23 +694,7 @@ def b9_m3():
 
 
 def b2_view():
-    """B2 (no S number): what a model may see at forecast day T, on made-up counts worked by hand.
-
-    toy_cases from 2022 to 2026: 10 x (year - 2014) + week, so 2024 week 10 = 110 and 2025
-    week 53 = 163. Forecast day T = 2024 week 10, target 2024 week 11:
-      - option B: cutoff T; y~ = y(2024 w10) + y(w9) = 110 + 109 = 219. The last training
-        row is target w10, with y(w9) + y(w8) = 217; the first two rows have no y~ (2021 is
-        not in the data) and the third is y(2022 w2) + y(w1) = 82 + 81 = 163.
-      - option C, g = 2: cutoff w8; y~ = y(w8) + y(w7) = 215. The last training row is
-        target w8, with y(w5) + y(w4) = 209. g = 1 and 3: y~ = 217 and 213.
-      - the 2-week forecast (B11, h = 2) in option B: y~ unchanged, 219; target w12; the last
-        training row (w10) uses y(w8) + y(w7) = 215.
-      - across a 53-week year, option B, T = 2026 w1: y~ = y(2026 w1) + y(2025 w53) = 121 + 163.
-    The forecast's y~ equals the training row's y~ for the same target, once that target can
-    be seen (same lag). Each case is rerun with every count after the cutoff overwritten
-    with -999 (hide_after, as S11 does): nothing changes. Must stop: no option set (None),
-    option A (not built), a missing count at the cutoff, a week listed twice.
-    """
+    """What a model may see at forecast day T, on made-up counts worked by hand."""
     cases = toy_cases(2026, first_year=2022)
     T = weeks.week_index_of(2024, 10)
     worked = [
@@ -979,15 +750,7 @@ def b2_view():
 
 
 def s8_census_fit():
-    """S8, first part (C1): each barangay's rescaled pixels add up to its 2024 census total.
-
-    Counts every barangay's census-fitted residents again, from the WorldPop grid and the
-    barangay shapes, with rescale.rescaled_residents (the function C2 uses for the hazard
-    levels), and passes when each is within 0.1% (config.S8_CENSUS_TOLERANCE) of its
-    pop_2024. That also catches a scale file left over from an older grid or older shapes.
-    The scale file must hold one positive factor for each of A5's 142 barangays.
-    The second and third parts (exposed residents, C2) are s8_overlay.
-    """
+    """S8, first part: each barangay's rescaled pixels add up to its 2024 census total."""
     # Files first: without them the check is a SKIP, even where exactextract is not installed.
     need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
     need_file(config.WORLDPOP_SCALE_QC, "C1 (python -m src.rescale)")
@@ -1015,15 +778,7 @@ def s8_census_fit():
 
 
 def s8_overlay():
-    """S8, second and third parts (C2): the overlay table, and the barangays to inspect.
-
-    overlay_qc.csv holds one row for each of the 142 barangays x 3 maps x 3 hazard levels,
-    with no missing or negative area or residents. In each map, the residents of the three
-    levels never exceed the barangay's 2024 census total (with the first part's 0.1%).
-    Then lists the barangays whose exposed residents fall from the 5-year map to the 25-
-    or 100-year map, to inspect: NOAH modelled each map separately, so this is not a
-    failure (python -m src.overlay prints their numbers).
-    """
+    """S8, second and third parts: the overlay table, and the barangays to inspect."""
     # Files first: without them the check is a SKIP, even where exactextract is not installed.
     need_file(config.BARANGAYS_QC, "A5 (python -m src.census)")
     need_file(config.OVERLAY, "C2 (python -m src.overlay)")
@@ -1056,11 +811,7 @@ def s8_overlay():
 
 
 def toy_overlay():
-    """Made-up C2 table for S9: 2 barangays x 3 maps x 3 levels, residents worked by hand.
-
-    Barangay "B" has fewer residents in the 25-year map than in the 5-year one (S8 lists
-    real barangays like it), so the interpolation must also work going down.
-    """
+    """Made-up overlay table for S9: 2 barangays x 3 maps x 3 levels, residents worked by hand."""
     pops = {  # (psgc, var): (Pop_5, Pop_25, Pop_100)
         ("A", 1): (100, 200, 400), ("A", 2): (10, 50, 90), ("A", 3): (0, 0, 30),
         ("B", 1): (80, 60, 70), ("B", 2): (0, 20, 20), ("B", 3): (0, 0, 0),
@@ -1071,18 +822,7 @@ def toy_overlay():
 
 
 def s9_return_levels():
-    """S9 (C3): Gumbel return levels, the fit, and graded exposure.
-
-    From the plan: a Gumbel curve with mu = 100, beta = 30 has R(5), R(25), R(100) =
-    145.0, 196.0, 238.0. Fitting 500 samples of 25 maxima gives a median R(25) of about
-    191, with 90% of fits between 164 and 224 (within S9_FIT_TOLERANCE_MM here; the
-    random seed moves them a little). Graded exposure on toy_overlay: 0 at or below R0,
-    exactly Pop_5 at R(5), Pop_100 above R(100), halfway between Pop_5 and Pop_25 at the
-    rain halfway between. Rule 2: the fit for a year uses only years before it, so
-    changing that year's maxima or later ones changes nothing; under 10 years stops.
-    n-day totals (config.RAIN_ACCUM_DAYS): daily rain 10, 20, 30, 0, 5 gives 3-day totals
-    60, 50, 35 on days 3-5; 1 day returns the rain unchanged; a missing day stops.
-    """
+    """S9: Gumbel return levels, the fit, and graded exposure."""
     from src import flood_exposure as fe
 
     true = [round(fe.gumbel_level(100, 30, t), 1) for t in config.NOAH_RETURN_PERIODS]
@@ -1136,14 +876,7 @@ def s9_return_levels():
 
 
 def s9_exposure_index():
-    """S9, real data (C3): ei_weekly.csv.
-
-    Made with config.RAIN_ACCUM_DAYS (the rain_days column), so a file from an older run
-    or another n is caught. One row per fit year and week, every fit year from
-    BACKTEST_FIRST_YEAR to BACKTEST_LAST_YEAR, weeks from 2015 week 1 with no gap; EI
-    between 0 and 100, never missing; the wettest week of each fit year has the highest
-    EI or ties it (EI only grows with rain).
-    """
+    """S9, real data: ei_weekly.csv."""
     need_file(config.EI_WEEKLY, "C3 (python -m src.flood_exposure)")
     ei = pd.read_csv(config.EI_WEEKLY)
     assert "rain_days" in ei.columns, "ei_weekly.csv has no rain_days column: rerun python -m src.flood_exposure"
@@ -1166,24 +899,10 @@ def s9_exposure_index():
 
 
 def s10_shares():
-    """S10, first part (C4): child, pregnant and adult shares.
-
-    First a made-up city whose answers are worked out by hand, which tests the formulas
-    themselves. Then shares_qc.csv: one row for each of A5's 142 barangays; no share
-    missing or negative; the three shares add to 1 in every barangay; the pregnant counts
-    add up to QC's (A12's births x 0.75), which stay below the 3.5% upper bound; and the
-    file matches a fresh run of src.shares, which catches a file left over from older
-    inputs. The upper-bound test (3.5% of QC pregnant) must give shares that add to 1,
-    none negative, too.
-    The second part (doses and allocate) is C6 and C7.
-    """
+    """S10, first part: child, pregnant and adult shares."""
     from src import shares
 
-    # Made-up city of two barangays, worked by hand, with 100 pregnant women in all.
-    # a: 1,000 people in 2020, 300 under 18, 250 women 15-49 of whom 25 are 15-17; 1,250 in 2024.
-    # b: 2,000 people in 2020, 500 under 18, 750 women 15-49 of whom 50 are 15-17; 2,500 in 2024.
-    #   a: preg = 100 x 250/1000 = 25, s_preg = 25/1250 = 0.02, s_child = 300/1000 - 0.02 x 25/250 = 0.298
-    #   b: preg = 100 x 750/1000 = 75, s_preg = 75/2500 = 0.03, s_child = 500/2000 - 0.03 x 50/750 = 0.248
+    # Made-up city of two barangays with 100 pregnant women in all, worked by hand.
     toy = pd.DataFrame({"pop_2020": [1000, 2000], "pop_2024": [1250, 2500], "children": [300, 500],
                         "women_15_49": [250, 750], "women_15_17": [25, 50]}, index=["a", "b"])
     got = shares.group_shares(toy, 100)
@@ -1221,23 +940,10 @@ def s10_shares():
 
 
 def s10_exposed():
-    """S10, C5 part: exposed people per group, and the adult risk tiers.
-
-    First a made-up city whose answers are worked out by hand, with q and r_k away from 1
-    so both are tested. Then S10's dose input, 100 exposed adults with w = 0.5, split into
-    tiers at D = 1, 3 and 10 (C6 turns them into 600, 200 and 400 capsules), plus the
-    bounds of w and the 1- and 3-day cut-off tests. Input that would give wrong counts
-    without an error must stop the run (rule 5): a barangay missing, or two maps' rows
-    passed together. Then the real tables, at each map's own rain (C2's map x C4's
-    shares): one row per barangay, nothing missing or negative; with q = r_k = 1 everyone
-    exposed equals the map's residents; the groups add up to everyone exposed; and the
-    tiers add up to the exposed adults in every preview scenario.
-    """
+    """S10: exposed people per group, and the adult risk tiers."""
     from src import exposed
 
-    # Made-up city of two barangays, q = 0.5, r_k = 0.5 at level 1 and 1 at levels 2 and 3.
-    # a: N = 100, 200, 300 -> 0.5 x (0.5 x 100 + 200 + 300) = 275; shares 0.30 / 0.02 / 0.68 -> 82.5, 5.5, 187
-    # b: N =   0,  50,   0 -> 0.5 x 50 = 25;                       shares 0.25 / 0.03 / 0.72 -> 6.25, 0.75, 18
+    # Made-up city of two barangays, q = 0.5, worked by hand.
     toy_shares = pd.DataFrame({"s_child": [0.30, 0.25], "s_preg": [0.02, 0.03], "s_adult": [0.68, 0.72]},
                               index=pd.Index(["a", "b"], name="psgc"))
     toy = pd.DataFrame({"psgc": ["a"] * 3 + ["b"] * 3, "var": [1, 2, 3] * 2,
@@ -1250,12 +956,12 @@ def s10_exposed():
     # S10's input: 100 exposed adults. (D, cut-off, w) -> (high, moderate, low)
     adults = pd.Series([100.0])
     for days, cutoff, w, expected in (
-        (1, 2, 0.5, (0, 50, 50)),     # short flood, split by w; C6: 2 x 50 + 10 x 50 = 600 capsules
-        (3, 2, 0.5, (100, 0, 0)),     # 2 days or more, all high; C6: 2 x ceil(3/7) x 100 = 200
-        (10, 2, 0.5, (100, 0, 0)),    # C6: 2 x ceil(10/7) x 100 = 400
+        (1, 2, 0.5, (0, 50, 50)),     # short flood, split by w: 2 x 50 + 10 x 50 = 600 capsules
+        (3, 2, 0.5, (100, 0, 0)),     # 2 days or more, all high: 2 x ceil(3/7) x 100 = 200
+        (10, 2, 0.5, (100, 0, 0)),    # 2 x ceil(10/7) x 100 = 400
         (1, 2, 0.0, (0, 0, 100)),     # the bounds of w
         (1, 2, 1.0, (0, 100, 0)),
-        (2, 3, 0.5, (0, 50, 50)),     # cut-off tests (C8): 2 days is short under a 3-day cut-off
+        (2, 3, 0.5, (0, 50, 50)),     # cut-off tests: 2 days is short under a 3-day cut-off
         (1, 1, 0.5, (100, 0, 0)),     # and every flood is long under a 1-day cut-off
     ):
         tiers = tuple(exposed.adult_tiers(adults, days, w, cutoff).iloc[0][exposed.TIERS])
@@ -1293,23 +999,11 @@ def s10_exposed():
 
 
 def s10_doses():
-    """S10, C6 part: drug units per barangay.
-
-    S10's input, 100 exposed adults with w = 0.5 and u = 1, split into tiers by C5 and
-    turned into capsules: 600 at D = 1 (50 moderate x 10 + 50 low x 2), 200 at D = 3
-    (100 high x 2 x 1 week) and 400 at D = 10 (2 weeks). Then made-up children and
-    pregnant women worked by hand: 10 children need 10 courses at D = 1 and at D = 7, 20 at
-    D = 8 (a part week counts whole) and 30 at D = 15; 5 pregnant women need 30 tablets;
-    u = 0.5 halves every figure. Input that would give wrong stock without an error must
-    stop the run (rule 5): u above 1, a missing count. Then the real tables at each map's
-    own rain, in every preview flood: one row per barangay, no unit missing or negative,
-    and the doxycycline tiers add up to the total.
-    The allocation part (allocate) is C7.
-    """
+    """S10: drug units per barangay."""
     from src import doses, exposed
 
     def made_up(adults=0, children=0, pregnant=0, days=1):
-        """One made-up barangay's C5 table, with S10's w = 0.5 and the plan's 2-day cut-off."""
+        """One made-up barangay's exposure table, with w = 0.5 and a 2-day cut-off."""
         tiers = exposed.adult_tiers(pd.Series([float(adults)]), days, w=0.5, cutoff=2)
         return tiers.assign(e_child=float(children), e_preg=float(pregnant))
 
@@ -1354,18 +1048,7 @@ def s10_doses():
 
 
 def s10_allocate():
-    """S10, C7 part: allocate, and how the barangays' need reaches the health centers.
-
-    S10's input: need high [100, 50], moderate [40, 60], low [20, 0] with stock 180 must
-    give high 100 and 50 (in full), moderate 12 and 18 (the 30 left, shared 40 : 60), low
-    0, total 180. Also: with stock for everyone, each center gets exactly its need; with
-    none, nobody gets anything; negative stock or a missing need stops the run (rule 5).
-    Then center_shares_qc.csv: every barangay sends need, its shares add to 1; every center
-    named can be placed; a barangay with its own centers sends need only to them, one
-    without to a single nearest center; and the file matches a fresh run (which catches
-    a file left over from older inputs). Last, at R(25) in every preview flood, the
-    health centers' need adds up to the barangays' need, pool by pool and tier by tier.
-    """
+    """S10: allocation, and how the barangays' need reaches the health centers."""
     from src import allocation, doses, exposed
 
     need = pd.DataFrame({"high": [100, 50], "moderate": [40, 60], "low": [20, 0]}, index=["a", "b"])
@@ -1431,24 +1114,7 @@ def s10_allocate():
 
 
 def s11_leakage():
-    """S11 (B10): no model reads a count it may not see; every model forecasts every week, no NaN.
-
-    From the plan: at one forecast day, overwrite every count the model may not see (after
-    T - g in option C, after T in option B) with -999 and rerun: the forecasts must not
-    change. Here on backtest.simulated_cases (made-up QC-shaped counts, B4's real rain and
-    EI), forecast day 2023 week 30, every model (M3 refits Prophet: a few seconds), in
-    option B and option C (g = 2), twice each:
-      - with 60 made-up past forecasts per model (mu = 1.2 x count + 1, targets up to T,
-        so in option C the last g of them cannot be scored yet), so theta comes from past
-        misses (theta_from "past");
-      - with no past forecasts, so theta comes from each training fit (theta_from "fit").
-    Then, when A13's cases_weekly.csv is on this computer, the same test on the real counts
-    at the forecast days config.S11_REAL_DAYS, option C, at g = 2 and at each guard rerun's
-    g (1 and 3), with the past forecasts from that run's results file (forecasts.csv,
-    forecasts_g1.csv, forecasts_g3.csv) when it is here, else none.
-    Then every results/forecasts*.csv on this computer: every model on exactly the same
-    target weeks, one forecast each, and no NaN anywhere (theta may be infinity: Poisson).
-    """
+    """S11: no model reads a count it may not see; every model forecasts every week, no NaN."""
     from src import backtest
 
     need_file(config.FEATURES_WEEKLY, "B4 (python -m src.features)")
@@ -1485,13 +1151,7 @@ def s11_leakage():
 
 
 def s11_real_counts(features, pop):
-    """S11's hiding test on A13's real counts: config.S11_REAL_DAYS, option C, g = 2, 1 and 3.
-
-    At each forecast day T and guard g, every count after T - g is overwritten with -999
-    and every model's forecast row must not change. The past forecasts (for theta) are
-    the ones before T in that g's results file, as in the real run; without the file,
-    none (theta from the fit).
-    """
+    """S11's hiding test on the real counts: config.S11_REAL_DAYS, option C, g = 2, 1 and 3."""
     from src import backtest
 
     cases = backtest.load_cases()
@@ -1516,36 +1176,7 @@ def s11_real_counts(features, pop):
 
 
 def f2_app_data():
-    """F2: the web app's data files (app/public/data/) hold the results' numbers, and every shape joins.
-
-    The app plan's U1 (numbers) and U3 (joins), as code:
-      - storms.json, centers.json and every barangay file equal a fresh export from C8's and
-        C9's results and A5's and A10's files, so a file left over from older results fails;
-      - the plan's numbers: Kristine 1 day ahead (D = 1, w = 0.5) flags 72 barangays and needs
-        789,689 residents exposed, 3,174,170 doxycycline capsules, 254,430 children's courses
-        and 37,386 amoxicillin tablets; Tatalon (1381300121) has 36,809 of its 58,286
-        residents exposed (63%) and needs 138,400 capsules, 13,463 courses and 1,680 tablets;
-      - joins on PSGC: F14's ph_cities.json holds the Philippines' 1,642 cities and
-        municipalities (config.PH_CITY_COUNT), one PSGC each, with a province each, and only
-        Quezon City has data; 142 of 142 barangays in the shapes, in A5 and in every barangay
-        file; each run's barangays add up to its QC totals (both rounded to whole numbers, so
-        within about half a unit per barangay);
-      - NCR's 17 outlines leave no gap and overlap less than 1 m2, and Quezon City's outline
-        is its barangays joined (within 1 m), so the map's two levels line up;
-      - F4: Quezon City has a label point, inside it, and (F14) no other city does: the street
-        map names the rest; city_forecast.json names config.APP_LEVEL_MODEL and the outbreak
-        levels of config.APP_LEVELS;
-      - F14: ph_islands.json's coasts are valid, without holes, and hold all but 1% of the
-        cities' land (the islands under config.PH_ISLANDS_MIN_KM2 it leaves out), adding at
-        most 2% (the lakes and the gaps between faeldon's files it closes);
-      - every health center has coordinates or is listed with C7's reason for leaving it out;
-      - F15: each of the 142 barangays names the health centers that hold its stock, centers
-        C7 sends stock to, their shares adding up to 1;
-      - every file with doses carries the not-prescriptions label;
-      - city_forecast.json equals a fresh export when B10's forecasts are on this computer (a
-        simulated run's without M3, whose Prophet fits differ from computer to computer), and
-        scores.json sits beside a real run only, never beside made-up counts.
-    """
+    """The web app's data files (app/public/data/) hold the results' numbers, and every shape joins."""
     import json
 
     import geopandas as gpd
@@ -1655,9 +1286,7 @@ def f2_app_data():
     if table is not None:
         on_disk, export = read("city_forecast.json"), as_written(app_data.city_forecast(table, simulated, path))
         if simulated:
-            # B10's --simulate run gives other M3 numbers on each computer (Prophet's fits differ;
-            # the made-up counts and the other models match), so a simulated file made on another
-            # computer is compared without M3. Its made-up numbers are not results either way.
+            # M3 differs by computer, so a simulated file from another computer is compared without M3.
             for content in (on_disk, export):
                 for week in content["weeks"]:
                     week["forecasts"].pop("M3", None)
@@ -1683,30 +1312,18 @@ def f2_app_data():
             f"get stock, {left_out} left out and listed; {len(held)} barangays name their centers; {layer1}")
 
 
-PERSON_COLUMNS = {   # E10: columns of a person's record; no tracked table may have one
-    # Not a bare "name": results tables use it for a model's or a comparison's name (D8's d8_fig2_mae.csv)
+PERSON_COLUMNS = {   # columns of a person's record; no tracked table may have one
+    # Not a bare "name": results tables use it for a model's or a comparison's name
     "full_name", "first_name", "last_name", "patient", "patient_name", "patient_id",
     "case_id", "age", "sex", "gender", "address", "birthdate", "birth_date", "date_of_birth",
     "onset", "onset_date", "date_onset", "contact", "phone",
-    # A13: QCESD's case list (config.QCESD_COLUMNS), lower-cased; District and Barangay are left out
-    # because aggregated tables use them too
+    # QCESD's case list columns, lower-cased; District and Barangay are left out (aggregated tables use them).
     "year_of_onset", "date_of_onset", "morbidity_week", "date_of_admission", "admission_date",
 }
 
 
 def e10_package():
-    """E10 (no S number): what the code package ships.
-
-    1. requirements.txt pins every package with == and this computer has exactly those
-       versions (the check pass values were confirmed with them).
-    2. Every package that src/ and config.py import is in requirements.txt, unless it
-       comes with Python.
-    3. git tracks nothing under data/ except the per-file notes (.md) and .gitkeep: data
-       go through the team drive, and case records never ship (rule 11).
-    4. No tracked .csv has a column of a person's record (PERSON_COLUMNS: full name, age,
-       sex, address, onset date, QCESD's case-list columns, ...): results hold aggregates only.
-    Parts 3 and 4 need git; in a copy without it they are not checked.
-    """
+    """What the code package ships."""
     import ast
     import re
     import subprocess
@@ -1766,16 +1383,7 @@ def e10_package():
 
 
 def f9_scores():
-    """F9: the scores Compare models shows (scores.json) equal D8's figure 2 table.
-
-    The page's score table reads each model's MAE, MASE, WIS, 90% coverage and Brier score
-    from F2's scores.json, and its primary result D5's mean of |error M4| - |error M3| with the
-    95% interval. F9 is done when, after B10's real run, the table equals D8's d8_fig2_mae.csv:
-    each model's MAE is its "MAE by model" row, and the primary result is the 8-week
-    "M4 vs M3" row (mean, interval, weeks and verdict). Both files round to 4 decimals.
-    SKIP until B10's real run, scores.json and D8's table are all on this computer; before the
-    real run there is no scores.json and the page shows "—" (check "F2 app data").
-    """
+    """The scores Compare models shows (scores.json) equal the figure 2 table."""
     import json
 
     need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
@@ -1811,14 +1419,7 @@ def f9_scores():
 
 
 def e6_score_tables():
-    """D1-D6's score tables for E6 (src/score_tables.py) agree with B10's forecasts and D8's tables.
-
-    d1_scores.csv: each window holds as many target weeks as forecasts.csv has in its years;
-    each model's MAE over the MAE years equals its "MAE by model" row in d8_fig2_mae.csv;
-    M4's and M3's Brier scores over 2022-2026 equal those in d8_fig3_reliability.csv. The
-    all-years comparisons cover every target week. All files round to 4 decimals.
-    SKIP until B10's forecasts, D8's tables and the score tables are on this computer.
-    """
+    """The score tables (src/score_tables.py) agree with the forecasts and the figure tables."""
     need_file(config.FORECASTS, "B10 (python -m src.backtest, after A13)")
     need_file(config.D8_FIG2_TABLE, "D8 (python -m src.paper_figures)")
     need_file(config.D8_FIG3_TABLE, "D8 (python -m src.paper_figures)")
@@ -1855,17 +1456,7 @@ def e6_score_tables():
 
 
 def f14_noah_tiles():
-    """F14: the map's NOAH tiles (app/public/data/noah_flood_<T>yr.pmtiles) cover the whole country.
-
-    src/noah_national.py writes one PMTiles file per NOAH map. Each must be a PMTiles version 3
-    file of vector tiles (its 127-byte header, https://github.com/protomaps/PMTiles spec v3), with
-    the zooms of config.NOAH_TILE_ZOOMS, small enough for GitHub (config.APP_NOAH_TILES_MAX_BYTES),
-    and bounds that reach at least config.APP_NOAH_TILES_REACH, from Mindanao to northern Luzon:
-    a file of Metro Manila alone, or of a few provinces, fails.
-    Where src/noah_national.py ran (data/clean/noah_national/manifest.csv), every province it
-    prepared for a map has flood patches, unless NOAH's own file held no shapes (features 0: the
-    100-year Tawi-Tawi zip is empty, the 5-year Masbate shapefile has no rows).
-    """
+    """The map's NOAH tiles (app/public/data/noah_flood_<T>yr.pmtiles) cover the whole country."""
     import struct
 
     import pandas as pd
@@ -1902,17 +1493,7 @@ def f14_noah_tiles():
 
 
 def f14_simulation():
-    """F14: the map's Simulation mode (app/public/data/city_simulation.json) follows the real weeks.
-
-      - its weeks start the week after city_forecast.json's last and run on without a gap to the
-        week after the day it was made (made_on): next week's forecast;
-      - every week has every model's forecast, and a whole count of 0 or more where the week had
-        ended by made_on; the week of made_on and next week have none (y null);
-      - its ECMWF rain was fetched on made_on;
-      - where B10's real run and that day's ECMWF reply are on this computer, the file equals a
-        fresh src.app_simulation for that day, without M3 (Prophet's fits differ from computer to
-        computer, as the F2 check says).
-    """
+    """The map's Simulation mode (app/public/data/city_simulation.json) follows the real weeks."""
     import json
     from datetime import date
 

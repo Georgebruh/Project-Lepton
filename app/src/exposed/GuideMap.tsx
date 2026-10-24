@@ -3,7 +3,7 @@ import type { GuideBarangay } from './guideData.ts'
 import type { LonLat } from './nearest.ts'
 import './GuideMap.css'
 
-/** The map's size in Figma's frame, px; on screen it keeps these proportions at any width. */
+/** The map's size, px; on screen it keeps these proportions at any width. */
 const WIDTH = 390
 const HEIGHT = 280
 
@@ -28,12 +28,7 @@ type GuideMapProps = {
   label: string
 }
 
-/**
- * Turns longitude and latitude into the map's px: x east and y south, with a degree of
- * longitude shrunk by cos(latitude) (over a few km, the same as a web map's projection). The
- * scale fits the given points (and the outlined barangay) inside the margins, but never closer
- * than MIN_SPAN_KM, and centres them.
- */
+/** Turns longitude and latitude into the map's px. */
 function fitPoints(points: LonLat[]): (point: LonLat) => [number, number] {
   const middleLat = points.reduce((sum, [, lat]) => sum + lat, 0) / points.length
   const kmPerLon = KM_PER_DEGREE * Math.cos((middleLat * Math.PI) / 180)
@@ -65,13 +60,7 @@ function onMap(rings: LonLat[][], toPx: (point: LonLat) => [number, number]): bo
   return Math.max(...xs) >= 0 && Math.min(...xs) <= WIDTH && Math.max(...ys) >= 0 && Math.min(...ys) <= HEIGHT
 }
 
-/**
- * F8: the map of step 3, Figma "Map" (node 39:430): Quezon City's barangays around the reader,
- * the reader's barangay outlined, a teal square where the reader is, and the nearest health
- * centers numbered as in the list. Drawn as SVG from F2's barangay outlines, so the phone guide
- * never loads MapLibre. Figma shades the barangays by Kristine's forecast, as every map in the
- * file does; the guide is not about one storm, so they are plain here.
- */
+/** The map of step 3: Quezon City's barangays around the reader. */
 export default function GuideMap({ barangays, focus, you, centers, label }: GuideMapProps) {
   const { paths, focusPath, youPx, centerPxs } = useMemo(() => {
     const shown = [...(you ? [you] : []), ...centers, ...(focus ? focus.rings.flat() : [])]

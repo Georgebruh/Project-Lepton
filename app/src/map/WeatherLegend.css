@@ -1,11 +1,11 @@
-/* F13: the weather layer's legend (WeatherLegend.tsx), Figma "Weather legend". */
+/* The weather layer's legend (WeatherLegend.tsx). */
 .weather-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   width: 262px;
   max-width: 100%;
-  /* Figma's 12 px by 14 px, between the spacing steps */
+  /* 12 px by 14 px, between the spacing steps */
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -16,7 +16,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The ramp: 8 px tall, in the provider's colors (set on the element); outlined, as its ends can be white */
+/* The ramp: 8 px tall, in the provider's colors (set on the element). */
 .weather-legend-ramp {
   height: 8px;
   border: 1px solid var(--color-border-subtle);
@@ -35,7 +35,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* F11's phone width: the map is short, so the legend leaves its credit to the map's own credits */
+/* The phone width: the map is short, so the legend leaves its credit to the map's own credits */
 @media (max-width: 599px) {
   .weather-legend-credit {
     display: none;

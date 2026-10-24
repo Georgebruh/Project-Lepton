@@ -4,12 +4,7 @@ import type { FormulaId } from './content.ts'
 /** A model's formula: the equations, then each symbol in plain words. */
 type Formula = { lines: ReactNode[]; terms: [ReactNode, string][]; plainly?: string }
 
-/**
- * F10: the formulas behind "Show the formula" in the models table, as lepton-plan.md writes
- * them (B5 for M4, B8 for M0 and M1, B7 for the threshold). The plan keeps formulas out of the
- * page's main text, so each sits behind its button. Written in HTML (sub, sup) rather than a
- * math library, which the app does not load.
- */
+/** The formulas behind "Show the formula" in the models table. */
 export const FORMULAS: Record<FormulaId, Formula> = {
   m0: {
     lines: [

@@ -9,10 +9,7 @@ type StatCardProps = {
   caption?: string
 }
 
-/**
- * F3: the Figma component "Stat card" (node 4:8): one headline number with its label and
- * source. It fills the width of its container (Figma draws it 320 px wide).
- */
+/** The "Stat card" component: one headline number with its label and source. */
 export default function StatCard({ label, value, caption }: StatCardProps) {
   return (
     <div className="stat-card">

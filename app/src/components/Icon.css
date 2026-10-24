@@ -1,11 +1,10 @@
-/* F3: the icons (Icon.tsx). */
+/* The icons (Icon.tsx). */
 .icon {
   display: block;
   flex-shrink: 0;
 }
 
-/* Keep each line's Figma width when the icon is drawn smaller than 24 px: an 18 px arrow
-   still has a 1.75 px line, as in the Figma button. Filled shapes scale as usual. */
+/* Keep each line's width when the icon is drawn smaller than 24 px. */
 .icon path,
 .icon circle {
   vector-effect: non-scaling-stroke;

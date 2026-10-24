@@ -1,9 +1,9 @@
-/* F5: the map's legend at level 3 (ExposureLegend.tsx), Figma node 56:649. */
+/* The map's legend at level 3 (ExposureLegend.tsx). */
 .exposure-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Figma's 12 px by 14 px, between the spacing steps */
+  /* 12 px by 14 px, between the spacing steps */
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -14,7 +14,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The five classes side by side, each a 56 x 10 px swatch over its range; Figma's 2 px apart */
+/* The five classes side by side, each a 56 x 10 px swatch over its range; 2 px apart */
 .exposure-legend-ramp {
   display: flex;
   gap: 2px;
@@ -35,7 +35,7 @@
   height: 10px;
 }
 
-/* Class 0, under 5%, is nearly white, so it keeps an outline (Figma) */
+/* Class 0, under 5%, is nearly white, so it keeps an outline */
 .exposure-legend-swatch-0 {
   border: 1px solid var(--color-border-subtle);
   background: var(--color-data-ramp-1);

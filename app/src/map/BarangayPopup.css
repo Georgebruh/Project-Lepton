@@ -1,9 +1,4 @@
-/*
- * F15: the barangay's pop-up (BarangayPopup.tsx): the tooltip (BarangayTooltip.css) pinned by a
- * click, with a close button and the Generate Report button. Unlike the tooltip it takes the
- * pointer, and it lies over the map's corners (the legends and buttons), under the open search
- * and the Layers panel, which come after it in the page.
- */
+/* The barangay's pop-up (BarangayPopup.tsx). */
 .barangay-popup {
   z-index: 1;
   pointer-events: auto;
@@ -14,7 +9,7 @@
   outline: none;
 }
 
-/* The close button at the title's right end: the icon in a 24 px square, the smallest target WCAG 2.2 asks for */
+/* The close button at the title's right end. */
 .barangay-popup-close {
   display: inline-flex;
   flex-shrink: 0;

@@ -1,30 +1,4 @@
-"""Quezon City health centers from the DOH National Health Facility Registry (task A10).
-
-C7 assigns each barangay's prophylaxis need to a health center, so it needs every QC
-public health facility with its location. This script gets them from the registry
-(https://nhfr.doh.gov.ph, "Active facilities") in two steps:
-1. One list request: every NCR facility of the types in config.NHFR_FACILITY_TYPES
-   (Rural Health Unit, Barangay Health Station, City Health Office); keep QC's rows.
-   QC's health centers are registered as "Rural Health Unit".
-2. One request per QC facility for its detail page, which holds the coordinates
-   (north_coord = latitude, east_coord = longitude) and the barangay's 10-digit PSGC.
-Every page is saved unchanged in data/raw/nhfr/; a page already there is not fetched
-again (delete the folder to refresh). The table is written to
-data/clean/health_facilities_qc.csv.
-
-Each facility's barangay code is checked against A5's 142 barangays, so run A5
-(python -m src.census) first.
-
-The registry's list and CSV export have no coordinates, which is why step 2 exists.
-Facility heads' names and e-mail addresses are on the detail pages; they are not
-needed and are left out of the table.
-
-The registry sits behind a firewall that refuses requests without a browser's
-User-Agent, so requests send one, and wait config.NHFR_PAUSE_S between pages.
-
-Run from the repository root:
-    python -m src.facilities
-"""
+"""Quezon City health centers from the DOH National Health Facility Registry."""
 
 import html
 import re
@@ -60,12 +34,7 @@ FIELDS = {
 
 
 def get_page(session, url, path, params=None):
-    """Return the page at url as text, saving it unchanged to path (or reading path if there).
-
-    The registry itself sends "?" for "Ñ" (e.g. "DO?A IMELDA"), so names can be off by a
-    letter; join on the PSGC code, never the name. Any byte that is not valid UTF-8 is
-    read as a replacement character so it cannot stop the run.
-    """
+    """Return the page at url as text, saving it unchanged to path (or reading path if there)."""
     if path.exists():
         return path.read_text(encoding="utf-8", errors="replace")
     r = session.get(url, params=params, timeout=TIMEOUT_S)
@@ -128,10 +97,7 @@ def qc_facility_codes(session):
 
 
 def clean_table(records):
-    """One row per facility: coordinates as numbers, license date as a date, sorted by code.
-
-    The registry writes 0, 0 when it has no location; those become missing (NaN).
-    """
+    """One row per facility: coordinates as numbers, license date as a date, sorted by code."""
     table = pd.DataFrame(records)
     for col in ("lat", "lon"):
         table[col] = pd.to_numeric(table[col], errors="coerce")
@@ -163,14 +129,7 @@ def check_table(table):
 
 
 def check_barangays(table):
-    """Stop if a facility's barangay is not one of A5's; list facilities outside their barangay.
-
-    C7 joins facilities to barangays on psgc, so a code that A5's barangays_qc.gpkg does not
-    have would leave that barangay without its health center. A facility whose point lies
-    outside its own barangay's polygon is only listed, with the distance in metres: registry
-    coordinates can be a little off near a boundary, but a far one points to a wrong
-    location, which matters when C7 sends a barangay to its nearest center.
-    """
+    """Stop if a facility's barangay is not one of the; list facilities outside their barangay."""
     if not config.BARANGAYS_QC.exists():
         raise FileNotFoundError(f"{config.BARANGAYS_QC} not found: run task A5 first (python -m src.census)")
     barangays = gpd.read_file(config.BARANGAYS_QC, layer="barangays", columns=["psgc"])

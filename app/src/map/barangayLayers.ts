@@ -9,36 +9,7 @@ import type { BarangayShapes } from './planData.ts'
 import type { MapPointer } from './tooltip.ts'
 import { tokenColor } from './tokens.ts'
 
-/*
- * F5: Quezon City's barangays on the map, at level 3, the prophylaxis plan (Figma frames 3 and
- * 3a, and the notes "Map drill-down · design notes", node 58:447).
- *
- * The barangays are one GeoJSON source keyed on PSGC (promoteId), drawn by three layers that sit
- * between the open city's fill and its outline (cityLayers.ts; F13: the fills go in with the
- * city fills, over the street map's roads and under its names, layerOrder.ts): the fills, one color per class
- * (the share of each barangay's residents in zones the rain floods); white lines, 0.75 px; and a
- * dark 2 px outline for the barangay under the pointer.
- *
- * The motion, from the notes: the lines fade in (300 ms), then the fills rise in a wave from the
- * most exposed barangay to the least (600 ms) while the city's own fill fades out; Back plays it
- * in reverse. A new run (another lead time, or another storm) recolors the barangays in the same
- * wave. With reduced motion, each of these is a 150 ms crossfade. MapLibre does not animate a
- * feature-state change, so the rise and the recoloring are stepped frame by frame
- * (featureFades.ts). Each barangay's feature state: "rise" (0 to 1, its fill's opacity), "from"
- * and "to" (the class it leaves and the class it goes to), "t" (0 to 1, how far it has gone) and
- * "hover" (0 to 1, its dark outline).
- *
- * The plan's route component (MapProphylaxis) calls open() when the plan opens, show() with each
- * run and close() when it leaves. The layers outlive that component, so that close() can play
- * the reverse before removing them: barangayLayers(map) gives the same object for the same map
- * every time. F11: highlight() shows a barangay from the plan's list as the pointer would.
- * F13: setFillOpacity() lets the satellite or terrain base map show through the fills.
- *
- * F15: every barangay can be clicked (or tapped): onPick() hears which, and a click on the map
- * outside them, which closes the barangay's pop-up. select() keeps the dark outline on the
- * barangay whose pop-up is open (feature state "selected", 0 to 1, faded like "hover"), and the
- * pointer turns into a hand over the barangays.
- */
+/* Quezon City's barangays on the map, at level 3, the prophylaxis plan. */
 
 /** What the map shows of a run: each barangay's class and the order the wave reaches them. */
 export type BarangayView = {
@@ -48,19 +19,19 @@ export type BarangayView = {
   order: string[]
 }
 
-/** The class of a barangay on a date without a storm forecast: drawn bg/raised, like a city without data. */
+/** The class of a barangay on a date without a storm forecast. */
 export const NO_DATA = -1
 
-/** The barangay under the pointer, and where the pointer is in the map, in px; F11: or the one the plan's list shows. */
+/** The barangay under the pointer, and where the pointer is in the map, in px. */
 export type BarangayPointer = MapPointer & { psgc: string; fromList?: boolean }
 
-/** F15: the barangay a click (or a tap) picked, and the point of the map clicked, for its pop-up. */
+/** The barangay a click (or a tap) picked, and the point of the map clicked, for its pop-up. */
 export type BarangayPick = { psgc: string; at: LonLat }
 
 const SOURCE = 'barangays'
 const LAYERS = { fill: 'barangays-fill', line: 'barangays-line', hover: 'barangays-hover' }
 
-/** Line widths in px, from Figma frames 3 and 3a: every barangay 0.75, the one under the pointer 2. */
+/** Line widths in px: every barangay 0.75, the one under the pointer 2. */
 const LINE = { rest: 0.75, hover: 2 }
 
 /** The layer-wide paint values the plan fades: the lines, the other cities' outlines, the city's fill. */
@@ -73,10 +44,7 @@ const RISE: ExpressionSpecification = ['number', ['feature-state', 'rise'], 0]
 const HOVER: ExpressionSpecification = ['number', ['feature-state', 'hover'], 0]
 const SELECTED: ExpressionSpecification = ['number', ['feature-state', 'selected'], 0]
 
-/**
- * The colors the barangays paint with, read from tokens.css: MapLibre draws on a canvas and
- * cannot read CSS variables.
- */
+/** The colors the barangays paint with, read from tokens.css. */
 function tokenColors(element: HTMLElement) {
   const color = (token: string) => tokenColor(element, token)
   return {
@@ -84,7 +52,7 @@ function tokenColors(element: HTMLElement) {
     noData: color('bg-raised'),
     line: color('bg-surface'),
     hover: color('text-primary'),
-    /** The other cities' outlines: dark at levels 1 and 2 (CityMap), light at level 3 (Figma frame 3). */
+    /** The other cities' outlines: dark at levels 1 and 2 (CityMap), light at level 3. */
     cities: color('text-primary'),
     citiesDim: color('border-strong'),
   }
@@ -114,17 +82,17 @@ export function barangayLayers(map: MapLibreMap): BarangayLayers {
 
 function makeBarangayLayers(map: MapLibreMap) {
   const colors = tokenColors(map.getContainer())
-  const rise = new Map<string, number>() // each barangay's "rise", as last set
-  const shown = new Map<string, number>() // each barangay's class, the one it shows or is going to
-  const middles = new Map<string, LonLat>() // F11: a point inside each barangay, for its tooltip from the list
+  const rise = new Map<string, number>() // Each barangay's "rise", as last set
+  const shown = new Map<string, number>() // Each barangay's class, the one it shows or is going to
+  const middles = new Map<string, LonLat>() // A point inside each barangay, for its tooltip from the list
   let stage: 'closed' | 'open' | 'closing' = 'closed'
-  let risen = false // whether the fills have risen, or are rising, since the plan opened
-  let linesFrom = 0 // when the lines began to fade in (performance.now())
-  let view: BarangayView | null = null // the run last shown
+  let risen = false // Whether the fills have risen, or are rising, since the plan opened
+  let linesFrom = 0 // When the lines began to fade in (performance.now())
+  let view: BarangayView | null = null // The run last shown
   let hover: ReturnType<typeof featureFader> | null = null
   let hovered: string | null = null
   let listener: ((pointer: BarangayPointer | null) => void) | null = null
-  let selectFader: ReturnType<typeof featureFader> | null = null // F15: the open pop-up's barangay keeps its outline
+  let selectFader: ReturnType<typeof featureFader> | null = null // The open pop-up's barangay keeps its outline
   let selected: string | null = null
   let picker: ((pick: BarangayPick | null) => void) | null = null
   let stopRise = () => {}
@@ -132,7 +100,7 @@ function makeBarangayLayers(map: MapLibreMap) {
   let riseTimer = 0
   let removeTimer = 0
   let removed = false
-  let fillOpacity = 1 // F13: the most a fill shows, on the base map chosen (basemap.ts, DATA_OPACITY)
+  let fillOpacity = 1 // The most a fill shows, on the base map chosen (basemap.ts, DATA_OPACITY)
 
   // Once CityMap removes the map, nothing may touch it again
   map.once('remove', () => {
@@ -163,7 +131,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     clearTimeout(removeTimer)
   }
 
-  /** Moves the dark outline to the barangay `psgc` (null: to none): the old one fades out as it fades in (150 ms). */
+  /** Moves the dark outline to the barangay `psgc` (null: to none). */
   function moveHover(psgc: string | null) {
     if (psgc === hovered) {
       return
@@ -183,7 +151,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener?.({ psgc, x, y, width, height, fromList })
   }
 
-  /** The pointer over a barangay: thicken its outline (150 ms) and report it, for its tooltip. F15: a hand, since it can be clicked. */
+  /** The pointer over a barangay. */
   function onMove(event: MapLayerMouseEvent) {
     const feature = event.features?.[0]
     if (stage !== 'open' || !feature) {
@@ -201,10 +169,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener?.(null)
   }
 
-  /**
-   * F15: a click (or a tap) on the map: the barangay under it is picked, for its pop-up; a click
-   * outside the barangays picks none, which closes the pop-up. A drag is not a click (MapLibre).
-   */
+  /** A click (or a tap) on the map. */
   function onClick(event: MapMouseEvent) {
     if (stage !== 'open') {
       return
@@ -213,7 +178,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     picker?.(feature ? { psgc: String(feature.properties.psgc), at: [event.lngLat.lng, event.lngLat.lat] } : null)
   }
 
-  /** F15: keeps the dark outline on the barangay `psgc` while its pop-up is open (null: on none), fading as a hover does. */
+  /** Keeps the dark outline on the barangay `psgc` while its pop-up is open. */
   function select(psgc: string | null) {
     const next = stage === 'open' ? psgc : null
     if (removed || next === selected) {
@@ -228,15 +193,12 @@ function makeBarangayLayers(map: MapLibreMap) {
     selected = next
   }
 
-  /** F15: a point inside the barangay `psgc`, near its middle, where a pop-up opened from the list points. */
+  /** A point inside the barangay `psgc`, near its middle, where a pop-up opened from the list points. */
   function middleOf(psgc: string): LonLat | undefined {
     return middles.get(psgc)
   }
 
-  /**
-   * F11: shows a barangay from the plan's list as the pointer would: its outline thickens and it
-   * is reported at a point inside it, for its tooltip; null ends it.
-   */
+  /** Shows a barangay from the plan's list as the pointer would. */
   function highlight(psgc: string | null) {
     const middle = psgc ? middles.get(psgc) : undefined
     if (stage !== 'open' || !psgc || !middle) {
@@ -254,7 +216,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     for (const { properties, geometry } of shapes.features) {
       middles.set(properties.psgc, shapeMiddle(shapeParts(geometry)))
     }
-    const below = CITY_LAYERS.openLine // the city's outline stays on top
+    const below = CITY_LAYERS.openLine // The city's outline stays on top
     map.addLayer(
       {
         id: LAYERS.fill,
@@ -265,7 +227,7 @@ function makeBarangayLayers(map: MapLibreMap) {
           'fill-opacity': ['*', RISE, fillOpacity],
         },
       },
-      SLOTS.fills, // above the open city's fill, which fades out under them
+      SLOTS.fills, // Above the open city's fill, which fades out under them
     )
     map.addLayer(
       {
@@ -283,7 +245,7 @@ function makeBarangayLayers(map: MapLibreMap) {
         type: 'line',
         source: SOURCE,
         layout: { 'line-join': 'round' },
-        // F15: the barangay under the pointer, and the one whose pop-up is open
+        // The barangay under the pointer, and the one whose pop-up is open
         paint: { 'line-color': colors.hover, 'line-width': LINE.hover, 'line-opacity': ['max', HOVER, SELECTED] },
       },
       below,
@@ -319,10 +281,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     stage = 'closed'
   }
 
-  /**
-   * Opens the plan: adds the barangays (or keeps them, if they are still leaving) and fades their
-   * lines in, while the other cities' outlines lighten (Figma frame 3). The fills wait for show().
-   */
+  /** Opens the plan: adds the barangays. */
   function open(shapes: BarangayShapes) {
     if (removed || stage === 'open') {
       return
@@ -339,18 +298,14 @@ function makeBarangayLayers(map: MapLibreMap) {
     paint(CITY_LAYERS.line, 'line-color', colors.citiesDim, lines)
   }
 
-  /**
-   * Shows a run on the barangays. The first after open() colors them, then, once the lines are
-   * in, makes their fills rise in the wave while the city's fill fades out. A later run recolors
-   * them in the same wave, each from the class it shows to its new one.
-   */
+  /** Shows a run on the barangays. */
   function show(next: BarangayView) {
     if (removed) {
       return
     }
     view = next
     if (stage !== 'open') {
-      return // kept for the next open()
+      return // Kept for the next open()
     }
     const quick = prefersReducedMotion()
     const wave = quick ? CROSSFADE_MS : WAVE_MS
@@ -381,10 +336,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     )
   }
 
-  /**
-   * Closes the plan (Back): the fills sink in the reverse wave, the least exposed barangay first,
-   * while the city's fill comes back; then the lines fade out and the barangays are removed.
-   */
+  /** Closes the plan (Back). */
   function close() {
     if (removed || stage !== 'open') {
       return
@@ -396,7 +348,7 @@ function makeBarangayLayers(map: MapLibreMap) {
     clearTimeout(riseTimer)
     onLeave()
     if (selected) {
-      selectFader?.fade(selected, 0) // F15: the pop-up's outline goes with the others
+      selectFader?.fade(selected, 0) // The pop-up's outline goes with the others
       selected = null
     }
     const quick = prefersReducedMotion()
@@ -422,15 +374,12 @@ function makeBarangayLayers(map: MapLibreMap) {
     listener = next
   }
 
-  /** F15: tells `next` which barangay a click picks, and null for a click outside them; null stops telling. */
+  /** Tells `next` which barangay a click picks, and null for a click outside them; null stops telling. */
   function onPick(next: ((pick: BarangayPick | null) => void) | null) {
     picker = next
   }
 
-  /**
-   * F13: the most a fill shows (1 on the street map, less over imagery), now and for later opens.
-   * The open city's fill takes it too, unless the barangays have risen over it.
-   */
+  /** The most a fill shows (1 on the street map, less over imagery), now and for later opens. */
   function setFillOpacity(opacity: number) {
     fillOpacity = opacity
     if (removed) {

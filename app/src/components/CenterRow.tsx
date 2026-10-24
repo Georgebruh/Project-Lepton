@@ -16,13 +16,7 @@ function formatCount(n: number): string {
   return n.toLocaleString('en-US')
 }
 
-/**
- * F3: the Figma component "Center row" (node 4:12): one health center's stock need, in the
- * prophylaxis panel's list (F5). The columns are doxycycline capsules, children's courses and
- * amoxicillin tablets, as whole units. Each row is a table row for screen readers
- * (role="row"), so put the rows in an element with role="table" whose first row holds the
- * column headers (role="columnheader"): CenterRowHeader below.
- */
+/** The "Center row" component: one health center's stock need, in the prophylaxis panel's list. */
 export default function CenterRow({ name, doxycycline, courses, amoxicillin }: CenterRowProps) {
   return (
     <div className="center-row" role="row">
@@ -42,11 +36,7 @@ export default function CenterRow({ name, doxycycline, courses, amoxicillin }: C
   )
 }
 
-/**
- * F6: the row of column headers above center rows, as in Home's stock list (Figma node 19:522):
- * the same columns, in the tertiary text color. The columns are named short, as in Figma ("Doxy",
- * "Child", "Amox"); screen readers hear the full names.
- */
+/** The row of column headers above center rows, as in Home's stock list. */
 export function CenterRowHeader() {
   return (
     <div className="center-row center-row-header" role="row">

@@ -1,25 +1,6 @@
-/*
- * F1: the design tokens, exported from the LEPTON Figma file (Foundations page, "Theme
- * sheet"): its two variable collections, Theme and Size, and its 15 text styles.
- *
- * Every color, corner radius, spacing step and text style in the app comes from this file.
- * Write var(--color-text-primary), var(--radius-md), var(--space-4) or className="heading-m",
- * never a hex color or a radius or gap that is not one of these steps. If the design changes,
- * change it in Figma first, then here, keeping the names.
- *
- * Each name is the Figma variable's code syntax: bg/canvas is --color-bg-canvas,
- * radius/sm is --radius-sm, space/4 is --space-4.
- */
+/* The design tokens, exported from the LEPTON file (Foundations page, "Theme sheet"). */
 
-/*
- * Theme collection: 34 colors in three modes (themes).
- *   Clinic   light, warm paper: daytime use, printing and projecting in a city health
- *            office. The app's theme, on :root.
- *   Monsoon  dark, cool: night operations during a storm. <html data-theme="monsoon">
- *   Ember    dark, warm: orange carries urgency for the dose figures. <html data-theme="ember">
- * Monsoon and Ember are kept for a later theme switch (stretch); nothing uses them yet.
- * Their blocks must stay below :root: both selectors weigh the same, so the later one wins.
- */
+/* Theme collection: 34 colors in three modes (themes). */
 :root {
   color-scheme: light;
 
@@ -33,8 +14,7 @@
   --color-border-subtle: #dedad1;
   --color-border-strong: #c4beb2;
 
-  /* Text. F11: tertiary was #8a9099 (2.6 to 3.2:1); this shade meets WCAG AA, 4.5:1, on
-     bg/canvas, surface, raised and inset */
+  /* Text. */
   --color-text-primary: #12161b;
   --color-text-secondary: #545c67;
   --color-text-tertiary: #626871;
@@ -45,8 +25,7 @@
   --color-accent-secondary: #3150c9;
   --color-accent-subtle: #dcebe7;
 
-  /* Status. F11: alert was #c2412d and warn #b7791f (4.2:1 and 3.0:1 as badge text on
-     bg/raised); these shades meet WCAG AA there and on every lighter surface */
+  /* Status. */
   --color-status-alert: #ba3e2b;
   --color-status-warn: #905f18;
   --color-status-ok: #2f8a55;
@@ -58,8 +37,7 @@
   --color-data-ramp-4: #2f8f80;
   --color-data-ramp-5: #0b4e48;
 
-  /* Map: land and borders; F13: NOAH's flood hazard, one blue from low to high (checked with the
-     dataviz palette validator against map/land), and the space around the globe */
+  /* Map: land and borders. */
   --color-map-land: #fbfaf7;
   --color-map-boundary: #d3cec4;
   --color-map-hazard-low: #82b3e3;
@@ -175,8 +153,7 @@
 
 /* Size collection: the same in every theme. */
 :root {
-  /* Corners: badges 2 px, tabs and fields 4, buttons 6, cards and panels 8.
-     No pills, no circles. */
+  /* Corners: badges 2 px, tabs and fields 4, buttons 6, cards and panels 8. */
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -197,13 +174,7 @@
   --font-sans: 'Figtree', system-ui, sans-serif;
 }
 
-/*
- * Text styles: one class per Figma text style (Heading/M is .heading-m), with the sample
- * text the Theme sheet shows for it. Each class sets the font, weight, size, line height
- * and letter spacing, never the color. Weights: Regular 400, Medium 500, SemiBold 600.
- * Figma gives letter spacing as a percent of the font size; here it is in em, the same
- * number divided by 100 (-2.5% is -0.025em).
- */
+/* Text styles: one class per text style. */
 
 /* Display/XL: "Before the flood" */
 .display-xl {

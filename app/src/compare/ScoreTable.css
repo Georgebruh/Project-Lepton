@@ -1,8 +1,4 @@
-/*
- * F9: the scores under the chart (ScoreTable.tsx). Figma leaves this room empty: the primary
- * result is the Stat card (F3, 320 px wide in Figma) and the table follows How it works' models
- * table (node 12:1482): a raised header row in Label/Eyebrow, 16 by 24 px cells, LEPTON's row tinted.
- */
+/* The scores under the chart (ScoreTable.tsx). */
 .score-table {
   display: flex;
   flex-direction: column;
@@ -78,7 +74,7 @@
   border-bottom: 0;
 }
 
-/* LEPTON's row: the accent's pale tint, as in Figma's models table */
+/* LEPTON's row: the accent's pale tint, as in the models table */
 .score-table-table .score-table-ours th,
 .score-table-table .score-table-ours td {
   background: var(--color-accent-subtle);
@@ -106,11 +102,7 @@
   margin: 0;
 }
 
-/*
- * When the results column (CompareModels.css) is under 900 px: the Stat card above the table,
- * and tighter cells, so the six columns fit the 656 px column at 1024 px. Last in the file, so
- * these win over the rules above.
- */
+/* When the results column (CompareModels.css) is under 900 px. */
 @container compare-results (max-width: 900px) {
   .score-table-body {
     grid-template-columns: minmax(0, 1fr);

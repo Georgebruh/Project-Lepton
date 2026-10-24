@@ -2,7 +2,7 @@ import { scaleBand, scaleLinear } from 'd3-scale'
 import type { ForecastWeek, ModelForecast } from './mapData.ts'
 import './WeeklyCasesChart.css'
 
-/** The plot's size in px, from Figma "Weekly cases" (node 53:345): 351 wide, bars standing on a line 130 down. */
+/** The plot's size in px: 351 wide, bars standing on a line 130 down. */
 const WIDTH = 351
 const HEIGHT = 130
 /** Next week's marks are 10 px wide: the range as a bar, the expected count as a square. */
@@ -29,23 +29,15 @@ type WeeklyCasesChartProps = {
   rangeName: string
 }
 
-/**
- * F4: the city panel's chart, Figma "Weekly cases" (node 53:345): the last 15 weeks' counts as
- * grey bars, then next week's forecast, its range as a pale teal bar and its expected count as a
- * teal square, and the epidemic threshold as an amber line across.
- *
- * The weeks stand in 16 equal slots, each bar 60% of its slot (d3's band scale, padding 0.4
- * between and 0.2 at the ends). Counts run from 0 at the bottom to a round number above the
- * tallest mark (d3's nice(), about 5 steps): in Figma 88 cases is the tallest, so the top is 100.
- */
+/** The city panel's chart. */
 export default function WeeklyCasesChart({ past, pastWeeks, next, threshold, rangeName }: WeeklyCasesChartProps) {
   const slots = Array.from({ length: pastWeeks + 1 }, (_, slot) => slot)
   const x = scaleBand<number>().domain(slots).range([0, WIDTH]).paddingInner(0.4).paddingOuter(0.2)
-  // F14: a simulated week still under way has no count, so no bar
+  // A simulated week still under way has no count, so no bar
   const counts = past.flatMap((week) => (week.y === null ? [] : [week.y]))
   const tallest = Math.max(1, threshold, next.high, next.mu, ...counts)
   const y = scaleLinear().domain([0, tallest]).nice(5).range([HEIGHT, 0])
-  const firstSlot = pastWeeks - past.length // the bars end just before next week's slot
+  const firstSlot = pastWeeks - past.length // The bars end just before next week's slot
   const middle = (x(pastWeeks) ?? 0) + x.bandwidth() / 2
 
   const label =
@@ -63,7 +55,7 @@ export default function WeeklyCasesChart({ past, pastWeeks, next, threshold, ran
             week.y !== null && (
               <rect
                 key={week.week_index}
-                // F14: a simulated count is outlined, not filled
+                // A simulated count is outlined, not filled
                 className={week.simulated ? 'weekly-cases-chart-bar weekly-cases-chart-bar-simulated' : 'weekly-cases-chart-bar'}
                 x={x(firstSlot + i)}
                 y={y(week.y)}

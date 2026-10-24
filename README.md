@@ -382,7 +382,7 @@ The modules in `src/`, by stage:
 | App data | `app_data`, `app_simulation`, `noah_national` |
 | Running and checking | `run_all`, `checks` |
 
-Functions carry docstrings that state their formulas in plain words.
+Each function has a one-line docstring; the formulas, in plain words, are in the paper's Table D1.
 
 ## Documentation
 

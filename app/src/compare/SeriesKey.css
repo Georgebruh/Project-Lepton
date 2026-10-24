@@ -1,4 +1,4 @@
-/* F9: a series' key (SeriesKey.tsx), like its mark on the chart (Figma's chart keys, node 12:1011). */
+/* A series' key (SeriesKey.tsx), like its mark on the chart. */
 .series-key-line {
   display: block;
   flex-shrink: 0;
@@ -17,7 +17,7 @@
   stroke-linecap: butt;
 }
 
-/* A block for the bars and for the range: Figma's 12 by 8 px key */
+/* A block for the bars and for the range: 12 by 8 px key */
 .series-key-block {
   display: block;
   flex-shrink: 0;
@@ -26,7 +26,7 @@
   border-radius: 1px;
 }
 
-/* The counts: the bars' grey, at Figma's 50% for the key */
+/* The counts: the bars' grey, at 50% for the key */
 .series-key-observed {
   background: var(--color-text-secondary);
   opacity: 0.5;

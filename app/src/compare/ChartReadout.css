@@ -1,4 +1,4 @@
-/* F9: the chart's tooltip (ChartReadout.tsx), in the map tooltip's style (BarangayTooltip.css). */
+/* The chart's tooltip (ChartReadout.tsx), in the map tooltip's style (BarangayTooltip.css). */
 .chart-readout {
   position: absolute;
   z-index: 1;

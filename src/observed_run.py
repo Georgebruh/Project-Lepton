@@ -1,58 +1,4 @@
-"""Layer 2 on observed rain: the storm runs (task C8). Stock planning, not prescriptions.
-
-For each storm in config.STORMS (A11), C8 runs the whole Layer 2 chain on the rain that
-fell, as IMERG measured it over the catchments (A4, A7). C9 asks the same question with
-the forecasts a health office had 1-3 days before (src/forecast_run.py).
-
-Five steps, each one function below:
-
-1. observed_rain: the storm's wettest n-day IMERG total over the catchments whose last
-   day falls during the flood, A11's start_date to end_date (flood_exposure.storm_peak;
-   n = config.RAIN_ACCUM_DAYS = 3 UTC days, not the plan's single wettest day: Notes.md,
-   section 2).
-
-2. return_period and share_of_way: where that rain falls against the return levels
-   R0, R(5), R(25), R(100), from a Gumbel curve fitted to IMERG's annual maxima of the
-   years BEFORE the storm's year only (rule 2; Carina and Kristine: 2000-2023), never
-   ERA5's (rule 3). Reported three ways: between which two levels (forecast_run.position),
-   how far along from the lower to the upper one (0 to 1), and the rain's own return period
-       T = 1 / (1 - F(rain)),   F = the fitted Gumbel curve's cumulative probability
-   In plain words: IMERG sees a 3-day total this big about once every T years.
-
-3. storm_tables: C3 to C7 at that rain. C3's graded exposure and the storm's EI
-   (100 x residents in zones the rain floods / QC's 2024 total, rule 7), C5's exposed
-   people and adult tiers with A11's flood duration D, C6's units and C7's need per
-   health center.
-
-4. Flagged versus flooded (rain_columns): a barangay is flagged when at least a share X of
-   its 2024 residents live in zones the rain floods (config.FLAG_EXPOSED_SHARES, the rule
-   C9 uses, forecast_run.flagged; an assumption the team confirmed on 2026-10-23, Notes.md
-   1.2). For each X: the share of flagged barangays that A11 lists as flooded, and the share
-   of listed barangays that were flagged. A11's lists are not complete, so this is a
-   demonstration, not a test.
-
-5. tests: the main run (A11's D, continuous-exposure cut-off config.CONTINUOUS_EXPOSURE_DAYS
-   = 2 days), then reruns that each change one thing: the cut-off at 1 and 3 days
-   (config.CONTINUOUS_EXPOSURE_DAYS_TESTS, the plan's C8) and A11's D minus and plus
-   config.STORM_D_TEST_DAYS (the plan's assumptions table: D is tested +/- 1 day). Below
-   the cut-off, adults are split by w (C5), reported at each config.WOUND_SHARE_W.
-
-Outputs in results/ (no case data):
-    c8_observed_runs.csv       one row per storm, test, D, cut-off and w: the rain window,
-                               rain, return levels, where the rain falls, EI, flag shares,
-                               and QC's exposed people, adult tiers and units
-    c8_observed_barangays.csv  the main run, one row per barangay: residents in flood zones
-                               and their share of the barangay, flagged or not, listed
-                               flooded or not, exposed people, tiers and units (D7's maps)
-    c8_observed_centers.csv    the main run, need per health center and pool, by tier
-Every unit figure is stock planning, not a prescription (rule 10); each file says so in
-its label column.
-
-Run from the repository root (needs A4's imerg_daily.nc, A7's catchments_qc.gpkg, A5's
-census_qc.csv, C2's overlay_qc.csv, C4's shares_qc.csv and C7's center_shares_qc.csv);
-a few seconds:
-    python -m src.observed_run
-"""
+"""Layer 2 on observed rain: the storm runs."""
 
 import pandas as pd
 from scipy import stats
@@ -62,13 +8,13 @@ from src import allocation, doses, exposed, flood_exposure, forecast_run
 
 N_DAYS = config.RAIN_ACCUM_DAYS
 MAIN = "main run"
-KEYS = ["storm", "test", "flood", "D", "cutoff", "w"]   # one run of C5-C7; the key of every output row
+KEYS = ["storm", "test", "flood", "D", "cutoff", "w"]   # one run of the exposure, dose and allocation steps; the key of every output row
 PEOPLE = ["exposed", *exposed.GROUPS, *exposed.TIERS]   # exposed, e_child, e_preg, e_adult, high, moderate, low
 FLAG_TAGS = [f"{100 * share:.0f}" for share in config.FLAG_EXPOSED_SHARES]   # "25", "50"
 BARANGAY_COLUMNS = [*KEYS, "psgc", "adm4_name", "pop_2024", "residents", "share_in_flood_zones",
                     *[f"flagged_{tag}" for tag in FLAG_TAGS], "listed_flooded", *PEOPLE, *doses.UNITS]
 CENTER_COLUMNS = [*KEYS, "pool", "facility_code", "facility_name", *exposed.TIERS]
-INPUTS = {                                              # the files C8 reads, and the task that makes each
+INPUTS = {                                              # the files this step reads, and the task that makes each
     config.IMERG_DAILY: "A4: python -m src.imerg",
     config.CATCHMENTS: "A7: python -m src.catchments",
     config.CENSUS_QC: "A5: python -m src.census",
@@ -87,12 +33,7 @@ def check_inputs():
 
 
 def observed_rain(totals, facts):
-    """The storm's wettest n-day IMERG total whose last day falls during the flood: (mm, last day).
-
-    totals: flood_exposure.n_day_totals of IMERG's catchment rain. facts: the storm's entry
-    in config.STORMS. Stops if IMERG has no total for one of the flood days: a missing day
-    would quietly pick the peak from fewer windows.
-    """
+    """The storm's wettest n-day IMERG total whose last day falls during the flood: (mm, last day)."""
     days = pd.date_range(facts["start_date"], facts["end_date"], freq="D")
     missing = days.difference(totals.index)
     if len(missing):
@@ -102,21 +43,12 @@ def observed_rain(totals, facts):
 
 
 def return_period(rain, levels):
-    """T = 1 / (1 - F(rain)): IMERG sees an n-day total this big about once every T years.
-
-    F is the cumulative probability of the Gumbel curve in levels (mu, beta), so a rain of
-    exactly R(T) gives back T.
-    """
+    """T = 1 / (1 - F(rain)): IMERG sees an n-day total this big about once every T years."""
     return 1 / stats.gumbel_r.sf(rain, loc=levels["mu"], scale=levels["beta"])
 
 
 def share_of_way(rain, levels):
-    """How far an n-day total lies from the level below it to the level above it: 0 to 1.
-
-    The levels are R0, R(5), R(25), R(100), the same anchors as forecast_run.position: 0.6
-    with position "R0 to R(5)" means 60% of the way from R0 to R(5). None below R0 or above
-    R(100), where there is no level on one side.
-    """
+    """How far an n-day total lies from the level below it to the level above it: 0 to 1."""
     anchors = [levels["r0"]] + [levels[p] for p in flood_exposure.RETURN_PERIODS]
     for low, high in zip(anchors, anchors[1:]):
         if low <= rain < high:
@@ -125,11 +57,7 @@ def share_of_way(rain, levels):
 
 
 def rain_columns(facts, rain, end, levels, residents, shares, qc_total):
-    """The columns of a storm's runs that do not depend on D, the cut-off or w.
-
-    The rain window and total, the return levels, where the rain falls, the EI and, for
-    each flag share X, the flagged-versus-flooded scores (forecast_run.flag_scores).
-    """
+    """The columns of a storm's runs that do not depend on D, the cut-off or w."""
     start = end - pd.Timedelta(days=N_DAYS - 1)
     flooded = facts["flooded_psgc"]
     row = {"window": f"{start:%Y-%m-%d} to {end:%Y-%m-%d}", "rain_mm": rain,
@@ -146,11 +74,7 @@ def rain_columns(facts, rain, end, levels, residents, shares, qc_total):
 
 
 def tests(flood_days):
-    """(test, D, cut-off) for one storm: the main run, then the reruns, each changing one thing.
-
-    The cut-off at each of config.CONTINUOUS_EXPOSURE_DAYS_TESTS, then A11's D minus and plus
-    config.STORM_D_TEST_DAYS. A D below 1 day is skipped: a flood lasts at least part of a day.
-    """
+    """(test, D, cut-off) for one storm: the main run, then the reruns, each changing one thing."""
     cutoff = config.CONTINUOUS_EXPOSURE_DAYS
     out = [(MAIN, flood_days, cutoff)]
     for test_cutoff in config.CONTINUOUS_EXPOSURE_DAYS_TESTS:
@@ -163,22 +87,14 @@ def tests(flood_days):
 
 
 def scenarios(flood_days, cutoff):
-    """(label, D, w) for one flood duration and cut-off (C5).
-
-    At or above the cut-off every exposed adult is high risk and w does not matter: one
-    row. Below it, adults are split by w: one row per config.WOUND_SHARE_W.
-    """
+    """(label, D, w) for one flood duration and cut-off."""
     if flood_days >= cutoff:
         return [(f"D = {flood_days} (any w)", flood_days, config.WOUND_SHARE_W[0])]
     return [(f"D = {flood_days}, w = {w:g}", flood_days, w) for w in config.WOUND_SHARE_W]
 
 
 def barangay_rows(stock, residents, shares, flooded_psgc, keys):
-    """The main run per barangay: residents in flood zones, flagged, listed, C5's people and C6's units.
-
-    stock: doses.barangay_doses at the storm's rain (one row per barangay, index psgc).
-    share_in_flood_zones = residents in zones the rain floods / the barangay's 2024 total.
-    """
+    """The main run per barangay: residents in flood zones, flagged, listed, the people and the units."""
     out = shares[["adm4_name", "pop_2024"]].join(residents.groupby("psgc")["residents"].sum())
     out["share_in_flood_zones"] = out["residents"] / out["pop_2024"]
     for share, tag in zip(config.FLAG_EXPOSED_SHARES, FLAG_TAGS):
@@ -191,31 +107,26 @@ def barangay_rows(stock, residents, shares, flooded_psgc, keys):
 
 
 def center_rows(residents, shares, center_table, flood_days, w, cutoff, keys):
-    """The main run's need per health center and pool, by tier (C7's center_needs), with the center's name."""
+    """The main run's need per health center and pool, by tier, with the center's name."""
     names = center_table.drop_duplicates("facility_code").set_index("facility_code")["facility_name"]
     needs = allocation.center_needs(residents, shares, center_table, flood_days, w, cutoff)
     return pd.concat([need.join(names).reset_index().assign(pool=pool, **keys) for pool, need in needs.items()])
 
 
 def storm_tables(storm, facts, rain, end, levels, overlay, shares, center_table, qc_total):
-    """Every run of one storm at its observed rain: (run rows, barangay rows, center rows).
-
-    rain, end: observed_rain. levels: IMERG's return levels for the storm's year. The run
-    rows hold QC's totals for the main run and each test; the barangay and center rows
-    hold the main run only.
-    """
-    residents = flood_exposure.graded_exposure(rain, levels, overlay)   # C3
+    """Every run of one storm at its observed rain: (run rows, barangay rows, center rows)."""
+    residents = flood_exposure.graded_exposure(rain, levels, overlay)
     rain_row = rain_columns(facts, rain, end, levels, residents, shares, qc_total)
     runs, barangays, centers = [], [], []
     for test, flood_days, cutoff in tests(facts["D"]):
         for label, days, w in scenarios(flood_days, cutoff):
             keys = {"storm": storm, "test": test, "flood": label, "D": days, "cutoff": cutoff, "w": w}
-            stock = doses.barangay_doses(residents, shares, days, w, cutoff)   # C5 and C6
+            stock = doses.barangay_doses(residents, shares, days, w, cutoff)
             totals = stock[[*PEOPLE, *doses.DOXY_BY_TIER, *doses.UNITS]].sum().to_dict()
             runs.append({**keys, **rain_row, **totals, "label": doses.LABEL})
             if test == MAIN:
                 barangays.append(barangay_rows(stock, residents, shares, facts["flooded_psgc"], keys))
-                centers.append(center_rows(residents, shares, center_table, days, w, cutoff, keys))   # C7
+                centers.append(center_rows(residents, shares, center_table, days, w, cutoff, keys))
     return runs, barangays, centers
 
 
@@ -254,7 +165,7 @@ def report_centers(centers):
 
 
 def report(runs, barangays, centers):
-    """Print C8's three results (where the storms fall, flagged versus flooded, doses) and the tests."""
+    """Print the three results (where the storms fall, flagged versus flooded, doses) and the tests."""
     main_runs = runs[runs["test"] == MAIN]
     print(f"C8 on observed rain: each storm's wettest {N_DAYS}-day IMERG total over the catchments, on "
           f"IMERG's return levels fitted on the years before the storm's year")
@@ -288,12 +199,12 @@ def main():
         raise ValueError(f"{config.SHARES_QC.name} has {len(shares)} barangays, expected {config.QC_BARANGAYS}")
     center_table = allocation.load_center_shares()
     census = pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})
-    qc_total = float(census["pop_2024"].sum())   # EI over QC's 2024 total from the same maps (rule 7)
+    qc_total = float(census["pop_2024"].sum())   # EI over QC's 2024 total from the same maps
 
     tables = ([], [], [])
     for storm, facts in config.STORMS.items():
         rain, end = observed_rain(totals, facts)
-        levels = flood_exposure.return_levels(maxima, facts["year"])   # IMERG's, years before the storm's (rules 2, 3)
+        levels = flood_exposure.return_levels(maxima, facts["year"])   # IMERG's, years before the storm's
         for part, rows in zip(tables, storm_tables(storm, facts, rain, end, levels, overlay,
                                                    shares, center_table, qc_total)):
             part.extend(rows)

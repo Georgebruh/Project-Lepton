@@ -37,17 +37,7 @@ import type {
   Units,
 } from '../map/planData.ts'
 
-/*
- * F15: what the barangay report says, for health offices and LGUs: one barangay's exposure and
- * stock for the storm forecast the map shows, its forecasts made 1 to 3 days ahead, the health
- * centers that hold its stock, Quezon City's case forecast, and how the figures were made.
- * Plain functions, no PDF and no React: reportPdf.ts draws this content.
- *
- * Every number is one of the app's files', written out as the map writes it (formatCount,
- * formatShare): storms.json, the runs' barangay files, centers.json and city_forecast.json.
- * Nothing is computed again here but the barangay's rank among the 142 and the units per person
- * the text explains (from storms.json's counting). Stock planning, not prescriptions.
- */
+/* What the barangay report says, for health offices and LGUs. */
 
 /** One forecast of the storm, with its barangays (its barangay file joined to the shapes). */
 export type LeadRun = { run: StormRun; barangays: Map<string, BarangayRun> }
@@ -86,7 +76,7 @@ export type ReportContent = {
   fileName: string
   /** The PDF's title, as a PDF reader shows it. */
   docTitle: string
-  /** storms.json's label: stock-planning figures, not prescriptions (rule 10). */
+  /** storms.json's label: stock-planning figures, not prescriptions. */
   label: string
   name: string
   /** Under the name: the city, the PSGC and the barangay's 2024 residents. */
@@ -178,7 +168,7 @@ function listWords(names: string[]): string {
   return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-/** A name in a file name: lower case, no accents, words joined by hyphens ("Santo Niño" is "santo-nino"). */
+/** A name in a file name. */
 function slug(name: string): string {
   return name
     .normalize('NFD')
@@ -209,7 +199,7 @@ function floodWeeks(flood: Flood, counting: CountingRules): number {
   return Math.ceil(flood.D / counting.week_days)
 }
 
-/** The report's file name, as the stock list names its CSV: "lepton-barangay-report_tatalon_kristine_2024_lead1.pdf". */
+/** The report's file name, as the stock list names its CSV. */
 export function reportFileName(name: string, storm: Storm, run: StormRun): string {
   return `lepton-barangay-report_${slug(name)}_${storm.storm}_${run.run.replace(/\s+/g, '')}.pdf`
 }
@@ -284,7 +274,7 @@ function figures(barangay: BarangayRun, units: Units): Figure[] {
   ]
 }
 
-/** Who each adult capsule is for in one flood, and how many each gets (C6's counting rules). */
+/** Who each adult capsule is for in one flood, and how many each gets. */
 function adultsIn(flood: Flood, counting: CountingRules): string {
   if (flood.w !== null) {
     return (
@@ -299,14 +289,11 @@ function adultsIn(flood: Flood, counting: CountingRules): string {
   )
 }
 
-/**
- * The stock to prepare: a row per unit, who it is for and how it is counted, and a column per
- * flood of the forecast (a 1-day and a 7-day flood: a forecast cannot know how long it lasts).
- */
+/** The stock to prepare. */
 function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun): ReportContent['stock'] {
   const { counting } = storms
   const columns = run.floods.map((flood) => unitsIn(barangay, flood, run))
-  // Courses per child in each flood: one per week of flooding, at least one (C6)
+  // Courses per child in each flood: one per week of flooding, at least one
   const perChild = run.floods.map((flood) => Math.max(1, floodWeeks(flood, counting)))
   const courseWords = perChild.every((n) => n === perChild[0])
     ? `${perChild[0]} each in ${run.floods.length > 1 ? 'either flood' : `a ${floodName(run.floods[0])}`}`
@@ -362,7 +349,7 @@ function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun):
   }
 }
 
-/** The storm's forecasts, the earliest first, each with the barangay's exposure and its units for the map's flood. */
+/** The storm's forecasts. */
 function leadSection(input: ReportInput): ReportContent['leads'] {
   const { storm, run, leads, psgc } = input
   const rows = forecastRuns(storm)
@@ -399,11 +386,7 @@ function leadSection(input: ReportInput): ReportContent['leads'] {
   }
 }
 
-/**
- * Where the stock goes: the health centers that hold the barangay's stock (C7, centers.json's
- * barangay_centers), each with the share it holds and its whole need for the forecast, the
- * other barangays each one holds stock for, and any center in the barangay C7 leaves out.
- */
+/** Where the stock goes. */
 function centerSection(input: ReportInput, name: string): ReportContent['centers'] {
   const { centers, storm, run, psgc, shapes } = input
   const held = centers.barangay_centers[psgc]
@@ -481,7 +464,7 @@ function centerSection(input: ReportInput, name: string): ReportContent['centers
   }
 }
 
-/** Quezon City's case forecast for the week after the map's date, as the city panel gives it, said to be the whole city's. */
+/** Quezon City's case forecast for the week after the map's date. */
 function citySection({ forecast, week, date }: ReportInput): ReportContent['city'] {
   const title = "Quezon City's case forecast (the whole city)"
   const whole = 'LEPTON forecasts cases for the whole city; it does not forecast cases for each barangay.'
@@ -536,10 +519,7 @@ function methodLines(storms: StormsFile, run: StormRun, flood: Flood): string[] 
   ]
 }
 
-/**
- * Everything the report says about one barangay, for the forecast and date the map shows.
- * Stops with an error if a file lacks what it needs.
- */
+/** Everything the report says about one barangay, for the forecast and date the map shows. */
 export function reportContent(input: ReportInput): ReportContent {
   const { storms, storm, run, leads, psgc, link, made } = input
   const lead = leads.find((each) => each.run.run === run.run)
@@ -548,7 +528,7 @@ export function reportContent(input: ReportInput): ReportContent {
   }
   const barangay = barangayIn(lead, psgc)
   const { name } = barangay
-  const flood = planFlood(storm, run) // the flood the map shows: D = 1, w = 0.5
+  const flood = planFlood(storm, run) // The flood the map shows: D = 1, w = 0.5
   const units = unitsIn(barangay, flood, run)
   return {
     fileName: reportFileName(name, storm, run),

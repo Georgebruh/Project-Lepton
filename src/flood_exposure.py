@@ -1,63 +1,4 @@
-"""Rain return levels, graded exposure and the weekly exposure index (task C3).
-
-The trigger rain is an n-day total, n = config.RAIN_ACCUM_DAYS: 3 by default, 1 for the
-plan's original single wettest day (the comparison run). The single day missed the long
-habagat floods of 2025 and 2026 (D = 6 and 4 days, moderate rain each day) in a test
-run of C9 on 2026-10-18, so C3 switched to 3-day totals; the paper reports both runs. Every step below uses
-the same n, so the return levels and the storms are always on one scale.
-
-Five steps, each one function below:
-
-1. catchment_rain: R24 for every UTC day = IMERG's daily rain averaged over the A7
-   catchments, each 0.1 degree cell weighted by its area inside them:
-       R24_d = sum over cells g of w_g * R_{g,d},   w_g = (catchment km2 in g) / (catchment km2)
-
-2. n_day_totals: Rn_d = R24_d + R24_{d-1} + ... + R24_{d-n+1}, the rain of the n UTC days
-   ending on day d. With n = 1 it is R24 itself.
-
-3. return_levels: fit a Gumbel curve to each year's wettest n-day total, using only years
-   BEFORE the forecast or storm year (rule 2), at least config.GUMBEL_MIN_YEARS of them:
-       R(T) = mu - beta * ln(-ln(1 - 1/T)),   R0 = 0.5 * R(5)
-   In plain words: R(25) is the n-day rain IMERG sees about once in 25 years, on IMERG's
-   own scale (rule 3: never compare it with ERA5 or ECMWF rain). The fit is maximum
-   likelihood (scipy's gumbel_r.fit), the estimator check S9's pass values match.
-
-4. graded_exposure: residents exposed by an n-day total of Rn mm, interpolated between
-   NOAH's maps (C2's overlay), for each barangay b and hazard level k:
-       N_{b,k} = Pop_a + (Rn - R_a) / (R_b - R_a) * (Pop_b - Pop_a)
-   between the anchors (R0, 0), (R(5), Pop_5), (R(25), Pop_25), (R(100), Pop_100).
-   Below R0 nobody; above R(100) the 100-year map's residents. A storm halfway between
-   the 5- and 25-year rain counts halfway between the two maps' residents.
-
-5. weekly_ei: EI(t) = 100 * sum over b, k of N_{b,k}(Rmax_t) / P_QC_2024
-   Rmax_t is the wettest n-day total ending in week t (MMWR weeks, A3); with n = 3, a
-   total ending on Sunday also holds the last 2 days of the week before. EI is the
-   percentage of QC residents living in zones that rain would flood. The denominator is
-   QC's 2024 total, the total C1 fitted the population map to, never that week's
-   population (rule 7).
-
-The return levels change with the forecast year, so ei_weekly.csv holds one EI series per
-forecast year: B10 at a forecast day in year Y reads the rows with fit_year == Y. Those
-rows cover every week 2015 onward, all scored with the levels fitted on years before Y.
-
-Output: data/clean/ei_weekly.csv (config.EI_WEEKLY), one row per fit year and MMWR week:
-    fit_year, rain_days, week_index, year, week, rmax_mm, ei
-rain_days is the n the file was made with. Weeks run 2015 week 1 to the last week IMERG has
-all 7 days of. The comparison runs write their own files beside it: --days 1 writes
-ei_weekly_1day.csv, --without-2000 writes ei_weekly_no2000.csv.
-
-C8 and C9 call n_day_totals, annual_maxima, return_levels and graded_exposure for each
-storm, with the same config.RAIN_ACCUM_DAYS (C9 on ERA5 and the ECMWF forecasts);
-graded_exposure returns the psgc, var, residents table C5's exposed_with_tiers takes.
-
-Run from the repository root (needs A4's imerg_daily.nc, A7's catchments, A5's census and
-C2's overlay_qc.csv):
-    python -m src.flood_exposure                  # 3-day totals (config.RAIN_ACCUM_DAYS): ei_weekly.csv
-    python -m src.flood_exposure --days 1         # single-day comparison run: ei_weekly_1day.csv
-    python -m src.flood_exposure --without-2000   # refit without June-December 2000 (plan
-                                                  # correction 7): ei_weekly_no2000.csv
-Then run the checks (S9):  python -m src.checks
-"""
+"""Rain return levels, graded exposure and the weekly exposure index."""
 
 import argparse
 import math
@@ -82,12 +23,7 @@ def gumbel_level(mu, beta, period):
 
 
 def imerg_cell_weights(lon, lat, catchments):
-    """Each IMERG cell's share of the catchment area, for cells whose centres are lon x lat.
-
-    A cell is the 0.1 degree square around its centre. Areas are measured in EPSG:32651.
-    Returns a table with lon, lat, km2 and weight (the weights add up to 1). Stops if the
-    cells do not hold the whole catchment area, which would mean the IMERG box is too small.
-    """
+    """Each IMERG cell's share of the catchment area, for cells whose centres are lon x lat."""
     half = config.IMERG_CELL_DEG / 2
     cells = gpd.GeoDataFrame(
         {"lon": [x for x in lon for _ in lat], "lat": [y for _ in lon for y in lat]},
@@ -109,11 +45,7 @@ def imerg_cell_weights(lon, lat, catchments):
 
 
 def catchment_rain():
-    """R24 for every UTC day in imerg_daily.nc: area-weighted mean over the catchments (mm).
-
-    Returns a Series indexed by day. Cells are picked by their lon and lat names, never by
-    position (rule 8).
-    """
+    """R24 for every UTC day in imerg_daily.nc: area-weighted mean over the catchments (mm)."""
     catchments = gpd.read_file(config.CATCHMENTS, layer="catchments")
     with xr.open_dataset(config.IMERG_DAILY) as ds:
         rain = ds["precipitation"].load()
@@ -132,13 +64,7 @@ def catchment_rain():
 
 
 def n_day_totals(daily, days=config.RAIN_ACCUM_DAYS):
-    """Rain of the `days` UTC days ending on each day: Rn_d = R24_d + ... + R24_{d-days+1} (mm).
-
-    daily: one value per UTC day (catchment_rain, or ERA5's or a forecast's catchment
-    rain). The first days-1 days have no full window and are dropped. With days = 1 this
-    returns `daily` unchanged. Stops if a day is missing, which would make a window span
-    more than `days` days.
-    """
+    """Rain of the `days` UTC days ending on each day: Rn_d = R24_d + ... + R24_{d-days+1} (mm)."""
     index = pd.DatetimeIndex(daily.index)
     gaps = pd.date_range(index.min(), index.max(), freq="D").difference(index)
     if len(gaps) or not index.is_monotonic_increasing:
@@ -147,14 +73,7 @@ def n_day_totals(daily, days=config.RAIN_ACCUM_DAYS):
 
 
 def annual_maxima(totals, keep_2000=config.IMERG_KEEP_2000):
-    """Each year's wettest n-day total (mm), for every complete calendar year in the record.
-
-    totals: n_day_totals. Each total belongs to the year of its last day. A year counts
-    only if every one of its days has a total. The exception is 2000, whose record starts
-    on config.IMERG_START (1 June; ERA5 starts there too, config.ERA5_START): it is kept
-    when keep_2000 (config.IMERG_KEEP_2000; June to December is the rainy season). The plan
-    refits once without it (correction 7): python -m src.flood_exposure --without-2000.
-    """
+    """Each year's wettest n-day total (mm), for every complete calendar year in the record."""
     days_per_year = totals.groupby(totals.index.year).size()
     maxima = totals.groupby(totals.index.year).max()
     full = [y for y in maxima.index
@@ -171,12 +90,7 @@ def fit_gumbel(maxima):
 
 
 def return_levels(maxima, year):
-    """R0, R(5), R(25), R(100) for a forecast or storm `year`, fitted on years before it only.
-
-    maxima: Series of annual maxima indexed by year (annual_maxima). Stops when fewer than
-    config.GUMBEL_MIN_YEARS years come before `year`. Returns a dict with mu, beta, the
-    number of years used, R0 and one entry per return period (5, 25, 100).
-    """
+    """R0, R(5), R(25), R(100) for a forecast or storm `year`, fitted on years before it only."""
     before = maxima[maxima.index < year]
     if len(before) < config.GUMBEL_MIN_YEARS:
         raise ValueError(f"{len(before)} years of maxima before {year}; the fit needs "
@@ -188,7 +102,7 @@ def return_levels(maxima, year):
 
 
 def map_table(overlay):
-    """C2's overlay as one row per barangay and level, one column per map: Pop_5, Pop_25, Pop_100."""
+    """The overlay as one row per barangay and level, one column per map: Pop_5, Pop_25, Pop_100."""
     table = overlay.pivot_table(index=["psgc", "var"], columns="return_period",
                                 values="residents", aggfunc="sum")
     missing = set(RETURN_PERIODS) - set(table.columns)
@@ -198,14 +112,7 @@ def map_table(overlay):
 
 
 def map_weights(rain, levels):
-    """How much of each map's residents an n-day total of `rain` mm counts: {5: w5, 25: w25, 100: w100}.
-
-    The anchors are (R0, nobody), (R(5), Pop_5), (R(25), Pop_25), (R(100), Pop_100), joined
-    by straight lines, so N = w5 * Pop_5 + w25 * Pop_25 + w100 * Pop_100. Examples:
-    rain = R(5) gives w5 = 1; halfway between R(5) and R(25) gives w5 = w25 = 0.5; halfway
-    between R0 and R(5) gives w5 = 0.5 (half of the 5-year residents); below R0 all are 0;
-    above R(100), w100 = 1. `rain` and `levels` must use the same n and the same product.
-    """
+    """How much of each map's residents an n-day total of `rain` mm counts: {5: w5, 25: w25, 100: w100}."""
     rains = [levels["r0"]] + [levels[p] for p in RETURN_PERIODS]
     if not all(a < b for a, b in zip(rains, rains[1:])):
         raise ValueError(f"the anchors must rise: R0, R(5), R(25), R(100) = {[round(r, 1) for r in rains]}")
@@ -225,23 +132,14 @@ def map_weights(rain, levels):
 
 
 def graded_exposure(rain, levels, overlay):
-    """N_{b,k}: residents of each barangay and level that an n-day total of `rain` mm would flood.
-
-    levels: from return_levels. overlay: C2's table (psgc, return_period, var, residents).
-    Returns one row per barangay and level with columns psgc, var and residents: the
-    table C5's exposed_with_tiers takes.
-    """
+    """N_{b,k}: residents of each barangay and level that an n-day total of `rain` mm would flood."""
     pops = map_table(overlay)
     residents = sum(w * pops[p] for p, w in map_weights(rain, levels).items())
     return residents.rename("residents").reset_index()
 
 
 def exposed_total(rain, levels, map_totals):
-    """QC residents in zones an n-day total of `rain` mm would flood: sum of N_{b,k} over barangays and levels.
-
-    map_totals: each map's QC total, {5: Pop_5, 25: Pop_25, 100: Pop_100} (map_totals()).
-    The same weights apply to every barangay, so the city total is the weighted city totals.
-    """
+    """QC residents in zones an n-day total of `rain` mm would flood: sum of N_{b,k} over barangays and levels."""
     return sum(w * map_totals[p] for p, w in map_weights(rain, levels).items())
 
 
@@ -251,11 +149,7 @@ def map_totals(overlay):
 
 
 def weekly_rmax(totals, calendar):
-    """Each MMWR week's wettest n-day total ending in that week (mm), for weeks with all 7 days.
-
-    totals: n_day_totals, labelled by each window's last day. calendar: A3's date -> week
-    table. Returns a table with week_index, year, week, rmax_mm.
-    """
+    """Each MMWR week's wettest n-day total ending in that week (mm), for weeks with all 7 days."""
     days = calendar[["date", "week_index", "year", "week"]].copy()
     days["date"] = pd.to_datetime(days["date"])
     days = days.merge(totals.rename("rain_mm"), left_on="date", right_index=True, how="inner")
@@ -265,31 +159,19 @@ def weekly_rmax(totals, calendar):
 
 
 def weekly_ei(rmax, levels, map_tot, qc_total_2024):
-    """EI(t) = 100 * sum of N_{b,k}(Rmax_t) / QC's 2024 total, for every week in rmax (rule 7).
-
-    map_tot: map_totals(overlay).
-    """
+    """EI(t) = 100 * sum of N_{b,k}(Rmax_t) / QC's 2024 total, for every week in rmax."""
     ei = [100 * exposed_total(r, levels, map_tot) / qc_total_2024 for r in rmax["rmax_mm"]]
     return rmax.assign(ei=ei)
 
 
 def storm_peak(totals, first, last):
-    """A storm's wettest n-day total whose last day falls between first and last.
-
-    Returns (rain in mm, last day of that window). storm_report passes the flood period,
-    config.STORMS' start_date to end_date: the rain that flooded QC, which can have
-    started up to n - 1 days before the flooding. Check "A11 storm facts" makes sure
-    that window ends on one of the storm's wettest days, which A15 fetches forecasts for.
-    """
+    """A storm's wettest n-day total whose last day falls between first and last."""
     window = totals[pd.Timestamp(first):pd.Timestamp(last)]
     return float(window.max()), window.idxmax()
 
 
 def storm_report(totals, maxima, overlay, qc_total_2024, days):
-    """Where each storm's wettest n-day total falls against its own year's return levels (C8's first check).
-
-    totals and maxima must be made with the same `days`.
-    """
+    """Where each storm's wettest n-day total falls against its own year's return levels."""
     map_tot = map_totals(overlay)
     rows = []
     for storm, facts in config.STORMS.items():
@@ -304,8 +186,7 @@ def storm_report(totals, maxima, overlay, qc_total_2024, days):
 
 
 def output_path(days, keep_2000=config.IMERG_KEEP_2000):
-    """ei_weekly.csv for config's settings; a comparison run gets its own file, so it never
-    replaces the main one: ei_weekly_1day.csv for another n, ei_weekly_no2000.csv without 2000."""
+    """ei_weekly.csv for config's settings; a comparison run writes its own file."""
     parts = []
     if days != config.RAIN_ACCUM_DAYS:
         parts.append(f"{days}day")
@@ -337,7 +218,7 @@ def main():
     maxima = annual_maxima(totals, keep_2000)
     overlay = pd.read_csv(config.OVERLAY, dtype={"psgc": str})
     census = pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})
-    qc_total_2024 = float(census["pop_2024"].sum())  # C1 fitted the map to these totals (S8)
+    qc_total_2024 = float(census["pop_2024"].sum())  # the census rescale fitted the map to these totals
     print(f"Trigger rain: {days}-day totals (config.RAIN_ACCUM_DAYS = {config.RAIN_ACCUM_DAYS}; "
           f"1 = the single wettest day); June-December 2000 {'kept' if keep_2000 else 'left out'}")
     print(f"R24 for {len(r24)} UTC days, {r24.index[0]:%Y-%m-%d} to {r24.index[-1]:%Y-%m-%d}; "

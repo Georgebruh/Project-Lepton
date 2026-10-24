@@ -1,5 +1,4 @@
-/* F8: "Type your barangay" in the guide's step 3 (BarangayPicker.tsx). Not in Figma: the field
-   follows the Design notes (fields 4 px corners) and the list follows the app's cards. */
+/* "Type your barangay" in the guide's step 3 (BarangayPicker.tsx). */
 .barangay-picker {
   display: flex;
   flex-direction: column;

@@ -1,43 +1,4 @@
-"""NOAH's flood hazard maps for the whole Philippines, as map tiles for the app (task F14).
-
-The app's map shows the whole country, so its NOAH layer does too. NOAH publishes its 5-, 25-
-and 100-year flood maps one province per zip in a public Google Drive folder (the same folder
-A8 took Metro Manila from), 67 provinces per map and 6 to 8 GB in all. Too much to keep on a
-laptop, so each zip is read and deleted at once:
-1. list the Drive folder of each map (config.NOAH_NATIONAL_FOLDERS); where a province appears
-   twice (NOAH re-uploaded "Misamis Oriental"), keep the newer file;
-2. download one zip, read every shapefile in it, keep the hazard level (`Var` 1 low, 2 medium,
-   3 high, as in A8);
-3. split the shapes into separate flood patches, drop each patch smaller than
-   config.APP_NOAH_MIN_M2 (as F13 does for Metro Manila), and simplify each one by
-   config.NOAH_NATIONAL_PRESIMPLIFY_M, which only trims points tippecanoe would drop. The shapes
-   are not repaired (A8's make_valid takes a minute a province): tippecanoe repairs every polygon
-   it cuts into a tile;
-4. save the patches as one FlatGeobuf per province and map in data/clean/noah_national/, then
-   delete the zip;
-5. tippecanoe turns each map's provinces into one PMTiles file in app/public/data/
-   (noah_flood_<T>yr.pmtiles): vector tiles that the map fetches piece by piece, only for the
-   part of the country in view.
-
-Areas and simplification are measured in longitude/latitude degrees, turned into metres with a
-degree of latitude as 111.32 km and a degree of longitude as that times the cosine of the
-patch's latitude (square_metres): close enough to drop 20 m patches. An invalid patch (a ring
-that touches itself) can measure smaller than it is and be dropped; at 400 m2 that is a few of
-NOAH's grid cells.
-For looking at only: no LEPTON number uses these maps (C2 uses A8's Metro Manila maps).
-Licence: ODC-ODbL, as all NOAH maps; the tiles are shared under the same licence.
-
-Needs tippecanoe 2.17 or newer (https://github.com/felt/tippecanoe). On Windows it runs in WSL:
-build it there (make) in config.TIPPECANOE_WSL_DIR.
-
-Run from the repository root (about two hours, most of it downloading):
-    python -m src.noah_national            # download and prepare what is missing, then tile
-    python -m src.noah_national --tile     # tile again from data/clean/noah_national/ only
-A province already prepared is not downloaded again; data/clean/noah_national/manifest.csv
-lists each file with its Drive date, which is the map's version (NOAH gives no version number).
-The prepared files take 1.2 to 2.2 GB a map; once a map's tiles are written they may be deleted
-to save disk (keep manifest.csv), and --tile then needs them downloaded again.
-"""
+"""NOAH's flood hazard maps for the whole Philippines, as map tiles for the app."""
 
 import argparse
 import re
@@ -74,9 +35,7 @@ MANIFEST_COLUMNS = ["return_period", "province", "file_name", "drive_id", "drive
                     "shapefiles", "features", "patches", "area_km2", "prepared_on"]
 
 
-# ---------------------------------------------------------------------------
 # Listing NOAH's Drive folders
-# ---------------------------------------------------------------------------
 
 def drive_date(text, today):
     """Drive's "last modified" as a date: "11/11/21" as written, "Apr 8" this year, a time ("3:45 PM") today."""
@@ -109,9 +68,7 @@ def list_folder(return_period):
     return files.drop_duplicates("province", keep="last").reset_index(drop=True)
 
 
-# ---------------------------------------------------------------------------
 # Preparing one province
-# ---------------------------------------------------------------------------
 
 def prepared_path(return_period, province):
     """Where one province's patches go: data/clean/noah_national/<T>yr/<province>.fgb."""
@@ -127,12 +84,7 @@ def hazard_column(columns):
 
 
 def read_zip(zip_file):
-    """Every shapefile in one NOAH zip as one GeoDataFrame (var, geometry) in EPSG:4326, how many
-    shapefiles there were and how many shapes (rows) they held.
-
-    (None, 0, 0) for a zip without a shapefile: NOAH's 100-year Tawi-Tawi is an empty zip (22
-    bytes). NOAH's 5-year Masbate holds a shapefile with no shapes at all.
-    """
+    """Every shapefile in one NOAH zip as one GeoDataFrame in EPSG:4326, with counts."""
     with zipfile.ZipFile(zip_file) as z:
         shapefiles = [name for name in z.namelist() if name.lower().endswith(".shp")]
     if not shapefiles:
@@ -152,21 +104,13 @@ def read_zip(zip_file):
 
 
 def square_metres(shapes):
-    """The area of shapes in longitude/latitude degrees, in m2: a degree of latitude is 111.32 km,
-    a degree of longitude that times the cosine of the latitude (here, of each shape's middle)."""
+    """The area of shapes in longitude/latitude degrees, in m2."""
     xmin, ymin, xmax, ymax = shapely.bounds(shapes).T
     return shapely.area(shapes) * METRES_PER_DEGREE ** 2 * np.cos(np.radians((ymin + ymax) / 2))
 
 
 def flood_patches(hazard):
-    """The map's separate flood patches, without the smallest, lightly simplified (EPSG:4326).
-
-    In plain words: each level's MultiPolygon is split into its patches, one row each; a patch
-    smaller than config.APP_NOAH_MIN_M2 is dropped, and each outline loses the points that move
-    it less than config.NOAH_NATIONAL_PRESIMPLIFY_M. NOAH's shapes are invalid as published
-    (A8: rings that cross or touch themselves); they are not repaired here, which takes a
-    minute per province, because tippecanoe repairs every polygon it cuts into a tile.
-    """
+    """The map's separate flood patches, without the smallest, lightly simplified (EPSG:4326)."""
     parts, row = shapely.get_parts(hazard.geometry.values, return_index=True)
     var = hazard["var"].to_numpy()[row]
     polygon = shapely.get_type_id(parts) == shapely.GeometryType.POLYGON
@@ -179,11 +123,7 @@ def flood_patches(hazard):
 
 
 def prepare(row, zip_file):
-    """Prepare one province's zip into its FlatGeobuf; returns its manifest row.
-
-    An empty zip (no shapefile) is listed with 0 shapefiles and 0 patches, and writes no file;
-    a shapefile with no shapes is listed with 0 features.
-    """
+    """Prepare one province's zip into its FlatGeobuf; returns its manifest row."""
     hazard, shapefiles, features = read_zip(zip_file)
     if hazard is None:
         print(f"{row['return_period']}-year {row['file_name']}: an empty zip on NOAH's Drive, left out")
@@ -218,10 +158,7 @@ def write_manifest(manifest):
 
 
 def prepare_all(order):
-    """Download and prepare every province not yet prepared from today's Drive file, map by map in `order`.
-
-    DOWNLOADS_AHEAD zips download while one is prepared; each zip is deleted once prepared.
-    """
+    """Download and prepare every province not yet prepared from today's Drive file, map by map in `order`."""
     manifest = read_manifest()
     done = {(int(r.return_period), r.drive_id) for r in manifest.itertuples()
             if r.shapefiles == 0 or prepared_path(int(r.return_period), r.province).exists()}
@@ -259,9 +196,7 @@ def prepare_all(order):
                   f"{entry['patches']:,} patches, {entry['area_km2']:,.1f} km2")
 
 
-# ---------------------------------------------------------------------------
 # Tiling
-# ---------------------------------------------------------------------------
 
 def tile_path(return_period):
     """The app's tiles of one map: app/public/data/noah_flood_<T>yr.pmtiles."""
@@ -269,7 +204,7 @@ def tile_path(return_period):
 
 
 def wsl_path(path):
-    """A Windows path as WSL sees it: C:\\Users\\x becomes /mnt/c/Users/x."""
+    r"""A Windows path as WSL sees it: C:\Users\x becomes /mnt/c/Users/x."""
     windows = PureWindowsPath(Path(path).resolve())
     return f"/mnt/{windows.drive[0].lower()}/" + "/".join(windows.parts[1:])
 
@@ -289,20 +224,7 @@ def tippecanoe(arguments):
 
 
 def tile(return_period):
-    """One map's provinces as one PMTiles file: layer "flood", attribute var, zooms config.NOAH_TILE_ZOOMS,
-    each tile 2^config.NOAH_TILE_DETAIL units across.
-
-    tippecanoe simplifies each zoom to its own pixel size and, where a tile would grow past
-    its size limit, drops the smallest patches first, so the country stays light zoomed out
-    and every patch is kept from the highest zoom; the map stretches that zoom's tiles beyond it.
-
-    Each map gets the largest tile size limit of config.NOAH_TILE_LIMITS that keeps its file
-    under GitHub's limit (config.APP_NOAH_TILES_MAX_BYTES): tippecanoe's default, 500 KB, first.
-    A tile over its limit drops its smallest patches until it fits, so a lower limit thins only
-    the densest tiles. More simplification does not help: tiles then fit their limit sooner and
-    keep more patches (the 100-year map grew from 106 to 123 MB at twice the simplification,
-    2026-10-23). The file's description names the limit it got.
-    """
+    """One map's provinces as one PMTiles file (layer "flood", attribute var)."""
     provinces = sorted((config.NOAH_NATIONAL_CLEAN / f"{return_period}yr").glob("*.fgb"))
     if not provinces:
         raise SystemExit(f"no prepared provinces for the {return_period}-year map: run without --tile first")
@@ -311,10 +233,7 @@ def tile(return_period):
     low, high = config.NOAH_TILE_ZOOMS
     for limit in config.NOAH_TILE_LIMITS:
         part.unlink(missing_ok=True)
-        # tippecanoe's temporary files (a few GB) go in its own /tmp. On Windows that is WSL's disk,
-        # which grows for them and keeps the room after they are deleted: leave several GB free on C:.
-        # Writing them to a Windows folder instead (tried 2026-10-22) slowed a map from minutes to
-        # over an hour, since every write crosses from WSL to Windows.
+        # tippecanoe's temporary files (a few GB) go in its own /tmp.
         tippecanoe(["-o", part, "--force", "--quiet", "-l", "flood", "-y", "var",
                     f"-Z{low}", f"-z{high}", f"-D{config.NOAH_TILE_DETAIL}", f"--maximum-tile-bytes={limit}",
                     "--drop-smallest-as-needed", "--no-tile-stats", f"--name=NOAH {return_period}-year flood hazard",

@@ -1,4 +1,4 @@
-/* F14: Compare models in the city panel (MapCompare.tsx): the tabs, the heading, then F9's chart, Controls and scores. */
+/* Compare models in the city panel (MapCompare.tsx). */
 .map-compare {
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   color: var(--color-text-primary);
 }
 
-/* F11: the title takes focus when the city opens, for screen readers; it needs no ring */
+/* The title takes focus when the city opens, for screen readers; it needs no ring */
 .map-compare-title:focus {
   outline: none;
 }

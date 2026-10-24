@@ -5,13 +5,10 @@ import { modelStyle } from './models.ts'
 import { yearsWords } from './periods.ts'
 import './ScoreTable.css'
 
-/** What a score shows while there is none: the forecasts are simulated (the Design notes: "—"). */
+/** What a score shows while there is none: the forecasts are simulated. */
 const NONE = '—'
 
-/**
- * D5's comparison, as the plan fixes it (config.PRIMARY_COMPARISON): M4 against M3. While the
- * forecasts are simulated there is no scores.json to name them, so the label names them here.
- */
+/** The primary comparison (config.PRIMARY_COMPARISON): M4 against M3. */
 const PRIMARY_LABEL = 'Primary result · M4 against M3'
 
 /** The table's columns: each score's key in scores.json, its heading, and how it is written. */
@@ -28,7 +25,7 @@ function fixed(value: number, digits: number): string {
   return value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
-/** A difference with its sign, as D8's figure 2 writes it (2 decimals): "−1.23", "+0.40", "0.00". */
+/** A difference with its sign, as figure 2 writes it (2 decimals): "−1.23", "+0.40", "0.00". */
 function signed(value: number): string {
   const text = fixed(Math.abs(value), 2)
   if (Number(text) === 0) {
@@ -38,25 +35,15 @@ function signed(value: number): string {
 }
 
 type ScoreTableProps = {
-  /** The models, in city_forecast.json's order, which is D8's figure 2's: M0, M1, M3, M4, M4 without EI2. */
+  /** The models, in city_forecast.json's order, which is figure 2's: M0, M1, M3, M4, M4 without EI2. */
   models: string[]
-  /** LEPTON's model, whose row is tinted as in Figma's models table (city_forecast.json's map_model, M4). */
+  /** LEPTON's model, whose row is tinted as in the models table (city_forecast.json's map_model, M4). */
   ours: string
   /** The real run's scores; null while the forecasts are simulated. */
   scores: Scores | null
 }
 
-/**
- * F9: the scores under the chart, from scores.json (F2): the primary result, D5's mean of
- * |error M4| - |error M3| with its 95% interval, as a Stat card, and each model's MAE, MASE, WIS,
- * 90% coverage and Brier score. Figma's frame leaves this room empty; the table follows its
- * How it works models table (node 12:1482), LEPTON's row tinted.
- *
- * F2 writes scores.json beside B10's real run only, so while the forecasts are simulated every
- * score shows "—" and nothing here reads as a result. After the real run the numbers equal D8's
- * figure 2 table (results/d8_fig2_mae.csv): its MAE by model and its 8-week "M4 vs M3" row
- * (check "F9 scores" in python -m src.checks).
- */
+/** The scores under the chart, from scores.json. */
 export default function ScoreTable({ models, ours, scores }: ScoreTableProps) {
   const titleId = useId()
   const noteId = useId()

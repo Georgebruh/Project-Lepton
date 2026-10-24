@@ -10,7 +10,7 @@ export type MapListItem = {
   name: string
   /** What the row shows at its right end: a level badge, a share, "No data yet". */
   detail?: ReactNode
-  /** What a screen reader hears after the name, e.g. "Low chance of an outbreak, 24 cases expected next week". */
+  /** What a screen reader hears after the name. */
   words: string
   /** Whether Enter (or a click) opens it: a city with a forecast. */
   opens?: boolean
@@ -42,14 +42,7 @@ function plain(name: string): string {
 /** How long, in ms, keys typed one after another still add to the same search. */
 const TYPING_MS = 700
 
-/**
- * F11: the list beside the map that reaches every city (level 1) and barangay (level 3) without
- * a mouse, as the app plan asks; Figma has no frame for it. A Panel header (Figma 4:17) opens and
- * closes it; it starts closed, so the map looks as in Figma. Open, it is a listbox: Tab reaches
- * it, the arrow keys, Home, End or typing a name move through it, and the row reached shows its
- * place on the map with its tooltip, as hovering does. Enter opens a city with a forecast;
- * Escape closes the list. A screen reader hears each row's name and numbers (`words`).
- */
+/** The list beside the map that reaches every city. */
 export default function MapList({ title, items, note, instructions, onShow, onOpen, ref }: MapListProps) {
   const id = useId()
   const [expanded, setExpanded] = useState(false)

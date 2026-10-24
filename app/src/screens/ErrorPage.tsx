@@ -1,11 +1,7 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router'
 import './ErrorPage.css'
 
-/**
- * F1: the page shown in place of a screen, for an address that is not one of the eight
- * screens (a 404) and for an error while drawing a screen, so a reader never sees a blank
- * page or a stack trace. The error itself goes to the browser's console.
- */
+/** The page shown in place of a screen, for an address that is not one of the eight screens. */
 export default function ErrorPage() {
   const error = useRouteError()
   const notFound = isRouteErrorResponse(error) && error.status === 404

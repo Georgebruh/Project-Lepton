@@ -3,10 +3,7 @@ import Button from './Button.tsx'
 import Logo from './Logo.tsx'
 import './SiteHeader.css'
 
-/**
- * The header's links, in Figma's order, and the route each one opens. A page's own link reads as
- * the current page (Figma Home: "Overview"); Sources is a part of How it works, so it never does.
- */
+/** The header's links, in order, and the route each one opens. */
 const LINKS = [
   { label: 'Overview', to: '/', page: true },
   { label: 'Leptospirosis', to: '/leptospirosis', page: true },
@@ -15,15 +12,7 @@ const LINKS = [
   { label: 'Sources', to: '/how-it-works#sources', page: false },
 ]
 
-/**
- * F3: the Figma component "Site header" (node 4:21), the header of the pages for the public:
- * Home, Leptospirosis and How it works. The logo goes home and Try LEPTON opens the map. The
- * map has no header (F14): its logo sits in its top left corner (screens/MapLayout.tsx). Results
- * opens Compare models in the map's city panel, on the real data.
- *
- * F6: the open page's link is in the primary text color, as in the Figma Home frame. Below
- * 1024 px the links move to a row of their own under the logo and the button.
- */
+/** The "Site header" component, the header of the pages for the public. */
 export default function SiteHeader() {
   return (
     <header className="site-header">

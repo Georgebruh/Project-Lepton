@@ -8,21 +8,16 @@ import { MAP_PATHS } from '../map/routes.ts'
 import { stormTitle, type Loaded, type PlanPreviewData } from './homeData.ts'
 import './PlanPreview.css'
 
-/** How many health centers the stock list shows (Figma: 5, then "+ 61 more centers"). */
+/** How many health centers the stock list shows. */
 const SHOWN_CENTERS = 5
 
-/** Quezon City's height on the preview, in px (Figma: 500). */
+/** Quezon City's height on the preview, in px. */
 const MAP_HEIGHT = 500
 
-/** Where the barangay outlines come from (A5's barangays_qc.gpkg), as the caption credits them. */
+/** Where the barangay outlines come from, as the caption credits them. */
 const BOUNDARIES_CREDIT = 'Boundaries: PSA and NAMRIA, via OCHA’s COD-AB on HDX (CC BY-IGO 3.0).'
 
-/**
- * Each barangay's outline as SVG path data, and the drawing's width, with Quezon City MAP_HEIGHT
- * px tall. Longitude and latitude become x and y; a degree of longitude is shorter than one of
- * latitude by cos(latitude), so x is shrunk by that at the city's middle (over a city this small,
- * the same as the map's Web Mercator).
- */
+/** Each barangay's outline as SVG path data. */
 function drawBarangays(shapes: BarangayShapes): { paths: Map<string, string>; width: number } {
   const outlines = shapes.features.map(({ properties, geometry }) => ({
     psgc: properties.psgc,
@@ -50,13 +45,7 @@ type PlanPreviewProps = {
   preview: Loaded<PlanPreviewData>
 }
 
-/**
- * F6: Home's preview of the prophylaxis plan, Figma "Product preview" (node 19:291) and its
- * caption: Quezon City's barangays shaded by the share of residents in flood zones in Kristine's
- * forecast 1 day ahead, the flagged barangays outlined, and the stock list beside them. Drawn from
- * F2's files, not a picture (the Home notes: "Product preview is real data"). Stock planning, not
- * prescriptions.
- */
+/** Home's preview of the prophylaxis plan and its caption. */
 export default function PlanPreview({ preview }: PlanPreviewProps) {
   const data = preview === 'failed' ? undefined : preview
   return (
@@ -93,7 +82,7 @@ export default function PlanPreview({ preview }: PlanPreviewProps) {
 
 type PartProps = { data: PlanPreviewData }
 
-/** The barangays: filled by class, outlined in the map's boundary color; the flagged and the selected on top. */
+/** The barangays: filled by class, outlined in the map's boundary color. */
 function PreviewMap({ data }: PartProps) {
   const { paths, width } = useMemo(() => drawBarangays(data.shapes), [data.shapes])
   const { barangays, selected, run } = data
@@ -123,7 +112,7 @@ function PreviewMap({ data }: PartProps) {
   )
 }
 
-/** The legend, Figma "Legend" (node 19:503): the five shades, light to dark. */
+/** The legend: the five shades, light to dark. */
 function Legend({ data }: PartProps) {
   const { classes } = data
   return (
@@ -143,7 +132,7 @@ function Legend({ data }: PartProps) {
   )
 }
 
-/** The stock list, Figma "Stock list" (node 19:511): the forecast, two totals and the top health centers. */
+/** The stock list: the forecast, two totals and the top health centers. */
 function StockList({ data }: PartProps) {
   const { run, flood, needs } = data
   const shown = needs.slice(0, SHOWN_CENTERS)

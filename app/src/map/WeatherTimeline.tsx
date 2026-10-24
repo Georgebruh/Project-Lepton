@@ -18,13 +18,7 @@ type WeatherTimelineProps = {
   onFrame: (index: number) => void
 }
 
-/**
- * F13: the live weather layer's timeline, Figma "Weather timeline" (Paused, Playing): play or
- * pause, the previous and next frame, a slider over the frames, the frame's time in Philippine
- * time and its age, and a badge saying the layer is now, not the map's date. It stands at the
- * bottom left of the map in sight (MapLayout). The slider is a native range input, so the arrow
- * keys move it and screen readers hear each frame's time.
- */
+/** The live weather layer's timeline. */
 export default function WeatherTimeline({ label, frames, index, now, playing, onPlay, onFrame }: WeatherTimelineProps) {
   const last = frames.length - 1
   const time = frames[index].time

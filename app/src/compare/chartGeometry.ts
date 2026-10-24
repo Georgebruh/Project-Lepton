@@ -1,36 +1,25 @@
-/**
- * F9: the chart's geometry, in plain functions: its size, how high the counts axis reaches, how
- * wide the bars are, the SVG paths of the lines and the range, and which axis labels fit. The
- * numbers come from Figma's chart "Weekly leptospirosis cases" (How it works, node 12:1010), the
- * chart Compare models was drawn for: a plot 1030 px wide and 330 px tall.
- */
+/** The chart's geometry, in plain functions. */
 
-/** Room around the plot, px: the counts' labels on the left, the dates below (Figma's "Plot", node 12:1027). */
+/** Room around the plot, px: the counts' labels on the left, the dates below. */
 export const MARGIN = { top: 8, right: 8, bottom: 28, left: 36 }
 
 /** Extra room on top for the storms' names, so they never sit on the data. */
 export const STORM_LABEL_ROOM = 16
 
-/** Figma's plot: 330 px tall at 1030 px wide. Narrower charts keep about that shape, but no lower than 220 px. */
+/** The plot: 330 px tall at 1030 px wide; narrower charts keep that shape, but no lower than 220 px. */
 const FIGMA_WIDTH = 1030
 const FIGMA_HEIGHT = 330
 const MIN_HEIGHT = 220
 
-/**
- * How far the counts axis may reach above the tallest count or forecast to keep a range end or
- * threshold in view: half again. A threshold raised by one huge week then runs off the top
- * instead of flattening every count (on B10's made-up counts, weeks 25 and 26 of every year from
- * 2019 to 2025 have thresholds over 800, from 2018's spike, while 2024's counts stay under 130).
- * The chart says when something runs off the top, and the tooltip gives its number.
- */
+/** How far the counts axis may reach above the tallest count or forecast: half again. */
 export const REFERENCE_HEADROOM = 1.5
 
-/** Bars are Figma's 10.4 px in a 19.3 px week (54%), at most 24 px; under 4 px a week, they touch. */
+/** Bars are 10.4 px in a 19.3 px week (54%), at most 24 px; under 4 px a week, they touch. */
 const BAR_SHARE = 0.54
 const BAR_MAX = 24
 const BAR_TOUCH = 4
 
-/** An axis label's width, px a character, at Label/Eyebrow's 12 px, and the least room between two labels. */
+/** An axis label's width. */
 const LABEL_CHAR = 7
 const LABEL_GAP = 8
 
@@ -42,11 +31,7 @@ export function plotHeight(width: number): number {
   return Math.max(MIN_HEIGHT, Math.min(FIGMA_HEIGHT, Math.round((width * FIGMA_HEIGHT) / FIGMA_WIDTH)))
 }
 
-/**
- * The top of the counts axis, before rounding to a round number: the tallest count or forecast
- * drawn (dataMax), raised for the tallest range end or threshold drawn (referenceMax) by at most
- * REFERENCE_HEADROOM times dataMax. With no count or forecast drawn, the reference sets it.
- */
+/** The top of the counts axis, before rounding to a round number. */
 export function axisTop(dataMax: number, referenceMax: number): number {
   if (dataMax <= 0) {
     return Math.max(1, referenceMax)
@@ -64,7 +49,7 @@ export function labelWidth(label: string): number {
   return label.length * LABEL_CHAR
 }
 
-/** The left margin: room for the longest counts label ("1,200") and a gap, at least Figma's 36 px. */
+/** The left margin: room for the longest counts label ("1,200") and a gap, at least 36 px. */
 export function leftMargin(labels: string[]): number {
   return Math.max(MARGIN.left, Math.max(0, ...labels.map(labelWidth)) + LABEL_GAP)
 }
@@ -80,10 +65,7 @@ export function areaPath(top: [number, number][], bottom: [number, number][]): s
   return `${linePath(top)}${back.join('')}Z`
 }
 
-/**
- * The labels that fit, left to right: a label is dropped when it would touch the one kept
- * before it. Each label starts at its x ('start') or is centered on it ('middle').
- */
+/** The labels that fit, left to right: a label is dropped when it would touch the one kept before it. */
 export function fittingLabels<T extends { x: number; label: string }>(labels: T[], anchor: 'start' | 'middle'): T[] {
   const kept: T[] = []
   let end = -Infinity
@@ -101,11 +83,7 @@ export function fittingLabels<T extends { x: number; label: string }>(labels: T[
 /** A name placed beside its line: where its text starts or ends (`textX`), and which. */
 export type PlacedName<T> = T & { textX: number; anchor: 'start' | 'end' }
 
-/**
- * The storms' names above the plot, left to right: each right of its line, or left of it where
- * it would run past `right` (the chart's right edge). A name that would touch the one placed
- * before it is left out; its line stays, and the tooltip names the storm.
- */
+/** The storms' names above the plot, left to right. */
 export function placeNames<T extends { x: number; label: string }>(items: T[], right: number): PlacedName<T>[] {
   const placed: PlacedName<T>[] = []
   let end = -Infinity

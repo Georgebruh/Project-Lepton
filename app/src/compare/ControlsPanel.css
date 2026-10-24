@@ -1,11 +1,8 @@
-/*
- * F9: the Controls panel (ControlsPanel.tsx), Figma node 12:978: a 320 px card, 16 px padding,
- * 14 px between its sections; toggle rows 2 px apart, the period's rows 8 px apart.
- */
+/* The Controls panel (ControlsPanel.tsx). */
 .controls-panel {
   display: flex;
   flex-direction: column;
-  /* Figma's 14 px, between the spacing steps */
+  /* 14 px, between the spacing steps */
   gap: 14px;
   padding: var(--space-4);
   border: 1px solid var(--color-border-subtle);
@@ -26,11 +23,11 @@
 
 .controls-panel-section-tight,
 .controls-panel-section-tight .controls-panel-rows {
-  /* Figma's 2 px between toggle rows */
+  /* 2 px between toggle rows */
   gap: 2px;
 }
 
-/* The three period tabs share the row equally; the selected one is 2 px taller, so they line up at the top */
+/* The three period tabs share the row equally. */
 .controls-panel-periods {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -50,7 +47,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Like the map's date picker (DatePicker.css): Figma's 6 px by 10 px */
+/* Like the map's date picker (DatePicker.css): 6 px by 10 px */
 .controls-panel-year-field {
   position: relative;
   display: inline-flex;
@@ -81,12 +78,12 @@
   outline-offset: 2px;
 }
 
-/* The latest week: Figma's "Data" box, 12 px padding, 10 px between its lines */
+/* The latest week: box, 12 px padding, 10 px between its lines */
 .controls-panel-data {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  /* Figma's 10 px, between the spacing steps */
+  /* 10 px, between the spacing steps */
   gap: 10px;
   padding: var(--space-3);
   border-radius: var(--radius-md);

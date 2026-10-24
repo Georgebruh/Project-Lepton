@@ -6,16 +6,11 @@ import './OutbreakLegend.css'
 type OutbreakLegendProps = {
   /** The outbreak levels, lowest first (city_forecast.json). */
   levels: CityForecast['levels']
-  /** The amber badge's words while the week shown is simulated (the city colors are Layer 1 numbers too); null otherwise. */
+  /** The amber badge's words while the week shown is simulated (the city colors are Layer 1 numbers too). */
   simulated: string | null
 }
 
-/**
- * F4: the map's legend at levels 1 and 2, Figma "Legend" (node 55:349): the color of each
- * outbreak level and of a city without data. While the forecasts are simulated it carries the
- * amber badge, because the city colors come from them (app check U2); Figma's legend has none.
- * F14: also while the week shown is one the Simulation mode added.
- */
+/** The map's legend at levels 1 and 2: the color of each outbreak level and of a city without data. */
 export default function OutbreakLegend({ levels, simulated }: OutbreakLegendProps) {
   return (
     <div className="outbreak-legend">
