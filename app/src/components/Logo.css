@@ -24,11 +24,11 @@
   vertical-align: -0.115em;
 }
 
-/* The ring is drawn thicker (2.2 px) so it matches the letters' strokes. */
+/* The ring is a thin line (1 px at 20 px), lighter than the letters' strokes. */
 .logo-o-ring {
   fill: none;
   stroke: var(--color-accent-primary);
-  stroke-width: 5.6;
+  stroke-width: 2.6;
   stroke-linejoin: round;
 }
 

@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 48 48">
-  <!-- F12: the logo's O (Logo.tsx): a ring with 14 small waves round a dot, the same ring drawn
-       with 168 points. Ring in accent/primary, dot in text/primary (Clinic, tokens.css), and
-       Monsoon's colors when the browser is dark. A favicon cannot read CSS variables. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="5 5 38 38">
+  <!-- F12: the logo's O (Logo.tsx): a thin ring with 14 small waves round a dot, drawn with
+       168 points and cropped to fill the tab. Ring in accent/primary, dot in text/primary
+       (Clinic, tokens.css), and Monsoon's colors when the browser is dark. A favicon cannot
+       read CSS variables. -->
   <style>
-    .ring { fill: none; stroke: #0e6b63; stroke-width: 5.6; stroke-linejoin: round }
+    .ring { fill: none; stroke: #0e6b63; stroke-width: 2.6; stroke-linejoin: round }
     .dot { fill: #12161b }
     @media (prefers-color-scheme: dark) {
       .ring { stroke: #3fd3c1 }
