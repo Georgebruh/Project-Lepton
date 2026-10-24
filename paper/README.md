@@ -55,8 +55,9 @@ itself.
 `biber main`, `pdflatex main`, `pdflatex main`. A full TeX Live has every package. MiKTeX works
 too, but its latexmk needs Perl installed separately.
 
-Checked on October 22 with TinyTeX (TeX Live 2026) and latexmk, as LaTeX Workshop runs it:
-22 pages with E3, no errors, no overfull lines, Biber without warnings.
+Checked on October 24 with TinyTeX (TeX Live 2026) and latexmk, as LaTeX Workshop runs it:
+27 pages with the appendices, no errors, no overfull lines, no undefined references, Biber
+without warnings.
 
 ## Files
 

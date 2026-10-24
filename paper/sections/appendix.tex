@@ -36,8 +36,8 @@ the six steps once a week, refitting every model each time.}\label{fig:layer1}
 {\footnotesize
 \renewcommand{\arraystretch}{1.25}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.13\textwidth}
-                    >{\raggedright\arraybackslash}p{0.27\textwidth}
-                    >{\raggedright\arraybackslash}p{0.30\textwidth}
+                    >{\raggedright\arraybackslash}p{0.26\textwidth}
+                    >{\raggedright\arraybackslash}p{0.29\textwidth}
                     >{\raggedright\arraybackslash}p{0.24\textwidth}@{}}
 \caption{The four models of Layer~1 and the flood test's variant. Each forecasts the count of the
 week after the forecast day from what the delay guard lets it see, and is refitted at every
@@ -109,13 +109,13 @@ Every model \cfg{forecast_range.py}
 
 {\footnotesize
 \renewcommand{\arraystretch}{1.25}
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.15\textwidth}
-                    >{\raggedright\arraybackslash}p{0.42\textwidth}
-                    >{\raggedright\arraybackslash}p{0.15\textwidth}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.13\textwidth}
+                    >{\raggedright\arraybackslash}p{0.45\textwidth}
+                    >{\raggedright\arraybackslash}p{0.14\textwidth}
                     >{\raggedright\arraybackslash}p{0.20\textwidth}@{}}
 \caption{Every data source, with the version used and the date it was downloaded. Each raw file
 is saved unchanged, with a note beside it in the repository's \texttt{data/raw/} folder giving
-its address, date and version; the note's name is in small type. Dates are 2026.}\label{tab:sources}\\
+its address, date and version; the note's name is in small type under its source. Dates are 2026.}\label{tab:sources}\\
 \toprule
 \textbf{Data} & \textbf{Source, version and coverage} & \textbf{Obtained} & \textbf{Used in} \\
 \midrule
@@ -132,87 +132,87 @@ its address, date and version; the note's name is in small type. Dates are 2026.
 \endlastfoot
 %
 \multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Cases}}\\
-QC cases \cfg{qcesd.md}
+QC cases
   & QCESD's case list \parencite{qcesd2026}: 4,953 cases, onset 30 January 2015 to 14 October
-    2026, used only as weekly counts by week of onset; never shared
+    2026, used only as weekly counts by week of onset; never shared\cfg{qcesd.md}
   & 20 October, by e-mail
   & Layer~1 \\
-National cases \cfg{parreno.md}
+National cases
   & Philippine epidemiological data, Mendeley Data v1 \parencite{parreno2023}: national weekly
-    leptospirosis counts, 2019--2023
+    leptospirosis counts, 2019--2023\cfg{parreno.md}
   & 17 October
   & M3's reproduction \\
 %
 \multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Rain}}\\
-Observed rain \cfg{imerg_daily.md}
+Observed rain
   & NASA IMERG Late daily, V07, 0.1\textdegree{} \parencite{huffman2024}: 1 June 2000 to 13
-    October 2026, a box around QC and its catchments
+    October 2026, a box around QC and its catchments\cfg{imerg_daily.md}
   & 15 October
   & Both layers \\
-Reanalysis rain \cfg{era5_open_meteo.md}
+Reanalysis rain
   & ERA5 hourly \parencite{hersbach2020} through Open-Meteo's Historical Weather API
-    \parencite{zippenfenig2023}: June 2000 to December 2025, four 0.25\textdegree{} cells
+    \parencite{zippenfenig2023}: June 2000 to December 2025, four 0.25\textdegree{} cells\cfg{era5_open_meteo.md}
   & 17 October
   & Return levels of the forecast runs \\
-Archived forecasts \cfg{ecmwf_previous_runs.md}
+Archived forecasts
   & ECMWF IFS 0.25\textdegree{} through Open-Meteo's Previous Runs API
-    \parencite{zippenfenig2023}: runs one to five days before each storm, the same four cells
+    \parencite{zippenfenig2023}: runs one to five days before each storm, the same four cells\cfg{ecmwf_previous_runs.md}
   & 16 October (Carina), 18 October (all four storms)
   & Layer~2's forecast runs \\
 %
 \multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}Place, people and health centers}}\\
-Catchments \cfg{hybas_au_lev12_v1c.md}
-  & HydroBASINS v1c, level 12, Australasia \parencite{lehner2013}
+Catchments
+  & HydroBASINS v1c, level 12, Australasia \parencite{lehner2013}\cfg{hybas_au_lev12_v1c.md}
   & 15 October
   & Shared flood computation \\
-Flood hazard maps \cfg{noah.md}
+Flood hazard maps
   & Project NOAH's 5-, 25- and 100-year flood hazard maps of Metro Manila \parencite{noah_nd};
-    ODbL
+    ODbL\cfg{noah.md}
   & 15 October
   & Shared flood computation \\
-Population grid \cfg{phl_pop_2024_CN_100m_R2025A_v1.tif.md}
-  & WorldPop R2025A v1, 2024, constrained, about 100~m \parencite{bondarenko2025}; CC BY 4.0
+Population grid
+  & WorldPop R2025A v1, 2024, constrained, about 100~m \parencite{bondarenko2025}; CC BY 4.0\cfg{phl_pop_2024_CN_100m_R2025A_v1.tif.md}
   & 15 October
   & Shared flood computation \\
-Census totals \cfg{NCR - Table C - Population by Barangay.xlsx.md}
-  & PSA 2024 Census of Population, NCR barangay totals \parencite{psa_census2024}
+Census totals
+  & PSA 2024 Census of Population, NCR barangay totals \parencite{psa_census2024}\cfg{NCR - Table C - Population by Barangay.xlsx.md}
   & 15 October
   & Both layers \\
-Ages \cfg{2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx.md}
+Ages
   & PSA 2020 census by single year of age, sex and barangay, through HDX
-    \parencite{psa_age2020}
+    \parencite{psa_age2020}\cfg{2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx.md}
   & 15 October
   & Layer~2's shares \\
-Boundaries \cfg{phl_admin_boundaries.gdb.zip.md}
-  & COD-AB Philippines v03, valid 13 February 2025, through HDX \parencite{namria_codab2025}
+Boundaries
+  & COD-AB Philippines v03, valid 13 February 2025, through HDX \parencite{namria_codab2025}\cfg{phl_admin_boundaries.gdb.zip.md}
   & 15 October
   & Both layers \\
-Births \cfg{psa_births_2024.csv.md}
-  & PSA OpenSTAT table 1A1ABIB8, 2024 births by mother's residence \parencite{psa_births2026}
+Births
+  & PSA OpenSTAT table 1A1ABIB8, 2024 births by mother's residence \parencite{psa_births2026}\cfg{psa_births_2024.csv.md}
   & 17 October
   & Layer~2's shares \\
-Health centers \cfg{nhfr.md}
-  & DOH National Health Facility Registry, active facilities \parencite{doh_nhfr}
+Health centers
+  & DOH National Health Facility Registry, active facilities \parencite{doh_nhfr}\cfg{nhfr.md}
   & 15 October
   & Layer~2's allocation \\
-Storm facts \cfg{storm-facts.md}
+Storm facts
   & City government updates and news reports: the days QC flooded and the barangays named, one
-    link per fact
+    link per fact\cfg{storm-facts.md}
   & Checked 18 October
   & Table~\ref{tab:storms}; Layer~2's checks \\
 %
 \multicolumn{4}{@{}l}{\textbf{\color{leptonnavy}The web app only (no number in this paper)}}\\
-City outlines \cfg{ncr_cities.md, ph_cities.md}
-  & philippines-json-maps, 2023 boundaries (MIT licence)
+City outlines
+  & philippines-json-maps, 2023 boundaries (MIT licence)\cfg{ncr_cities.md, ph_cities.md}
   & 19 October (NCR), 22 October (the rest)
   & The app's map \\
-Flood maps, whole country \cfg{noah_national.md}
+Flood maps, whole country
   & Project NOAH's 5-, 25- and 100-year maps of every province NOAH has mapped
-    \parencite{noah_nd}; ODbL
+    \parencite{noah_nd}; ODbL\cfg{noah_national.md}
   & 22 October
   & The app's map \\
-Today's forecast \cfg{ecmwf_forecast.md}
-  & ECMWF IFS 0.25\textdegree{} through Open-Meteo's Forecast API \parencite{zippenfenig2023}
+Today's forecast
+  & ECMWF IFS 0.25\textdegree{} through Open-Meteo's Forecast API \parencite{zippenfenig2023}\cfg{ecmwf_forecast.md}
   & Each day the app's simulation runs, from 22 October
   & The app's Simulation mode \\
 \end{longtable}
