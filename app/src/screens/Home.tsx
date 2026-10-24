@@ -94,8 +94,7 @@ export default function Home() {
             </h1>
             <p className="home-hero-text body-l">
               LEPTON combines rain forecasts, flood hazard maps and population data to estimate leptospirosis
-              risk barangay by barangay, one to three days ahead. Built for the whole Philippines, it starts in
-              Quezon City.
+              risk barangay by barangay, one to three days ahead.
             </p>
             <Button variant="ghost" to="/map" className="home-hero-button">
               Try LEPTON
