@@ -94,9 +94,3 @@
 .your-result-urgent-icon {
   color: var(--color-status-alert);
 }
-
-/* "call QC Helpline 122" dials the number */
-.your-result-call {
-  color: inherit;
-  text-decoration: underline;
-}

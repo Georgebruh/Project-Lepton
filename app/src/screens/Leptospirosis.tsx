@@ -31,11 +31,6 @@ const SOURCES = [
     url: 'https://drive.google.com/file/d/1fsclOOUcv04_vcHMefdkltFq3IkivuYo/view',
   },
   {
-    id: 'qc-helpline',
-    title: 'Quezon City Government, “QC Helpline 122”',
-    url: 'https://quezoncity.gov.ph/program/qc-helpline-122/',
-  },
-  {
     id: 'pia-bandages',
     title: 'Philippine Information Agency, “DOH warns of leptospirosis risk as floods persist”',
     url: 'https://pia.gov.ph/disaster-information-service/doh-warns-of-leptospirosis-risk-as-floods-persist/',
@@ -206,9 +201,6 @@ function Hero() {
           <Button icon="arrow-right" to="/exposed">
             I have been exposed to floodwater
           </Button>
-          <Button variant="secondary" href="tel:122">
-            Call QC Helpline 122
-          </Button>
         </div>
       </div>
       {HERO_PHOTO && (
@@ -254,10 +246,6 @@ function Signs() {
             <Cite sources={['doh-disease', 'doh-2024-07-24', 'doh-dm-2023-0309']} />
           </h3>
           <SignList signs={SEVERE_SIGNS} alert />
-          <p className="leptospirosis-note">
-            Call QC Helpline 122 for emergencies, 24/7.
-            <Cite sources={['qc-helpline']} />
-          </p>
         </div>
       </div>
     </Section>
