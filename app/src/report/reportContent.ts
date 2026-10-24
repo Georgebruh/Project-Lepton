@@ -1,18 +1,5 @@
 import { formatKm, type LonLat } from '../exposed/nearest.ts'
-import {
-  LEVEL_NAMES,
-  addDays,
-  formatChance,
-  formatCount,
-  formatWeek,
-  isSimulated,
-  levelOf,
-  rangePercent,
-  simulatedLabel,
-  thresholdCount,
-  weekStart,
-} from '../map/forecast.ts'
-import type { CityForecast, ForecastWeek } from '../map/mapData.ts'
+import { formatCount } from '../map/forecast.ts'
 import {
   PLAN_FLOOD,
   classLabel,
@@ -20,10 +7,9 @@ import {
   fullDate,
   leadWords,
   planFlood,
-  planRuns,
   positionWords,
+  rainLine,
   titleCase,
-  waveOrder,
 } from '../map/plan.ts'
 import type {
   BarangayRun,
@@ -37,7 +23,7 @@ import type {
   Units,
 } from '../map/planData.ts'
 
-/* What the barangay report says, for health offices and LGUs. */
+/* What the barangay report says, for the health centers and barangay health stations that hold its stock. */
 
 /** One forecast of the storm, with its barangays (its barangay file joined to the shapes). */
 export type LeadRun = { run: StormRun; barangays: Map<string, BarangayRun> }
@@ -54,23 +40,17 @@ export type ReportInput = {
   leads: LeadRun[]
   /** The barangay reported on. */
   psgc: string
-  /** Quezon City's forecasts as the map has them (Simulation or Real data). */
-  forecast: CityForecast
-  /** The forecast made in the week of the map's date, for the week after it; undefined if there is none. */
-  week: ForecastWeek | undefined
-  /** The map's date, YYYY-MM-DD. */
-  date: string
-  /** The map's address, which opens this forecast again. */
+  /** The map's address, which opens this forecast again (the cover's QR code). */
   link: string
   /** When the report is made. */
   made: Date
 }
 
-/** A key figure: a number in large type, what it counts, and a line under that. */
-export type Figure = { value: string; label: string; detail: string }
-
 /** A table: its column heads and its rows of cells; a `strong` row is set in bold. */
 export type Table = { heads: string[]; rows: { cells: string[]; strong?: boolean }[] }
+
+/** One unit to stock: its count in the map's flood, what it is, and who it is for. */
+export type StockItem = { value: string; unit: string; who: string }
 
 export type ReportContent = {
   fileName: string
@@ -79,25 +59,25 @@ export type ReportContent = {
   /** storms.json's label: stock-planning figures, not prescriptions. */
   label: string
   name: string
-  /** Under the name: the city, the PSGC and the barangay's 2024 residents. */
-  about: string
-  /** Whether the barangay is flagged: the chip's words ("Flagged", "Not flagged") and why. */
-  flag: { flagged: boolean; label: string; text: string }
-  /** The forecast's box: the storm, the rain forecast and the city's totals. */
+  /** Under the name on the cover: the city and the barangay's 2024 residents. */
+  place: string
+  /** When the report was made. */
+  made: string
+  /** The storm, when the forecast was made, and its rain, for the cover. */
   storm: string
   forecastLine: string
-  cityLine: string
-  figures: Figure[]
-  figuresNote: string
-  stock: { table: Table; notes: string[] }
-  /** The forecasts made before the rain, or a day's rain that fell: the section's title, table and note. */
-  leads: { title: string; table: Table; note: string }
+  rainLine: string
+  /** Whether the barangay is flagged: the chip's words, the residents exposed, and what flagged means. */
+  flag: { flagged: boolean; label: string; headline: string; text: string }
+  /** The stock to prepare: a card per unit, and the line under the cards. */
+  stock: { items: StockItem[]; note: string }
   centers: {
-    intro: string
+    /** Each center that holds the stock, as the cover lists them. */
+    names: string[]
+    /** How the need reaches the centers; null when it all goes to the barangay's own center. */
+    intro: string | null
     table: Table
-    serves: string[]
-    leftOut: string[]
-    note: string
+    notes: string[]
     /** Each center's pin on the map: its number in the table and its place. */
     pins: { number: number; at: LonLat }[]
   }
@@ -106,13 +86,12 @@ export type ReportContent = {
     /** Each barangay's class (0 to 4) in this forecast, by PSGC. */
     classes: Map<string, number>
     legend: { cls: number; label: string }[]
-    caption: string
   }
-  city: { title: string; lines: string[]; badge: string | null }
-  method: string[]
-  limits: string[]
-  sources: string[]
-  made: string
+  /** How many units each person gets, a column per flood. */
+  counting: { table: Table; notes: string[] }
+  /** About these numbers: where they come from and what they cannot claim, one point a line. */
+  about: string[]
+  sources: string
   link: string
 }
 
@@ -124,50 +103,27 @@ const LEFT_OUT_WORDS: Record<string, string> = {
   'point outside its barangay': 'its registered location lies outside its barangay',
 }
 
-/** What the figures cannot claim: the paper's limitations and How it works' limits, shortened. */
-const LIMITS = [
-  "Stock planning, not prescriptions. DOH DM 2023-0309 requires a physician's consultation before anyone takes prophylaxis.",
-  'Full coverage: every exposed resident is counted, and every course taken. Scale the figures by the share of ' +
-    'residents expected to come forward.',
-  'Everyone in a flooded zone is counted as touching the water, at any depth. Who has a wound, or has swallowed ' +
-    'floodwater, is not known: hence the share w.',
-  'A forecast can miss. For the July 2025 floods, the forecasts made 1 to 3 days ahead put far fewer residents in ' +
-    'flooded zones than the rain that fell did.',
-  "NOAH's maps state no design rain duration, and the rain below which nobody counts as exposed (half the 5-year " +
-    'rain) has not been tuned on past floods.',
-  'These barangay figures have not been checked against barangay case counts: none were available. Lactating women ' +
-    'are not counted apart, since DM 2023-0309 gives them no regimen.',
-]
-
-/** The sources of the figures, with their licences (the app's footer and How it works' Sources). */
-const SOURCES = [
-  'Flood hazard maps: Project NOAH, UP Resilience Institute (ODbL).',
-  "Population: WorldPop 2024 (CC BY 4.0); PSA's 2024 census; PSA's 2020 census ages via OCHA (CC BY); PSA's 2024 " +
-    'registered births (CC BY).',
-  'Barangay boundaries: PSA and NAMRIA via OCHA (CC BY-IGO).',
-  'Health centers: DOH National Health Facility Registry.',
-  'Rain: ECMWF IFS forecasts and the ERA5 reanalysis via Open-Meteo (CC BY 4.0; ERA5 contains modified Copernicus ' +
-    'Climate Change Service information); the rain that fell, GPM IMERG Late v07 (NASA GES DISC). River basins: ' +
-    'HydroBASINS (Lehner and Grill, 2013).',
-  'City case counts: Quezon City Epidemiology and Surveillance Division (weekly city totals only).',
-  'Regimens: DOH Department Memorandum 2023-0309.',
-]
+/** The sources of the figures, with their licences, as one paragraph. */
+const SOURCES =
+  'Flood hazard maps: Project NOAH, UP Resilience Institute (ODbL). Population: WorldPop 2024 (CC BY 4.0); PSA 2024 ' +
+  'census; PSA 2020 census ages via OCHA (CC BY); PSA 2024 registered births (CC BY). Boundaries: PSA and NAMRIA via ' +
+  'OCHA (CC BY-IGO). Health centers: DOH National Health Facility Registry. Rain: ECMWF IFS forecasts and ERA5 via ' +
+  'Open-Meteo (CC BY 4.0; ERA5 contains modified Copernicus Climate Change Service information); GPM IMERG Late v07 ' +
+  '(NASA GES DISC). River basins: HydroBASINS (Lehner and Grill, 2013). Regimens: DOH Department Memorandum 2023-0309.'
 
 /** A share as a whole percentage: 0.5 is "50%". */
 function percent(share: number): string {
   return `${Math.round(share * 100)}%`
 }
 
-/** 1st, 2nd, 3rd, 4th, ... 11th, 12th, 13th, ... 21st. */
-function ordinal(n: number): string {
-  const teen = n % 100 >= 11 && n % 100 <= 13
-  const suffix = teen ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
-  return `${n}${suffix}`
-}
-
 /** Names as a sentence lists them: "A", "A and B", "A, B and C". */
 function listWords(names: string[]): string {
   return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/** "1 day", "7 days". */
+function days(n: number): string {
+  return n === 1 ? '1 day' : `${n} days`
 }
 
 /** A name in a file name. */
@@ -180,15 +136,10 @@ function slug(name: string): string {
     .replace(/^-|-$/g, '')
 }
 
-/** When the report was made, in the reader's own time and offset: "23 Oct 2026, 22:45 (UTC+08:00)". */
+/** When the report was made, in the reader's own time: "23 Oct 2026, 22:45". */
 function madeWords(when: Date): string {
   const two = (n: number) => String(n).padStart(2, '0')
-  const offset = -when.getTimezoneOffset()
-  const zone = `UTC${offset < 0 ? '-' : '+'}${two(Math.floor(Math.abs(offset) / 60))}:${two(Math.abs(offset) % 60)}`
-  return (
-    `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}, ` +
-    `${two(when.getHours())}:${two(when.getMinutes())} (${zone})`
-  )
+  return `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}, ${two(when.getHours())}:${two(when.getMinutes())}`
 }
 
 /** A flood of a run in words: "1-day flood". */
@@ -213,11 +164,6 @@ function issuedWords(run: StormRun): string {
     : `the rain that fell (${run.rain_product})`
 }
 
-/** What the report calls a run. */
-function runName(run: StormRun): string {
-  return run.lead_days === null ? 'this rain' : 'this forecast'
-}
-
 /** What the report calls a run's rain: "this forecast's rain", or "this rain". */
 function rainName(run: StormRun): string {
   return run.lead_days === null ? 'this rain' : "this forecast's rain"
@@ -232,180 +178,104 @@ function unitsIn(barangay: BarangayRun, flood: Flood, run: StormRun): Units {
   return units
 }
 
-/** A barangay in one forecast; stops with an error if the forecast's file lacks it. */
-function barangayIn(lead: LeadRun, psgc: string): BarangayRun {
-  const barangay = lead.barangays.get(psgc)
-  if (!barangay) {
-    throw new Error(`${lead.run.file} has no barangay ${psgc}: rerun python -m src.app_data`)
-  }
-  return barangay
-}
-
-/** Whether a barangay is flagged, and why, for the line under its name. */
-function flagText(barangay: BarangayRun, storms: StormsFile, run: StormRun): ReportContent['flag'] {
-  const line = `barangays are flagged at ${percent(storms.flag_share)} or more`
-  const share = `${formatShare(barangay.share)} of its residents live in zones ${rainName(run)} floods (${line}).`
-  if (barangay.flagged) {
-    return { flagged: true, label: 'Flagged', text: share }
+/** The status band: flagged or not, the residents exposed, and what flagged means. */
+function flagSection(storms: StormsFile, run: StormRun, barangay: BarangayRun): ReportContent['flag'] {
+  const label = barangay.flagged ? 'Flagged' : 'Not flagged'
+  if (barangay.exposed === 0) {
+    return {
+      flagged: false,
+      label,
+      headline: 'No resident exposed',
+      text: `Nobody in ${barangay.name} lives in a zone ${rainName(run)} floods, so it needs no stock.`,
+    }
   }
   return {
-    flagged: false,
-    label: 'Not flagged',
-    text: barangay.exposed > 0 ? share : `None of its residents live in zones ${rainName(run)} floods.`,
+    flagged: barangay.flagged,
+    label,
+    headline:
+      `${formatCount(barangay.exposed)} residents exposed ` +
+      `(${formatShare(barangay.share)} of ${formatCount(barangay.pop_2024)})`,
+    text:
+      `They live in zones ${rainName(run)} floods. A barangay is flagged when ${percent(storms.flag_share)} or more ` +
+      'of its residents are exposed.',
   }
 }
 
-/** Quezon City's totals for the forecast, and the barangay's rank among the 142 by share exposed. */
-function cityLine(input: ReportInput, lead: LeadRun, barangay: BarangayRun): string {
-  const { storm, run, shapes } = input
-  const flood = planFlood(storm, run)
-  const all = shapes.features.length
-  const totals =
-    flood.exposed > 0
-      ? `Across Quezon City ${runName(run)} puts ${formatCount(flood.exposed)} residents (${run.ei_pct.toFixed(1)}% of ` +
-        `the city) in flooded zones and flags ${run.flagged} of ${all} barangays.`
-      : `Across Quezon City ${runName(run)} puts no resident in a flooded zone and flags no barangay.`
-  if (barangay.exposed === 0) {
-    return totals
+/** The three units: their key, what they are, and who they are for. */
+const STOCK: { key: keyof Units; unit: string; who: string }[] = [
+  { key: 'doxy100', unit: 'doxycycline 100 mg capsules', who: 'Adults, not pregnant' },
+  { key: 'courses', unit: "children's courses", who: 'Children under 18' },
+  { key: 'amox500', unit: 'amoxicillin 500 mg tablets', who: 'Pregnant women' },
+]
+
+/** The stock to prepare: a card per unit for the map's flood, and whether those counts cover a longer flood. */
+function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun, flood: Flood): ReportContent['stock'] {
+  const units = unitsIn(barangay, flood, run)
+  const items: StockItem[] = STOCK.map(({ key, unit, who }) => ({ value: formatCount(units[key]), unit, who }))
+  // Each longer flood: covered by these counts, or the units it needs more of
+  const longer = run.floods
+    .filter((each) => each.key !== flood.key)
+    .map((each) => {
+      const other = unitsIn(barangay, each, run)
+      const more = STOCK.filter(({ key }) => other[key] > units[key])
+      if (more.length) {
+        return `A ${floodName(each)} needs more: ${listWords(more.map(({ key, unit }) => `${formatCount(other[key])} ${unit}`))}.`
+      }
+      const fewer =
+        each.w === null && other.doxy100 < units.doxy100
+          ? `, which needs fewer capsules, as every exposed adult then takes a weekly dose of ${storms.counting.doxy100_high_per_week}`
+          : ''
+      return `These counts also cover a ${floodName(each)}${fewer}.`
+    })
+  const unknown = longer.length
+    ? ` ${run.lead_days === null ? 'The rain alone' : 'A forecast'} cannot tell how long the flood will last. ${longer.join(' ')}`
+    : ''
+  return {
+    items,
+    note:
+      `For a ${floodName(flood)}, as on the map.${unknown} Every exposed resident is counted (full coverage). ` +
+      'Who gets what: see Details.',
   }
-  const rank = waveOrder(lead.barangays.values()).indexOf(barangay.psgc) + 1
-  return `${totals} ${barangay.name} is ${ordinal(rank)} of the ${all} by the share of its residents exposed.`
 }
 
-/** The key figures for the map's flood: residents exposed and the three units. */
-function figures(barangay: BarangayRun, units: Units): Figure[] {
-  return [
-    {
-      value: formatCount(barangay.exposed),
-      label: 'residents exposed',
-      detail: `${formatShare(barangay.share)} of ${formatCount(barangay.pop_2024)}`,
-    },
-    { value: formatCount(units.doxy100), label: 'doxycycline 100 mg capsules', detail: 'for adults' },
-    { value: formatCount(units.courses), label: "children's courses", detail: 'dosed by weight' },
-    { value: formatCount(units.amox500), label: 'amoxicillin 500 mg tablets', detail: 'for pregnant women' },
-  ]
-}
-
-/** Who each adult capsule is for in one flood, and how many each gets. */
-function adultsIn(flood: Flood, counting: CountingRules): string {
-  if (flood.w !== null) {
-    return (
-      `In a ${floodName(flood)}, ${percent(flood.w)} are at moderate risk (a wound, or floodwater in the eyes, nose ` +
-      `or mouth), ${counting.doxy100_moderate} capsules each, and the rest at low risk, ${counting.doxy100_low} each.`
-    )
-  }
-  const weeks = floodWeeks(flood, counting)
-  return (
-    `In a ${floodName(flood)}, every exposed adult is at high risk: ${counting.doxy100_high_per_week} capsules per ` +
-    `week of flooding, ${counting.doxy100_high_per_week * weeks} each.`
-  )
-}
-
-/** The stock to prepare. */
-function stockSection(storms: StormsFile, run: StormRun, barangay: BarangayRun): ReportContent['stock'] {
+/** How many units each person gets, a column per flood of the run. */
+function countingSection(storms: StormsFile, run: StormRun): ReportContent['counting'] {
   const { counting } = storms
-  const columns = run.floods.map((flood) => unitsIn(barangay, flood, run))
-  // Courses per child in each flood: one per week of flooding, at least one
-  const perChild = run.floods.map((flood) => Math.max(1, floodWeeks(flood, counting)))
-  const courseWords = perChild.every((n) => n === perChild[0])
-    ? `${perChild[0]} each in ${run.floods.length > 1 ? 'either flood' : `a ${floodName(run.floods[0])}`}`
-    : listWords(run.floods.map((flood, i) => `${perChild[i]} each in a ${floodName(flood)}`))
+  const adults = (flood: Flood) =>
+    flood.w !== null
+      ? `Moderate risk: ${counting.doxy100_moderate} each. Low risk: ${counting.doxy100_low} each.`
+      : `High risk: ${counting.doxy100_high_per_week} a week of flooding, so ` +
+        `${counting.doxy100_high_per_week * floodWeeks(flood, counting)} each.`
+  const courses = (flood: Flood) => {
+    const each = Math.max(1, floodWeeks(flood, counting))
+    return flood.D < counting.week_days ? '1 course each' : `One a week of flooding, so ${each} each`
+  }
   const rows = [
-    {
-      cells: [
-        'Doxycycline 100 mg capsules',
-        `Exposed adults, not counting pregnant women. ${run.floods.map((flood) => adultsIn(flood, counting)).join(' ')}`,
-        ...columns.map((units) => formatCount(units.doxy100)),
-      ],
-    },
-    {
-      cells: [
-        "Children's courses",
-        `Exposed children under 18: one course per week of flooding, at least one, so ${courseWords}. A course ` +
-          'is doxycycline 4 mg/kg once (at most 200 mg) or an alternative; the pharmacy turns courses into tablets ' +
-          'by weight.',
-        ...columns.map((units) => formatCount(units.courses)),
-      ],
-    },
+    { cells: ['Doxycycline 100 mg capsules', 'Exposed adults, not pregnant', ...run.floods.map(adults)] },
+    { cells: ["Children's courses", 'Exposed children under 18', ...run.floods.map(courses)] },
     {
       cells: [
         'Amoxicillin 500 mg tablets',
-        `Exposed pregnant women: ${counting.amox500_pregnant} tablets each, or the same number of erythromycin ` +
-          '250 mg tablets if allergic.',
-        ...columns.map((units) => formatCount(units.amox500)),
+        'Exposed pregnant women',
+        ...run.floods.map(() => `${counting.amox500_pregnant} each`),
       ],
     },
   ]
   const notes: string[] = []
-  if (run.floods.length > 1) {
+  const w = run.floods.find((flood) => flood.w !== null)?.w
+  if (w !== null && w !== undefined) {
     notes.push(
-      `${run.lead_days === null ? 'The rain alone' : 'A forecast made days ahead'} cannot tell how long the flood ` +
-        `will last, so the stock is given for ${listWords(run.floods.map((flood) => `a ${flood.D}-day`))} flood.`,
-    )
-  }
-  const [shortest, longest] = [columns[0], columns[columns.length - 1]]
-  if (run.floods.length > 1 && longest.doxy100 < shortest.doxy100) {
-    notes.push(
-      'A longer flood needs fewer capsules: every exposed adult is then at high risk, counted at ' +
-        `${counting.doxy100_high_per_week} capsules a week, while in a short flood each adult at moderate risk ` +
-        `is counted at ${counting.doxy100_moderate}.`,
+      'Moderate risk: a wound, or floodwater in the eyes, nose or mouth; the rest are low risk. Nobody knows how many ' +
+        `adults that is, so ${percent(w)} are counted as moderate risk. A flood of ${days(counting.high_risk_days)} or ` +
+        'more makes every exposed adult high risk.',
     )
   }
   notes.push(
-    "The counts follow DOH DM 2023-0309's regimens; a physician decides each person's prophylaxis. Every exposed " +
-      'resident is counted, and every course taken (full coverage). Rounded to whole units.',
+    "A child's course is doxycycline 4 mg/kg once (at most 200 mg) or an alternative; the pharmacy turns courses into " +
+      'tablets by weight. A pregnant woman allergic to amoxicillin takes as many erythromycin 250 mg tablets instead. ' +
+      'Regimens: DOH DM 2023-0309. Rounded to whole units.',
   )
-  return {
-    table: { heads: ['Stock', 'Who it is for, and how it is counted', ...run.floods.map(floodName)], rows },
-    notes,
-  }
-}
-
-/** The storm's forecasts. */
-function leadSection(input: ReportInput): ReportContent['leads'] {
-  const { storm, run, leads, psgc } = input
-  const rows = planRuns(storm)
-    .reverse()
-    .map((each) => {
-      const lead = leads.find((other) => other.run.run === each.run)
-      if (!lead) {
-        throw new Error(`the report has no barangay file for ${storm.name}, ${each.run}`)
-      }
-      const barangay = barangayIn(lead, psgc)
-      const units = unitsIn(barangay, planFlood(storm, each), each)
-      return {
-        cells: [
-          issuedWords(each),
-          `${Math.round(each.rain_mm)} mm over ${formatWeek(each.window.start, each.window.end)}`,
-          positionWords(each),
-          `${formatCount(barangay.exposed)} (${formatShare(barangay.share)})${barangay.flagged ? ', flagged' : ''}`,
-          formatCount(units.doxy100),
-          formatCount(units.courses),
-          formatCount(units.amox500),
-        ],
-        strong: each.run === run.run,
-      }
-    })
-  const flood = planFlood(storm, run)
-  const forecast = run.lead_days !== null
-  return {
-    title: forecast ? 'The forecasts made before the rain' : 'The rain that fell (no forecast is archived for this date)',
-    table: {
-      heads: [
-        forecast ? 'Forecast made' : 'Rain',
-        'Rain over 3 days',
-        'How rare a storm',
-        'Residents exposed',
-        'Capsules',
-        'Courses',
-        'Tablets',
-      ],
-      rows,
-    },
-    note:
-      `In bold: the ${forecast ? 'forecast' : 'rain'} this report is for, as on the map. Units for a ${floodName(flood)}` +
-      `${flood.w !== null ? ` with w = ${flood.w}` : ''}. Rain over the river basins that drain into Quezon City.`,
-  }
+  return { table: { heads: ['Stock', 'For', ...run.floods.map(floodName)], rows }, notes }
 }
 
 /** Where the stock goes. */
@@ -424,120 +294,80 @@ function centerSection(input: ReportInput, name: string): ReportContent['centers
     if (!center || !need || center.lat === null || center.lon === null) {
       throw new Error(`centers.json: health center ${each.facility_code} has no need or no place: rerun python -m src.app_data`)
     }
-    return { each, center, need, title: titleCase(center.name) }
+    const title = titleCase(center.name)
+    return { each, center, need, title, named: center.barangay === name ? title : `${title} (in ${center.barangay})` }
   })
   const first = rows[0]
   const intro =
     first.each.rule === 'split'
-      ? `${name} has ${rows.length} health centers. Its need is split among them by where its residents live: ` +
-        'each center holds the share of residents who live nearer to it than to the others.'
+      ? `${name}'s ${rows.length} health centers share its need by where its residents live: each takes those who ` +
+        'live nearest it.'
       : first.each.rule === 'nearest'
-        ? `${name} has no health center of its own, so all of its need goes to the nearest one, ${first.title} in ` +
-          `${first.center.barangay}, ${formatKm(first.each.km ?? 0)} from the middle of ${name}.`
-        : `All of ${name}'s need goes to its health center, ${first.title}.`
+        ? `${name} has no health center of its own, so its stock goes to the nearest one, ` +
+          `${formatKm(first.each.km ?? 0)} from its middle.`
+        : null
   // The other barangays each center holds stock for, with the share it holds where it is not all
-  const others = rows.map(({ each }) =>
-    Object.entries(centers.barangay_centers)
+  const serves = rows.flatMap(({ each, title }) => {
+    const others = Object.entries(centers.barangay_centers)
       .filter(([other]) => other !== psgc)
       .flatMap(([other, list]) =>
         list
           .filter((row) => row.facility_code === each.facility_code)
           .map((row) => `${names.get(other) ?? other}${row.share < 1 ? ` (${percent(row.share)})` : ''}`),
       )
-      .sort((a, b) => a.localeCompare(b)),
-  )
-  const serves = rows.flatMap(({ title }, i) =>
-    others[i].length ? [`${title} also holds stock for ${listWords(others[i])}.`] : [],
-  )
-  const alone = rows.filter((_, i) => others[i].length === 0).map(({ title }) => title)
-  if (alone.length) {
-    serves.push(`${listWords(alone)} ${alone.length > 1 ? 'hold' : 'holds'} stock for ${name} only.`)
-  }
+      .sort((a, b) => a.localeCompare(b))
+    return others.length ? [`${title} also supplies ${listWords(others)}.`] : []
+  })
   const leftOut = centers.centers
     .filter((center) => center.psgc === psgc && !center.gets_stock)
     .map(
       (center) =>
-        `The registry also lists ${titleCase(center.name)} in ${name}. It gets no stock: ` +
+        `${titleCase(center.name)}, also in the registry, gets no stock: ` +
         `${center.left_out ? (LEFT_OUT_WORDS[center.left_out] ?? center.left_out) : 'C7 leaves it out'}.`,
     )
-  const flood = planFlood(storm, run)
+  const split = rows.length > 1
   return {
+    names: rows.map(({ named }) => named),
     intro,
     table: {
-      heads: ['', 'Health center', 'In barangay', `Share of ${name}'s need`, 'Capsules', 'Courses', 'Tablets'],
-      rows: rows.map(({ each, center, need, title }, i) => ({
+      heads: ['', 'Health center', ...(split ? [`Share of ${name}`] : []), 'Capsules', 'Courses', 'Tablets'],
+      rows: rows.map(({ each, need, named }, i) => ({
         cells: [
           String(i + 1),
-          title,
-          center.barangay,
-          percent(each.share),
+          named,
+          ...(split ? [percent(each.share)] : []),
           formatCount(need.doxy100),
           formatCount(need.courses),
           formatCount(need.amox500),
         ],
       })),
     },
-    serves,
-    leftOut,
-    note:
-      "Capsules, courses and tablets: the center's whole need, for every barangay it holds stock for, in a " +
-      `${floodName(flood)}, rounded up to whole units, the level stock is ordered at.`,
+    notes: [
+      `Each center's whole order for a ${floodName(planFlood(storm, run))}, for every barangay it supplies, rounded up.`,
+      ...serves,
+      ...leftOut,
+    ],
     pins: rows.map(({ center }, i) => ({ number: i + 1, at: [center.lon!, center.lat!] })),
   }
 }
 
-/** Quezon City's case forecast for the week after the map's date. */
-function citySection({ forecast, week, date }: ReportInput): ReportContent['city'] {
-  const title = "Quezon City's case forecast (the whole city)"
-  const whole = 'LEPTON forecasts cases for the whole city; it does not forecast cases for each barangay.'
-  const model = week?.forecasts[forecast.map_model]
-  if (!week || !model) {
-    return { title, lines: ['No city forecast for the week after this date.', whole], badge: null }
-  }
-  const level = levelOf(model.p_breach, forecast.levels)
-  const made = weekStart(date)
-  return {
-    title,
-    lines: [
-      `${Math.round(model.mu)} cases expected in the week of ${formatWeek(week.start, week.end)} ` +
-        `(${rangePercent(forecast)} range ${model.low}–${model.high}).`,
-      `Chance of an outbreak: ${formatChance(model.p_breach)} that the week ends above the epidemic threshold ` +
-        `(${thresholdCount(week.threshold)} cases). Level: ${LEVEL_NAMES[level]}.`,
-      `Made in the week of ${formatWeek(made, addDays(made, 6))}, the week of the map's date, by ` +
-        `${forecast.map_model}, LEPTON's forecast model.`,
-      whole,
-    ],
-    badge: isSimulated(forecast, week) ? simulatedLabel(forecast) : null,
-  }
-}
-
-/** How the figures were made, in plain words, one step a line (the paper's methodology, shortened). */
-function methodLines(storms: StormsFile, run: StormRun, flood: Flood): string[] {
-  const levels = run.levels_mm
-  const rain = run.issued
-    ? `The ${run.rain_product} forecast (via Open-Meteo), made ${fullDate(run.issued)}, of the rain`
-    : `The rain that fell, as ${run.rain_product} measured it,`
-  const days = storms.counting.high_risk_days
+/** Where the numbers come from and what they cannot claim, in plain words, one point a line. */
+function aboutLines(run: StormRun): string[] {
+  const mm = (key: string) => `${Math.round(run.levels_mm[key])} mm`
+  const rain = run.issued ? "the forecast's rain" : 'the rain that fell'
   return [
-    `Rain. ${rain} over the river basins that drain into Quezon City (the Marikina, San Juan and ` +
-      `Tullahan rivers), added up over 3 days. It is set against ${run.levels_product}'s rain over the same basins in ` +
-      `the ${run.levels_years} years before ${run.window.start.slice(0, 4)}: on that scale a 5-year storm brings ${levels['R(5)']} mm ` +
-      `in 3 days, a 25-year storm ${levels['R(25)']} mm and a 100-year storm ${levels['R(100)']} mm. Below ` +
-      `${levels.R0} mm (half the 5-year rain) nobody counts as exposed.`,
-    "Flood zones. Project NOAH's maps of the areas a 5-, 25- and 100-year rain floods. A storm between two of these " +
-      'rains falls between the two maps. Residents count as exposed when they live in a zone the rain floods, at any ' +
-      'depth.',
-    "Residents. WorldPop's 2024 population map, fitted to each barangay's 2024 census total. Children under 18 come " +
-      "from the 2020 census's ages; pregnant women from 2024's registered births × 0.75, shared out by each " +
-      "barangay's women aged 15 to 49.",
-    `Risk (DOH DM 2023-0309). A flood of ${days} days or more makes every exposed adult high risk. In a shorter flood, ` +
-      'adults with a wound, or with floodwater in the eyes, nose or mouth, are at moderate risk' +
-      `${flood.w !== null ? ` (their share, w, is not known and is set at ${flood.w})` : ''}; the rest are at low risk.`,
-    "Health centers. A barangay's need goes to its health center. A barangay with several splits it by where its " +
-      'residents live, each center taking those who live nearest it; one with none sends it to the nearest center, ' +
-      'measured from its middle. Health centers and barangay health stations come from the DOH National Health ' +
-      'Facility Registry; the City Health Office is not a distribution point.',
-    `Flagged. A barangay is flagged when ${percent(storms.flag_share)} or more of its residents live in zones the rain floods.`,
+    `Rain: ${rain} over 3 days on the river basins that drain into Quezon City. A 5-year storm is rain that heavy ` +
+      `about once in 5 years: ${mm('R(5)')} in 3 days here. Below ${mm('R0')} nobody counts as exposed.`,
+    "Exposed: living in a zone that Project NOAH's flood maps show flooding at this rain, at any depth. Residents " +
+      'from WorldPop 2024, fitted to the 2024 census; children from the 2020 census ages; pregnant women from ' +
+      "2024's registered births. Lactating women are not counted apart: DM 2023-0309 gives them no regimen.",
+    'Full coverage: every exposed resident is counted, and every course taken. Scale the figures by the share of ' +
+      'residents you expect to come forward.',
+    "Health centers: a barangay's stock goes to its own health center, is split among several by where its " +
+      'residents live, or goes to the nearest one when it has none (DOH National Health Facility Registry). The ' +
+      'City Health Office is not a distribution point.',
+    'A forecast can miss. For the July 2025 floods, the forecasts made 1 to 3 days ahead put far fewer residents in ' +
+      'flooded zones than the rain that fell did. These figures have not been checked against barangay case counts.',
   ]
 }
 
@@ -545,52 +375,33 @@ function methodLines(storms: StormsFile, run: StormRun, flood: Flood): string[] 
 export function reportContent(input: ReportInput): ReportContent {
   const { storms, storm, run, leads, psgc, link, made } = input
   const lead = leads.find((each) => each.run.run === run.run)
-  if (!lead) {
-    throw new Error(`the report has no barangay file for ${storm.name}, ${run.run}`)
+  const barangay = lead?.barangays.get(psgc)
+  if (!lead || !barangay) {
+    throw new Error(`the report has no barangay ${psgc} for ${storm.name}, ${run.run}: rerun python -m src.app_data`)
   }
-  const barangay = barangayIn(lead, psgc)
   const { name } = barangay
   const flood = planFlood(storm, run) // The flood the map shows: D = 1, w = 0.5
-  const units = unitsIn(barangay, flood, run)
   return {
     fileName: reportFileName(name, storm, run),
     docTitle: `LEPTON barangay stock report: ${name}, ${storm.name} (${run.issued ? 'forecast made ' : ''}${issuedWords(run)})`,
     label: storms.label,
     name,
-    about: `Quezon City · PSGC ${psgc} · ${formatCount(barangay.pop_2024)} residents (2024 census)`,
-    flag: flagText(barangay, storms, run),
+    place: `Quezon City, ${formatCount(barangay.pop_2024)} residents (2024 census)`,
+    made: `Made ${madeWords(made)}`,
     storm: storm.name,
-    forecastLine:
-      `${run.issued ? `Forecast made ${issuedWords(run)}` : `The rain that fell (${run.rain_product})`}: ` +
-      `${Math.round(run.rain_mm)} mm of rain over ${formatWeek(run.window.start, run.window.end)} on the river ` +
-      `basins that drain into Quezon City, ${positionWords(run)}.`,
-    cityLine: cityLine(input, lead, barangay),
-    figures: figures(barangay, units),
-    figuresNote:
-      (barangay.exposed === 0
-        ? `Nobody in ${name} lives in a zone ${rainName(run)} floods, so it needs no stock for ${runName(run)}. `
-        : '') +
-      `For a ${floodName(flood)}${flood.w !== null ? ` with w = ${flood.w}` : ''}, as on the map ` +
-      '(w: the share of exposed adults with a wound, or with floodwater in the eyes, nose or mouth).',
-    stock: stockSection(storms, run, barangay),
-    leads: leadSection(input),
+    forecastLine: run.issued ? `Forecast made ${issuedWords(run)}` : `The rain that fell (${run.rain_product})`,
+    rainLine: `${rainLine(run)}, ${positionWords(run)}`,
+    flag: flagSection(storms, run, barangay),
+    stock: stockSection(storms, run, barangay, flood),
     centers: centerSection(input, name),
     map: {
       psgc,
       classes: new Map([...lead.barangays].map(([each, row]) => [each, row.class])),
       legend: storms.classes.map((share) => ({ cls: share.class, label: classLabel(share, storms.classes) })),
-      caption:
-        `Shades: the share of each barangay's residents in zones ${rainName(run)} floods. Outlined in black: ` +
-        `${name}. Numbered: the health centers that hold its stock, as in the table. Boundaries: PSA and NAMRIA ` +
-        'via OCHA (CC BY-IGO).',
     },
-    city: citySection(input),
-    method: methodLines(storms, run, flood),
-    limits: LIMITS,
+    counting: countingSection(storms, run),
+    about: aboutLines(run),
     sources: SOURCES,
-    made:
-      `Made ${madeWords(made)} by LEPTON, from its published data files: storms.json, ${run.file}, centers.json and ` +
-      'city_forecast.json.',
     link,
   }
 }
