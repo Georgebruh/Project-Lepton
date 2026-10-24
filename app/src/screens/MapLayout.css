@@ -8,10 +8,10 @@
   --map-buttons-width: 36px;
   /* The Layers panel's width */
   --map-layers-width: 320px;
-  /* The room the bottom right corner's Methods and credits row takes. */
-  --map-credits-room: 32px;
   --map-modes-room: 112px;
-  /* The map's edges' gap to its controls */
+  /* The logo and search row's height: the logo's card (map-layout-logo) and the 48 px search button */
+  --map-top-row: 48px;
+  /* The map's edges' gap to its controls (motion.ts's PANEL_INSET) */
   --map-edge: var(--space-5);
   /* What moves with the camera; with reduced motion it is a crossfade instead */
   --map-move: var(--map-camera);
@@ -31,35 +31,21 @@
   background: var(--color-bg-inset);
 }
 
-/* The top left corner: the logo, then the plan's list of barangays. */
+/* The top left corner: the logo and the search beside it, as tall as each other. They never move: the
+   panel opens under them. The open search narrows to fit. */
 .map-layout-top {
   position: absolute;
   top: var(--map-edge);
   left: var(--map-edge);
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  max-width: calc(100% - 2 * var(--map-edge));
-  max-height: calc(100% - 2 * var(--map-edge) - 120px);
-  pointer-events: none;
-  transition: left var(--map-camera) var(--map-ease);
-}
-
-.map-layout-top > * {
-  pointer-events: auto;
-}
-
-/* The open search's matches (map/MapSearch.css) lie over the data modes on a narrow map */
-.map-layout-top:has(.map-search) {
-  z-index: 1;
-}
-
-/* The logo and the search beside it, as tall as each other; the open search narrows to fit */
-.map-layout-top-row {
-  display: flex;
   gap: var(--space-2);
-  max-width: 100%;
+  max-width: calc(100% - 2 * var(--map-edge));
+  height: var(--map-top-row);
+}
+
+/* The open search's matches (map/MapSearch.css) lie over the data modes and the panel */
+.map-layout-top:has(.map-search) {
+  z-index: 2;
 }
 
 /* The logo, on a card like the map's other controls */
@@ -89,29 +75,12 @@
   max-width: calc(100% - 2 * var(--map-edge));
 }
 
-.map-layout[data-panel='open'] .map-layout-top {
-  left: calc(var(--map-panel-width) + var(--map-edge));
-  max-width: calc(100% - var(--map-panel-width) - 2 * var(--map-edge));
-}
-
-/* The plan's list (map/MapList.tsx) shrinks to the corner's height, and its rows scroll */
-.map-layout-list-slot {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-width: 100%;
-}
-
-.map-layout-list-slot:empty {
-  display: none;
-}
-
-/* Along the bottom of the map in sight, above the credits. */
+/* Along the bottom of the map in sight. */
 .map-layout-bottom {
   container: map-bottom / inline-size;
   position: absolute;
   right: var(--map-edge);
-  bottom: calc(var(--map-edge) + var(--map-credits-room));
+  bottom: var(--map-edge);
   left: var(--map-edge);
   pointer-events: none;
   transition: left var(--map-camera) var(--map-ease);
@@ -129,8 +98,9 @@
   pointer-events: auto;
 }
 
+/* With the panel open, the bottom row starts past the panel's card */
 .map-layout[data-panel='open'] .map-layout-bottom {
-  left: calc(var(--map-panel-width) + var(--map-edge));
+  left: calc(var(--map-panel-width) + 2 * var(--map-edge));
 }
 
 /* The date's timeline, with a live weather layer's timeline above it */
@@ -152,21 +122,24 @@
   min-width: 0;
 }
 
-/* The map buttons above Zoom: the pin, the layers, then the zoom box */
+/* The map buttons: the pin, the layers, the zoom box, then the info button. The info pop-up opens above
+   them all, clear of the legends (map/MapInfo.css). */
 .map-layout-buttons {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-/* The legends, one above the other, left of the map buttons. */
+/* The legends, one above the other, left of the map buttons; as wide as the widest, the plan's (318 px),
+   so the grid keeps the timeline clear of it. */
 .map-layout-legends {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-2);
   min-width: 0;
-  max-width: 280px;
+  max-width: 320px;
   transition: margin-right var(--map-hover) linear;
 }
 
@@ -208,8 +181,8 @@
 /* The Layers panel (map/MapLayers.css) opens up from the buttons. */
 .map-layers {
   z-index: 1;
-  bottom: calc(var(--map-edge) + var(--map-credits-room));
-  max-height: calc(100% - 2 * var(--map-edge) - var(--map-credits-room) - var(--map-modes-room));
+  bottom: var(--map-edge);
+  max-height: calc(100% - 2 * var(--map-edge) - var(--map-modes-room));
 }
 
 /* Where a level puts its own legend. */
@@ -224,21 +197,23 @@
   pointer-events: none;
 }
 
-/* The panel: at level 1 it waits past the left edge. */
+/* The panel: a card under the logo row, as tall as the map leaves, the same size at levels 2 and 3. Its
+   tabs (map/EdgeTabs.css) stand past its right edge. At level 1 it waits past the left edge. */
 .map-layout-panel {
-  /* The panel's tabs wrap when it is narrow (PanelModes.css) */
+  /* The plan's view tabs wrap when the panel is narrow (map/PlanPanel.css) */
   container: map-panel / inline-size;
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  top: calc(var(--map-edge) + var(--map-top-row) + var(--space-3));
+  bottom: var(--map-edge);
+  left: var(--map-edge);
   width: var(--map-panel-width);
-  max-width: 100%;
-  overflow-y: auto;
-  border-right: 1px solid var(--color-border-subtle);
+  max-width: calc(100% - 2 * var(--map-edge) - var(--map-edge-tabs));
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
-  box-shadow: 6px 0 20px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
-  transform: translateX(-100%);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  /* Past the left edge, with its tabs and its shadow */
+  transform: translateX(calc(-100% - var(--map-edge) - var(--map-edge-tabs) - 24px));
   visibility: hidden;
   transition:
     transform var(--map-camera) var(--map-ease),
@@ -253,13 +228,20 @@
     visibility 0s;
 }
 
-/* Another tab of the panel: its content fades in under the tabs, which stay */
-.map-layout-panel > * > :not(.panel-modes) {
+/* The panel's content scrolls inside its rounded card */
+.map-layout-panel-body {
+  height: 100%;
+  overflow-y: auto;
+  border-radius: inherit;
+}
+
+/* Another tab of the panel: its content fades in, and the tabs stay */
+.map-layout-panel-body > * > * {
   animation: motion-fade var(--map-crossfade) linear;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .map-layout-panel > * > :not(.panel-modes) {
+  .map-layout-panel-body > * > * {
     --motion-rise: 8px;
     animation: motion-rise var(--motion-change) var(--motion-ease-out);
   }
@@ -271,19 +253,18 @@
     --map-edge: var(--space-4);
   }
 
-  .map-layout[data-panel='open'] .map-layout-top,
   .map-layout[data-panel='open'] .map-layout-bottom {
     left: var(--map-edge);
-    max-width: calc(100% - 2 * var(--map-edge));
   }
 
   .map-layout-bottom {
     transition: bottom var(--map-camera) var(--map-ease);
   }
 
+  /* Above the sheet and the tabs on its top edge (44 px, map/EdgeTabs.css) */
   .map-layout[data-panel='open'] .map-layout-bottom,
   .map-layout[data-layers='open'] .map-layout-bottom {
-    bottom: calc(var(--map-sheet-share) + var(--map-edge));
+    bottom: calc(var(--map-sheet-share) + 44px + var(--map-edge));
   }
 
   /* With the sheet up, the strip of map above it is short. */
@@ -291,16 +272,6 @@
   .map-layout[data-panel='open'] .weather-legend,
   .map-layout[data-panel='open'] .outbreak-legend {
     display: none;
-  }
-
-  /* The credits (bottom right, CityMap.css) rise with the sheet too */
-  .map-layout .maplibregl-ctrl-bottom-right {
-    transition: bottom var(--map-camera) var(--map-ease);
-  }
-
-  .map-layout[data-panel='open'] .maplibregl-ctrl-bottom-right,
-  .map-layout[data-layers='open'] .maplibregl-ctrl-bottom-right {
-    bottom: var(--map-sheet-share);
   }
 
   /* The Layers panel is a sheet over the map's lower part. */
@@ -327,26 +298,24 @@
     margin-right: 0;
   }
 
+  /* The panel is a sheet over the map's lower part, its tabs on its top edge */
   .map-layout-panel {
     top: auto;
     right: 0;
+    bottom: 0;
+    left: 0;
     width: 100%;
+    max-width: none;
     height: var(--map-sheet-share);
-    border-top: 1px solid var(--color-border-subtle);
-    border-right: 0;
+    border-width: 1px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     box-shadow: none;
-    transform: translateY(100%);
-  }
-
-  /* An open list of barangays (map/MapList.css) covers most of the map a phone shows. */
-  .map-layout-main:has(.map-list-open) .map-layout-bottom {
-    visibility: hidden;
+    transform: translateY(calc(100% + 48px));
   }
 }
 
-/* Reduced motion: the panel crossfades in place, and the corners move without sliding */
+/* Reduced motion: the panel crossfades in place, and the bottom row moves without sliding */
 @media (prefers-reduced-motion: reduce) {
-  .map-layout-top,
   .map-layout-bottom {
     transition: none;
   }

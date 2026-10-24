@@ -1,14 +1,16 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { BaseMap } from '../map/basemap.ts'
 import { DEFAULT_FLOOD, useFloodZones, type FloodPeriod } from '../map/floodLayer.ts'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Link, Outlet, useLoaderData, useLocation, useNavigate, useSearchParams } from 'react-router'
 import Logo from '../components/Logo.tsx'
 import CityMap from '../map/CityMap.tsx'
+import EdgeTabs from '../map/EdgeTabs.tsx'
 import FloodLegend from '../map/FloodLegend.tsx'
-import { chosenDate, dateRange, forecastFor, isSimulated, simulatedLabel } from '../map/forecast.ts'
+import { chosenDate, dataNote, dateRange, forecastFor, isSimulated, simulatedLabel } from '../map/forecast.ts'
 import MapButton from '../map/MapButton.tsx'
 import MapDataModes from '../map/MapDataModes.tsx'
+import MapInfo from '../map/MapInfo.tsx'
 import {
   baseOf,
   dataOf,
@@ -31,6 +33,7 @@ import {
   CAMERA_MS,
   CROSSFADE_MS,
   EASE_CSS,
+  EDGE_TAB_WIDTH,
   HOVER_MS,
   PANEL_MAX_WIDTH,
   PANEL_MIN_WIDTH,
@@ -39,7 +42,7 @@ import {
   easeInOut,
 } from '../map/motion.ts'
 import OutbreakLegend from '../map/OutbreakLegend.tsx'
-import { CITY_PATHS, MAP_PATHS, PLAN_PARAMS, QC_PSGC, levelSearch, useMapLevel, type MapLevel } from '../map/routes.ts'
+import { CITY_PATHS, MAP_PATHS, QC_PSGC, levelSearch, useMapLevel, type MapLevel } from '../map/routes.ts'
 import { TILT } from '../map/terrain.ts'
 import { moveToLevel, viewFor } from '../map/view.ts'
 import { WEATHER_NAMES, isLive, useWeather, type Weather } from '../map/weather.ts'
@@ -64,6 +67,7 @@ const MOTION = {
   '--map-crossfade': `${CROSSFADE_MS}ms`,
   '--map-ease': EASE_CSS,
   '--map-panel-width': `clamp(${PANEL_MIN_WIDTH}px, ${PANEL_SHARE * 100}vw, ${PANEL_MAX_WIDTH}px)`,
+  '--map-edge-tabs': `${EDGE_TAB_WIDTH}px`,
   '--map-sheet-share': `${SHEET_SHARE * 100}%`,
 } as CSSProperties
 
@@ -78,8 +82,10 @@ export default function MapLayout() {
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [legendSlot, setLegendSlot] = useState<HTMLElement | null>(null)
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
-  const [listSlot, setListSlot] = useState<HTMLElement | null>(null)
+  // The Layers panel and the info pop-up: one at a time, as they open over the same corner
   const [layersOpen, setLayersOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const closeInfo = useCallback(() => setInfoOpen(false), [])
   const [found, setFound] = useState<{ psgc: string } | null>(null) // The town the search last found
   const layersButton = useRef<HTMLButtonElement>(null)
   const controls = useRef<HTMLDivElement>(null)
@@ -131,8 +137,6 @@ export default function MapLayout() {
     setSearchParams(
       (params) => {
         params.set('date', day)
-        params.delete(PLAN_PARAMS.from)
-        params.delete(PLAN_PARAMS.list)
         return params
       },
       { replace: true, preventScrollReset: true },
@@ -200,7 +204,15 @@ export default function MapLayout() {
     }
   }
 
-  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, listSlot }
+  /** Escape in the panel closes it, unless something inside it (the words behind ?) closed first. */
+  function onPanelKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape' && !event.defaultPrevented && level > 1) {
+      event.preventDefault()
+      navigate(MAP_PATHS[1] + levelSearch(1, search))
+    }
+  }
+
+  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay }
   return (
     <div
       className="map-layout"
@@ -228,15 +240,13 @@ export default function MapLayout() {
         />
         {/* A level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
-        {/* The top left corner: the logo, a link home, and the search beside it. */}
+        {/* The top left corner: the logo, a link home, and the search beside it. They stay put at every
+            level: the panel opens under them. */}
         <div className="map-layout-top">
-          <div className="map-layout-top-row">
-            <Link to="/" className="map-layout-logo" aria-label="LEPTON, home page">
-              <Logo />
-            </Link>
-            <MapSearch cities={cities} onPick={pickPlace} />
-          </div>
-          <div ref={setListSlot} className="map-layout-list-slot" />
+          <Link to="/" className="map-layout-logo" aria-label="LEPTON, home page">
+            <Logo />
+          </Link>
+          <MapSearch cities={cities} onPick={pickPlace} />
         </div>
         {/* The top right corner: the data modes. */}
         <div ref={topBar} className="map-layout-modes">
@@ -283,16 +293,40 @@ export default function MapLayout() {
                   label="Map layers"
                   open={layersOpen}
                   controls="map-layers"
-                  onClick={() => setLayersOpen((open) => !open)}
+                  onClick={() => {
+                    setLayersOpen(!layersOpen)
+                    setInfoOpen(false)
+                  }}
                 />
                 <MapZoom map={map} />
+                {/* Methods, what the data mode shows, and the credits */}
+                <MapInfo
+                  map={map}
+                  note={dataNote(mode, simulation, realEnd)}
+                  open={infoOpen}
+                  onToggle={() => {
+                    setInfoOpen(!infoOpen)
+                    setLayersOpen(false)
+                  }}
+                  onClose={closeInfo}
+                />
               </div>
             </div>
           </div>
         </div>
-        {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it */}
-        <aside ref={panel} className="map-layout-panel" aria-label="Quezon City" inert={level === 1}>
-          <Outlet context={context} />
+        {/* At level 1 the panel waits off-screen: inert, so the keyboard skips it. Its tabs stand past its
+            right edge, so only its body scrolls. */}
+        <aside
+          ref={panel}
+          className="map-layout-panel"
+          aria-label="Quezon City"
+          inert={level === 1}
+          onKeyDown={onPanelKeyDown}
+        >
+          <EdgeTabs level={level} />
+          <div className="map-layout-panel-body">
+            <Outlet context={context} />
+          </div>
         </aside>
         {layersOpen && (
           <MapLayers

@@ -8,7 +8,8 @@ const LINKS = [
   { label: 'Overview', to: '/', page: true },
   { label: 'Leptospirosis', to: '/leptospirosis', page: true },
   { label: 'How it works', to: '/how-it-works', page: true },
-  { label: 'Results', to: '/map/quezon-city/compare?data=real', page: true },
+  // The models: How it works' Models part, until Compare models (their forecasts and scores) moves there
+  { label: 'Results', to: '/how-it-works#models', page: false },
   { label: 'Sources', to: '/how-it-works#sources', page: false },
 ]
 

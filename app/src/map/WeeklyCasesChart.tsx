@@ -8,12 +8,12 @@ const HEIGHT = 130
 /** Next week's marks are 10 px wide: the range as a bar, the expected count as a square. */
 const MARK = 10
 
-/** The caption, counting the weeks drawn: "Last 15 weeks · next week"; fewer at the backtest's start. */
-function caption(weeks: number): string {
+/** The past weeks' label under the bars: "Last 15 weeks"; fewer at the backtest's start, none without bars. */
+function pastLabel(weeks: number): string | null {
   if (weeks === 0) {
-    return 'Next week'
+    return null
   }
-  return `${weeks === 1 ? 'Last week' : `Last ${weeks} weeks`} · next week`
+  return weeks === 1 ? 'Last week' : `Last ${weeks} weeks`
 }
 
 type WeeklyCasesChartProps = {
@@ -47,40 +47,55 @@ export default function WeeklyCasesChart({ past, pastWeeks, next, threshold, ran
     `Epidemic threshold: ${Math.floor(threshold)} cases.` +
     (past.some((week) => week.simulated) ? ' Outlined bars are simulated counts.' : '')
 
+  const weeksLabel = pastLabel(past.length)
   return (
     <figure className="weekly-cases-chart">
-      <svg className="weekly-cases-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
-        {past.map(
-          (week, i) =>
-            week.y !== null && (
-              <rect
-                key={week.week_index}
-                // A simulated count is outlined, not filled
-                className={week.simulated ? 'weekly-cases-chart-bar weekly-cases-chart-bar-simulated' : 'weekly-cases-chart-bar'}
-                x={x(firstSlot + i)}
-                y={y(week.y)}
-                width={x.bandwidth()}
-                height={HEIGHT - y(week.y)}
-              />
-            ),
-        )}
-        <rect
-          className="weekly-cases-chart-range"
-          x={middle - MARK / 2}
-          y={y(next.high)}
-          width={MARK}
-          height={y(next.low) - y(next.high)}
-        />
-        <rect
-          className="weekly-cases-chart-forecast"
-          x={middle - MARK / 2}
-          y={y(next.mu) - MARK / 2}
-          width={MARK}
-          height={MARK}
-        />
-        <rect className="weekly-cases-chart-threshold" x={0} y={y(threshold)} width={WIDTH} height={1} />
-      </svg>
-      <figcaption className="weekly-cases-chart-caption label-ui-s">{caption(past.length)}</figcaption>
+      <div className="weekly-cases-chart-area">
+        <svg className="weekly-cases-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
+          {past.map(
+            (week, i) =>
+              week.y !== null && (
+                <rect
+                  key={week.week_index}
+                  // A simulated count is outlined, not filled
+                  className={week.simulated ? 'weekly-cases-chart-bar weekly-cases-chart-bar-simulated' : 'weekly-cases-chart-bar'}
+                  x={x(firstSlot + i)}
+                  y={y(week.y)}
+                  width={x.bandwidth()}
+                  height={HEIGHT - y(week.y)}
+                />
+              ),
+          )}
+          <rect
+            className="weekly-cases-chart-range"
+            x={middle - MARK / 2}
+            y={y(next.high)}
+            width={MARK}
+            height={y(next.low) - y(next.high)}
+          />
+          <rect
+            className="weekly-cases-chart-forecast"
+            x={middle - MARK / 2}
+            y={y(next.mu) - MARK / 2}
+            width={MARK}
+            height={MARK}
+          />
+          <rect className="weekly-cases-chart-threshold" x={0} y={y(threshold)} width={WIDTH} height={1} />
+        </svg>
+        {/* The threshold's count at the line's right end (the panel's Epidemic threshold row) */}
+        <span
+          className="weekly-cases-chart-threshold-label label-ui-s"
+          style={{ top: `${(y(threshold) / HEIGHT) * 100}%` }}
+          aria-hidden="true"
+        >
+          {Math.floor(threshold)}
+        </span>
+      </div>
+      {/* The two ends of the bars: the past weeks on the left, next week on the right */}
+      <figcaption className="weekly-cases-chart-caption label-ui-s">
+        {weeksLabel && <span>{weeksLabel}</span>}
+        <span className="weekly-cases-chart-next">Next week</span>
+      </figcaption>
     </figure>
   )
 }

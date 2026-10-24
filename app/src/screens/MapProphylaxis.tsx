@@ -2,7 +2,6 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLoaderData, useSearchParams } from 'react-router'
-import Badge from '../components/Badge.tsx'
 import { NO_DATA, barangayLayers, type BarangayPointer, type BarangayView } from '../map/barangayLayers.ts'
 import BarangayPopup, { type PinnedBarangay, type ReportRequest } from '../map/BarangayPopup.tsx'
 import BarangayTooltip from '../map/BarangayTooltip.tsx'
@@ -32,7 +31,7 @@ const TOOLTIP_TALLEST = 230
 
 /** Map, level 3: the prophylaxis plan. */
 export default function MapProphylaxis() {
-  const { cities, forecast, date, week, map, legendSlot, overlay, listSlot } = useMapContext()
+  const { cities, forecast, date, week, map, legendSlot, overlay } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pinned, setPinned] = useState<PinnedBarangay | null>(null)
@@ -40,11 +39,9 @@ export default function MapProphylaxis() {
   const dateStorm = stormOn(storms.storms, date)
   const days = useDaysFile(Number(date.slice(0, 4)))
   const dateDay = days ? dayOn(days, date) : undefined
-  const datePlan = dateStorm ?? dateDay
+  const storm = dateStorm ?? dateDay
   // The date's own plan is on its way: its year's file has not come yet (null: it could not be fetched)
-  const loading = datePlan === undefined && days === undefined
-  const listing = searchParams.get(PLAN_PARAMS.list) === 'all'
-  const storm = listing ? undefined : datePlan
+  const loading = storm === undefined && days === undefined
   const run = storm ? chosenRun(storm, searchParams.get(PLAN_PARAMS.lead)) : undefined
   const runFile = useRunFile(run?.file)
   const qc = cities.features.find((feature) => feature.properties.psgc === QC_PSGC)!.properties
@@ -130,11 +127,8 @@ export default function MapProphylaxis() {
 
   // The barangays' numbers in the run on the map, while a storm is shown.
   const numbers = hasStorm ? drawn : undefined
-  const none = loading
-    ? 'Loading the plan for this date'
-    : datePlan
-      ? 'Choose a storm to see its numbers'
-      : 'No plan for this date'
+  // What the tooltip and the pop-up say without numbers: the plan, or its run's file, is on its way
+  const none = loading || hasStorm ? 'Loading the plan for this date' : 'No plan for this date'
 
   // What a barangay's report is made from, while a storm's forecast is shown
   const report: ReportRequest | undefined = useMemo(
@@ -150,34 +144,29 @@ export default function MapProphylaxis() {
         centers={planCenters}
         storm={storm}
         run={run}
-        date={date}
-        planOnDate={datePlan !== undefined || loading}
-        loading={loading && !listing}
+        loading={loading}
         barangays={shapes.features.length}
+        list={
+          // The panel's Barangays view, most exposed first
+          map && (
+            <MapList
+              ref={list}
+              title="Barangays"
+              items={barangayItems(shapes, numbers, none)}
+              instructions={
+                "The arrow keys or a barangay's first letters move through the list, and Enter opens the barangay " +
+                'with its report. Doses are stock planning, not prescriptions.'
+              }
+              onShow={(psgc) => barangayLayers(map).highlight(psgc)}
+              onOpen={openFromList}
+            />
+          )
+        }
         onLead={changeLead}
       />
       {legendSlot &&
         storm &&
         createPortal(<ExposureLegend classes={storms.classes} flagShare={storms.flag_share} />, legendSlot)}
-      {map &&
-        listSlot &&
-        createPortal(
-          <MapList
-            ref={list}
-            title="Barangays"
-            items={barangayItems(shapes, numbers, none)}
-            note={<p className="body-s">{numbers ? 'Most exposed first' : `${none}.`}</p>}
-            instructions={
-              numbers
-                ? "The arrow keys or a barangay's first letters move through the list, and Enter opens the barangay " +
-                  'with its report. Doses are stock planning, not prescriptions.'
-                : "The arrow keys or a barangay's first letters move through the list, and Enter opens the barangay."
-            }
-            onShow={(psgc) => barangayLayers(map).highlight(psgc)}
-            onOpen={openFromList}
-          />,
-          listSlot,
-        )}
       {map && overlay && !pinned && (
         <HoverTooltip map={map} overlay={overlay} shapes={shapes} barangays={numbers} note={`${none}.`} />
       )}
@@ -227,12 +216,9 @@ function barangayItems(
       id: psgc,
       name: names.get(psgc) ?? psgc,
       opens: true,
-      detail: (
-        <>
-          {barangay.flagged && <Badge tone="alert">Flagged</Badge>}
-          <span className="data-m">{share}</span>
-        </>
-      ),
+      // The barangay's color on the map (class 0 is the ramp's first color); the two darkest are flagged
+      marker: <span className="plan-swatch" style={{ background: `var(--color-data-ramp-${barangay.class + 1})` }} />,
+      detail: <span className="data-m">{share}</span>,
       words:
         `${share} of residents exposed, ${formatCount(barangay.exposed)} of ${formatCount(barangay.pop_2024)}` +
         `${barangay.flagged ? ', flagged' : ''}; ${formatCount(units.doxy100)} doxycycline 100 mg capsules, ` +

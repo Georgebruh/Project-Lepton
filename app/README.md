@@ -31,8 +31,8 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/screens/` | One file per screen |
 | `src/components/` | The shared components (F3), shown together at `/kit` in `npm run dev` |
 | `src/exposed/` | The exposure guide's parts (F8): its three steps, the map and the barangay search; `risk.ts` holds the questions and the risk rule, `nearest.ts` the distances and the search, `location.ts` the phone's position |
-| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the tab's loader (F14: Compare models is a tab of the map's city panel) |
-| `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle), `MapSearch.tsx` (the search beside the logo), `borders.ts` (which lines show at each zoom), `orbit.ts` (the plan's circling camera). F15: `BarangayPopup.tsx`, the pop-up a click on a barangay opens |
+| `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` its loader. F18: Compare models has left the map's panel and moves into How it works; until then no screen shows these parts |
+| `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle), `MapSearch.tsx` (the search beside the logo), `borders.ts` (which lines show at each zoom), `orbit.ts` (the plan's circling camera). F15: `BarangayPopup.tsx`, the pop-up a click on a barangay opens. F18: `EdgeTabs.tsx` (the panel's two tabs on its right edge), `Facts.tsx` (the panel's label and value rows), `WordHelp.tsx` (the ? and what the words mean), `MapInfo.tsx` (the info button: Methods, the data note and the credits) |
 | `src/report/` | F15's barangay report, a PDF made in the browser: `reportContent.ts` (its words and tables, from the files), `reportPdf.ts` (draws them with jsPDF and saves the file), `reportMap.ts` (its maps' geometry) |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`), the hero's waterlines (`waterlines.ts`, F17) and the files it loads (`homeData.ts`) |
 | `src/motion/` | F17: the reveal on scroll (`reveal.ts`), the numbers that count up (`CountUp.tsx`) and the glide of in-page links (`smoothLinks.ts`) |
@@ -50,18 +50,18 @@ adding a package (`npm install --save-exact <name>@<version>`).
 
 The map levels share `MapLayout.tsx`, so the one map stays on screen while the reader drills
 down; each level's own content shows inside it. Figma node ids are in each file. F14: the map is
-the app's one view, with no other tabs: Compare models is a tab of Quezon City's panel.
+the app's one view, with no other tabs. F18: the panel has two tabs, Cases forecast and
+Prophylaxis plan; Compare models has left it for How it works.
 
 | Route | Screen | File | Task |
 | --- | --- | --- | --- |
 | `/` | Home | `Home.tsx` | F6 |
 | `/map` | Map: the Philippines | `MapPhilippines.tsx` | F4, F14 |
 | `/map/quezon-city` | Map: Quezon City's case forecast | `MapQuezonCity.tsx` | F4 |
-| `/map/quezon-city/compare` | Map: Compare models, in the city panel | `MapCompare.tsx` | F9, F14 |
 | `/map/quezon-city/prophylaxis` | Map: prophylaxis plan; F15: a barangay's pop-up and report | `MapProphylaxis.tsx` | F5, F15 |
 | `/leptospirosis` | Leptospirosis, for residents | `Leptospirosis.tsx` | F7 |
 | `/exposed` | The "I have been exposed to floodwater" guide | `Exposed.tsx` | F8 |
-| `/compare` | Opens `/map/quezon-city/compare?data=real` (the site header's Results) | `router.tsx` | F14 |
+| `/compare`, `/map/quezon-city/compare` | Compare models' old addresses: open How it works' Models part, `/how-it-works#models`, until Compare models moves there (the site header's Results goes there too) | `CompareRedirect.tsx` | F14, F18 |
 | `/how-it-works` | How it works | `HowItWorks.tsx` | F10 |
 
 Any other address, and any error while drawing a screen, shows `ErrorPage.tsx`. Every screen is
@@ -73,8 +73,8 @@ The map keeps its date there: `/map/quezon-city?date=2024-10-22` (F4). The date 
 forecast day, the MMWR week holding it, and the panel shows the forecast made that week for
 the week after ("next week"); without a date the map shows today's (F14), and a date outside
 the dates the mode has moves inside them. Links between the map levels keep it
-(`MAP_PATHS[2] + search`). Compare models keeps its period there:
-`/map/quezon-city/compare?period=2024` (F9), and the map its data mode, `?data=real` (F14).
+(`MAP_PATHS[2] + search`). The map keeps its data mode there too, `?data=real` (F14), and the
+prophylaxis plan the forecast picked, `?lead=2` (F5).
 
 ## Components
 
@@ -179,6 +179,47 @@ MapLibre adds about 1 MB of JavaScript. Import it only in the map screens, and l
 routes with React Router's `lazy` in `router.tsx`, so Home and the phone guide do not
 download it. (`npm run build` warns that the map's chunk is over 500 kB: that is MapLibre.)
 
+### The decluttered map (F18)
+
+Reworked on 24 October 2026 from the team's review; the layout is the Figma section "Map ·
+decluttered (proposal, 24 Oct)", frames D1 to D8, and its notes.
+
+- **The logo and search never move.** They stay in the top left corner at every level. The city
+  panel is a card under them (`--map-top-row`, `MapLayout.css`), 30% of the screen wide (400 to
+  480 px, `map/motion.ts`) and as tall as the map leaves; it is the same size in both of its
+  views, so switching never changes its length. On a phone it is a sheet from the bottom, as
+  before.
+- **Two tabs on the panel's edge** (`map/EdgeTabs.tsx`): Cases forecast and Prophylaxis plan,
+  icons with no words, like bookmarks at the top of the card's right edge (on a phone, on the
+  sheet's top edge). A tab's name shows on hover and is its aria-label. Compare models has left
+  the panel; it is to move into How it works. Until then the site header's Results and its old
+  addresses open How it works' Models part (`/how-it-works#models`), and `src/compare/` waits unused.
+- **No Close button.** A click on empty map, outside Quezon City, closes the panel (CityMap's
+  click handler), 300 ms later so a double click still zooms. A click on the city or a barangay
+  does what it did, and a drag is no click.
+  With a barangay's pop-up open, that click only closes the pop-up (`barangayLayers.ts`'s
+  `selection()`). The open tab (its hover label is "Close"), Escape in the panel and the
+  browser's Back close it too.
+- **No "·" lines.** The panel's facts are label and value rows (`map/Facts.tsx`); the chart's
+  ends are labelled "Last 15 weeks" and "Next week", and the threshold's count sits on its line.
+  The subtitles under the city's name are gone.
+- **The prophylaxis plan, less at once.** Forecast made (1, 2 or 3 days ahead) and the rain stay
+  on top; under them one of three views: Summary (flagged, exposed, the stock needed), Barangays
+  (the list, `map/MapList.tsx`, now always open inside the panel: each row's swatch is its color
+  on the map) and Health centers (all of them, not the top four). Export stays at the bottom, with
+  "Stock planning, not prescriptions." All storms and its list (`?storms=all`, `?from=`) are
+  gone; a date without a plan says so.
+- **What the words mean** (`map/WordHelp.tsx`): a ? at the panel's lower right opens plain
+  definitions of the open view's words (90% range, epidemic threshold, Low, Watch, High; days
+  ahead, exposed, flagged, each medicine, and DOH DM 2023-0309's doctor's consultation).
+- **Methods behind the info button** (`map/MapInfo.tsx`): the info button under Zoom opens a
+  pop-up with Methods (How it works), the data mode's sentence (it no longer sits under
+  Simulation | Real data; screen readers still hear it change) and the sources' credits
+  (MapLibre's attribution control, written out in full). The Methods link and the map's own "i"
+  are gone from the corner.
+- **No tutorial text.** The city tooltip's "Click to open the forecast" and the list's keyboard
+  instructions are gone from the screen; the instructions stay for screen readers.
+
 ### Only the map (F14)
 
 The app's map was reworked on 22 October 2026 at the team's request: after opening the map there
@@ -186,11 +227,11 @@ is only the map, of the whole country, with no other tabs.
 
 - **The frame.** No app bar and no breadcrumb bar: the map fills the screen. Top left: the logo
   (home) and the search beside it (`map/MapSearch.tsx`). Top right: **Simulation | Real data**
-  (`map/MapDataModes.tsx`), with a line saying what the mode shows. Bottom middle: the timeline
+  (`map/MapDataModes.tsx`); F18 moved the line saying what the mode shows into the info pop-up. Bottom middle: the timeline
   (`map/MapTimeline.tsx`): the date picker in the middle, between the previous and next week, and
   under it the week its forecast is for; under them a slider over every forecast week (the
   simulated ones amber), with each year marked under it. Bottom right: the legends and the map
-  buttons, then **Methods** (How it works) and the sources' "i". The hint
+  buttons, then **Methods** (How it works) and the sources' "i" (F18: both in the info button's pop-up). The hint
   ("Hover a city…") and the Cities list are gone; Quezon City's name on the map is the keyboard's
   way in.
 - **Search.** The button beside the logo opens a field that finds any of the 1,642 cities and
@@ -209,7 +250,7 @@ is only the map, of the whole country, with no other tabs.
   every zoom (`basemap.ts`). Below its zoom a layer is not drawn at all, so the country's view
   draws none of the 1,642 borders; and below `CITIES_ZOOM` the towns' see-through fills lose their
   smoothed edge (`fill-antialias`), which drew every border faintly where two fills met.
-- **Closing the panel** (its X, or the browser's Back) steps the camera one zoom level out from
+- **Closing the panel** (empty map, the open tab, Escape or the browser's Back since F18) steps the camera one zoom level out from
   where it is (`closeCamera`, `CLOSE_ZOOM_OUT`), so Quezon City stays in sight among its
   neighbours; the pin button shows the whole country.
 - **The prophylaxis plan opens in 3D.** Opening the plan turns on the 3D view of its own accord
@@ -228,6 +269,7 @@ is only the map, of the whole country, with no other tabs.
   560 px, `map/motion.ts`; half the screen, tried first, was too wide; a sheet from the bottom on
   a phone, as before), with three tabs: Cases forecast, **Compare models** (F9's
   chart, Controls and scores, on the mode's weeks) and Prophylaxis plan, and a Close button.
+  F18 made it a card under the logo with two edge tabs and no Close button (above).
 - **Simulation | Real data** (`?data=real`; Simulation is the default). QCESD's counts end on
   26 September 2026. Real data shows them and B10's forecasts only. Simulation adds
   `city_simulation.json`: the weeks since, each with a made-up count (the median of M4's
@@ -375,16 +417,13 @@ exported file.
   first reaches the year; "Loading the plan for this date…" until it comes): the forecasts made
   1 to 3 days before, or before February 2024, with no forecast archived, the rain that fell
   (no lead chips). Most days' plans are zero: "too little rain to flood: floods start above
-  104 mm". "All storms" lists the storms, each opening at the first day of its 1-day-ahead
-  forecast's rain (Kristine: Tue 22 Oct 2024, Figma's date), with a link back to the date's plan. The lead chips keep the lead time
+  104 mm". (F18 removed "All storms", the list of storms that opened each at the first day of its
+  1-day-ahead forecast's rain.) The lead chips keep the lead time
   in the address, `?lead=2` (1 day ahead without it). The numbers are for a 1-day flood with
   w = 0.5 (`PLAN_FLOOD`, as in Figma); C9's 7-day flood is there for the stretch switch.
-- **Going back.** While a storm is shown, "All storms" beside the heading (not in Figma) lists
-  the storms again, at the same date (`?storms=all`). A storm opened from that list is a visit:
-  the address keeps the date from before it (`?from=`), and a link out of the plan (Back, the
-  trail, the Cases forecast tab) puts that date back and drops the plan's settings
-  (`levelSearch` in `map/routes.ts`), so the plan opens afresh next time. The browser's Back
-  button returns to the list too. Picking a date with the date picker ends the visit.
+- **Going back.** A link out of the plan (the Cases forecast tab, closing the panel) drops the
+  plan's settings (`levelSearch` in `map/routes.ts`), so the plan opens afresh next time. (F18
+  removed "All storms" and its visit, `?storms=all` and `?from=`.)
 - **The barangays on the map** (`map/barangayLayers.ts`): a second source, drawn by three
   layers between Quezon City's fill and its outline (`map/cityLayers.ts`). Opening the plan,
   the lines fade in (300 ms), then the fills rise in a wave from the largest share of
@@ -411,7 +450,7 @@ clicked, and its pop-up makes a PDF report for its health office or LGU. Stock p
 prescriptions: the pop-up and every page of the report carry the label.
 
 - **The pop-up** (`map/BarangayPopup.tsx`). A click or a tap on a barangay (`barangayLayers`'
-  `onPick`), or Enter on a row of the "Barangays · 142" list (F11), opens it where the barangay
+  `onPick`), or Enter on a row of the barangay list (F11; F18: the panel's Barangays view), opens it where the barangay
   was clicked, or near its middle from the list. It shows what the tooltip shows
   (`BarangayNumbers` in `BarangayTooltip.tsx`, so the two never differ), a close button and
   **Generate Report**. It follows its point as the map moves (a drag, a zoom, the plan's
@@ -628,8 +667,9 @@ the map on a phone; both use the existing components and tokens.
 - **Focus.** Every link, button and field shows the same ring, 2 px of `accent/secondary`
   (`global.css`). A control in a box that clips its edges draws it inside itself
   (`outline-offset: -2px`), as the zoom buttons and the map's canvas do.
-- **The map from the keyboard** (`map/MapList.tsx`). In the map's top left corner, the plan's
-  "Barangays · 142" (level 3) is a Panel header that opens a list, closed at first. (F14 removed
+- **The map from the keyboard** (`map/MapList.tsx`). The plan's list of barangays (level 3) was a
+  Panel header in the map's top left corner that opened a list; F18 put it in the panel's
+  Barangays view, always open, and Escape there closes the panel instead. (F14 removed
   F11's "Cities · 17" at level 1; Quezon City's name on the map is a link the keyboard reaches.) Tab reaches the list; the arrow keys, Home, End or a name's first
   letters move through it, and the row reached thickens and shows its tooltip as under the
   pointer. Enter opens Quezon City's forecast; Escape closes the list. The plan's rows run from

@@ -4,93 +4,44 @@
   flex-direction: column;
   /* 16 px between the sections, and 22 px top and bottom (between the spacing steps) */
   gap: var(--space-4);
-  min-height: 100%;
+  /* As tall as the panel: the open view scrolls inside it, Export stays at the bottom. On a short screen
+     the whole panel scrolls instead (MapLayout.css). */
+  height: 100%;
+  min-height: 520px;
   padding: 22px var(--space-5);
 }
 
-.plan-panel-heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+/* The city's name takes focus when the plan opens, for screen readers; it needs no ring */
+.plan-panel-city {
   color: var(--color-text-primary);
 }
 
-/* The city's name, and All storms at the right end while a storm is shown */
-.plan-panel-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-/* The city's name takes focus when the plan opens, for screen readers; it needs no ring */
 .plan-panel-city:focus {
   outline: none;
-}
-
-/* All storms: an outlined chevron and its words. */
-.plan-panel-all {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: var(--space-1);
-  /* The breadcrumb Back's 6 px, and 10 px after the label */
-  padding: 6px 10px 6px 6px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-primary);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background-color var(--motion-hover) linear;
-}
-
-@media (hover: hover) {
-  .plan-panel-all:hover {
-    background: var(--color-bg-canvas);
-  }
-}
-
-.plan-panel-subtitle {
-  color: var(--color-text-tertiary);
 }
 
 .plan-panel-muted {
   color: var(--color-text-secondary);
 }
 
-/* The forecast's rain: a card with the lead chips */
-.plan-panel-rain {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  /* 12 px by 14 px, between the spacing steps */
-  padding: var(--space-3) 14px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-canvas);
-}
-
-.plan-panel-rain-head {
-  display: flex;
-  align-items: center;
-  /* 6 px, between the spacing steps */
-  gap: 6px;
+.plan-panel-none {
+  flex: 1;
   color: var(--color-text-secondary);
 }
 
-/* The chips sit at the head's right end. */
+/* Forecast made: the forecasts to choose from, on a light grey strip, the chosen one white */
 .plan-panel-leads {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
 }
 
-/* A lead chip: outlined; the selected one dark, with light text */
 .plan-panel-lead {
-  /* 3 px by 8 px, between the spacing steps */
-  padding: 3px var(--space-2);
-  border: 1px solid var(--color-border-strong);
+  /* 5 px by 10 px, between the spacing steps */
+  padding: 5px 10px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: none;
   color: var(--color-text-secondary);
@@ -103,29 +54,55 @@
 
 @media (hover: hover) {
   .plan-panel-lead:not([aria-pressed='true']):hover {
-    background: var(--color-bg-surface);
     color: var(--color-text-primary);
   }
 }
 
 .plan-panel-lead[aria-pressed='true'] {
-  border: 0;
-  background: var(--color-text-primary);
-  color: var(--color-bg-surface);
-}
-
-.plan-panel-rain-line {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-surface);
   color: var(--color-text-primary);
 }
 
-/* The totals: two rows of two numbers, then the amoxicillin line */
-.plan-panel-totals {
+/* Summary, Barangays, Health centers: three tabs sharing the width, as the panel's modes did */
+.plan-panel-views {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  /* The selected tab is 2 px taller than the others (its border), so the tabs line up at the top */
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
 }
 
-.plan-panel-totals-row {
+.plan-panel-views .tab {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
+/* In a narrow panel (a phone's sheet) the labels may wrap */
+@container map-panel (max-width: 400px) {
+  .plan-panel-views .tab {
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+/* The open view takes the room left and scrolls */
+.plan-panel-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
+/* Summary: the two headline numbers side by side */
+.plan-panel-headline {
   display: flex;
   gap: var(--space-4);
 }
@@ -140,14 +117,19 @@
   color: var(--color-text-primary);
 }
 
-/* The health centers needing the most */
-.plan-panel-centers-title {
-  /* 6 px under the title, between the spacing steps */
-  padding-bottom: 6px;
+.plan-panel-stock-title {
   color: var(--color-text-secondary);
 }
 
-/* The numbers stand in two 84 px columns, 8 px from the name and from each other */
+/* Barangays: a row's swatch is its color on the map (MapProphylaxis), outlined so the palest shows */
+.plan-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  box-shadow: inset 0 0 0 1px var(--color-border-subtle);
+}
+
+/* Health centers: every center, its two numbers in 84 px columns, 12 px apart */
 .plan-panel-centers-table {
   width: 100%;
   border-collapse: collapse;
@@ -163,22 +145,29 @@
 
 .plan-panel-centers-table th:not(:first-child),
 .plan-panel-centers-table td {
-  width: calc(84px + var(--space-2));
-  padding-left: var(--space-2);
+  width: calc(84px + var(--space-3));
+  padding-left: var(--space-3);
 }
 
-/* The column names, light */
+/* The column names, grey; they stay as the rows scroll */
 .plan-panel-centers-table thead th {
-  padding-bottom: var(--space-1);
-  color: var(--color-text-tertiary);
+  position: sticky;
+  top: 0;
+  padding-bottom: 6px;
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
 }
 
-/* A health center's row: a line above it, 8 px above and below */
+.plan-panel-centers-table thead th:first-child {
+  text-align: left;
+}
+
+/* A health center's row: a line under it, 10 px above and below */
 .plan-panel-centers-table tbody th,
 .plan-panel-centers-table tbody td {
-  padding-top: var(--space-2);
-  padding-bottom: var(--space-2);
-  border-top: 1px solid var(--color-border-subtle);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
   color: var(--color-text-primary);
 }
 
@@ -186,51 +175,39 @@
   text-align: left;
 }
 
-/* margin-top: auto pushes the export to the bottom of the panel, as spacer does */
-.plan-panel-actions {
+/* Export, then the label and the ?, under a line at the bottom of the panel */
+.plan-panel-foot {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .plan-panel-action {
   width: 100%;
 }
 
+.plan-panel-note-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .plan-panel-note {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
 }
 
-/* A date without a storm forecast: the storms to choose from */
-.plan-panel-none {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  color: var(--color-text-primary);
-}
+/* On a phone's sheet (motion.ts's SHEET_BELOW) the plan fits the sheet: the view keeps two rows or more
+   and scrolls, so Export and the ? stay in sight */
+@media (max-width: 599px) {
+  .plan-panel {
+    min-height: 0;
+  }
 
-.plan-panel-storms {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.plan-panel-storms li {
-  display: flex;
-  flex-direction: column;
-  /* 2 px between a number and its words, as in the totals */
-  gap: 2px;
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.plan-panel-storm {
-  color: var(--color-text-primary);
-}
-
-@media (hover: hover) {
-  .plan-panel-storm:hover {
-    color: var(--color-accent-primary);
+  .plan-panel-view {
+    min-height: 80px;
   }
 }

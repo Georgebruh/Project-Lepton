@@ -38,18 +38,6 @@ export const router = createBrowserRouter([
             lazy: async () => ({ Component: (await import('./screens/MapQuezonCity.tsx')).default }),
           },
           {
-            path: 'quezon-city/compare',
-            handle: { mapLevel: 2 },
-            lazy: async () => {
-              const [{ default: Component }, { loadCompareData }] = await Promise.all([
-                import('./screens/MapCompare.tsx'),
-                import('./compare/compareData.ts'),
-              ])
-              return { Component, loader: loadCompareData }
-            },
-            shouldRevalidate: () => false,
-          },
-          {
             path: 'quezon-city/prophylaxis',
             handle: { mapLevel: 3 },
             loader: loadPlanData,
@@ -60,7 +48,9 @@ export const router = createBrowserRouter([
       },
       { path: '/leptospirosis', element: <Leptospirosis /> },
       { path: '/exposed', element: <Exposed /> },
+      // Compare models' old addresses: it moves to How it works (outside the map, so the map's files never load)
       { path: '/compare', element: <CompareRedirect /> },
+      { path: '/map/quezon-city/compare', element: <CompareRedirect /> },
       { path: '/how-it-works', element: <HowItWorks /> },
       ...DEV_ROUTES,
     ],

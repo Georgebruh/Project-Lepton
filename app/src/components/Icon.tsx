@@ -11,7 +11,7 @@ type IconProps = {
   className?: string
 }
 
-/** One of the 20 icons, `size` px square, in the current text color. */
+/** One of the 23 icons, `size` px square, in the current text color. */
 export default function Icon({ name, size = 24, className }: IconProps) {
   return (
     <svg

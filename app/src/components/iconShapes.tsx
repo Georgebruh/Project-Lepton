@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-/** The 20 icons' names without "icon/" (icon/play is 'play'). */
+/** The 23 icons' names without "icon/" (icon/play is 'play'). */
 export const ICON_NAMES = [
   'play',
   'pause',
@@ -22,6 +22,9 @@ export const ICON_NAMES = [
   'chart',
   'no-data',
   'search',
+  'cases',
+  'capsule',
+  'help',
 ] as const
 
 export type IconName = (typeof ICON_NAMES)[number]
@@ -197,6 +200,38 @@ export const ICON_SHAPES: Record<IconName, ReactNode> = {
     <>
       <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.75" />
       <path d="M15.5 15.5L20 20" stroke="currentColor" strokeWidth="1.75" strokeLinecap="square" />
+    </>
+  ),
+  // icon/cases, 199:1791: past weeks' counts (solid) and next week's forecast (outlined), the panel's tab
+  cases: (
+    <>
+      <path d="M3 20.5H21" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M4.5 12.5H8.5V18.5H4.5V12.5Z" fill="currentColor" />
+      <path d="M10 8.5H14V18.5H10V8.5Z" fill="currentColor" />
+      <path d="M16.25 4.75H19.25V17.75H16.25V4.75Z" stroke="currentColor" strokeWidth="1.5" />
+    </>
+  ),
+  // icon/capsule, 186:819: the prophylaxis plan's tab
+  capsule: (
+    <>
+      <path
+        d="M10.6 19.9L19.9 10.6C21.83 8.67 21.83 5.53 19.9 3.6C17.97 1.67 14.83 1.67 12.9 3.6L3.6 12.9C1.67 14.83 1.67 17.97 3.6 19.9C5.53 21.83 8.67 21.83 10.6 19.9Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path d="M8.25 8.25L15.75 15.75" stroke="currentColor" strokeWidth="1.75" />
+    </>
+  ),
+  // icon/help, 193:1453: what the panel's words mean
+  help: (
+    <>
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M9.5 9.75C9.5 8.37 10.62 7.25 12 7.25C13.38 7.25 14.5 8.37 14.5 9.75C14.5 10.9 13.7 11.5 13 11.95C12.4 12.35 12 12.8 12 13.5V14"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path d="M12 16.25V17.25" stroke="currentColor" strokeWidth="2" />
     </>
   ),
 }
