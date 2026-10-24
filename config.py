@@ -631,6 +631,12 @@ SIM_FORECAST_API = "https://api.open-meteo.com/v1/forecast"
 SIM_FORECAST_RAW = DATA_RAW / "ecmwf_forecast"   # each day's reply, unchanged
 APP_SIMULATION_FILE = "city_simulation.json"
 SIM_MAX_PAST_DAYS = 92                           # the most past days Open-Meteo's forecast API gives
+# F16: a prophylaxis plan for every day of the app's timeline, not only the four storms
+# (src/app_days.py): the 3-day rain window from each day, on ECMWF's archived forecasts where
+# Open-Meteo's Previous Runs archive has them, else on the rain that fell (IMERG).
+FORECAST_ARCHIVE_START = date(2024, 2, 1)        # A15: the archive's first hour is 3 Feb 2024; earlier days come back empty
+APP_DAYS = APP_DATA / "days"                     # one file per year: each day's plan
+APP_DAY_RUNS = APP_BARANGAY_RUNS / "days"        # one barangay file per day and run that exposes anyone
 # Assumption: shape detail kept for the web, in metres (about a pixel at the city's view). One
 # value for cities and barangays, which are simplified together so their borders stay one line.
 MAP_SIMPLIFY_M = 10

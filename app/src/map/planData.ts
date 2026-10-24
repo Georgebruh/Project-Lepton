@@ -12,6 +12,13 @@ import { fetchJson } from './mapData.ts'
  *   centers.json            the health centers, each run's need per center and (F15) the
  *                           centers that hold each barangay's stock
  *   barangays/<storm>_<run>.json   one per run: each barangay's numbers, fetched only when shown
+ *
+ * F16 adds a plan for every day, written by python -m src.app_days, each year fetched only when
+ * the chosen date is in it (loadDays):
+ *
+ *   days/<year>.json        each day's plan in storms.json's form, and its runs' needs per center
+ *   barangays/days/<date>_<run>.json   one per run that exposes anyone
+ *   barangays/days/no_flood.json       the one file every run that exposes nobody points to
  */
 
 /** The three units, as C6 counts them. */
@@ -60,15 +67,19 @@ export type StormRun = {
   floods: Flood[]
 }
 
+/**
+ * A storm of storms.json, or (F16) a day's plan from a year file, in the same form: then the key
+ * is "day_2024-07-22", the dates are its 3-day rain window and D is null.
+ */
 export type Storm = {
   /** The storm's key, e.g. "kristine_2024". */
   storm: string
-  /** Its name in words, e.g. "Severe Tropical Storm Kristine, October 2024". */
+  /** Its name in words, e.g. "Severe Tropical Storm Kristine, October 2024", or "Daily plan, 22–24 Jul 2024". */
   name: string
-  /** The days it flooded Quezon City (A11), YYYY-MM-DD, and how many (D). */
+  /** The days it flooded Quezon City (A11), YYYY-MM-DD, and how many (D; null for a day's plan). */
   start_date: string
   end_date: string
-  D: number
+  D: number | null
   runs: StormRun[]
 }
 
@@ -180,6 +191,28 @@ export type CentersFile = {
   barangay_centers: Record<string, BarangayCenter[]>
 }
 
+/**
+ * F16: days/<year>.json, a year of daily plans. A day's plan is for the 3 days of rain from that
+ * day: the forecasts made 1 to 3 days before it (ECMWF, from February 2024), or before the archive
+ * the rain that fell (IMERG). Most days' rain floods nobody, and their plan needs no stock.
+ */
+export type DaysFile = {
+  label: string
+  source: string
+  /** The day the plans were made, and the UTC day ECMWF's archive was fetched. */
+  made_on: string
+  fetched_utc: string
+  /** The first and last day with a plan, the same in every year's file. */
+  first: string
+  last: string
+  year: number
+  units: Record<keyof Units, string>
+  /** Each day's plan, in date order, as storms.json writes a storm. */
+  days: Storm[]
+  /** needs[day key][run][flood key][facility_code], for the runs that expose anyone; the others need nothing. */
+  needs: CentersFile['needs']
+}
+
 export type PlanData = {
   storms: StormsFile
   centers: CentersFile
@@ -219,6 +252,19 @@ export function loadRun(file: string): Promise<RunFile> {
     found = fetchJson<RunFile>(`/data/${file}`)
     found.catch(() => runFiles.delete(file))
     runFiles.set(file, found)
+  }
+  return found
+}
+
+const dayFiles = new Map<number, Promise<DaysFile>>()
+
+/** F16: a year's daily plans (days/<year>.json), fetched once and kept, as the date moves back and forth. */
+export function loadDays(year: number): Promise<DaysFile> {
+  let found = dayFiles.get(year)
+  if (!found) {
+    found = fetchJson<DaysFile>(`/data/days/${year}.json`)
+    found.catch(() => dayFiles.delete(year))
+    dayFiles.set(year, found)
   }
   return found
 }

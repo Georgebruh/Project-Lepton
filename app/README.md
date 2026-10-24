@@ -119,6 +119,8 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 | `noah_flood_5yr.pmtiles`, `noah_flood_25yr.pmtiles`, `noah_flood_100yr.pmtiles` | F14: NOAH's flood maps of every province NOAH has mapped, as vector tiles (`python -m src.noah_national`, not F2): layer `flood`, `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), zooms 4 to 11, each map thinned as little as keeps it under GitHub's 100 MB a file (`config.NOAH_TILE_LIMITS`: the 5- and 25-year maps keep tippecanoe's default tiles; the 100-year map's densest tiles drop more of their smallest patches). Patches under 400 m² dropped. ODbL, as NOAH's maps are. 50–95 MB each; the browser fetches only the tiles in view (HTTP range requests). They replace F13's Metro Manila overlays, `noah_<T>yr.json` | Map's flood zones (F13, F14), read when first turned on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes`, and (F15) `counting`, C6's units per person from `config.py`, which the barangay report explains | Prophylaxis plan |
 | `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
+| `days/<year>.json` | F16: a prophylaxis plan for every day (`python -m src.app_days`, not F2), one file per year, fetched when the date first reaches that year. Each day in `storms.json`'s form (key `day_<date>`, `D` null) for the 3 days of rain from that date: its forecasts made 1 to 3 days before (ECMWF, Open-Meteo's Previous Runs archive, from February 2024; later in the week the newest forecast), or before the archive the rain that fell (IMERG). Also `needs[day][run][flood][facility_code]` for the runs that expose anyone; the others need nothing (`withDayNeeds` in `map/plan.ts`). Most days' rain is below R0: all zeros, no stock. 0.25–0.9 MB a year, 30–60 kB sent compressed | Prophylaxis plan |
+| `barangays/days/<date>_<run>.json` | F16: each daily run that exposes anyone (141 of 5,198), in the barangay files' form; every other run points to `barangays/days/no_flood.json`, all 142 at 0 | Prophylaxis plan |
 | `centers.json` | Health centers (`lat`, `lon`, `barangay`; `left_out` says why one gets no stock), `needs[storm][run][flood][facility_code]` and (F15) `barangay_centers[psgc]`: the centers that hold each barangay's stock, as C7 sends it (`center_shares_qc.csv`): `rule` `own`, `split` (by who lives nearest each, with its `share`) or `nearest` (with the `km` from the barangay's centroid) | Prophylaxis plan, Exposure guide |
 | `city_forecast.json` | Per target week: `start`, `end`, `y`, `threshold`, `breached`, and per model `mu`, `low` and `high` (the 90% range), `p_breach`. `"simulated": true` until A13's counts arrive. Also `map_model` (M4, the model the map shows) and the outbreak `levels`, each with the Pr(breach) it starts at (`config.APP_LEVELS`) | Map, Compare models |
 | `city_simulation.json` | F14: the map's Simulation mode (`python -m src.app_simulation`, not F2): the weeks after QCESD's last count, in `city_forecast.json`'s form, to next week. Each ended week's `y` is made up (the median of M4's forecast), `null` for this week and next; `made_on`, the day it ran to, and `weather`, the ECMWF forecast it used. Run it again on a later day to move it | Map in Simulation mode |
@@ -229,7 +231,9 @@ is only the map, of the whole country, with no other tabs.
   forecast, so later forecasts see a typical week), and forecasts to next week, the last made
   with ECMWF's rain forecast of the day it ran (`src/app_simulation.py`). Every simulated number
   carries the amber "Simulated" badge, and simulated counts are dashed outlines in the charts.
-  The scores are always the real run's. The prophylaxis plan works on the storms in both modes.
+  The scores are always the real run's. The prophylaxis plan has a plan for every date in both
+  modes (F16, `src/app_days.py`): run `python -m src.app_days` on the day you run
+  `python -m src.app_simulation`, so the daily plans reach its last date (check "F16 daily plans").
 - **NOAH everywhere.** The flood zones cover every province NOAH has mapped
   (`noah_flood_<T>yr.pmtiles`, `src/noah_national.py`), read tile by tile through the `pmtiles`
   package; F13's Metro Manila overlays are gone.
@@ -363,9 +367,13 @@ exported file.
   page stops with an error.
 - **Which forecast.** The date picks the storm. A storm's forecasts show from the day its
   earliest forecast was made (3 days ahead) to the last day of its rain or its flood
-  (`stormDates` in `map/plan.ts`; Kristine: 18 to 24 October 2024). Any other date says "No
-  storm forecast for this date" and links to each storm at the first day of its 1-day-ahead
-  forecast's rain (Kristine: Tue 22 Oct 2024, Figma's date). The lead chips keep the lead time
+  (`stormDates` in `map/plan.ts`; Kristine: 18 to 24 October 2024). F16: every other date shows
+  its own plan, for the 3 days of rain from that date (`days/<year>.json`, fetched when the date
+  first reaches the year; "Loading the plan for this date…" until it comes): the forecasts made
+  1 to 3 days before, or before February 2024, with no forecast archived, the rain that fell
+  (no lead chips). Most days' plans are zero: "too little rain to flood: floods start above
+  104 mm". "All storms" lists the storms, each opening at the first day of its 1-day-ahead
+  forecast's rain (Kristine: Tue 22 Oct 2024, Figma's date), with a link back to the date's plan. The lead chips keep the lead time
   in the address, `?lead=2` (1 day ahead without it). The numbers are for a 1-day flood with
   w = 0.5 (`PLAN_FLOOD`, as in Figma); C9's 7-day flood is there for the stretch switch.
 - **Going back.** While a storm is shown, "All storms" beside the heading (not in Figma) lists

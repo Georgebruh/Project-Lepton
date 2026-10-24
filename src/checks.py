@@ -1,10 +1,10 @@
 """Sanity checks S1-S11 (task A2; specs in the plan's "Sanity checks" table).
 
-Also runs 14 checks with no S number, named by their task:
+Also runs 15 checks with no S number, named by their task:
   A11 storm facts; B2 what a model may see; B8 M0 and M1; B9 M3;
   D2 MASE denominator; D4 lead time; D5 primary endpoint; D6 flood test;
   F2 app data; F9 scores; E6 score tables; F14 NOAH tiles; F14 simulation;
-  E10 package.
+  F16 daily plans; E10 package.
 
 Run from the repository root:  python -m src.checks
 A check whose data file is not on this computer is reported as SKIP.
@@ -1953,6 +1953,137 @@ def f14_simulation():
     return f"{len(indexes)} weeks to {simulation['weeks'][-1]['start']} (no fresh run: B10's forecasts or the ECMWF reply are not here)"
 
 
+def f16_daily_plans():
+    """F16: every date the app's map shows has a prophylaxis plan (app/public/data/days/), made as C9's runs are.
+
+      - the year files hold every day from the map's first date (city_forecast.json's) to its
+        last (city_simulation.json's), once and in order, each with one run or more: its
+        forecasts (leads 1 to 3, or later in the week the newest forecast) or the rain that fell,
+        never both, and the rain that fell only before ECMWF's archive;
+      - every run that exposes anyone has its own barangay file, whose 142 barangays add up to
+        the run's QC totals (each rounded to whole numbers, so within half a unit per barangay),
+        and a need for every health center C7 stocks; every other run has 0 people and units and
+        points to no_flood.json, whose 142 barangays are all 0; no barangay file is left over;
+      - against C9: each storm forecast in storms.json (12 runs) equals the day plan with its
+        window and lead in everything, its barangays and its need per health center too;
+      - the files equal a fresh python -m src.app_days for their day, when that day's saved
+        archive reply is on this computer;
+      - every file carries the not-prescriptions label.
+    """
+    import json
+    from datetime import timedelta
+
+    from src import app_days, doses, forecast_run
+
+    need_file(config.APP_DAYS / f"{config.BACKTEST_FIRST_YEAR}.json", "F16 (python -m src.app_days)")
+    rerun = "rerun python -m src.app_days"
+
+    def read(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    years = {int(path.stem): read(path) for path in sorted(config.APP_DAYS.glob("*.json"))}
+    plans = [day for year in sorted(years) for day in years[year]["days"]]
+    for year, content in years.items():
+        assert content["label"] == doses.LABEL, f"days/{year}.json lacks the not-prescriptions label"
+        assert all(day["start_date"].startswith(str(year)) for day in content["days"]), f"days/{year}.json holds another year's day"
+    starts = [date.fromisoformat(day["start_date"]) for day in plans]
+    assert all(b - a == timedelta(days=1) for a, b in zip(starts, starts[1:])), f"the daily plans skip or repeat a day: {rerun}"
+
+    # The map's dates (forecast.ts, dateRange): from the first target week back one forecast horizon, to the last's Saturday
+    real = read(config.APP_DATA / "city_forecast.json")
+    weeks_shown = real["weeks"] + read(config.APP_DATA / config.APP_SIMULATION_FILE)["weeks"]
+    lead = timedelta(days=config.DAYS_PER_WEEK * real["horizon_weeks"])
+    first_shown = date.fromisoformat(weeks_shown[0]["start"]) - lead
+    last_shown = date.fromisoformat(weeks_shown[-1]["start"]) - lead + timedelta(days=config.DAYS_PER_WEEK - 1)
+    assert starts[0] <= first_shown and last_shown <= starts[-1], (
+        f"the plans run {starts[0]} to {starts[-1]}; the map shows {first_shown} to {last_shown}: {rerun} "
+        "on the day python -m src.app_simulation was run")
+
+    centers = read(config.APP_DATA / "centers.json")
+    stocked = {center["facility_code"] for center in centers["centers"] if center["gets_stock"]}
+    no_flood = app_days.data_name(config.APP_DAY_RUNS / "no_flood.json")
+    files = {name: read(config.APP_DATA / name) for name in
+             [no_flood] + [app_days.data_name(path) for path in config.APP_DAY_RUNS.glob("*.json") if path.name != "no_flood.json"]}
+    assert all(content["label"] == doses.LABEL for content in files.values()), "a barangay file lacks the not-prescriptions label"
+    assert len(files[no_flood]["barangays"]) == config.QC_BARANGAYS and not any(
+        barangay["exposed"] or any(any(units.values()) for units in barangay["units"].values())
+        for barangay in files[no_flood]["barangays"]), "no_flood.json must have every barangay at 0"
+
+    pointed = set()
+    exposing = 0
+    first_forecast = None   # the first day with a forecast: no day after it may fall back on the rain that fell
+    for day in plans:
+        runs = day["runs"]
+        observed = [run for run in runs if run["lead_days"] is None]
+        assert runs and (observed == runs or not observed), f"{day['storm']}: forecasts and the rain that fell, or no run"
+        if observed:
+            assert first_forecast is None, f"{day['storm']}: the rain that fell after {first_forecast}, inside ECMWF's archive"
+        elif first_forecast is None:
+            first_forecast = day["start_date"]
+            assert date.fromisoformat(first_forecast) >= config.FORECAST_ARCHIVE_START, f"a forecast before the archive: {first_forecast}"
+        needs = years[int(day["start_date"][:4])]["needs"].get(day["storm"], {})
+        for run in runs:
+            pointed.add(run["file"])
+            people = [flood["exposed"] for flood in run["floods"]]
+            if run["file"] == no_flood:
+                assert not any(flood[key] for flood in run["floods"] for key in ("exposed", *doses.UNITS)), (
+                    f"{day['storm']}, {run['run']}: numbers, but no barangay file")
+                assert run["run"] not in needs, f"{day['storm']}, {run['run']}: a need, but nobody exposed"
+                continue
+            exposing += 1
+            assert all(people), f"{day['storm']}, {run['run']}: a barangay file, but nobody exposed: {rerun}"
+            barangays = files[run["file"]]["barangays"]
+            assert len(barangays) == config.QC_BARANGAYS, f"{run['file']}: {len(barangays)} barangays"
+            for flood in run["floods"]:
+                for key in ("exposed", *doses.UNITS):
+                    total = sum(b["exposed"] if key == "exposed" else b["units"][flood["key"]][key] for b in barangays)
+                    assert abs(total - flood[key]) <= 0.5 * len(barangays), (
+                        f"{run['file']}: {key} in {flood['key']} adds to {total}, the run says {flood[key]}")
+                assert set(needs[run["run"]][flood["key"]]) == stocked, (
+                    f"{day['storm']}, {run['run']}, {flood['key']}: needs for other centers than C7 stocks")
+    assert pointed == set(files), f"barangay files no run points to, or runs pointing to no file: {rerun}"
+
+    # Against C9: a storm forecast is the day plan of its window's first day, at its lead
+    by_start = {day["start_date"]: day for day in plans}
+    storms = read(config.APP_DATA / "storms.json")
+    matched = 0
+    for storm in storms["storms"]:
+        for run in storm["runs"]:
+            if run["lead_days"] is None:
+                continue
+            day = by_start[run["window"]["start"]]
+            found = [each for each in day["runs"] if each["lead_days"] == run["lead_days"]]
+            where = f"{storm['storm']}, {run['run']}"
+            assert found, f"{where}: no day plan for {run['window']['start']} at that lead"
+            mine = found[0]
+            assert {**mine, "file": run["file"]} == run, f"{where} differs from {day['storm']}'s: {rerun}"
+            if mine["file"] != no_flood:
+                assert files[mine["file"]]["barangays"] == read(config.APP_DATA / run["file"])["barangays"], (
+                    f"{where}: barangays differ from {mine['file']}")
+            want = centers["needs"][storm["storm"]][run["run"]]
+            got = years[int(day["start_date"][:4])]["needs"].get(day["storm"], {}).get(mine["run"])
+            if got is None:
+                assert not any(any(units.values()) for need in want.values() for units in need.values()), (
+                    f"{where}: centers.json has needs, the day plan none")
+            else:
+                assert got == want, f"{where}: needs per health center differ from centers.json's"
+            matched += 1
+    expected = len(storms["storms"]) * len(config.FORECAST_LEADS_DAYS)
+    assert matched == expected, f"{matched} storm forecasts matched, expected {expected} (every storm at leads 1-3)"
+
+    made_on = date.fromisoformat(years[max(years)]["made_on"])
+    note = f"{len(plans)} days to {starts[-1]}, {exposing} runs expose anyone, {matched} storm forecasts as C9"
+    if app_days.saved_reply(made_on) is None:   # a past day is never fetched again: only its saved reply makes it again
+        return note + f" (no fresh run: the archive reply saved on {made_on} is not here)"
+    fresh, _ = app_days.days_files(made_on, fetch=False)
+    on_disk = {**{f"days/{year}.json": content for year, content in years.items()}, **files}
+    assert set(fresh) == set(on_disk), f"the files differ from a fresh run for {made_on}: {rerun} --day {made_on}"
+    for name, content in fresh.items():
+        assert json.loads(json.dumps(content)) == on_disk[name], f"{name} differs from a fresh run for {made_on}: {rerun} --day {made_on}"
+    return note + f", equal to a fresh run for {made_on}"
+
+
 CHECKS = {
     "S1 calendar": s1_calendar,
     "S2 rain file": s2_rain_file,
@@ -1984,6 +2115,7 @@ CHECKS = {
     "E6 score tables": e6_score_tables,
     "F14 NOAH tiles": f14_noah_tiles,
     "F14 simulation": f14_simulation,
+    "F16 daily plans": f16_daily_plans,
     "E10 package": e10_package,
 }
 

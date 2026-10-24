@@ -3,6 +3,7 @@ import type {
   BarangayRun,
   BarangayShapes,
   CentersFile,
+  DaysFile,
   Flood,
   RunFile,
   ShareClass,
@@ -22,6 +23,10 @@ import type {
  * same list on any date). A storm opened from that list is a visit: leaving the plan puts back
  * the date from before it (levelSearch in routes.ts). The lead chips choose how many days ahead
  * the forecast was made (?lead=2 in the address; 1 day ahead without it).
+ *
+ * F16: every other date has a plan of its own, for the 3 days of rain from that date (dayOn, from
+ * the date's year file). A day before ECMWF's archive (February 2024) has no forecast: its plan
+ * is the rain that fell (planRuns). A storm's dates still show the storm.
  */
 
 /**
@@ -36,6 +41,15 @@ export function forecastRuns(storm: Storm): StormRun[] {
   return storm.runs
     .filter((run) => run.lead_days !== null)
     .sort((a, b) => (a.lead_days ?? 0) - (b.lead_days ?? 0))
+}
+
+/**
+ * F16: the runs a plan offers: its forecasts, the one made 1 day ahead first; for a day before
+ * ECMWF's archive, which has none, the rain that fell (its observed run).
+ */
+export function planRuns(storm: Storm): StormRun[] {
+  const forecasts = forecastRuns(storm)
+  return forecasts.length ? forecasts : storm.runs.filter((run) => run.lead_days === null)
 }
 
 /**
@@ -74,10 +88,46 @@ export function stormDate(storm: Storm): string {
   return forecastRuns(storm)[0].window.start
 }
 
-/** The forecast the address asks for (?lead=2), if the storm has one made that many days ahead; else 1 day ahead. */
+/**
+ * The forecast the address asks for (?lead=2), if the storm has one made that many days ahead;
+ * else its earliest-made-last, 1 day ahead where there is one. F16: a day without forecasts has
+ * the rain that fell.
+ */
 export function chosenRun(storm: Storm, lead: string | null): StormRun {
-  const runs = forecastRuns(storm)
+  const runs = planRuns(storm)
   return runs.find((run) => String(run.lead_days) === lead) ?? runs[0]
+}
+
+/** F16: a date's own plan in its year's file (for the 3 days of rain from that date), or undefined if it has none. */
+export function dayOn(file: DaysFile, date: string): Storm | undefined {
+  return file.days.find((day) => day.start_date === date)
+}
+
+/**
+ * F16: centers.json with a day's needs added, so the panel, the stock list and the report read a
+ * day as they read a storm: each run's need per health center from the year file, or, for a run
+ * that exposes nobody, every center C7 stocks needing nothing. Stops with an error if a run that
+ * exposes anyone has no need in the file.
+ */
+export function withDayNeeds(centers: CentersFile, file: DaysFile, day: Storm): CentersFile {
+  const nothing = Object.fromEntries(
+    centers.centers
+      .filter((center) => center.gets_stock)
+      .map((center) => [center.facility_code, { doxy100: 0, courses: 0, amox500: 0 }]),
+  )
+  const runs = Object.fromEntries(
+    day.runs.map((run) => {
+      const needs = file.needs[day.storm]?.[run.run]
+      if (needs) {
+        return [run.run, needs]
+      }
+      if (run.floods.some((flood) => flood.exposed > 0)) {
+        throw new Error(`days/${file.year}.json has no need for ${day.storm}, ${run.run}: rerun python -m src.app_days`)
+      }
+      return [run.run, Object.fromEntries(run.floods.map((flood) => [flood.key, nothing]))]
+    }),
+  )
+  return { ...centers, needs: { ...centers.needs, [day.storm]: runs } }
 }
 
 /** A forecast's lead time in words: "1 day ahead", "2 days ahead". */
@@ -120,10 +170,15 @@ export function positionWords(run: StormRun): string {
 
 /**
  * When the forecast was made and where its rain falls, in the panel's words: "Issued 21 Oct ·
- * between a 5- and a 25-year storm".
+ * between a 5- and a 25-year storm". Rain below R0 also says how much it takes to flood (F16:
+ * most days' plans): "Issued 18 Jul · too little rain to flood: floods start above 101 mm".
  */
 export function issuedLine(run: StormRun): string {
-  return run.issued ? `Issued ${formatDayMonth(run.issued)} · ${positionWords(run)}` : positionWords(run)
+  const where =
+    run.position === 'below R0'
+      ? `${positionWords(run)}: floods start above ${Math.round(run.levels_mm.R0)} mm`
+      : positionWords(run)
+  return run.issued ? `Issued ${formatDayMonth(run.issued)} · ${where}` : where
 }
 
 /** A share of residents as a whole percentage: "63%"; a share above 0 but under 0.5% is "<1%". */
@@ -325,7 +380,7 @@ export function stockList(storms: StormsFile, centers: CentersFile, storm: Storm
   return rows.map((row) => row.map(csvField).join(',')).join('\r\n') + '\r\n'
 }
 
-/** The stock list's file name: "lepton-stock-list_kristine_2024_lead1.csv". */
+/** The stock list's file name: "lepton-stock-list_kristine_2024_lead1.csv"; F16: "..._day_2018-07-22_observed.csv". */
 export function stockListName(storm: Storm, run: StormRun): string {
-  return `lepton-stock-list_${storm.storm}_lead${run.lead_days}.csv`
+  return `lepton-stock-list_${storm.storm}_${run.run.replace(/\s+/g, '')}.csv`
 }

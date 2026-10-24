@@ -432,11 +432,11 @@ function drawStock(pen: Pen, content: ReportContent) {
   tableSection(pen, 'Stock to prepare', content.stock.table, columns, content.stock.notes)
 }
 
-/** The storm's forecasts made 1 to 3 days ahead, the one on the map in bold. */
+/** The storm's forecasts made 1 to 3 days ahead (F16: or a day's rain that fell), the one on the map in bold. */
 function drawLeads(pen: Pen, content: ReportContent) {
   const widths = [33, 33, 32, 30, 18, 16, 16]
   const columns = widths.map((width, i): Column => ({ width, align: i >= 4 ? 'right' : 'left' }))
-  tableSection(pen, 'The forecasts made as the storm came', content.leads.table, columns, [content.leads.note])
+  tableSection(pen, content.leads.title, content.leads.table, columns, [content.leads.note])
 }
 
 /** Where the stock goes: the health centers, each with its share of this barangay's need and its own whole need. */
