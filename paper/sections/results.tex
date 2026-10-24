@@ -17,6 +17,10 @@
 %   results/c8_observed_runs.csv (return periods, R0 119.7 mm), d7_tests.csv (cut-off and
 %     D +/- 1 tests), c9_forecast_runs.csv (ERA5 levels); results/m3_reproduction.csv.
 %   Cases per year (163, 176; 366 to 1,033 from 2023): python -m src.cases, Notes.md 1.5.
+%   From results/forecasts.csv with src/compare.py (issue #81, rechecked 2026-10-24): the DM test
+%     with h = g + 1 = 3 (long-run variance from lags 0-2, Harvey-Leybourne-Newbold correction)
+%     gives p = 0.042 for M4 vs M3 and 0.023 for M4 vs M1; without 2018, M4 - M3 = -3.17
+%     (block_bootstrap: -5.46 to -0.93, 299 weeks).
 % Figures 1-4: results/d8_fig1-4 (python -m src.paper_figures), copied into figures/.
 % Dose figures are stock planning, not prescriptions (rule 10).
 \section{Results}\label{sec:results}
@@ -32,7 +36,8 @@ fewer cases than M3 on average (mean absolute errors of 6.70 and 15.59 cases a w
 moving-block bootstrap interval of the difference $-19.93$ to $-1.88$), so M4 is more accurate
 than the benchmark. The interval stays below zero with 4-week blocks ($-18.40$ to $-2.50$) and
 13-week blocks ($-20.94$ to $-1.31$), and the two-sided Diebold--Mariano test agrees
-($p = 0.007$). Figure~\ref{fig:forecasts} shows both models' forecasts against the counts, and
+($p = 0.007$). That test treats the weeks as independent; allowing for the three weeks between a
+forecast and the newest count it sees gives $p = 0.04$. Figure~\ref{fig:forecasts} shows both models' forecasts against the counts, and
 Figure~\ref{fig:mae} each model's error with its interval.
 
 \begin{figure*}[t]
@@ -94,7 +99,8 @@ holding the count in only 73\% of weeks.
 Much of M3's error comes from 2018, when only 2015--2017 lay behind it: as the July outbreak
 began, it forecast 1,065 cases for the week of 29~July to 4~August, which had 58
 (Figure~\ref{fig:forecasts}), and its mean absolute error for 2018 was 50.4 cases a week against
-M4's 7.4. This is why the interval is wide. M4 also missed less than M3 in five of the other six
+M4's 7.4. This is why the interval is wide. Without 2018, M4 still misses less, by 3.17 cases a
+week ($-5.46$ to $-0.93$, 299 weeks): the verdict holds, at about a third of the size. M4 also missed less than M3 in five of the other six
 scored years, by 0.7 to 11.9 cases a week; M3 missed less only in 2022 (2.6 against 2.9). M4 was
 not the best model every year: among the four, it had the lowest error in 2018, 2019, 2023 and
 2026, M0 in 2024 and 2025, and M3 in 2022. The hardest year was 2026, with the backtest's largest
@@ -106,7 +112,8 @@ error between M4 and M4 without the index was $-0.15$ cases a week, with a 95\% 
 $-0.50$ to $0.21$, and the 4- and 13-week blocks agree. The scores of the forecast distribution
 say the same (Table~\ref{tab:scores}). Over these years, then, the flood maps earn their place in
 Layer~2, not in the city forecast. M4 did beat M1, the same-week average a health office can
-compute by hand, by 1.84 cases a week ($-3.28$ to $-0.25$; Diebold--Mariano $p < 0.001$).
+compute by hand, by 1.84 cases a week ($-3.28$ to $-0.25$; Diebold--Mariano $p < 0.001$, or
+$p = 0.02$ allowing for the three-week lag).
 
 \begin{table*}[t]
 \centering\footnotesize
