@@ -402,7 +402,7 @@ export default function CityMap({
         openRef.current.navigate(path + openRef.current.search)
       }
     })
-    // Levels 2 and 3: a click on the map outside the open city closes the panel (it has no Close button).
+    // Levels 2 and 3: a click on the map outside the open city closes the panel, as its Close button does.
     // A click on the city (or one of its barangays) does what it did; a drag is no click. With a barangay's
     // pop-up open, the click only closes the pop-up (barangayLayers.ts). The panel closes CLOSE_WAIT_MS
     // after the click, so a double click (or a double tap) zooms instead.
