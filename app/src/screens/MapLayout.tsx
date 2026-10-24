@@ -54,10 +54,10 @@ const HEADINGS: Record<MapLevel, string> = {
   3: 'Quezon City: the prophylaxis plan',
 }
 
-/** F13: what the pin button above Zoom brings back into view at each level. F14: the whole country at level 1. */
+/** What the pin button above Zoom brings back into view at each level. The whole country at level 1. */
 const LEVEL_PLACES: Record<MapLevel, string> = { 1: 'the Philippines', 2: 'Quezon City', 3: 'Quezon City' }
 
-/** map/motion.ts's durations, curve and panel size, as the CSS variables MapLayout.css and the map's CSS use. */
+/** map/motion.ts's durations. */
 const MOTION = {
   '--map-hover': `${HOVER_MS}ms`,
   '--map-camera': `${CAMERA_MS}ms`,
@@ -67,42 +67,9 @@ const MOTION = {
   '--map-sheet-share': `${SHEET_SHARE * 100}%`,
 } as CSSProperties
 
-/**
- * The frame the map levels share (routes /map, /map/quezon-city, /map/quezon-city/compare and
- * /map/quezon-city/prophylaxis), from the Figma map drill-down (section 53:267): the one map,
- * its legends and buttons, and the city panel. The map stays on screen while the level changes,
- * so the drill-down can animate (task F4; the motion is in map/motion.ts). The open level fills
- * the panel (<Outlet />), which slides in when a city opens.
- *
- * The chosen date is kept in the address (?date=2024-10-22), so a link opens the same week;
- * without one, the map shows today's (F14), or the latest forecast in Real data mode.
- *
- * F5: the prophylaxis plan (level 3) draws its barangays on the same map, and puts its own
- * legend, tooltip and list in empty boxes here, which the context hands it (legendSlot, overlay,
- * listSlot).
- *
- * F11: on a phone (below 600 px, motion.ts's SHEET_BELOW) the panel is a sheet that slides up
- * over the map's lower 55% instead of in from the side, so the map stays in sight above it.
- *
- * F13: the map lies on a street map of the whole world, and the reader may pan away; the pin
- * button above Zoom brings the open level back into view. The Layers button opens the Layers
- * panel (map/MapLayers.tsx); its choices live in the address (?base=, ?flood=, ?view=3d, ?wx=,
- * map/layerParams.ts), so a link opens the same map. NOAH's flood zones (map/floodLayer.ts) and
- * the weather layer (map/weather.ts) bring their legends, which stand above the map's own.
- *
- * F14: only the map, on the whole screen. Its level 1 is the whole Philippines. The app bar and
- * the breadcrumb bar are gone: the top left corner holds the logo, the top right the
- * Simulation | Real data buttons (map/MapDataModes.tsx, ?data=real); the bottom middle the timeline that picks the
- * week (map/MapTimeline.tsx), with a live weather layer's timeline above it; the bottom right the
- * legends and map buttons, then Methods and the sources' credits (CityMap). Clicking Quezon City
- * opens its panel from the left over half the screen, with three tabs: the case forecast,
- * Compare models and the prophylaxis plan. In Simulation mode the forecast adds
- * city_simulation.json's weeks after QCESD's last count (mapData.ts, withSimulation). The search
- * beside the logo (map/MapSearch.tsx) finds any city or municipality and takes the map there.
- */
+/** The frame the map levels share. */
 export default function MapLayout() {
-  // The loader's own type (mapData.ts): React Router's serialized form of a MapLibre style is
-  // too deep for TypeScript, and with no server nothing is serialized
+  // The loader's own type (mapData.ts).
   const { cities, islands, forecast: realForecast, simulation, baseStyle } = useLoaderData() as MapData
   const level = useMapLevel()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -113,7 +80,7 @@ export default function MapLayout() {
   const [overlay, setOverlay] = useState<HTMLElement | null>(null)
   const [listSlot, setListSlot] = useState<HTMLElement | null>(null)
   const [layersOpen, setLayersOpen] = useState(false)
-  const [found, setFound] = useState<{ psgc: string } | null>(null) // F14: the town the search last found
+  const [found, setFound] = useState<{ psgc: string } | null>(null) // The town the search last found
   const layersButton = useRef<HTMLButtonElement>(null)
   const controls = useRef<HTMLDivElement>(null)
   const topBar = useRef<HTMLDivElement>(null)
@@ -125,8 +92,7 @@ export default function MapLayout() {
   const date = chosenDate(forecast, searchParams.get('date'))
   const week = forecastFor(forecast, date)
   const base = baseOf(searchParams)
-  // F14: the prophylaxis plan opens in 3D of its own accord, and the map turns flat again when the
-  // plan closes, unless the Layers panel's switch (?view=3d) is on. The switch shows either.
+  // The prophylaxis plan opens in 3D of its own accord.
   const [plan3d, setPlan3d] = useState(level === 3)
   const [plan3dLevel, setPlan3dLevel] = useState(level)
   if (level !== plan3dLevel) {
@@ -137,7 +103,7 @@ export default function MapLayout() {
   const flood = floodOf(searchParams)
   const [floodChoice, setFloodChoice] = useState<FloodPeriod>(flood ?? DEFAULT_FLOOD)
   if (flood !== null && flood !== floodChoice) {
-    setFloodChoice(flood) // the switch brings back the map last shown, however the address came to name it
+    setFloodChoice(flood) // The switch brings back the map last shown, however the address came to name it
   }
   const { status: floodStatus, retry: retryFlood } = useFloodZones(map, flood)
   const floodShown = flood !== null && floodStatus !== 'failed'
@@ -147,10 +113,7 @@ export default function MapLayout() {
   const { first, last } = dateRange(forecast)
   const realEnd = realForecast.weeks[realForecast.weeks.length - 1].end
 
-  // F11: the link or button that changed the level has gone, or slid away with the panel, so the
-  // keyboard moves to where the new level starts: the panel's heading, or, back at the
-  // Philippines (F14: the list of cities is gone), the map. Not on the first view, where the
-  // keyboard starts at the top as usual.
+  // The link or button that changed the level has gone.
   useEffect(() => {
     if (shownLevel.current === level) {
       return
@@ -163,11 +126,7 @@ export default function MapLayout() {
     }
   }, [level])
 
-  /**
-   * A new date replaces the address's (no new history entry); the page keeps its scroll. A date
-   * the reader picks also ends a storm opened from the plan's list (F5): there is no other date
-   * to go back to.
-   */
+  /** A new date replaces the address's (no new history entry); the page keeps its scroll. */
   function changeDate(day: string) {
     setSearchParams(
       (params) => {
@@ -180,20 +139,17 @@ export default function MapLayout() {
     )
   }
 
-  /** F14: Simulation or Real data replaces the address's (no new history entry); the date stays, moved inside the mode's dates. */
+  /** Simulation or Real data replaces the address's (no new history entry). */
   function changeMode(next: DataMode) {
     setSearchParams((params) => setDataParam(params, next), { replace: true, preventScrollReset: true })
   }
 
-  /** F13: a base map chosen in the Layers panel replaces the address's (no new history entry). */
+  /** A base map chosen in the Layers panel replaces the address's (no new history entry). */
   function changeBase(next: BaseMap) {
     setSearchParams((params) => setBaseParam(params, next), { replace: true, preventScrollReset: true })
   }
 
-  /**
-   * F13: the 3D view turned on or off in the Layers panel replaces the address's (no new history
-   * entry). F14: off also ends the plan's own 3D; on keeps 3D after the plan closes.
-   */
+  /** The 3D view turned on or off in the Layers panel replaces the address's (no new history entry). */
   function change3D(on: boolean) {
     if (!on) {
       setPlan3d(false)
@@ -201,26 +157,23 @@ export default function MapLayout() {
     setSearchParams((params) => set3DParam(params, on), { replace: true, preventScrollReset: true })
   }
 
-  /** F13: NOAH's map chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
+  /** NOAH's map chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
   function changeFlood(next: FloodPeriod | null) {
     setSearchParams((params) => setFloodParam(params, next), { replace: true, preventScrollReset: true })
   }
 
-  /** F13: the weather layer chosen in the Layers panel (null: none) replaces the address's (no new history entry). */
+  /** The weather layer chosen in the Layers panel. */
   function changeWeather(next: Weather | null) {
     setSearchParams((params) => setWeatherParam(params, next), { replace: true, preventScrollReset: true })
   }
 
-  /** F13: closing the Layers panel gives the keyboard back to its button. */
+  /** Closing the Layers panel gives the keyboard back to its button. */
   function closeLayers() {
     setLayersOpen(false)
     layersButton.current?.focus()
   }
 
-  /**
-   * F13: the pin button: the camera goes back to the open level's view, as when the level opened.
-   * F14: it ends the search's mark on a town.
-   */
+  /** The pin button: the camera goes back to the open level's view, as when the level opened. */
   function showLevel() {
     if (!map) {
       return
@@ -232,11 +185,7 @@ export default function MapLayout() {
     })
   }
 
-  /**
-   * F14: a place the search picked. A city with data opens its forecast; picked while its panel
-   * is open, the camera goes back to it, as the pin does. Any other town: the panel closes, if
-   * open, and the camera goes to the town and marks it (CityMap, `found`).
-   */
+  /** A place the search picked. */
   function pickPlace(psgc: string) {
     const path = CITY_PATHS[psgc]
     if (path && level > 1 && psgc === QC_PSGC) {
@@ -277,10 +226,9 @@ export default function MapLayout() {
           topBar={topBar}
           found={found}
         />
-        {/* F5: a level's own tooltips go here, over the map (the barangays at level 3) */}
+        {/* A level's own tooltips go here, over the map (the barangays at level 3) */}
         <div ref={setOverlay} className="map-layout-overlay" />
-        {/* F14: the top left corner: the logo, a link home, and the search beside it; F11: the
-            plan's list of barangays under them */}
+        {/* The top left corner: the logo, a link home, and the search beside it. */}
         <div className="map-layout-top">
           <div className="map-layout-top-row">
             <Link to="/" className="map-layout-logo" aria-label="LEPTON, home page">
@@ -290,16 +238,15 @@ export default function MapLayout() {
           </div>
           <div ref={setListSlot} className="map-layout-list-slot" />
         </div>
-        {/* F14: the top right corner: the data modes. The camera keeps the open city clear of them
-            (they are as tall as the logo, and taller), not of the list under the logo */}
+        {/* The top right corner: the data modes. */}
         <div ref={topBar} className="map-layout-modes">
           <MapDataModes mode={mode} onMode={changeMode} simulation={simulation} realEnd={realEnd} />
         </div>
-        {/* F14: along the bottom, the timeline in the middle and the legends and buttons at the right */}
+        {/* Along the bottom, the timeline in the middle and the legends and buttons at the right */}
         <div ref={controls} className="map-layout-bottom">
           <div className="map-layout-bottom-grid">
             <div className="map-layout-timelines">
-              {/* F13: a live weather layer's timeline */}
+              {/* A live weather layer's timeline */}
               {timeline && (
                 <WeatherTimeline
                   label={WEATHER_NAMES[weather].label}
@@ -313,9 +260,9 @@ export default function MapLayout() {
               )}
               <MapTimeline date={date} first={first} last={last} forecast={forecast} onChange={changeDate} />
             </div>
-            {/* F13: the legends and the map buttons, side by side as one row */}
+            {/* The legends and the map buttons, side by side as one row */}
             <div className="map-layout-controls-row">
-              {/* F13: the legends, one above the other: the weather's and the flood zones' over the map's own */}
+              {/* The legends, one above the other: the weather's and the flood zones' over the map's own */}
               <div className="map-layout-legends">
                 {weather && (wx.status === 'loading' || wx.status === 'shown') && <WeatherLegend kind={weather} day={date} />}
                 {floodShown && <FloodLegend period={flood} />}
@@ -325,7 +272,7 @@ export default function MapLayout() {
                     simulated={isSimulated(forecast, week) ? simulatedLabel(forecast) : null}
                   />
                 )}
-                {/* F5: a level's own legend goes here (the share of residents exposed, at level 3) */}
+                {/* A level's own legend goes here (the share of residents exposed, at level 3) */}
                 <div ref={setLegendSlot} className="map-layout-legend" />
               </div>
               <div className="map-layout-buttons">

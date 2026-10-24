@@ -1,4 +1,4 @@
-/* F3: the site header (SiteHeader.tsx), Figma node 4:21. */
+/* The site header (SiteHeader.tsx). */
 .site-header {
   display: flex;
   align-items: center;
@@ -27,12 +27,12 @@
   white-space: nowrap;
 }
 
-/* F6: the open page's link (NavLink marks it aria-current="page") */
+/* The open page's link (NavLink marks it aria-current="page") */
 .site-header-link[aria-current='page'] {
   color: var(--color-text-primary);
 }
 
-/* F6, below 1024 px: the logo and Try LEPTON on the first row, the links wrapping on a second */
+/* Below 1024 px: the logo and Try LEPTON on the first row, the links wrapping on a second */
 @media (max-width: 1023px) {
   .site-header {
     flex-wrap: wrap;

@@ -19,17 +19,13 @@ import PlanPreview from '../home/PlanPreview.tsx'
 import { formatCount } from '../map/forecast.ts'
 import './Home.css'
 
-/**
- * The hero photo's drawn width for srcSet. It fills the hero's height, so below 1024 px (560 px
- * tall) it is drawn about 1,200 px wide however narrow the screen, and from 1024 px (680 px tall)
- * never under 1,440 px.
- */
+/** The hero photo's drawn width for srcSet. */
 const HERO_SIZES = '(max-width: 1023px) 1200px, max(100vw, 1440px)'
 
 /** The strip photos' drawn width: a third of the 1248 px content at most, the full width below 1024 px. */
 const STRIP_SIZES = '(max-width: 1023px) 100vw, 400px'
 
-/** "How it's built", Figma's rows (nodes 20:332 to 20:351): the part, what it does, and its tag. */
+/** The "How it's built" rows: the part, what it does, and its tag. */
 const BUILT = [
   {
     name: 'Inputs',
@@ -56,7 +52,7 @@ const BUILT = [
     text: 'A week-by-week backtest from 2018 to 2026 with a leak check, mean absolute error as the primary score, and four real storms for the stock plan.',
     tag: 'Evidence',
   },
-  // Not in Figma: LEPTON is for the whole country, and why it starts in Quezon City (the paper's Scope)
+  // LEPTON is for the whole country, and why it starts in Quezon City (the paper's Scope)
   {
     name: 'Where it runs',
     text: 'Built for the whole Philippines: every input but the case counts already comes from national sources. Quezon City is first: the most populous city, with an up-to-date case list, and the one city there was time to ask for its counts while LEPTON was built.',
@@ -64,18 +60,7 @@ const BUILT = [
   },
 ]
 
-/**
- * Home (route /), task F6, from the Figma frame "Home" (node 19:256) and its notes: the site
- * header, the photo hero, the banner for residents, why it matters, a preview of the map, what
- * LEPTON gives, how it is built, Try LEPTON and the footer. Try LEPTON opens /map; the banner
- * opens /exposed.
- *
- * Every number is from F2's files: the preview and the stock figures are Kristine's forecast 1
- * day ahead (storms.json, centers.json, the barangay shapes and that run's barangay file), the
- * chart is B10's forecasts (city_forecast.json), under the simulated badge until A13's counts.
- * The photos are real and licensed (home/photos.ts), credited in the footer. Below 1024 px the
- * sections stack in one column (Home.css).
- */
+/** Home (route /). */
 export default function Home() {
   const preview = useLoaded(loadPlanPreview)
   const forecast = useLoaded(loadCityForecast)
@@ -215,8 +200,7 @@ export default function Home() {
               <h2 id="home-try-title" className="home-try-title display-xl">
                 Try LEPTON
               </h2>
-              {/* Figma: "Today's forecast, or any day since February 2024". LEPTON is not live
-                  (live forecasts are future work); the map has every week of the backtest */}
+              {/* LEPTON is not live (live forecasts are future work); the map has every week of the backtest */}
               <p className="home-try-subtitle body-l">The latest forecast, or any week since 2018.</p>
             </div>
             <Link to="/map" className="home-try-go" aria-label="Try LEPTON: open the map">
@@ -235,10 +219,7 @@ type StockFiguresProps = {
   preview: Loaded<PlanPreviewData>
 }
 
-/**
- * Quezon City's stock for the previewed forecast, Figma "Figures" (node 20:268): doxycycline,
- * children's courses and amoxicillin, as on the prophylaxis plan's panel (a 1-day flood, w = 0.5).
- */
+/** Quezon City's stock for the previewed forecast. */
 function StockFigures({ preview }: StockFiguresProps) {
   const data = typeof preview === 'object' ? preview : undefined
   const figures = [
@@ -269,7 +250,7 @@ function StockFigures({ preview }: StockFiguresProps) {
   )
 }
 
-/** The photos' credits for the footer: what each shows, its author and its licence, with links (check U8). */
+/** The photos' credits for the footer: what each shows, its author and its licence, with links. */
 function PhotoCredits() {
   const photos = [HERO_PHOTO, ...STRIP_PHOTOS]
   return (

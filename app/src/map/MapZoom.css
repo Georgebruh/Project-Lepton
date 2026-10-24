@@ -1,4 +1,4 @@
-/* F4: the zoom buttons (MapZoom.tsx), Figma node 55:364: two 34 px squares in one outlined box. */
+/* The zoom buttons (MapZoom.tsx): two 34 px squares in one outlined box. */
 .map-zoom {
   display: flex;
   flex-direction: column;
@@ -17,7 +17,7 @@
   cursor: pointer;
 }
 
-/* F11: the box clips the buttons' edges, so the focus ring sits inside each button */
+/* The box clips the buttons' edges, so the focus ring sits inside each button */
 .map-zoom-button:focus-visible {
   outline-offset: -2px;
 }

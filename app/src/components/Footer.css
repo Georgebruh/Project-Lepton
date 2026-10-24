@@ -1,9 +1,9 @@
-/* F3: the footer (Footer.tsx), Figma node 20:364. */
+/* The footer (Footer.tsx). */
 .footer {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  /* Figma's 40 px at the bottom, between the spacing steps */
+  /* 40 px at the bottom, between the spacing steps */
   padding: 0 var(--space-9) 40px;
 }
 
@@ -35,12 +35,12 @@
   color: var(--color-text-tertiary);
 }
 
-/* F6: the credits' links keep their underline, in the text's color */
+/* The credits' links keep their underline, in the text's color */
 .footer-credits a {
   color: inherit;
 }
 
-/* F6, below 1024 px: the logo and links on one row, the event's line under them */
+/* Below 1024 px: the logo and links on one row, the event's line under them */
 @media (max-width: 1023px) {
   .footer {
     padding: 0 var(--space-5) var(--space-6);

@@ -1,17 +1,4 @@
-"""Catchment polygons for the rain trigger (task A7).
-
-Keeps the HydroBASINS level-12 sub-basins that drain into Quezon City's three
-rivers (Marikina, San Juan, Tullahan) and saves them to catchments_qc.gpkg,
-with two layers: "subbasins" (one row per sub-basin) and "catchments" (all of
-them merged into one shape, which C3 averages the rain over).
-
-How the upstream trace works: every sub-basin has an ID (HYBAS_ID) and the ID
-of the sub-basin its water flows into next (NEXT_DOWN). Start from the
-sub-basin that holds a river's outlet point, then keep adding every sub-basin
-whose NEXT_DOWN is already in the set, until nothing new is added.
-
-Run from the repository root:  python -m src.catchments
-"""
+"""Catchment polygons for the rain trigger."""
 
 import math
 
@@ -34,10 +21,7 @@ def basin_at(shp, lon, lat):
 
 
 def upstream_ids(start_id, next_down):
-    """Every sub-basin whose water reaches start_id, start_id included.
-
-    next_down: Series mapping HYBAS_ID -> NEXT_DOWN for every sub-basin in the region.
-    """
+    """Every sub-basin whose water reaches start_id, start_id included."""
     children = {}  # children[x] = sub-basins that flow straight into x
     for basin, down in next_down.items():
         children.setdefault(down, []).append(basin)
@@ -72,11 +56,7 @@ def select_subbasins(shp, outlets):
 
 
 def imerg_box(bounds, cell=config.IMERG_CELL_DEG):
-    """Bounding box snapped outward to the IMERG grid, plus one cell of margin (A4).
-
-    IMERG cell edges sit on multiples of 0.1 degrees, so round each side out to
-    the next edge, then add one more cell.
-    """
+    """Bounding box snapped outward to the IMERG grid, plus one cell of margin."""
     lon_min, lat_min, lon_max, lat_max = bounds
 
     def edge_below(v):
@@ -89,17 +69,7 @@ def imerg_box(bounds, cell=config.IMERG_CELL_DEG):
 
 
 def grid_cells(catchments, step):
-    """The cells of a step-degree grid that overlap the catchments, with their weights.
-
-    ERA5 and ECMWF IFS 0.25 (A14, A15) give one value per grid point, on multiples of
-    0.25 degrees; each value stands for the square cell around its point (point +/- step/2).
-    A cell's weight is the share of the catchment area inside it, so the weights add up
-    to 1 and the catchment average is sum(weight x value): the same area weighting C3
-    gives IMERG's cells. Areas are measured in EPSG:32651.
-
-    catchments: GeoDataFrame in EPSG:4326, the "catchments" layer of catchments_qc.gpkg.
-    Returns a table with lat, lon, km2 (catchment area inside the cell) and weight.
-    """
+    """The cells of a step-degree grid that overlap the catchments, with their weights."""
     # The grid is built in the layer's own units, so a layer in metres would give 0.25 m cells.
     if catchments.crs != config.CRS_LONLAT:
         raise ValueError(f"grid_cells needs the catchments in {config.CRS_LONLAT} (degrees), got {catchments.crs}")

@@ -1,41 +1,4 @@
-"""Residents per barangay, hazard level and flood map (task C2).
-
-For each NOAH map T (5-, 25- and 100-year rain), barangay b and hazard level k (Var 1
-low, 2 medium, 3 high), count the residents who live where that map floods b at level k:
-
-    Pop_{b,k,T} = sum over pixels i of f_i(b and H_k,T) * p'_i
-
-where p'_i is pixel i's census-fitted residents (C1) and f_i(b and H_k,T) the share of
-the pixel inside both the barangay and the zone. In plain words: a pixel half inside the
-zone counts half its people.
-
-How:
-1. Cut each map's zones to QC, then by barangay, in EPSG:32651 (metres,
-   config.CRS_OVERLAY): one shape per barangay, map and level.
-2. Count the census-fitted residents in each shape with C1's rescale.rescaled_residents,
-   which converts the shapes to EPSG:4326 for exactextract and multiplies by the
-   barangay's scale factor.
-3. Fill in 0 for every barangay, map and level with no flooded area, so the table has
-   all 142 x 3 x 3 rows.
-
-A8 removed the overlaps between the levels of one map, so each resident is counted at
-most once per map, and a map's three levels never hold more than the barangay's census
-total (check S8). levels_overlap() stops the run if they still overlap, which happens
-with a noah_flood_mm.gpkg made before that fix. The three maps are three separate
-floods: never add them together.
-
-Output: data/clean/overlay_qc.csv (config.OVERLAY), one row per barangay, map and level:
-    psgc, adm4_name
-    return_period    the map: 5, 25 or 100 (years)
-    var              hazard level: 1 low (0-0.5 m), 2 medium (0.5-1.5 m), 3 high (over 1.5 m)
-    area_km2         area of the barangay flooded at that level
-    residents        Pop_{b,k,T}, census-fitted residents living there
-C3 interpolates residents between the maps (graded_exposure); C5 splits them into groups.
-
-Run from the repository root:  python -m src.overlay   (about a minute)
-Needs A5, A8 and C1 first (python -m src.census, python -m src.noah, python -m src.rescale).
-Then run the checks (S8):  python -m src.checks
-"""
+"""Residents per barangay, hazard level and flood map."""
 
 import itertools
 
@@ -49,14 +12,7 @@ KEYS = ["psgc", "return_period", "var"]
 
 
 def zones_by_barangay(barangays, flood):
-    """One shape per barangay, map and level: the part of the barangay that zone floods.
-
-    The maps cover all of Metro Manila in a few huge shapes, so they are first cut to QC
-    and split into their separate polygons; that lets geopandas skip the polygons far from
-    each barangay. The cut pieces are then joined back into one shape per barangay, map
-    and level. Lines and points left where a zone only touches a barangay are dropped,
-    since they hold no area.
-    """
+    """One shape per barangay, map and level: the part of the barangay that zone floods."""
     barangays = barangays.to_crs(config.CRS_OVERLAY)
     flood = flood.to_crs(config.CRS_OVERLAY)
     qc = barangays.union_all()
@@ -67,12 +23,7 @@ def zones_by_barangay(barangays, flood):
 
 
 def levels_overlap(zones):
-    """Largest area (km2) that two hazard levels of one map share inside one barangay.
-
-    In plain words: add up the levels' areas, then measure all levels joined together;
-    any extra is area held by two levels, whose residents would be counted twice.
-    0 (up to rounding) when A8 has separated the levels.
-    """
+    """Largest area (km2) that two hazard levels of one map share inside one barangay."""
     by_map = ["psgc", "return_period"]
     levels_km2 = zones.assign(km2=zones.area / 1e6).groupby(by_map)["km2"].sum()
     joined_km2 = zones.dissolve(by=by_map).area / 1e6
@@ -101,11 +52,7 @@ def exposed_by_map(table):
 
 
 def falls_with_rarer_map(table):
-    """Barangays whose exposed residents fall from the 5-year map to the 25- or 100-year map.
-
-    A rarer storm should flood at least as much, but NOAH modelled each map separately,
-    so a zone can shrink from one map to the next. Check S8 lists these for inspection.
-    """
+    """Barangays whose exposed residents fall from the 5-year map to the 25- or 100-year map."""
     exposed = exposed_by_map(table)
     first, *rarer = config.NOAH_RETURN_PERIODS
     falls = (exposed[rarer].lt(exposed[first], axis=0)).any(axis=1)

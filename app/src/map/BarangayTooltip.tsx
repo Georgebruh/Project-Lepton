@@ -16,12 +16,7 @@ type BarangayTooltipProps = {
   style: CSSProperties
 }
 
-/**
- * F5: the tooltip of the barangay under the pointer, Figma frame 3a (node 57:1020): its name,
- * the Flagged badge if it is flagged, its residents exposed and their share, then its three
- * units for the plan's flood (D = 1, w = 0.5). The units sit above the "Stock planning, not
- * prescriptions" badge (app check U2, which looks at the tooltips too); Figma's 3a has none.
- */
+/** The tooltip of the barangay under the pointer. */
 export default function BarangayTooltip({ name, barangay, note, style }: BarangayTooltipProps) {
   return (
     <div className="barangay-tooltip" style={style}>
@@ -41,11 +36,7 @@ type BarangayNumbersProps = {
   note: string
 }
 
-/**
- * The tooltip's numbers, under the name: residents exposed, then the three units over the
- * not-prescriptions badge; `note` while no storm is shown. F15: the barangay's pop-up
- * (BarangayPopup.tsx) shows the same, so the two never differ.
- */
+/** The tooltip's numbers, under the name. */
 export function BarangayNumbers({ barangay, note }: BarangayNumbersProps) {
   const units = barangay?.units[PLAN_FLOOD]
   if (!barangay || !units) {

@@ -10,11 +10,7 @@ type PanelHeaderProps = {
   onToggle: () => void
 }
 
-/**
- * F3: the Figma component "Panel header" (node 4:17): the title of a section in a side panel,
- * with a chevron. Clicking it opens or closes the section. Figma draws only the open state
- * (chevron down); closed shows chevron-right, from the same icon set.
- */
+/** The "Panel header" component: the title of a section in a side panel, with a chevron. */
 export default function PanelHeader({ title, expanded, onToggle }: PanelHeaderProps) {
   return (
     <button type="button" className="panel-header" aria-expanded={expanded} onClick={onToggle}>

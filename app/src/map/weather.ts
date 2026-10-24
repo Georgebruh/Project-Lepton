@@ -4,27 +4,7 @@ import { SLOTS } from './layerOrder.ts'
 import { prefersReducedMotion } from './motion.ts'
 import { whenSourceReady } from './sourceReady.ts'
 
-/*
- * F13: weather on the map, like Zoom Earth, one layer at a time (the Layers panel, ?wx=):
- *   clouds     live: Himawari-9's infrared picture (JMA, through NASA GIBS), every 10 minutes,
- *              about 30 minutes behind; the last 3 hours of it;
- *   radar      live: RainViewer's rain radar, every 10 minutes; the past 2 hours;
- *   rain       live: NASA's IMERG rain rate (GIBS), every 30 minutes, about 6 hours behind; the
- *              last 6 hours of it;
- *   rain-day   IMERG's rain on the map's date, one UTC day (8 AM to 8 AM Philippine time);
- *   photo-day  NASA's VIIRS true-color photo of the map's date (one a day, early afternoon).
- * The live layers show now, not the map's date, and their timeline says so (WeatherTimeline).
- *
- * A layer is a list of frames. Each frame is a raster source and layer in the weather slot
- * (layerOrder.ts), named by its time, at opacity 0 but the one shown, so its tiles are loaded
- * before it is shown and the animation does not flicker. The frames are added one after another,
- * newest first: the newest shows at once, and RainViewer's free tiles stay under their 100
- * requests a minute. A live layer's list is fetched again every 10 minutes while the page is in
- * view, and when the reader comes back to it after that: the frames already on the map stay, new
- * ones are added, old ones go. The timeline offers only the frames whose tiles are in. The tiles are drawn
- * in the providers' own colors, so the legends (WEATHER_LEGENDS) use those colors too, not the
- * app's tokens.
- */
+/* Weather on the map, like Zoom Earth, one layer at a time (the Layers panel, ?wx=). */
 
 export const WEATHER = ['clouds', 'radar', 'rain', 'rain-day', 'photo-day'] as const
 export type Weather = (typeof WEATHER)[number]
@@ -56,11 +36,7 @@ export const WEATHER_NAMES: Record<Weather, { label: string; caption: string; pi
 /** The sources' names, for the Layers panel's credits line (the map's own credits link them). */
 export const WEATHER_CREDIT = 'Weather: NASA GIBS, RainViewer'
 
-/**
- * How opaque each layer is over the map: LEPTON's outlines and the street map's names stay on
- * top. The infrared picture draws clear, warm ground dark grey, and the photo is opaque, so both
- * let the map show through more than the rain, which is clear where none falls.
- */
+/** How opaque each layer is over the map: LEPTON's outlines and the street map's names stay on top. */
 export const WEATHER_OPACITY: Record<Weather, number> = {
   clouds: 0.6,
   radar: 0.85,
@@ -69,11 +45,7 @@ export const WEATHER_OPACITY: Record<Weather, number> = {
   'photo-day': 0.75,
 }
 
-/**
- * Each layer's legend, in the provider's colors: [color, position along the ramp in %]. Picked
- * from GIBS's colormaps (Clean_Longwave_Infrared_Window_Band: +50 °C to -90 °C; GPM_Precipitation_Rate:
- * 0.1 to 50 mm an hour, on a log scale) and RainViewer's Universal Blue table (10 to 65 dBZ).
- */
+/** Each layer's legend, in the provider's colors: [color, position along the ramp in %]. */
 export const WEATHER_LEGENDS: Record<
   Weather,
   { title: string; stops: [string, number][]; ends: [string, string] | null; credit: string }
@@ -184,7 +156,7 @@ const GIBS_LAYERS: Record<Exclude<Weather, 'radar'>, GibsLayer> = {
   },
 }
 
-/** RainViewer's list of radar frames, and its tiles: 256 px, Universal Blue colors (2), smoothed, with snow (1_1). */
+/** RainViewer's list of radar frames, and its tiles. */
 const RAINVIEWER = 'https://api.rainviewer.com/public/weather-maps.json'
 const RADAR_TILE = '/256/{z}/{x}/{y}/2/1_1.png'
 /** RainViewer's free tiles go to zoom 7. */
@@ -195,11 +167,7 @@ const RADAR_CREDIT = 'Radar: <a href="https://www.rainviewer.com" target="_blank
 const LIVE_LOOK_BACK_MS = { clouds: 6 * 3600_000, rain: 18 * 3600_000 }
 const LIVE_FRAMES = { clouds: 18, rain: 12 }
 
-/**
- * Playback: 500 ms a frame and a 1.5 s pause on the newest (Figma notes). Live frames are fetched
- * again every 10 minutes (checked each minute, and when the page comes back into view), and the
- * frames' ages counted again each minute.
- */
+/** Playback: 500 ms a frame and a 1.5 s pause on the newest. */
 const FRAME_MS = 500
 const NEWEST_MS = 1500
 const REFRESH_MS = 10 * 60_000
@@ -216,10 +184,7 @@ function stepMs(step: string): number {
   return ((Number(days ?? 0) * 24 + Number(hours ?? 0)) * 60 + Number(minutes ?? 0)) * 60_000
 }
 
-/**
- * The times in one period of a GIBS time domain ("start/end/PT10M", or a single time) that fall
- * from `start` to `end` (ms). A period can begin years back, so only the window is stepped through.
- */
+/** The times in one period of a GIBS time domain. */
 function periodTimes(period: string, start: number, end: number): number[] {
   const [from, to, step] = period.split('/')
   const first = Date.parse(from)
@@ -253,13 +218,7 @@ function gibsTiles(gibs: GibsLayer, time: string): string {
   return `${GIBS}/${gibs.layer}/default/${time}/${gibs.matrix}/{z}/{y}/{x}.${gibs.ext}`
 }
 
-/**
- * The frames whose pictures GIBS has made. Its list of times can name a picture before its tiles
- * are made (the newest Himawari frame, often), and MapLibre draws a missing tile as nothing, without
- * an error; so each frame's one tile of the whole world is asked for, headers only. A frame
- * whose answer does not come is left out, not the layer. Frames already on the map (`known`,
- * by time) are not asked about again.
- */
+/** The frames whose pictures GIBS has made. */
 async function madeFrames(frames: Frame[], signal: AbortSignal, known: Set<number>): Promise<Frame[]> {
   const made = await Promise.all(
     frames.map(async (frame) => {
@@ -277,10 +236,7 @@ async function madeFrames(frames: Frame[], signal: AbortSignal, known: Set<numbe
   return frames.filter((_, i) => made[i])
 }
 
-/**
- * A layer's frames, oldest first: the newest live ones, or the map's date's one picture (none if
- * NASA has none). `known` holds the times of the frames already on the map.
- */
+/** A layer's frames, oldest first. */
 async function framesFor(kind: Weather, day: string, signal: AbortSignal, known: Set<number>): Promise<Frame[]> {
   if (kind === 'radar') {
     const res = await fetch(RAINVIEWER, { signal })
@@ -292,9 +248,9 @@ async function framesFor(kind: Weather, day: string, signal: AbortSignal, known:
   }
   const gibs = GIBS_LAYERS[kind]
   if (kind === 'clouds' || kind === 'rain') {
-    const end = Math.floor(Date.now() / 60_000) * 60_000 // whole minutes: GIBS takes no milliseconds
+    const end = Math.floor(Date.now() / 60_000) * 60_000 // Whole minutes: GIBS takes no milliseconds
     const times = await gibsTimes(gibs, end - LIVE_LOOK_BACK_MS[kind], end, signal)
-    // a few more than shown, in case the newest are not made yet
+    // A few more than shown, in case the newest are not made yet
     const listed = times.slice(-LIVE_FRAMES[kind] - 3).map((time) => ({ time, tiles: gibsTiles(gibs, gibsTime(time)) }))
     return (await madeFrames(listed, signal, known)).slice(-LIVE_FRAMES[kind])
   }
@@ -303,13 +259,13 @@ async function framesFor(kind: Weather, day: string, signal: AbortSignal, known:
   return madeFrames(times.includes(start) ? [{ time: start, tiles: gibsTiles(gibs, day) }] : [], signal, known)
 }
 
-/** A frame's source and layer (they share the id), named by its time, so a refresh keeps the frames it has. */
+/** A frame's source and layer. */
 const PREFIX = 'weather-'
 function frameId(frame: Frame): string {
   return `${PREFIX}${frame.time}`
 }
 
-/** Adds a frame's raster source and layer in the weather slot, at opacity 0 (its tiles load all the same). */
+/** Adds a frame's raster source and layer in the weather slot, at opacity 0. */
 function addFrame(map: MapLibreMap, kind: Weather, frame: Frame) {
   const id = frameId(frame)
   map.addSource(id, {
@@ -330,7 +286,7 @@ function addFrame(map: MapLibreMap, kind: Weather, frame: Frame) {
   )
 }
 
-/** Shows the frame `shown` at `opacity` and the other frames at 0 (a frame still loading is at 0 already). */
+/** Shows the frame `shown` at `opacity` and the other frames at 0. */
 function showFrame(map: MapLibreMap, frames: Frame[], shown: Frame | undefined, opacity: number) {
   for (const frame of frames) {
     const id = frameId(frame)
@@ -340,7 +296,7 @@ function showFrame(map: MapLibreMap, frames: Frame[], shown: Frame | undefined, 
   }
 }
 
-/** Removes the frames whose ids pass `which`, all of them by default (the map may be gone already, as the page leaves the map). */
+/** Removes the frames whose ids pass `which`, all of them by default. */
 function removeFrames(map: MapLibreMap, which: (id: string) => boolean = () => true) {
   try {
     for (const id of map.getLayersOrder().filter((layer) => layer.startsWith(PREFIX) && which(layer))) {
@@ -358,25 +314,17 @@ const NO_FRAMES: Frame[] = []
 /** What loading a layer reports: the frames whose tiles are in, how many are listed, and its status. */
 type Run = { key: string; status: WeatherStatus; frames: Frame[]; listed: number }
 
-/**
- * Fetches `kind`'s frames and adds them to `map`, newest first, each once the one before has its
- * tiles where the map is now. Reports the frames whose tiles are in, so the timeline offers only
- * those. A live layer's list is fetched again every REFRESH_MS while the page is in view, and when
- * the reader comes back to it after that: frames already on the map stay, new ones are added, and
- * those no longer listed go. A frame whose tiles fail is dropped and the next one tried; the layer
- * fails when none is left, or when two fail in a row before any has loaded (the tile server is
- * taken to be down). The returned function stops it and removes the frames.
- */
+/** Fetches `kind`'s frames and adds them to `map`. */
 function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news: Partial<Run>) => void): () => void {
   const controller = new AbortController()
-  let frames: Frame[] = [] // the frames listed, oldest first
-  const ready = new Set<string>() // the frames whose tiles are in
-  let waiting: Frame | null = null // the frame being added, until its tiles are in
+  let frames: Frame[] = [] // The frames listed, oldest first
+  const ready = new Set<string>() // The frames whose tiles are in
+  let waiting: Frame | null = null // The frame being added, until its tiles are in
   let unwatch = () => {}
-  let fetchedAt = 0 // when the list last came
+  let fetchedAt = 0 // When the list last came
   let fetching = false
   let failedInARow = 0
-  let told: Frame[] = NO_FRAMES // the ready frames last reported
+  let told: Frame[] = NO_FRAMES // The ready frames last reported
   let stopped = false
 
   // Reports the ready frames as the same list while they are the same, so playback runs on undisturbed
@@ -433,12 +381,12 @@ function loadWeather(map: MapLibreMap, kind: Weather, day: string, report: (news
       if (stopped) {
         return
       }
-      fetchedAt = Date.now() // only a list that came counts: a failed one is tried again within a minute
+      fetchedAt = Date.now() // Only a list that came counts: a failed one is tried again within a minute
       if (list.length === 0) {
         if (frames.length === 0) {
           report({ status: 'missing' })
         }
-        return // a refresh that finds nothing keeps the frames it has
+        return // A refresh that finds nothing keeps the frames it has
       }
       const listed = new Set(list.map(frameId))
       removeFrames(map, (id) => !listed.has(id))
@@ -497,12 +445,7 @@ export type WeatherView = {
   retry: () => void
 }
 
-/**
- * Shows the weather layer `kind` on `map` (null: none), for the map's date `day` if it is not
- * live. A live layer plays once all its frames are in, unless the reader asks for reduced motion
- * or has stepped through the frames themselves. When the frames change (one more loaded, or a
- * refresh), the frame shown stays (the newest stays the newest).
- */
+/** Shows the weather layer `kind` on `map` (null: none), for the map's date `day` if it is not live. */
 export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: string): WeatherView {
   const live = kind !== null && isLive(kind)
   const dayKey = kind && !live ? day : ''
@@ -511,9 +454,9 @@ export function useWeather(map: MapLibreMap | null, kind: Weather | null, day: s
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [now, setNow] = useState(() => Date.now())
-  const readerStepped = useRef(false) // the reader paused or chose a frame of this layer: no autoplay
+  const readerStepped = useRef(false) // The reader paused or chose a frame of this layer: no autoplay
   const shownKind = useRef<Weather | null>(null)
-  const shownFrames = useRef<Frame[]>(NO_FRAMES) // the frames the index counts in
+  const shownFrames = useRef<Frame[]>(NO_FRAMES) // The frames the index counts in
   const key = `${kind}|${dayKey}|${attempt}`
 
   // Fetch the frames and add them to the map

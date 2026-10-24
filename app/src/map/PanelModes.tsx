@@ -5,19 +5,11 @@ import { COMPARE_PATH, MAP_PATHS, levelSearch } from './routes.ts'
 import './PanelModes.css'
 
 type PanelModesProps = {
-  /** The panel showing: Quezon City's case forecast (F4), Compare models (F14) or its prophylaxis plan (F5). */
+  /** The panel showing: Quezon City's case forecast, Compare models or its prophylaxis plan. */
   mode: 'cases' | 'compare' | 'prophylaxis'
 }
 
-/**
- * F4: the modes at the top of the city panel, Figma "Modes" in frames 2 and 3: tabs that open
- * the case forecast and the prophylaxis plan, keeping the chosen date (levelSearch). The
- * selected tab comes from `mode`, not the address, so it stays selected while the panel slides
- * away.
- *
- * F14: Compare models is a tab here too (it was its own screen, F9), and a Close button at the
- * end of the row goes back to the Philippines, as the breadcrumb's Back did.
- */
+/** The modes at the top of the city panel. */
 export default function PanelModes({ mode }: PanelModesProps) {
   const { search } = useLocation()
   return (

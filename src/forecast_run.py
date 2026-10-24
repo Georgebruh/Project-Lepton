@@ -1,52 +1,4 @@
-"""Layer 2 on archived rain forecasts: the forecast-driven storm run (task C9).
-
-C8 runs the storms on the rain that fell (IMERG). C9 asks what a health office would have
-stocked 1, 2 or 3 days before each storm, from the ECMWF forecast it had then (A15,
-Open-Meteo Previous Runs). After the rain the chain is the same: C3's graded exposure,
-C5's exposed people, C6's units, C7's need per health center.
-
-Five steps, each one function below:
-
-1. era5_maxima: ERA5's catchment rain per UTC day (A14), its n-day totals and each
-   year's wettest (n = config.RAIN_ACCUM_DAYS = 3). The forecasts are matched on ERA5's
-   return levels, fitted on years before the storm's year, never on IMERG's (rule 3):
-   ERA5 comes from the same ECMWF model as the forecasts, so the two share one scale.
-
-2. forecast_daily: each forecast's catchment rain per UTC day, the sum of weight x rain_mm
-   over A15's 4 cells, for each previous day N.
-
-3. lead_total and forecast_peak: the n-day total forecast L days before the window,
-       R_L = sum over i = 0 .. n-1 of previous_day (L + i) on the window's day i
-   (data/raw/ecmwf_previous_runs.md says why), and each lead's wettest window ending on
-   one of the storm's wettest days (config.STORMS' wettest_days): "each lead time's
-   wettest forecast" in the plan. The same lead's total over C8's window (the IMERG peak,
-   flood_exposure.storm_peak over start_date to end_date) is reported beside it.
-
-4. flagged and flag_scores: a barangay is flagged when at least a share X of its 2024
-   residents live in zones the rain floods (config.FLAG_EXPOSED_SHARES, an assumption;
-   every barangay has some residents in the 5-year zones, so "anyone" would flag all 142).
-   Reported for each X: the share of flagged barangays A11 lists as flooded, and the share
-   of listed barangays that were flagged.
-
-5. run_tables: C5 to C7 at that rain, for a short flood (D = 1, at each w) and a long one
-   (D = 7), because the flood's length is not known 1-3 days ahead (config.FORECAST_RUN_D,
-   exposed.scenarios). The observed run (IMERG rain on IMERG's levels, A11's D), done
-   here the same way C8 does it, sits beside the forecasts.
-
-Outputs in results/ (no case data):
-    c9_forecast_runs.csv       one row per storm, run, D and w: the window, rain, return
-                               levels, where the rain falls, EI, flag shares, and QC's
-                               exposed people and units
-    c9_forecast_barangays.csv  the same runs, one row per barangay
-    c9_forecast_centers.csv    the same runs, need per health center and pool, by tier
-Every unit figure is stock planning, not a prescription (rule 10); each file says so in
-its label column.
-
-Run from the repository root (needs A4's imerg_daily.nc, A7, A14's era5_daily.csv, A15's
-forecasts_storms.csv, A5's census_qc.csv, C2's overlay_qc.csv, C4's shares_qc.csv and
-C7's center_shares_qc.csv); a few seconds:
-    python -m src.forecast_run
-"""
+"""Layer 2 on archived rain forecasts: the forecast-driven storm run."""
 
 import pandas as pd
 
@@ -55,15 +7,12 @@ from src import allocation, doses, era5, exposed, flood_exposure
 
 N_DAYS = config.RAIN_ACCUM_DAYS
 OBSERVED = "observed"
-KEYS = ["storm", "run", "flood", "D", "w"]   # one run of C5-C7; the key of every output row
+KEYS = ["storm", "run", "flood", "D", "w"]   # one run of the exposure, dose and allocation steps; the key of every output row
 UNIT_COLUMNS = ["exposed", *doses.UNITS]     # exposed people, then doxy100, courses, amox500
 
 
 def era5_maxima():
-    """Each year's wettest n-day ERA5 total over the catchments (mm), from A14's table.
-
-    Stops if a value is missing: a missing cell would make that day's sum too small.
-    """
+    """Each year's wettest n-day ERA5 total over the catchments (mm), from the table."""
     table = pd.read_csv(config.ERA5_DAILY)
     if table["rain_mm"].isna().any():
         raise ValueError("era5_daily.csv has missing rain: rerun python -m src.era5")
@@ -73,11 +22,7 @@ def era5_maxima():
 
 
 def forecast_daily(table):
-    """Catchment rain of each forecast per UTC day: sum of weight x rain_mm over the cells (mm).
-
-    table: A15's forecasts_storms.csv. Returns a Series indexed by storm, previous_day and
-    date (a Timestamp), not rounded. Stops if a value is missing or a day lacks a cell.
-    """
+    """Catchment rain of each forecast per UTC day: sum of weight x rain_mm over the cells (mm)."""
     if table["rain_mm"].isna().any():
         raise ValueError("forecasts_storms.csv has missing rain: rerun python -m src.ecmwf")
     n_cells = table[["lat", "lon"]].drop_duplicates().shape[0]
@@ -89,11 +34,7 @@ def forecast_daily(table):
 
 
 def lead_total(daily, storm, lead, end):
-    """R_L: the n-day total ending on `end`, forecast `lead` days before the window's first day.
-
-    Day i of the window (i = 0 .. n-1) comes from previous_day lead + i. Stops if A15 did
-    not fetch one of them.
-    """
+    """R_L: the n-day total ending on `end`, forecast `lead` days before the window's first day."""
     start = pd.Timestamp(end) - pd.Timedelta(days=N_DAYS - 1)
     total = 0.0
     for i in range(N_DAYS):
@@ -125,10 +66,7 @@ def position(rain, levels):
 
 
 def flagged(residents, shares, share):
-    """Barangays (psgc) with at least `share` of their 2024 residents in zones the rain floods.
-
-    residents: C3's graded exposure (psgc, var, residents); the levels are added up.
-    """
+    """Barangays (psgc) with at least `share` of their 2024 residents in zones the rain floods."""
     per_barangay = residents.groupby("psgc")["residents"].sum()
     pop = shares["pop_2024"].reindex(per_barangay.index)
     if pop.isna().any() or len(per_barangay) != config.QC_BARANGAYS:
@@ -137,12 +75,7 @@ def flagged(residents, shares, share):
 
 
 def flag_scores(flagged_psgc, flooded_psgc):
-    """The two shares C8 and C9 report, for one flag rule.
-
-    flagged_and_listed / flagged: of the barangays flagged, the share A11 lists as flooded.
-    flagged_and_listed / listed: of the barangays A11 lists, the share that were flagged.
-    The first is left empty (None) when nothing is flagged: no share can be computed.
-    """
+    """The two shares the storm runs report, for one flag rule."""
     both = len(flagged_psgc & set(flooded_psgc))
     return {"flagged": len(flagged_psgc), "flagged_and_listed": both,
             "share_flagged_listed": both / len(flagged_psgc) if flagged_psgc else None,
@@ -168,14 +101,14 @@ def rain_columns(storm, run, product, lead, window_end, rain, rain_c8_window, le
 
 
 def observed_scenarios(flood_days):
-    """(label, D, w) for the observed run: A11's D; w matters only below the cut-off (C5)."""
+    """(label, D, w) for the observed run: the D; w matters only below the cut-off."""
     if flood_days >= config.CONTINUOUS_EXPOSURE_DAYS:
         return [(f"D = {flood_days} (any w)", flood_days, config.WOUND_SHARE_W[0])]
     return [(f"D = {flood_days}, w = {w:g}", flood_days, w) for w in config.WOUND_SHARE_W]
 
 
 def run_tables(rain_row, residents, shares, center_table, scenarios):
-    """C5 to C7 at one rain for each (label, D, w): the run rows, barangay rows and center rows."""
+    """The exposure, dose and allocation steps at one rain for each (label, D, w)."""
     runs, barangays, centers = [], [], []
     per_barangay = residents.groupby("psgc")["residents"].sum().rename("residents")
     for label, days, w in scenarios:
@@ -203,7 +136,7 @@ def storm_runs(storm, facts, imerg, era5_max, daily, overlay, shares, center_tab
         part.extend(rows)
     c8_end = end
 
-    levels = flood_exposure.return_levels(era5_max, facts["year"])  # ERA5's own scale (rule 3)
+    levels = flood_exposure.return_levels(era5_max, facts["year"])  # ERA5's own scale
     for lead in config.FORECAST_LEADS_DAYS:
         rain, end = forecast_peak(daily, storm, lead, *facts["wettest_days"])
         rain_c8 = lead_total(daily, storm, lead, c8_end)
@@ -251,7 +184,7 @@ def main():
     shares = exposed.load_shares()
     center_table = allocation.load_center_shares()
     census = pd.read_csv(config.CENSUS_QC, dtype={"psgc": str})
-    qc_total = float(census["pop_2024"].sum())  # EI over QC's 2024 total from the same maps (rule 7)
+    qc_total = float(census["pop_2024"].sum())  # EI over QC's 2024 total from the same maps
     print(f"C9 on {N_DAYS}-day totals: ECMWF forecasts on ERA5's return levels, beside IMERG's observed run")
 
     tables = ([], [], [])

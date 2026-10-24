@@ -26,37 +26,11 @@ import PlanPanel from '../map/PlanPanel.tsx'
 import { PLAN_PARAMS, QC_PSGC } from '../map/routes.ts'
 import { placeTooltip } from '../map/tooltip.ts'
 
-/** The barangay tooltip's width in px (Figma 3a), and the most it is tall. */
+/** The barangay tooltip's width in px, and the most it is tall. */
 const TOOLTIP_WIDTH = 264
 const TOOLTIP_TALLEST = 230
 
-/**
- * Map, level 3: the prophylaxis plan (route /map/quezon-city/prophylaxis), task F5, from the
- * Figma frames "3 Prophylaxis plan" (node 56:395) and its hover "3a" (57:741).
- *
- * The route's loader fetches storms.json, centers.json and the barangay shapes when the plan
- * first opens (map/planData.ts). The chosen date picks the storm (map/plan.ts, stormOn) and the
- * address's ?lead= its forecast, 1 to 3 days ahead; that forecast's barangay file is fetched when
- * it is first shown, and must join the shapes on PSGC, all 142. On a date without a storm, or
- * when the reader asks for "All storms" (?storms=all), the panel lists the storms instead. The
- * barangays are drawn on the layout's map (map/barangayLayers.ts), with the legend and the
- * tooltip in the layout's two boxes for them; the numbers fill the panel (map/PlanPanel.tsx).
- * Stock planning, not prescriptions.
- *
- * F11: the list of the 142 barangays in the map's top left corner (listSlot) reaches each from
- * the keyboard: the barangay reached thickens and shows its tooltip, as under the pointer.
- *
- * F15: every barangay can be clicked (or tapped), and Enter in the list does the same: its
- * pop-up (map/BarangayPopup.tsx) shows what its tooltip shows, with Generate Report, the
- * barangay's report as a PDF for the forecast on the map (report/). While a pop-up is open its
- * barangay keeps the dark outline and the tooltip waits; a click on the map outside the
- * barangays, its close button or Escape closes it.
- *
- * F16: every date has a plan. A storm's dates show the storm; every other date shows its own
- * plan, for the 3 days of rain from that date, from its year's file (days/<year>.json), fetched
- * when the date first reaches that year. Until it comes the map keeps its colors and the panel
- * says the plan is loading. Most days' plans are zero: too little rain to flood.
- */
+/** Map, level 3: the prophylaxis plan. */
 export default function MapProphylaxis() {
   const { cities, forecast, date, week, map, legendSlot, overlay, listSlot } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
@@ -105,7 +79,7 @@ export default function MapProphylaxis() {
     }
   }, [map, view])
 
-  // F15: a click on a barangay opens its pop-up where it was clicked; a click elsewhere on the map closes it
+  // A click on a barangay opens its pop-up where it was clicked; a click elsewhere on the map closes it
   useEffect(() => {
     if (!map) {
       return
@@ -115,14 +89,14 @@ export default function MapProphylaxis() {
     return () => layers.onPick(null)
   }, [map])
 
-  // F15: the open pop-up's barangay keeps its dark outline
+  // The open pop-up's barangay keeps its dark outline
   useEffect(() => {
     if (map) {
       barangayLayers(map).select(pinned?.psgc ?? null)
     }
   }, [map, pinned])
 
-  /** F15: Enter (or a click) on a row of the list opens the barangay's pop-up, pointing near its middle. */
+  /** Enter (or a click) on a row of the list opens the barangay's pop-up, pointing near its middle. */
   function openFromList(psgc: string) {
     const at = map ? barangayLayers(map).middleOf(psgc) : undefined
     if (at) {
@@ -130,7 +104,7 @@ export default function MapProphylaxis() {
     }
   }
 
-  /** F15: closes the pop-up; if the keyboard was in it, it goes back to the list that opened it, or to the map. */
+  /** Closes the pop-up; if the keyboard was in it. */
   function closePopup(hadFocus: boolean) {
     const fromList = pinned?.fromList
     setPinned(null)
@@ -143,7 +117,7 @@ export default function MapProphylaxis() {
     }
   }
 
-  /** Another forecast: its lead time goes in the address (no new history entry), and the page keeps its scroll. */
+  /** Another forecast: its lead time goes in the address. */
   function changeLead(days: number) {
     setSearchParams(
       (params) => {
@@ -154,8 +128,7 @@ export default function MapProphylaxis() {
     )
   }
 
-  // The barangays' numbers in the run on the map, while a storm is shown; the tooltip and the list
-  // (F11) say why there are none otherwise
+  // The barangays' numbers in the run on the map, while a storm is shown.
   const numbers = hasStorm ? drawn : undefined
   const none = loading
     ? 'Loading the plan for this date'
@@ -163,7 +136,7 @@ export default function MapProphylaxis() {
       ? 'Choose a storm to see its numbers'
       : 'No plan for this date'
 
-  // F15: what a barangay's report is made from, while a storm's forecast (or F16, a day's plan) is shown
+  // What a barangay's report is made from, while a storm's forecast is shown
   const report: ReportRequest | undefined = useMemo(
     () => (storm && run ? { storms, centers: planCenters, shapes, storm, run, forecast, week, date } : undefined),
     [storms, planCenters, shapes, storm, run, forecast, week, date],
@@ -235,12 +208,7 @@ function runView(barangays: Map<string, BarangayRun>): BarangayView {
   return { classes, order: waveOrder(barangays.values()) }
 }
 
-/**
- * F11: the rows of the plan's list. With a storm's numbers, the most exposed share first (as the
- * wave), each with its share and the Flagged badge; a screen reader also hears its residents
- * exposed and its three units. Without them, the barangays by name, each saying `none`, why.
- * F15: every row opens its barangay's pop-up.
- */
+/** The rows of the plan's list. */
 function barangayItems(
   shapes: BarangayShapes,
   barangays: Map<string, BarangayRun> | undefined,
@@ -280,11 +248,7 @@ function noDataView(shapes: BarangayShapes): BarangayView {
   return { classes: new Map(order.map((psgc) => [psgc, NO_DATA])), order }
 }
 
-/**
- * A run's barangay file (`file` as storms.json names it), fetched when the run changes. Until it
- * comes, the file before it, so the map keeps its colors meanwhile; undefined at first. A file
- * that cannot be fetched stops with an error, which ErrorPage shows.
- */
+/** A run's barangay file (`file` as storms.json names it), fetched when the run changes. */
 function useRunFile(file: string | undefined): RunFile | undefined {
   const [loaded, setLoaded] = useState<RunFile>()
   const [failed, setFailed] = useState<unknown>(null)
@@ -292,7 +256,7 @@ function useRunFile(file: string | undefined): RunFile | undefined {
     if (!file) {
       return
     }
-    let current = true // false once the run changes again: a late file is dropped
+    let current = true // False once the run changes again: a late file is dropped
     loadRun(file).then(
       (run) => {
         if (current) {
@@ -315,17 +279,11 @@ function useRunFile(file: string | undefined): RunFile | undefined {
   return loaded
 }
 
-/**
- * F16: the daily plans of `year` (days/<year>.json), fetched when the date first reaches that
- * year; undefined until they come, never another year's. A file that cannot be fetched gives
- * null: that year's dates then say "No plan for this date", and a storm's dates still show the
- * storm (unlike a run's barangay file, the plan can do without it). It is asked for again when the
- * date comes back to that year.
- */
+/** The daily plans of `year` (days/<year>.json), fetched when the date first reaches that year. */
 function useDaysFile(year: number): DaysFile | null | undefined {
   const [loaded, setLoaded] = useState<{ year: number; file: DaysFile | null }>()
   useEffect(() => {
-    let current = true // false once the year changes again: a late file is dropped
+    let current = true // False once the year changes again: a late file is dropped
     loadDays(year).then(
       (file) => {
         if (current) {
@@ -355,10 +313,7 @@ type HoverTooltipProps = {
   note: string
 }
 
-/**
- * The tooltip of the barangay under the pointer (Figma 3a), in the layout's box over the map. A
- * component of its own, so a move of the pointer redraws only the tooltip, not the panel.
- */
+/** The tooltip of the barangay under the pointer, in the layout's box over the map. */
 function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipProps) {
   const [pointer, setPointer] = useState<BarangayPointer | null>(null)
   const names = useMemo(
@@ -373,11 +328,11 @@ function HoverTooltip({ map, overlay, shapes, barangays, note }: HoverTooltipPro
       setPointer(null)
     }
   }, [map])
-  // F11: on a phone the open list covers the map, and a tooltip would cover the list: the outline shows the barangay
+  // On a phone the open list covers the map, and a tooltip would cover the list.
   if (!pointer || (pointer.fromList && pointer.width < SHEET_BELOW)) {
     return null
   }
-  // The panel covers the map's left side (F14), or on a phone its lower part (as the camera assumes, CityMap)
+  // The panel covers the map's left side, or on a phone its lower part (as the camera assumes, CityMap)
   const cover = panelCover(pointer.width, pointer.height)
   const shown = { ...pointer, height: pointer.height - cover.bottom }
   return createPortal(

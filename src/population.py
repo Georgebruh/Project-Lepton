@@ -1,25 +1,4 @@
-"""Quezon City population for every week (task B1).
-
-M4 uses the population P as its offset, log P (task B5), so it needs a value
-for every week, not just the three census days. Between two censuses the
-population grows by the same percentage every year:
-
-    P(t) = P0 * (P1 / P0) ** ((t - t0) / (t1 - t0))
-
-where P0, P1 are the census totals at decimal years t0, t1. In plain words:
-the ratio P1 / P0 is spread evenly over the years between the censuses, so
-each year multiplies the population by the same factor.
-
-  - Before the 2015 census (Jan-Jul 2015): the 2015-2020 rate, run backwards.
-  - After mid-2024: the 2020-2024 rate is kept, counted from the 2024 census.
-
-Each piece starts at its own census (exponent 0 there), so the three census
-days return the PSA totals exactly. A week's population is the value on its
-middle day (Wednesday).
-
-Run from the repository root:  python -m src.population
-That checks the census days and writes the table to config.POP_WEEKLY.
-"""
+"""Quezon City population for every week."""
 
 from datetime import date, timedelta
 
@@ -31,21 +10,13 @@ from src import weeks
 
 
 def decimal_year(day):
-    """Year plus the share of the year already gone, e.g. 1 May 2020 = 2020.33.
-
-    In plain words: year + (day of year - 1) / days in that year.
-    """
+    """Year plus the share of the year already gone, e.g. 1 May 2020 = 2020.33."""
     days_in_year = (date(day.year + 1, 1, 1) - date(day.year, 1, 1)).days
     return day.year + (day.timetuple().tm_yday - 1) / days_in_year
 
 
 def pop_at(day):
-    """QC population on `day`, growing by a constant percentage between censuses (B1).
-
-    Picks the last census on or before `day` as the start (the first census for
-    earlier days) and the growth rate of the census pair around it; after the
-    last census, the rate of the last pair (2020-2024).
-    """
+    """QC population on `day`, growing by a constant percentage between censuses."""
     years = sorted(config.CENSUS_POP_QC)
     pop = config.CENSUS_POP_QC
     t = {year: decimal_year(config.CENSUS_DAYS[year]) for year in years}
@@ -76,7 +47,7 @@ def weekly_population(first_year=config.BURN_IN_YEARS[0], last_year=config.BACKT
 
 
 def check_census_days():
-    """B1 done-when: each census day returns its PSA total exactly (1 May 2020 -> 2,960,048)."""
+    """Each census day returns its PSA total exactly (1 May 2020 -> 2,960,048)."""
     for year, day in config.CENSUS_DAYS.items():
         got = pop_at(day)
         assert got == config.CENSUS_POP_QC[year], f"{day}: {got} != {config.CENSUS_POP_QC[year]}"

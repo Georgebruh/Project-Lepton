@@ -18,18 +18,12 @@ type ChartReadoutProps = {
   style: CSSProperties
 }
 
-/**
- * F9: the tooltip of the week under the pointer (or the keyboard): the week, then every series
- * the chart shows, each number before its name with the series' key, as dataviz asks. Figma
- * has no tooltip for this chart, so it looks like the map's (BarangayTooltip.css). While the
- * forecasts are simulated it carries the amber badge, as every Layer 1 number does (check U2).
- * Hidden from screen readers, who hear the same as one sentence (readoutSentence).
- */
+/** The tooltip of the week under the pointer (or the keyboard). */
 export default function ChartReadout({ week, rows, storm, simulated, style }: ChartReadoutProps) {
   return (
     <div className="chart-readout" style={style} aria-hidden="true">
       <p className="chart-readout-week label-ui">{weekTitle(week)}</p>
-      {/* F14: also a week the Simulation mode added */}
+      {/* Also a week the Simulation mode added */}
       {(simulated || week.simulated) && <Badge tone="warn">{badgeWords(simulated)}</Badge>}
       <ul className="chart-readout-rows">
         {rows.map((row) => (

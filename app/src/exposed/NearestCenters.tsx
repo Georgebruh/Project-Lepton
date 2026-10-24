@@ -10,16 +10,16 @@ import type { Origin } from './location.ts'
 import { directionsUrl, formatKm, insideRings, nearestPlaces, type LonLat } from './nearest.ts'
 import './NearestCenters.css'
 
-/** How many health centers the list shows (Figma: 3). */
+/** How many health centers the list shows. */
 const SHOWN_CENTERS = 3
 
 /** A phone position less sure than this, in metres, gets a note under the list. */
 const ROUGH_LOCATION_M = 250
 
-/** The footer's note (Figma). */
+/** The footer's note. */
 const BRING_ID = 'Bring a valid ID if you have one. Consultation decides your medicine.'
 
-/** Where the map's boundaries and the health centers come from (check U8). */
+/** Where the map's boundaries and the health centers come from. */
 const CREDIT =
   'Boundaries: PSA and NAMRIA, via OCHA’s COD-AB on HDX (CC BY-IGO 3.0). Health centers: DOH National Health Facility Registry.'
 
@@ -73,15 +73,7 @@ type NearestCentersProps = {
   titleRef: Ref<HTMLHeadingElement>
 }
 
-/**
- * F8: step 3 of the guide, Figma frame "3 Nearest health centers" (39:411): the three health
- * centers nearest the reader by straight-line distance (nearest.ts), on a map and in a list, each
- * with a link that opens it in Google Maps. The distances start from the phone's position, asked
- * for only when the reader tapped "Find the nearest health center"; if the reader says no, or
- * the phone cannot tell, the reader types their barangay and the list starts from there. No
- * opening hours: Figma's are samples, and the guide shows hours only once the QC Health
- * Department confirms them.
- */
+/** Step 3 of the guide: the three health centers nearest the reader by straight-line distance. */
 export default function NearestCenters({ origin, onUseLocation, onPickBarangay, onBack, titleRef }: NearestCentersProps) {
   const { data, failed, retry } = useGuideData()
   // The barangay search, opened by "Change" (or "Type your barangay" while the phone looks)
@@ -234,7 +226,7 @@ type LocationRowProps = {
   onAction: () => void
 }
 
-/** The line above the map, Figma "Location" (39:424): a pin, where the list starts, and Change. */
+/** The line above the map: a pin, where the list starts, and Change. */
 function LocationRow({ text, action, onAction }: LocationRowProps) {
   return (
     <div className="nearest-centers-location">

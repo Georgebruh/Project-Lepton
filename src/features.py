@@ -1,35 +1,4 @@
-"""Weekly rain and exposure features for Quezon City (task B4).
-
-Formulas (task B4):
-    R_d = sum_g(w_g * R_{g,d}) / sum_g(w_g)
-    R(t) = sum_{d in t} R_d
-    Rcum2(t) = R(t - 1) + R(t)
-    EI2(t) = max(EI(t - 1), EI(t))
-
-In plain words:
-1. Each 0.1 x 0.1 degree IMERG cell is clipped to Quezon City in EPSG:32651
-   and weighted by the WorldPop 2024 residents inside that QC part (from
-   exactextract in EPSG:4326), so rain where people live counts more.
-2. Each UTC day's rain over QC (R_d) is the population-weighted average across
-   IMERG cells. Dimensions are matched by name ("lon", "lat", "time"), never by
-   position (rule 8).
-3. Weekly rain R(t) sums the 7 UTC days of morbidity week t. Incomplete weeks
-   (< 7 UTC days) get NaN so missing inputs are never treated as 0 mm (rule 5).
-4. Rcum2(t) adds the last two weeks of rain, R(t - 1) + R(t). Week -1 (the 7 UTC
-   days before 2015 week 1) is summed from IMERG so 2015 week 1 has Rcum2(0).
-5. EI(t) comes from task C3 (ei_weekly.csv), and EI2(t) = max(EI(t - 1), EI(t))
-   is computed within each fit_year so return-level fits never leak across years
-   (rule 2). For a 1-week forecast of target week T + 1, M4 reads Rcum2(T) and
-   EI2(T).
-
-Outputs:
-    data/clean/imerg_weights_qc.csv  (config.IMERG_WEIGHTS_QC)
-    data/clean/rain_weekly.csv       (config.RAIN_WEEKLY)
-    data/clean/features_weekly.csv   (config.FEATURES_WEEKLY)
-
-Run from the repository root:  python -m src.features
-Needs A3, A4, A5, A6 and C3 first.
-"""
+"""Weekly rain and exposure features for Quezon City."""
 
 import math
 
@@ -47,11 +16,7 @@ SHOW_DAYS = 5
 
 
 def cell_weights(ds, barangays):
-    """WorldPop counts and normalized weights inside QC for each IMERG grid cell (task B4).
-
-    Builds the 0.1-degree box around each (lon, lat) centre in ds, clips it to QC
-    in EPSG:32651, and extracts WorldPop counts in EPSG:4326 via rescale.worldpop_in.
-    """
+    """WorldPop counts and normalized weights inside QC for each IMERG grid cell."""
     if "lon" not in ds.coords or "lat" not in ds.coords:
         raise ValueError(f"expected 'lon' and 'lat' coordinates, got {list(ds.coords)}")
 
@@ -105,12 +70,7 @@ def cell_weights(ds, barangays):
 
 
 def daily_qc_rain(ds, weights_table):
-    """Population-weighted daily rain R_d over QC for every UTC day in ds (task B4).
-
-    Formula: R_d = sum_g(w_g * R_{g,d}) / sum_g(w_g).
-    Selects and reduces strictly by dimension name ("lon", "lat", "time"), never
-    by position (rule 8).
-    """
+    """Population-weighted daily rain R_d over QC for every UTC day in ds."""
     rain_var = config.IMERG_VARIABLES[0]
     rain = ds[rain_var]
     if set(rain.dims) != {"time", "lon", "lat"}:
@@ -158,13 +118,7 @@ def daily_qc_rain(ds, weights_table):
 
 
 def weekly_rain(daily, calendar=None):
-    """Weekly rain R(t) and 2-week cumulative rain Rcum2(t) by morbidity week (task B4).
-
-    Formula: R(t) = sum_{d in t} R_d, Rcum2(t) = R(t - 1) + R(t).
-    Only complete weeks with all 7 UTC days receive a numeric R(t); incomplete
-    weeks get NaN (rule 5). Week -1 is summed when present in daily so week 0
-    (2015 week 1) has a complete Rcum2(0).
-    """
+    """Weekly rain R(t) and 2-week cumulative rain Rcum2(t) by morbidity week."""
     if calendar is None:
         calendar = (
             pd.read_csv(config.CALENDAR)
@@ -227,12 +181,7 @@ def weekly_rain(daily, calendar=None):
 
 
 def add_ei2(ei_table):
-    """Add EI2(t) = max(EI(t - 1), EI(t)) within each fit_year (task B4).
-
-    Matches t - 1 by exact week_index within the same fit_year so return-level
-    fits never cross forecast years (rule 2). Missing values propagate as NaN
-    (rule 5).
-    """
+    """Add EI2(t) = max(EI(t - 1), EI(t)) within each fit_year."""
     if not {"week_index", "ei"}.issubset(ei_table.columns):
         raise ValueError(f"ei_table must contain 'week_index' and 'ei', got {list(ei_table.columns)}")
 
@@ -256,11 +205,10 @@ def add_ei2(ei_table):
 
 
 def combine_features(rain_table, ei_table):
-    """Merge weekly rain features (R, Rcum2) with exposure features (EI, EI2) (task B4)."""
+    """Merge weekly rain features (R, Rcum2) with exposure features (EI, EI2)."""
     with_ei2 = add_ei2(ei_table)
 
-    # C3's rain_days is the n of its n-day rain totals, not the UTC days in a week (B4's
-    # rain_days), so the two are not compared: C3's must be config's n (check S9 does the same).
+    # The exposure file's rain_days is the n of its n-day totals and must be config's n.
     if "rain_days" in with_ei2.columns:
         made_with = sorted(with_ei2["rain_days"].unique())
         if made_with != [config.RAIN_ACCUM_DAYS]:
@@ -299,12 +247,7 @@ def combine_features(rain_table, ei_table):
 
 
 def lagged_for_targets(features_table, fit_year=None, horizon=1):
-    """M4 rain and exposure inputs aligned to each target week T + horizon (task B4, B5).
-
-    For the 1-week forecast of target week s = T + 1 (horizon=1), M4 reads
-    Rcum2(T) and EI2(T) from week T = s - 1. For B11's 2-week forecast of
-    target week s = T + 2 (horizon=2), M4 reads Rcum2(T) and EI2(T) from s - 2.
-    """
+    """M4 rain and exposure inputs aligned to each target week T + horizon."""
     if horizon < 1:
         raise ValueError(f"horizon must be >= 1, got {horizon}")
 

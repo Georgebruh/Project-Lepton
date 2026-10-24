@@ -1,4 +1,4 @@
-/* F8: step 3 of the exposure guide (NearestCenters.tsx), Figma frame 39:411. */
+/* Step 3 of the exposure guide (NearestCenters.tsx). */
 
 /* The line above the map: a pin, where the list starts, and Change */
 .nearest-centers-location {
@@ -18,7 +18,7 @@
   color: var(--color-text-primary);
 }
 
-/* Change: teal words, in a target taller than the line, which the negative margin keeps out of the layout */
+/* Change: teal words, in a target taller than the line. */
 .nearest-centers-change {
   margin: -12px -8px;
   padding: 12px 8px;
@@ -102,7 +102,7 @@
   color: var(--color-bg-canvas);
 }
 
-/* The name and the distance, 2 px apart as in Figma */
+/* The name and the distance, 2 px apart */
 .nearest-centers-text {
   display: flex;
   flex: 1;

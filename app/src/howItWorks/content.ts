@@ -1,9 +1,4 @@
-/**
- * F10: the text of How it works, kept in one place. The plan takes it from the paper (E5's
- * Methodology in plain words, every limit E4 lists, E7's references); the paper is not final
- * yet, so this text comes from what the paper is written from: Notes.md, lepton-plan.md,
- * config.py and results/. When the paper is final, check every sentence here against it.
- */
+/** The text of How it works, kept in one place. */
 
 import { HERO_PHOTO, STRIP_PHOTOS } from '../home/photos.ts'
 
@@ -17,7 +12,7 @@ export type PipelineCard = {
   awaited?: boolean
 }
 
-/** The diagram's four steps, left to right (Figma 12:1401). */
+/** The diagram's four steps, left to right. */
 export const PIPELINE: { step: string; cards: PipelineCard[] }[] = [
   {
     step: '01 · Inputs',
@@ -90,7 +85,7 @@ export const PIPELINE: { step: string; cards: PipelineCard[] }[] = [
 /** Which formula a model row can show (formulas.tsx). */
 export type FormulaId = 'm0' | 'm1' | 'm4'
 
-/** The models table (Figma 12:1482), in Figma's order. */
+/** The models table, in order. */
 export const MODELS: {
   name: string
   text: string
@@ -131,7 +126,7 @@ export const MODELS: {
   },
 ]
 
-/** How we check it: three cards (Figma 12:1514). */
+/** How we check it: three cards. */
 export const TESTS: { label: string; title: string; text: string }[] = [
   {
     label: 'Layer 1',
@@ -150,12 +145,7 @@ export const TESTS: { label: string; title: string; text: string }[] = [
   },
 ]
 
-/**
- * What LEPTON can't do yet. The Figma notes ask for every limit the paper states; these are
- * the plan's E4 list (corrections 2, 8 and 9 and the assumptions table) and Notes.md
- * sections 1 to 3, in plain words. The first, one city so far, follows the paper's Scope
- * (October 23): LEPTON is for the whole country, and why it starts in Quezon City.
- */
+/** What LEPTON can't do yet. */
 export const LIMITS: { title: string; text: string }[] = [
   {
     title: 'One city so far',
@@ -211,7 +201,7 @@ export const LIMITS: { title: string; text: string }[] = [
   },
 ]
 
-/** The plan's cut items, named under the list as future work. */
+/** The cut items, named under the list as future work. */
 export const FUTURE_WORK =
   'Left for future work: more Philippine cities, Cebu City first, live weekly forecasts, nowcasting from report dates, a distributed-lag model, a satellite flood check (Sentinel-1) and hospital demand.'
 
@@ -282,7 +272,7 @@ export const PAPERS: Reference[] = [
   },
 ]
 
-/** The data, maps and fonts the app is built from (check U8: each is credited). */
+/** The data, maps and fonts the app is built from. */
 export const DATA_SOURCES: Reference[] = [
   {
     text: 'Bondarenko, M., et al. (2025). Constrained estimates of 2015–2030 total number of people per grid square, 100 m, R2025A v1 [Data set]. WorldPop, University of Southampton. CC BY 4.0.',
@@ -373,10 +363,7 @@ export const DATA_SOURCES: Reference[] = [
   },
 ]
 
-/**
- * F12: Home's four photos (home/photos.ts), each with its author, its licence and what was
- * changed, as Home's footer says (check U8).
- */
+/** Home's four photos (home/photos.ts). */
 export const PHOTO_SOURCES: Reference[] = [HERO_PHOTO, ...STRIP_PHOTOS].map((photo) => ({
   text:
     `${photo.credit.author}. ${photo.credit.title} [Photograph]. Wikimedia Commons. ${photo.credit.license}; ` +

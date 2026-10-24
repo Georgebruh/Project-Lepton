@@ -1,8 +1,8 @@
-/* F5: the city panel's prophylaxis plan (PlanPanel.tsx), Figma frame 3's "Panel" (node 56:459). */
+/* The city panel's prophylaxis plan (PlanPanel.tsx). */
 .plan-panel {
   display: flex;
   flex-direction: column;
-  /* Figma's 16 px between the sections, and 22 px top and bottom (between the spacing steps) */
+  /* 16 px between the sections, and 22 px top and bottom (between the spacing steps) */
   gap: var(--space-4);
   min-height: 100%;
   padding: 22px var(--space-5);
@@ -15,7 +15,7 @@
   color: var(--color-text-primary);
 }
 
-/* The city's name, and All storms at the right end while a storm is shown (not in Figma) */
+/* The city's name, and All storms at the right end while a storm is shown */
 .plan-panel-title {
   display: flex;
   align-items: center;
@@ -23,19 +23,18 @@
   gap: var(--space-2);
 }
 
-/* F11: the city's name takes focus when the plan opens, for screen readers; it needs no ring */
+/* The city's name takes focus when the plan opens, for screen readers; it needs no ring */
 .plan-panel-city:focus {
   outline: none;
 }
 
-/* All storms: an outlined chevron and its words, like F4's breadcrumb Back (gone in F14);
-   34 px tall, so the heading's 44 px row does not grow */
+/* All storms: an outlined chevron and its words. */
 .plan-panel-all {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-1);
-  /* the breadcrumb Back's 6 px, and 10 px after the label */
+  /* The breadcrumb Back's 6 px, and 10 px after the label */
   padding: 6px 10px 6px 6px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -52,12 +51,12 @@
   color: var(--color-text-secondary);
 }
 
-/* The forecast's rain: a card with the lead chips (Figma "Rain forecast", node 56:680) */
+/* The forecast's rain: a card with the lead chips */
 .plan-panel-rain {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Figma's 12 px by 14 px, between the spacing steps */
+  /* 12 px by 14 px, between the spacing steps */
   padding: var(--space-3) 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -67,13 +66,12 @@
 .plan-panel-rain-head {
   display: flex;
   align-items: center;
-  /* Figma's 6 px, between the spacing steps */
+  /* 6 px, between the spacing steps */
   gap: 6px;
   color: var(--color-text-secondary);
 }
 
-/* The chips sit at the head's right end. As in Figma, an outlined chip's 1 px border adds to its
-   size (24 px tall, the selected one 22), so the chips line up at the top. */
+/* The chips sit at the head's right end. */
 .plan-panel-leads {
   display: flex;
   align-items: flex-start;
@@ -81,9 +79,9 @@
   margin-left: auto;
 }
 
-/* A lead chip (Figma "2 days", node 56:687): outlined; the selected one dark, with light text (56:685) */
+/* A lead chip: outlined; the selected one dark, with light text */
 .plan-panel-lead {
-  /* Figma's 3 px by 8 px, between the spacing steps */
+  /* 3 px by 8 px, between the spacing steps */
   padding: 3px var(--space-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -103,7 +101,7 @@
   color: var(--color-text-primary);
 }
 
-/* The totals: two rows of two numbers, then the amoxicillin line (Figma "Totals", node 56:693) */
+/* The totals: two rows of two numbers, then the amoxicillin line */
 .plan-panel-totals {
   display: flex;
   flex-direction: column;
@@ -119,20 +117,20 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  /* Figma's 2 px, between the spacing steps */
+  /* 2 px, between the spacing steps */
   gap: 2px;
   min-width: 0;
   color: var(--color-text-primary);
 }
 
-/* The health centers needing the most (Figma "Health centers", node 56:709) */
+/* The health centers needing the most */
 .plan-panel-centers-title {
-  /* Figma's 6 px under the title, between the spacing steps */
+  /* 6 px under the title, between the spacing steps */
   padding-bottom: 6px;
   color: var(--color-text-secondary);
 }
 
-/* The numbers stand in two 84 px columns, 8 px from the name and from each other (Figma) */
+/* The numbers stand in two 84 px columns, 8 px from the name and from each other */
 .plan-panel-centers-table {
   width: 100%;
   border-collapse: collapse;
@@ -152,13 +150,13 @@
   padding-left: var(--space-2);
 }
 
-/* The column names, light (Figma "Columns", node 56:712) */
+/* The column names, light */
 .plan-panel-centers-table thead th {
   padding-bottom: var(--space-1);
   color: var(--color-text-tertiary);
 }
 
-/* A health center's row: a line above it, 8 px above and below (Figma "Tatalon", node 56:716) */
+/* A health center's row: a line above it, 8 px above and below */
 .plan-panel-centers-table tbody th,
 .plan-panel-centers-table tbody td {
   padding-top: var(--space-2);
@@ -171,7 +169,7 @@
   text-align: left;
 }
 
-/* margin-top: auto pushes the export to the bottom of the panel, as Figma's spacer does */
+/* margin-top: auto pushes the export to the bottom of the panel, as spacer does */
 .plan-panel-actions {
   display: flex;
   flex-direction: column;
@@ -204,7 +202,7 @@
 .plan-panel-storms li {
   display: flex;
   flex-direction: column;
-  /* Figma's 2 px between a number and its words, as in the totals */
+  /* 2 px between a number and its words, as in the totals */
   gap: 2px;
   padding: var(--space-2) 0;
   border-top: 1px solid var(--color-border-subtle);

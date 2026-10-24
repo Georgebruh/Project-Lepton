@@ -497,8 +497,7 @@ Text only; no data files.
   bottom, each a DOH page (DM 2023-0309, DOH's disease page and two 2024 press releases) or,
   for the helpline and the waterproof bandage, the QC government and PIA. They are in
   `SOURCES` at the top of `Leptospirosis.tsx`; a new fact cites one with `<Cite sources={[...]} />`.
-- **Text that differs from Figma**, so each fact matches its source (the component's comment
-  lists them): incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
+- **Text that differs from Figma**, so each fact matches its source: incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
   rats"; high risk is DM 2023-0309's repeated or continuous exposure, not LEPTON's 2-day
   cut-off; "a doctor decides" on preventive medicine, as the memo requires a physician.
 - **No hero photo yet.** Figma's is AI-generated (check U7). When a licensed photo arrives,

@@ -6,14 +6,11 @@ import './Button.css'
 type ButtonProps = {
   /** Primary (filled teal), Secondary (outlined) or Ghost (text only). */
   variant?: 'primary' | 'secondary' | 'ghost'
-  /** An icon after the label, 18 px. Figma's buttons show 'arrow-right'. */
+  /** An icon after the label, 18 px. Buttons show 'arrow-right'. */
   icon?: IconName
   /** A route in the app, e.g. '/map': the button is a link to it. */
   to?: string
-  /**
-   * An address on another site: the button is a link that opens it in a new tab. A phone or
-   * e-mail address ('tel:122', F7 and F8) opens the phone's dialer or mail app instead, in place.
-   */
+  /** An address on another site: the button is a link that opens it in a new tab. */
   href?: string
   /** What happens on click, for a button that is not a link. */
   onClick?: () => void
@@ -23,10 +20,7 @@ type ButtonProps = {
   children: ReactNode
 }
 
-/**
- * F3: the Figma component "Button" (node 3:65) in its three styles. With `to` it is a link to
- * a route, with `href` a link to another site, and otherwise a <button>.
- */
+/** The "Button" component in its three styles. */
 export default function Button({
   variant = 'primary',
   icon,

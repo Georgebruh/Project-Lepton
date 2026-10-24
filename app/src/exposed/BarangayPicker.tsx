@@ -30,12 +30,7 @@ type BarangayPickerProps = {
   onCancel?: () => void
 }
 
-/**
- * F8: "Type your barangay" (the guide's notes), for a reader who declines to share their location
- * or whose phone cannot tell it, and for "Change". As the reader types, the matching barangays
- * appear as buttons (nearest.ts matchPlaces: accents, dots and "Sto." do not matter); Enter picks
- * the first. Not in Figma: built from the app's tokens and components.
- */
+/** The "Type your barangay" field, for readers who do not share their location. */
 export default function BarangayPicker({ barangays, reason, onPick, onUseLocation, onCancel }: BarangayPickerProps) {
   const id = useId()
   const [typed, setTyped] = useState('')

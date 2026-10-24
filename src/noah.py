@@ -1,29 +1,4 @@
-"""NOAH flood hazard maps for Metro Manila (task A8).
-
-Downloads Project NOAH's 5-, 25- and 100-year rain return flood hazard maps for Metro
-Manila, unchanged, into data/raw/noah/, then for each map:
-1. reprojects it to EPSG:32651 (UTM 51N, metres), the overlay CRS (config.CRS_OVERLAY);
-2. repairs invalid shapes with make_valid (NOAH's shapes are all invalid as published),
-   keeping only the polygon parts;
-3. dissolves by hazard level, so each map has one row per `Var` (1 low, 2 medium, 3 high);
-4. removes the overlaps between levels (the higher level keeps the area), so C2 can add
-   the levels up without counting anyone twice.
-The result is one file, data/clean/noah_flood_mm.gpkg: 9 rows (return_period, var,
-geometry). C2 overlays it on the barangays and the WorldPop pixels.
-
-Hazard levels (NOAH's metadata_flood.txt): flood depth 0-0.5 m is low (Var 1),
->0.5-1.5 m medium (Var 2), >1.5 m high (Var 3); fast-flowing water can raise the level.
-Licence: ODC-ODbL; anything built from these maps is shared under the same licence.
-
-Where the files are: NOAH's site (https://noah.up.edu.ph, "Downloads") links a public
-Google Drive folder; config.NOAH_FLOOD_FILES holds the Drive id of each map. Each
-download's "Last-Modified" date and the shapefile's own date inside the zip are printed:
-together they are the map's version (NOAH gives no version number).
-
-Run from the repository root:
-    python -m src.noah
-Files already in data/raw/noah/ are not downloaded again (delete them to refresh).
-"""
+"""NOAH flood hazard maps for Metro Manila."""
 
 import zipfile
 from datetime import datetime
@@ -42,13 +17,7 @@ FILE_SIGNATURES = {".zip": b"PK", ".pdf": b"%PDF"}   # first bytes of a real fil
 
 
 def drive_download(file_id, path):
-    """Save a public Google Drive file to path, unchanged; return its Last-Modified date.
-
-    Skips the download if path already exists (returns None). Google sends a web page
-    instead of the file when a link is wrong or the daily quota is used up, so a reply
-    that is a web page stops the run, and the first bytes of a zip or pdf are checked
-    against the file type before the file is kept.
-    """
+    """Save a public Google Drive file to path, unchanged; return its Last-Modified date."""
     if path.exists():
         print(f"{path.name} already downloaded")
         return None
@@ -102,15 +71,7 @@ def read_map(return_period):
 
 
 def separate_levels(hazard):
-    """Remove the overlaps between the hazard levels of one map: the higher level keeps the area.
-
-    In plain words: Var 3 stays as it is, Var 2 loses what Var 3 covers, and Var 1 loses
-    what Var 2 and Var 3 cover. NOAH's own 100-year map has 0.80 km2 where two levels
-    overlap (the 25-year map 0.0003 km2, the 5-year map none), and C2 adds residents level
-    by level, so anyone living there would be counted twice. Every level has the same
-    contact rate in C5 (config.CONTACT_BY_LEVEL), so which level keeps the area does not
-    change the doses; only removing the double count does.
-    """
+    """Remove the overlaps between the hazard levels of one map: the higher level keeps the area."""
     shapes = dict(zip(hazard["var"], hazard.geometry))
     separated = {}
     for var, shape in shapes.items():
@@ -123,13 +84,7 @@ def separate_levels(hazard):
 
 
 def clean_map(hazard, return_period):
-    """Reproject to EPSG:32651, repair the shapes, dissolve to one row per Var, separate the levels.
-
-    make_valid can turn a broken polygon into a mix of polygons, lines and points;
-    only the polygons have area, so lines and points are dropped. (Checked on the 2026-10-15
-    files: the repair keeps every level's published area; NOAH's shapes are invalid because
-    their rings cross or touch themselves, not because parts overlap.)
-    """
+    """Reproject to EPSG:32651, repair the shapes, dissolve to one row per Var, separate the levels."""
     hazard = hazard.to_crs(config.CRS_OVERLAY)
     hazard["geometry"] = hazard.geometry.make_valid()
     hazard = hazard.explode(index_parts=False)
@@ -144,10 +99,7 @@ def clean_map(hazard, return_period):
 
 
 def level_overlaps(hazard):
-    """Area (km2) where two hazard levels of the same map overlap; 0 after separate_levels.
-
-    C2 adds residents level by level, so an overlap would count people twice.
-    """
+    """Area (km2) where two hazard levels of the same map overlap; 0 after separate_levels."""
     shapes = dict(zip(hazard["var"], hazard.geometry))
     texts = []
     for a, b in combinations(sorted(shapes), 2):

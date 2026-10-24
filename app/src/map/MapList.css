@@ -1,7 +1,4 @@
-/*
- * F11: the list beside the map (MapList.tsx): a card like the map's hint and legends, with a
- * Panel header that opens it. Open, its rows scroll inside it, so it never runs past the map.
- */
+/* The list beside the map (MapList.tsx). */
 .map-list {
   display: flex;
   flex-direction: column;

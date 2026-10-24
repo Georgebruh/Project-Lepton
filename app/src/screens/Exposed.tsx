@@ -7,17 +7,7 @@ import NearestCenters from '../exposed/NearestCenters.tsx'
 import { NO_ANSWERS, unanswered, type Answers, type QuestionKey } from '../exposed/risk.ts'
 import YourResult from '../exposed/YourResult.tsx'
 
-/**
- * The "I have been exposed to floodwater" guide, made for phones (route /exposed). Task F8
- * builds it from the Figma frames "1 Exposure check" (node 39:301), "2 Your result" (39:361) and
- * "3 Nearest health centers" (39:411), and the guide's notes beside them (40:356). Reads
- * /data/centers.json and /data/qc_barangays.geojson, written by F2, only at step 3.
- *
- * Answers and location never leave the phone: they live only in this screen's memory, so
- * nothing stores them and leaving the guide forgets them. The address holds only the step
- * (/exposed?step=2), so the phone's Back gesture goes back one step; a reloaded or shared
- * address past step 1 has no answers, and opens the questions.
- */
+/** The "I have been exposed to floodwater" guide, made for phones (route /exposed). */
 export default function Exposed() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -47,11 +37,7 @@ export default function Exposed() {
     }
   }, [step])
 
-  /**
-   * Back in the top bar: the step before, as the phone's own Back does. From step 1, the page
-   * the reader came from, or Home when the guide was the first page opened (React Router
-   * numbers the entries of this visit in history.state.idx, from 0).
-   */
+  /** Back in the top bar: the step before, as the phone's own Back does. */
   function goBack() {
     const visited = (window.history.state as { idx?: number } | null)?.idx ?? 0
     if (step > 1 || visited > 0) {

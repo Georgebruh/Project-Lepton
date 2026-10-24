@@ -17,16 +17,7 @@ type MapSearchProps = {
   onPick: (psgc: string) => void
 }
 
-/**
- * F14: the map's search, beside the logo in the top left corner. A button at first; it opens a
- * field, and as the reader types, the matching cities and municipalities appear under it with
- * their province (many towns share a name: San Jose). The matching is the phone guide's
- * (exposed/nearest.ts matchPlaces): accents, dots and "Sto." do not matter. The arrow keys move
- * through the list and Enter picks (the first, unless the reader moved); Escape, the close button,
- * or leaving the search closes it, and the keyboard goes back to the button. It follows the ARIA
- * combobox pattern, so screen readers hear each place as it is reached.
- * Not in Figma: built from the app's tokens, a card like the logo's.
- */
+/** The map's search, beside the logo in the top left corner. */
 export default function MapSearch({ cities, onPick }: MapSearchProps) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -34,7 +25,7 @@ export default function MapSearch({ cities, onPick }: MapSearchProps) {
   const [active, setActive] = useState(0)
   const button = useRef<HTMLButtonElement>(null)
   const input = useRef<HTMLInputElement>(null)
-  const refocus = useRef(false) // give the keyboard back to the button once the field has closed
+  const refocus = useRef(false) // Give the keyboard back to the button once the field has closed
   const places = useMemo<Place[]>(
     () =>
       cities.features.map(({ properties: city }) => ({
@@ -68,7 +59,7 @@ export default function MapSearch({ cities, onPick }: MapSearchProps) {
   }
 
   function pick(place: Place) {
-    close(!place.hasData) // a city with data opens its panel, which takes the keyboard (MapLayout)
+    close(!place.hasData) // A city with data opens its panel, which takes the keyboard (MapLayout)
     onPick(place.psgc)
   }
 
@@ -110,7 +101,7 @@ export default function MapSearch({ cities, onPick }: MapSearchProps) {
     )
   }
 
-  // What the search found, for screen readers; shown too when there is nothing to pick or more than the list holds
+  // What the search found, for screen readers.
   let count = ''
   if (searching) {
     if (matches.length === 0) {
@@ -156,8 +147,7 @@ export default function MapSearch({ cities, onPick }: MapSearchProps) {
           <Icon name="close" size={16} />
         </button>
       </div>
-      {/* Under the field, over the map: the matches, then the count when it is shown. The pointer
-          picks a place without taking the keyboard from the field (mousedown) */}
+      {/* Under the field, over the map: the matches, then the count when it is shown. */}
       <div className="map-search-results">
         <ul id={`${id}-list`} className="map-search-list" role="listbox" aria-label="Cities and municipalities">
           {shown.map((place, index) => (

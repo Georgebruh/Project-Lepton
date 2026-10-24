@@ -1,17 +1,12 @@
-/*
- * F9: the Compare models chart (CompareChart.tsx), from Figma's "Chart card" (How it works, node
- * 12:1010): 20 px padding, 14 px between the header and the plot. Its marks' widths and colors
- * are the card's: bars in the secondary text color at 38%, M4's range in its teal at 16%, the
- * threshold a 1.5 px amber line dashed 5.4 on, 4.3 off; the models' lines are set in models.ts.
- */
+/* The Compare models chart (CompareChart.tsx): 20 px padding, 14 px between the header and the plot. */
 .compare-chart {
   display: flex;
   flex-direction: column;
-  /* Figma's 14 px, between the spacing steps */
+  /* 14 px, between the spacing steps */
   gap: 14px;
   min-width: 0;
   margin: 0;
-  /* Figma's 20 px, between the spacing steps */
+  /* 20 px, between the spacing steps */
   padding: 20px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
@@ -39,7 +34,7 @@
   list-style: none;
 }
 
-/* A key and its name, 6 px apart (Figma) */
+/* A key and its name, 6 px apart */
 .compare-chart-key {
   display: flex;
   align-items: center;
@@ -86,7 +81,7 @@
   fill: var(--color-border-strong);
 }
 
-/* The COVID years: forecast, but not scored (D8's figure 1 shades them too) */
+/* The COVID years: forecast, but not scored */
 .compare-chart-covid {
   fill: var(--color-bg-canvas);
 }
@@ -100,7 +95,7 @@
   opacity: 0.7;
 }
 
-/* F14: a simulated week's count: outlined, dashed, so it never reads as a real count */
+/* A simulated week's count: outlined, dashed, so it never reads as a real count */
 .compare-chart-bar-simulated {
   fill: none;
   stroke: var(--color-text-secondary);

@@ -5,29 +5,14 @@ import { tokenColor } from '../map/tokens.ts'
 import { reportContent, type ReportContent, type ReportInput, type Table } from './reportContent.ts'
 import { boundsOf, contains, fitView, overlaps, pagePoints, ringsOf, scaleKm, type Box, type MapView } from './reportMap.ts'
 
-/*
- * F15: the barangay report as a PDF, drawn with jsPDF from reportContent.ts's content and saved
- * by the browser, as the stock list's CSV is: nothing is sent anywhere. The plan's route loads
- * this module (and jsPDF) only when a barangay's pop-up first offers the report, so the map
- * does not carry it.
- *
- * A4 portrait, for health offices and LGUs to read and print. Page 1: the barangay, the
- * forecast's rain, the key figures, the stock to prepare for a short and a long flood, and the
- * storm's forecasts made 1 to 3 days ahead. Then where the stock goes, the barangay on a map of
- * its neighbours, Quezon City's case forecast, how the figures were made, their limits and the
- * sources. Every page carries "Stock planning, not prescriptions" in its header and storms.json's
- * label in its footer (rule 10). Text is Helvetica, a PDF's own font: it prints the ñ in Doña
- * Imelda and Santo Niño, but nothing outside Latin-1 and Windows-1252, so any other character
- * stops the report with an error instead of printing garbled (assertPrintable). Colors are the
- * app's tokens (tokens.css, the Clinic theme, made for printing).
- */
+/* The barangay report as a PDF. */
 
 /** A4 portrait, in mm. */
 const PAGE_WIDTH = 210
 /** The left and right margins, in mm, and the width between them. */
 const MARGIN = 16
 const WIDTH = PAGE_WIDTH - 2 * MARGIN
-/** Where each page's header sits, where its content starts and ends, and where its footer starts, in mm from the top. */
+/** Where each page's header sits. */
 const HEADER_Y = 11
 const CONTENT_TOP = 23
 const CONTENT_BOTTOM = 278
@@ -43,9 +28,9 @@ const CELL_PAD = 1.8
 const BOX_PAD = 3.5
 /** The gap between the key figures, in mm. */
 const FIGURE_GAP = 3
-/** The map: its height, the legend's column beside it, the gap between them and the small map of the city, in mm. */
+/** The map: its height, the legend's column beside it. */
 const MAP = { height: 86, column: 48, gap: 5, locator: 34 }
-/** The map shows at least this many km across, with the barangay padded by this share of its size on each side. */
+/** The map shows at least this many km across. */
 const MAP_MIN_KM = 1.5
 const MAP_PAD = 0.3
 /** The shortest step the outlines keep, in mm: on the map, and on the small map of the city. */
@@ -96,11 +81,7 @@ export const COLOR_TOKENS: Record<Exclude<keyof ReportColors, 'ramp'>, string> =
 /** The tokens of the map's five classes. */
 export const RAMP_TOKENS = [1, 2, 3, 4, 5].map((step) => `data-ramp-${step}`)
 
-/**
- * The report's colors from the page's tokens (MapLibre's layers read theirs the same way), each
- * as #rrggbb, the form jsPDF needs. The built stylesheet shortens some (#ffffff to #fff), so a
- * canvas writes each one out in full. Stops with an error if a token is not an opaque color.
- */
+/** The report's colors from the page's tokens. */
 function pageColors(): ReportColors {
   const root = document.documentElement
   const canvas = document.createElement('canvas').getContext('2d')
@@ -122,10 +103,7 @@ function pageColors(): ReportColors {
   return { ...(named as Omit<ReportColors, 'ramp'>), ramp: RAMP_TOKENS.map(color) }
 }
 
-/**
- * Stops with an error naming any character a PDF's Helvetica cannot print. jsPDF would write
- * the whole line garbled (each letter spaced out) without an error.
- */
+/** Stops with an error naming any character a PDF's Helvetica cannot print. */
 function assertPrintable(text: string) {
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0
@@ -137,7 +115,7 @@ function assertPrintable(text: string) {
   }
 }
 
-/** The PDF being drawn, its colors, the barangay's name for the headers, and how far down the page it has got (y, in mm). */
+/** The PDF being drawn, its colors. */
 type Pen = { doc: jsPDF; colors: ReportColors; name: string; y: number }
 
 /** Sets the font for the text that follows: Helvetica, `size` pt, plain or bold, in `color`. */
@@ -200,10 +178,7 @@ function paragraph(pen: Pen, text: string, options: ParagraphStyle = {}) {
 /** The room a heading takes, in mm: the space above it, its line and the space below. */
 const HEADING_ROOM = 4 + lineHeight(SIZE.heading) + 1.8
 
-/**
- * A section's heading, with a short teal bar at its left. It moves to the next page with the
- * first `keepWith` mm of its section (a table, a box, a first item), so no heading ends a page.
- */
+/** A section's heading, with a short teal bar at its left. */
 function heading(pen: Pen, text: string, keepWith: number) {
   ensure(pen, HEADING_ROOM + keepWith)
   pen.y += 4
@@ -215,7 +190,7 @@ function heading(pen: Pen, text: string, keepWith: number) {
   pen.y += lineHeight(SIZE.heading) + 1.8
 }
 
-/** Each page's header: LEPTON, what the report is, for which barangay, and the not-prescriptions box at the right, over a hairline. */
+/** Each page's header: LEPTON. */
 function drawHeader(pen: Pen) {
   const { doc, colors } = pen
   font(pen, 9.5, 'bold', colors.accent)
@@ -234,7 +209,7 @@ function drawHeader(pen: Pen) {
   doc.line(MARGIN, HEADER_Y + 5, MARGIN + WIDTH, HEADER_Y + 5)
 }
 
-/** Every page's footer, once all the pages are drawn: storms.json's label and "Page 1 of 3", over a hairline. */
+/** Every page's footer, once all the pages are drawn. */
 function drawFooters(pen: Pen, label: string) {
   const { doc, colors } = pen
   const pages = doc.getNumberOfPages()
@@ -298,7 +273,7 @@ function layoutBox(pen: Pen, parts: BoxPart[]) {
   return { wrapped, height: 2 * BOX_PAD + text + 1.4 * (parts.length - 1) }
 }
 
-/** A shaded box across the page holding a few paragraphs, moved whole to the next page if it does not fit. */
+/** A shaded box across the page holding a few paragraphs. */
 function shadedBox(pen: Pen, parts: BoxPart[], fill: string, box = layoutBox(pen, parts)) {
   ensure(pen, box.height)
   pen.doc.setFillColor(fill)
@@ -312,7 +287,7 @@ function shadedBox(pen: Pen, parts: BoxPart[], fill: string, box = layoutBox(pen
   pen.y += box.height + 4
 }
 
-/** The key figures: four boxes, each a large number over what it counts, a teal rule on top; then which flood they are for. */
+/** The key figures: four boxes, each a large number over what it counts, a teal rule on top. */
 function drawFigures(pen: Pen, content: ReportContent) {
   const { doc, colors } = pen
   const count = content.figures.length
@@ -345,7 +320,7 @@ function drawFigures(pen: Pen, content: ReportContent) {
 /** A table column: its width in mm, which side its text keeps to, and whether its cells are bold. */
 type Column = { width: number; align: 'left' | 'right'; bold?: boolean }
 
-/** A table broken into lines: the header's and each cell's, each row's height and the whole table's, in mm. */
+/** A table broken into lines. */
 type TableLayout = { heads: string[][]; headHeight: number; cells: string[][][]; heights: number[]; height: number }
 
 /** The font of a table's header row. */
@@ -358,7 +333,7 @@ function cellFont(pen: Pen, bold: boolean) {
   font(pen, SIZE.table, bold ? 'bold' : 'normal', pen.colors.text)
 }
 
-/** A table's layout: each cell's text wrapped inside its column, and each row as tall as its tallest cell. */
+/** A table's layout: each cell's text wrapped inside its column. */
 function layoutTable(pen: Pen, table: Table, columns: Column[]): TableLayout {
   headFont(pen)
   const heads = table.heads.map((head, i) => wrap(pen, head, columns[i].width - 2 * CELL_PAD))
@@ -384,10 +359,7 @@ function drawRow(pen: Pen, cells: string[][], columns: Column[], setFont: (colum
   })
 }
 
-/**
- * A table across the page: a shaded header row, then a row per entry over a hairline, a strong
- * row bold on teal's lightest shade. It moves to the next page whole if it does not fit.
- */
+/** A table across the page. */
 function drawTable(pen: Pen, table: Table, columns: Column[], layout = layoutTable(pen, table, columns)) {
   const { doc, colors } = pen
   ensure(pen, layout.height)
@@ -432,14 +404,14 @@ function drawStock(pen: Pen, content: ReportContent) {
   tableSection(pen, 'Stock to prepare', content.stock.table, columns, content.stock.notes)
 }
 
-/** The storm's forecasts made 1 to 3 days ahead (F16: or a day's rain that fell), the one on the map in bold. */
+/** The storm's forecasts made 1 to 3 days ahead, the one on the map in bold. */
 function drawLeads(pen: Pen, content: ReportContent) {
   const widths = [33, 33, 32, 30, 18, 16, 16]
   const columns = widths.map((width, i): Column => ({ width, align: i >= 4 ? 'right' : 'left' }))
   tableSection(pen, content.leads.title, content.leads.table, columns, [content.leads.note])
 }
 
-/** Where the stock goes: the health centers, each with its share of this barangay's need and its own whole need. */
+/** Where the stock goes. */
 function drawCenters(pen: Pen, content: ReportContent) {
   const { intro, table, serves, leftOut, note } = content.centers
   const widths = [6, 48, 30, 24, 24, 23, 23]
@@ -455,10 +427,7 @@ function drawCenters(pen: Pen, content: ReportContent) {
   paragraph(pen, note, { size: SIZE.small, color: pen.colors.tertiary, after: 2 })
 }
 
-/**
- * Traces a shape's rings on the map as one path, each ring a closed part, ready to fill
- * (even-odd, so holes stay empty) or to stroke. Returns false if no ring is big enough to show.
- */
+/** Traces a shape's rings on the map as one path, each ring a closed part, ready to fill. */
 function tracePath(doc: jsPDF, rings: LonLat[][], view: MapView, stepMm: number): boolean {
   let traced = false
   for (const ring of rings) {
@@ -555,11 +524,7 @@ function pinRoom([x, y]: [number, number]): Box {
   return { x: x - 2.8, y: y - 2.8, width: 5.6, height: 5.6 }
 }
 
-/**
- * The names on the map: the barangay's, bold, then each neighbour's whose middle is in view,
- * left out where it would run into a name already written, a pin, the north arrow, the scale
- * bar or the map's edge. The barangay's own name moves up past a pin it would cover.
- */
+/** The names on the map. */
 function drawNames(pen: Pen, box: Box, view: MapView, shapes: BarangayShapes, content: ReportContent) {
   const { psgc } = content.map
   const pins = content.centers.pins.map((pin) => pinRoom(view.toPage(pin.at)))
@@ -593,15 +558,12 @@ function drawNames(pen: Pen, box: Box, view: MapView, shapes: BarangayShapes, co
   }
 }
 
-/**
- * The barangay and its neighbours, each shaded by its class in this forecast, the barangay
- * outlined in black, the names, and its health centers pinned; north up, with a scale bar.
- */
+/** The barangay and its neighbours. */
 function drawLocalMap(pen: Pen, box: Box, view: MapView, shapes: BarangayShapes, content: ReportContent) {
   const { doc, colors } = pen
   const { psgc, classes } = content.map
   doc.saveGraphicsState()
-  doc.rect(box.x, box.y, box.width, box.height, null) // what follows stays inside the map's box
+  doc.rect(box.x, box.y, box.width, box.height, null) // What follows stays inside the map's box
   doc.clip()
   doc.discardPath()
   doc.setFillColor(colors.land)
@@ -693,7 +655,7 @@ function drawLocator(pen: Pen, box: Box, shapes: BarangayShapes, psgc: string, l
   write(pen, ['Quezon City'], box.x, box.y - lineHeight(SIZE.tiny) - 0.5)
 }
 
-/** The barangay on the map: the map, its legend and the small map of the city beside it, and the caption under them. */
+/** The barangay on the map. */
 function drawMap(pen: Pen, content: ReportContent, shapes: BarangayShapes) {
   font(pen, SIZE.tiny, 'normal', pen.colors.tertiary)
   const caption = wrap(pen, content.map.caption, WIDTH)
@@ -716,7 +678,7 @@ function drawMap(pen: Pen, content: ReportContent, shapes: BarangayShapes) {
   pen.y += caption.length * lineHeight(SIZE.tiny) + 2
 }
 
-/** Quezon City's case forecast, in a shaded box, under the amber Simulated label if its numbers are made up. */
+/** Quezon City's case forecast. */
 function drawCity(pen: Pen, content: ReportContent) {
   const { colors } = pen
   const { title, lines, badge } = content.city
@@ -808,11 +770,7 @@ export function drawReport(content: ReportContent, shapes: BarangayShapes, color
   return doc
 }
 
-/**
- * Makes one barangay's report for the forecast and date the map shows, and saves it as a PDF,
- * in the page's colors. Returns the file's name. Stops with an error if a file lacks what the
- * report needs, or the report has a character it cannot print.
- */
+/** Makes one barangay's report for the forecast and date the map shows. */
 export function saveBarangayReport(input: ReportInput): string {
   const content = reportContent(input)
   drawReport(content, input.shapes, pageColors()).save(content.fileName)

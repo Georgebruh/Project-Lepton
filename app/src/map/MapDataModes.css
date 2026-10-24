@@ -1,4 +1,4 @@
-/* F14: the map's data modes (MapDataModes.tsx), top right: Simulation | Real data, and what the mode shows. */
+/* The map's data modes (MapDataModes.tsx), top right: Simulation | Real data, and what the mode shows. */
 .map-data-modes {
   display: flex;
   flex-direction: column;
@@ -49,7 +49,7 @@
   text-align: right;
 }
 
-/* A phone's map needs the room: the buttons stay, the note goes (the badges still mark every simulated number) */
+/* A phone's map needs the room. */
 @media (max-width: 599px) {
   .map-data-modes-note {
     display: none;

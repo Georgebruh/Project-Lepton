@@ -34,7 +34,7 @@ type ControlsPanelProps = {
 
 type SectionProps = {
   title: string
-  /** The space between the section's rows: Figma's 2 px for toggles, 8 px for the period. */
+  /** The space between the section's rows: 2 px for toggles, 8 px for the period. */
   tight?: boolean
   children: ReactNode
 }
@@ -60,11 +60,7 @@ type YearFieldProps = {
   onChange: (year: number) => void
 }
 
-/**
- * The year the middle period tab shows. Figma's tab names one year (2024); this picks which,
- * like the map's date picker (map/DatePicker.tsx): the browser's own list lies over the field,
- * invisible, so a click or the keyboard opens it.
- */
+/** The year the middle period tab shows. */
 function YearField({ year, years, onChange }: YearFieldProps) {
   const id = useId()
   return (
@@ -94,16 +90,7 @@ function YearField({ year, years, onChange }: YearFieldProps) {
   )
 }
 
-/**
- * F9: the Controls panel of Figma's frame "Compare models" (node 12:978): which models the
- * chart draws (Toggle rows in each model's chart color), what else it shows, the period, and
- * the latest week of the backtest. Each section opens and closes under its Panel header.
- *
- * Unlike Figma, the Show toggles carry their series' own colors (the threshold amber, the
- * counts grey), so each swatch matches its mark; Figma leaves them all teal, the component's
- * default. Figma's "Upload weekly cases" button is left out: uploading needs a server that
- * refits M4 (the app plan cuts it), so the box names the latest week only.
- */
+/** The Controls panel: which models the chart draws, what else it shows, and the period. */
 export default function ControlsPanel({
   models,
   shown,
@@ -174,7 +161,7 @@ export default function ControlsPanel({
       <div className="controls-panel-data">
         <p className="controls-panel-data-label label-eyebrow">Latest week with a count</p>
         <p className="controls-panel-data-week heading-s">{weekTitle(latest)}</p>
-        {/* F14: also a week the Simulation mode added */}
+        {/* Also a week the Simulation mode added */}
         {(simulated || latest.simulated) && <Badge tone="warn">{badgeWords(simulated)}</Badge>}
       </div>
     </section>

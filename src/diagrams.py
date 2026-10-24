@@ -1,32 +1,4 @@
-"""The paper's two design diagrams, for Appendix A (task E8).
-
-E8 asks for Figures 1 and 1b of the team's Methodology document (9 October 2026), updated
-to the core scope. That document's Figure 1 is the study design and its next diagram (its
-Figure 2) is the Layer 1 pipeline; both are redrawn here as built:
-
-1. design_figure: one flood computation feeds both layers. Cases come from QCESD's list
-   as weekly counts by onset week (no Cebu City, no report-date snapshots); rain from IMERG,
-   with archived ECMWF forecasts and ERA5 for the forecast runs (no CHIRPS); people from
-   WorldPop fitted to the 2024 census (no Meta grid). The flood computation uses the wettest
-   3-day rain (config.RAIN_ACCUM_DAYS), not the wettest 24 hours. Layer 1 is M0, M1, M3
-   and M4, one week ahead (no M2, M5 or two-week forecast). Layer 2 is checked on the four
-   storms (config.STORMS), not on a validation regression.
-
-2. layer1_figure: the six steps behind every forecast day, as B10 runs them: the delay
-   guard (config.DELAY_GUARD_G) instead of report-date snapshots and nowcasts, M4's inputs,
-   the four models, the forecast distribution (config.THETA_WINDOW past misses) and the
-   backtest (config.BACKTEST_FIRST_YEAR to BACKTEST_LAST_YEAR).
-
-The diagrams hold no results, only the design, so they need no data and run in a second.
-Every setting they print is read from config.py, so a changed setting changes the picture.
-Dose figures are stock planning, not prescriptions.
-
-Outputs in results/ (copied into paper/figures/ for the paper, as D8's are):
-    e8_fig_design.png    e8_fig_layer1.png
-
-Run from the repository root:
-    python -m src.diagrams
-"""
+"""The paper's two design diagrams, for Appendix A."""
 
 import matplotlib
 
@@ -37,9 +9,9 @@ from matplotlib.patches import FancyBboxPatch
 import config
 from src import layer2_results
 
-L2 = layer2_results                   # D7: ink colours and save_png, shared with D8
+L2 = layer2_results                   # ink colours and save_png, shared with the paper figures
 INK, INK_2, SURFACE = L2.INK, L2.INK_2, L2.SURFACE
-EDGE, ARROW = "#c3c2b7", "#9a998f"    # box outline and arrows: D8's baseline grey, a shade darker
+EDGE, ARROW = "#c3c2b7", "#9a998f"    # box outline and arrows: the baseline grey, a shade darker
 FOCUS_EDGE, FOCUS_FILL = "#2a78d6", "#e8f1fc"   # the step each figure is about: palette slot 1 and a wash
 TITLE_SIZE, LINE_SIZE = 7.9, 6.8      # points; the figures print at the page's full width
 LINE_STEP = 2.45                      # vertical space per text line, in the axes' units
@@ -51,9 +23,7 @@ def years_span(first, last):
     return f"{first}–{last}"
 
 
-# ---------------------------------------------------------------------------
 # Drawing helpers
-# ---------------------------------------------------------------------------
 
 def canvas(width_in, height_in, height_units):
     """A figure whose axes run 0-100 across and 0-height_units up, with no axes drawn."""
@@ -66,10 +36,7 @@ def canvas(width_in, height_in, height_units):
 
 
 def box(ax, x, y, w, h, title, lines=(), focus=False):
-    """A rounded box with its lower-left corner at (x, y): a bold title over plain lines.
-
-    Returns the box's edges as a dict, so arrows can start and end on them.
-    """
+    """A rounded box with its lower-left corner at (x, y): a bold title over plain lines."""
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.2",
                                 facecolor=FOCUS_FILL if focus else "white",
                                 edgecolor=FOCUS_EDGE if focus else EDGE, linewidth=1.3 if focus else 0.9))
@@ -100,14 +67,12 @@ def label(ax, x, y, text, ha="center"):
 
 
 def heading(ax, height_units, title, subtitle):
-    """Title and subtitle above the diagram, as D8's figures have them."""
+    """Title and subtitle above the diagram, as the figures have them."""
     ax.text(0, height_units + 7, title, ha="left", va="bottom", fontsize=11, weight="bold", color=INK)
     ax.text(0, height_units + 2.5, subtitle, ha="left", va="bottom", fontsize=8, color=INK_2)
 
 
-# ---------------------------------------------------------------------------
 # Figure A1: the study design
-# ---------------------------------------------------------------------------
 
 def design_figure(path):
     """Three inputs, one flood computation, two layers, their outputs and how each was tested."""
@@ -162,9 +127,7 @@ def design_figure(path):
     L2.save_png(fig, path)
 
 
-# ---------------------------------------------------------------------------
 # Figure A2: the Layer 1 pipeline
-# ---------------------------------------------------------------------------
 
 def step_label(ax, y, number, name, note):
     """The step's number and name at the left edge, with a short note under it."""

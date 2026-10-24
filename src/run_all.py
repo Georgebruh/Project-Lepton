@@ -1,51 +1,4 @@
-"""Rebuild every data file and result from data/raw, in order (task E10).
-
-Each step is one task's script, run as `python -m <module>` in its own process, so a
-script runs exactly as it does by hand. The steps follow the README's tables: Workstream
-A, then B1, Layer 2's flood core and doses (C1-C4, C7), B4's weekly features, Layer 1
-(B3, B10, then B5's residual check on B10's run), the storm runs (C8, C9), D7, the
-paper's figures (D8), the score tables (E6), the paper's two diagrams (E8) and the app's
-data files (F2). The sanity
-checks (python -m src.checks) run last. The run stops at the first step that
-fails (exit code not 0), and so does a FAIL in the checks.
-
-What runs and what does not:
-  - Downloads. A6, A8, A10, A14 and A15 download only the files not yet in data/raw/
-    (copy them from the team drive to skip the download, and to rebuild from the same
-    files as everyone else). A4 (IMERG) always asks NASA for every day up to today, needs
-    an Earthdata login and so gives a slightly different file each time: it runs only
-    with --fetch-imerg. Without it, data/raw/imerg_daily.nc must be there.
-  - Files saved by hand (HydroBASINS, the census files, the Mendeley file, PSA births)
-    are checked before the first step; the run stops with the list of missing files.
-  - QCESD's case list (A13) is not one of them: it is a case-level record, kept on the
-    team drive only (rule 11), so a copy of the repository without it must still run.
-    A13 is skipped when the list is not in data/raw/qcesd/; B10 then reads
-    cases_weekly.csv if it was copied from the drive, and is skipped if not.
-  - A step whose task is not built yet (its module is not in src/) is skipped, and so is
-    B10 until A13's cases_weekly.csv exists and config.DATA_OPTION is set. B10's guard
-    reruns (g = 1 and 3) run only in option C. D8's full run (figures 1-5), B5's residual
-    check and E6's score tables wait for B10's results/forecasts.csv; D8's --layer2 run
-    (figures 4 and 5) does not. B5 and E6 also wait for cases_weekly.csv, and without it
-    F2 leaves city_forecast.json and scores.json as they were.
-  - --simulate runs Layer 1 on B10's made-up QC-shaped counts instead of A13's file:
-    A13, B5's residual check and E6 are not run, B10 --simulate --option C
-    (results/forecasts_simulated_C.csv, no guard reruns) and D8's figures 1-3 as previews
-    from it (results/d8_preview_*, not for the paper). F2 still exports the committed
-    results/forecasts.csv; only a copy without that file gets a city_forecast.json marked
-    "simulated". Never the paper's results.
-  - C5 and C6 are not steps: they only print. C8, C9 and D7 call their functions.
-
-Run from the repository root:
-    python -m src.run_all                 # everything, then the checks
-    python -m src.run_all --list          # the steps, without running them
-    python -m src.run_all --from C3       # start at C3's first step (e.g. after A8, which is slow)
-    python -m src.run_all --only B3 D7    # just these tasks' steps
-    python -m src.run_all --fetch-imerg   # also download IMERG (A4) first
-    python -m src.run_all --simulate      # Layer 1 on made-up counts, without QC's case data
-The first run downloads what is missing (A8's NOAH maps can take over an hour; A4, if
-asked, an hour or more). B3's --diagnose takes about 5 minutes; B10 about 12 minutes per
-run (M3 refits Prophet every week).
-"""
+"""Rebuild every data file and result from data/raw, in order."""
 
 import argparse
 import subprocess
@@ -81,20 +34,20 @@ STEPS = [
     ("B10", "src.backtest", ()),
     ("B10", "src.backtest", ("--g", "1")),          # guard rerun, option C only
     ("B10", "src.backtest", ("--g", "3")),          # guard rerun, option C only
-    ("B5", "src.m4", ()),                           # v2's residual check, on B10's last forecast day
+    ("B5", "src.m4", ()),                           # the residual check, on the last forecast day
     ("C8", "src.observed_run", ()),
     ("C9", "src.forecast_run", ()),
     ("D7", "src.layer2_results", ()),
-    ("D8", "src.paper_figures", ("--layer2",)),     # figures 4 and 5 (C8's files)
-    ("D8", "src.paper_figures", ()),                # all five, once B10's forecasts.csv exists
-    ("E6", "src.score_tables", ()),                 # the score tables E6 quotes, from B10's forecasts
+    ("D8", "src.paper_figures", ("--layer2",)),     # figures 4 and 5
+    ("D8", "src.paper_figures", ()),                # all five, once the forecasts.csv exists
+    ("E6", "src.score_tables", ()),                 # the score tables the paper quotes, from the forecasts
     ("E8", "src.diagrams", ()),                     # Appendix A's two diagrams, from config.py alone
-    ("F2", "src.app_data", ()),                     # the web app's data files, after C8, C9 and B10
+    ("F2", "src.app_data", ()),                     # the web app's data files, after the storm runs and the backtest
 ]
 
-FETCH_ONLY = {"A4"}   # runs only with --fetch-imerg (see the module docstring)
+FETCH_ONLY = {"A4"}   # runs only with --fetch-imerg
 
-# With --simulate: each Layer 1 step's arguments on B10's made-up counts (None: not run).
+# With --simulate: each Layer 1 step's arguments on the made-up counts (None: not run).
 SIMULATED = {
     ("A13", ()): None,
     ("B10", ()): ("--simulate", "--option", "C"),
@@ -105,32 +58,24 @@ SIMULATED = {
     ("E6", ()): None,                               # reads only the real forecasts.csv
 }
 
-# Files someone saved by hand into data/raw/ (each has a note there saying where from),
-# and the task that reads them. No step can rebuild these.
+# Files saved by hand into data/raw/ (each has a note), and the task that reads them.
 SAVED_BY_HAND = {
     "A7": [config.HYDROBASINS_SHP],
     "A5": [config.BOUNDARIES_ZIP, config.CENSUS_2024_XLSX, config.CENSUS_2020_AGE_XLSX],
     "A9": [config.PARRENO_RAW],
-    "C4": [config.BIRTHS_2024],   # A12
+    "C4": [config.BIRTHS_2024],
 }
 NEEDS_IMERG = {"C3", "B4", "C8", "C9"}   # tasks that read data/raw/imerg_daily.nc
 
 
 def step_name(step):
-    """How a step is printed: the task and its command, e.g. "C3  python -m src.flood_exposure --days 1"."""
+    """How a step is printed: the task and its command, e.g. "C3 python -m src.flood_exposure --days 1"."""
     task, module, args = step
     return f"{task:<4} python -m {' '.join((module,) + args)}"
 
 
 def skip_reason(step, simulate=False):
-    """Why a step cannot run yet, or None when it can.
-
-    A task not built yet (its module is not in src/); A13 without QCESD's case list;
-    B10 before A13's cases file and config.DATA_OPTION; B10's guard reruns outside
-    option C; D8's full run before B10's forecasts.csv; B5 and E6 before B10's forecasts.csv
-    and A13's cases file (B5 refits M4 on the counts, E6 needs MASE's denominator). With
-    --simulate, B10 and D8 need none of these.
-    """
+    """Why a step cannot run yet, or None when it can."""
     task, module, args = step
     if not (config.ROOT / (module.replace(".", "/") + ".py")).exists():
         return f"task {task} not built yet ({module} not found)"
@@ -159,7 +104,7 @@ def skip_reason(step, simulate=False):
 
 
 def missing_inputs(steps, fetch_imerg):
-    """The hand-saved files (and IMERG, unless A4 runs) that the chosen steps read but are not on this computer."""
+    """The hand-saved files (and IMERG, unless it is fetched) that the chosen steps need but are missing."""
     tasks = {task for task, _, _ in steps}
     missing = [(path, f"read by {task}") for task, paths in SAVED_BY_HAND.items() if task in tasks
                for path in paths if not path.exists()]
@@ -170,7 +115,7 @@ def missing_inputs(steps, fetch_imerg):
 
 
 def simulated(steps):
-    """The steps with Layer 1 switched to B10's made-up counts (SIMULATED); dropped steps left out."""
+    """The steps with Layer 1 switched to the made-up counts (SIMULATED); dropped steps left out."""
     out = []
     for task, module, args in steps:
         new = SIMULATED.get((task, args), args)

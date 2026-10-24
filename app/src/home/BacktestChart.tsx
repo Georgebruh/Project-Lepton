@@ -5,10 +5,10 @@ import type { CityForecast, ForecastWeek } from '../map/mapData.ts'
 import type { Loaded } from './homeData.ts'
 import './BacktestChart.css'
 
-/** How many weeks the chart shows: the latest in the backtest (Figma: 36). */
+/** How many weeks the chart shows: the latest in the backtest. */
 const WEEKS = 36
 
-/** The plot's size in px, from Figma "Chart" (node 20:283): 576 wide, counts standing on a line 180 down. */
+/** The plot's size in px: 576 wide, counts standing on a line 180 down. */
 const WIDTH = 576
 const HEIGHT = 196
 const BASE = 180
@@ -18,18 +18,11 @@ const TOP = 8
 const BAR = 8
 
 type BacktestChartProps = {
-  /** B10's forecasts (city_forecast.json), while it loads undefined, or "failed". */
+  /** The forecasts (city_forecast.json), while it loads undefined, or "failed". */
   forecast: Loaded<CityForecast>
 }
 
-/**
- * F6: Home's chart of the city forecast, Figma "Chart" in "What you get" (node 20:283): the
- * latest 36 weeks of the backtest, each week's count as a grey bar, the map model's (M4) forecast
- * made the week before as a teal line with its 90% range shaded, and the epidemic threshold as an
- * amber line. Each week has its own threshold (B7), so the amber line moves from week to week,
- * where Figma's is flat.
- * While city_forecast.json says simulated, the amber badge sits on it (app check U2).
- */
+/** Home's chart of the city forecast. */
 export default function BacktestChart({ forecast }: BacktestChartProps) {
   if (forecast === 'failed') {
     return <p className="backtest-chart-status body-s">The chart could not load.</p>
@@ -68,7 +61,7 @@ export default function BacktestChart({ forecast }: BacktestChartProps) {
     <figure className="backtest-chart">
       <svg className="backtest-chart-plot" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
         <rect className="backtest-chart-axis" x={0} y={BASE} width={WIDTH} height={1} />
-        {/* city_forecast.json's weeks all have a count; only the map's Simulation mode adds weeks without one (F14) */}
+        {/* city_forecast.json's weeks all have a count; only the map's Simulation mode adds weeks without one */}
         {weeks.map(
           (week) =>
             week.y !== null && (

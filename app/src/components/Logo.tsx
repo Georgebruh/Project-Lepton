@@ -1,12 +1,6 @@
 import './Logo.css'
 
-/**
- * F3: the LEPTON logo, Figma component "Logo" (node 3:47): concept G from the Figma page
- * "Logo concepts", the wordmark with a ripple for its O. The ripple (concept F) is a raindrop
- * hitting floodwater: a dot inside a ring drawn as the coiled bacterium. It is a picture of the
- * name, so the headers wrap it in a link to the home page that carries the words; where it
- * stands alone (the footer), screen readers read the hidden "LEPTON".
- */
+/** The LEPTON logo: the wordmark with a ripple for its O. */
 export default function Logo() {
   return (
     <span className="logo">
@@ -23,10 +17,7 @@ export default function Logo() {
   )
 }
 
-/**
- * The ring of the O on a 48 px grid, as in Figma: a circle of radius 16 whose radius goes up
- * and down by 1.2 fourteen times on the way round, drawn as 360 short straight lines.
- */
+/** The ring of the O on a 48 px grid: a circle of radius 16 with a ripple. */
 function ringPath(): string {
   const points: string[] = []
   for (let i = 0; i <= 360; i++) {

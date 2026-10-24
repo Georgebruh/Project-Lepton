@@ -1,12 +1,7 @@
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { LonLat } from '../exposed/nearest.ts'
 
-/*
- * F15: the barangay report's maps, as geometry in millimetres on the page. Plain functions, no
- * PDF. A point's longitude and latitude become x and y as on Home's preview map: a degree of
- * longitude is shorter than a degree of latitude by cos(latitude), so x is shrunk by that at
- * the view's middle (over a city this small, the same as the app's Web Mercator map).
- */
+/* The barangay report's maps, as geometry in millimetres on the page. */
 
 /** A box on the page, in mm from its top left corner. */
 export type Box = { x: number; y: number; width: number; height: number }
@@ -51,11 +46,7 @@ export function contains([west, south, east, north]: Bounds, [lon, lat]: LonLat)
   return west <= lon && lon <= east && south <= lat && lat <= north
 }
 
-/**
- * The view that fits `bounds` into `box`: widened by `pad` of its size on each side and to at
- * least `minKm` across, then to the box's shape, so nothing is stretched. The middle of
- * `bounds` stays at the middle of the box.
- */
+/** The view that fits `bounds` into `box`. */
 export function fitView(bounds: Bounds, box: Box, pad: number, minKm: number): MapView {
   const [west, south, east, north] = bounds
   const middle: LonLat = [(west + east) / 2, (south + north) / 2]
@@ -86,10 +77,7 @@ export function scaleKm(mmPerKm: number, minMm: number): number {
   return SCALE_LENGTHS_KM.find((km) => km * mmPerKm >= minMm) ?? SCALE_LENGTHS_KM[SCALE_LENGTHS_KM.length - 1]
 }
 
-/**
- * A ring as points on the page, leaving out each point closer than `stepMm` to the last one
- * kept (the ring's last point is always kept), so a small map carries no detail it cannot show.
- */
+/** A ring as points on the page, leaving out each point closer than `stepMm` to the last one kept. */
 export function pagePoints(ring: LonLat[], view: MapView, stepMm: number): [x: number, y: number][] {
   const points: [number, number][] = []
   ring.forEach((point, i) => {

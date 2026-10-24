@@ -29,10 +29,7 @@ const SECTIONS = [
   { id: 'sources', label: 'Sources' },
 ]
 
-/**
- * The section being read: the last one whose top has passed a third of the way down the
- * window, or the last section once the page is scrolled to the bottom.
- */
+/** The section being read. */
 function useCurrentSection() {
   const [current, setCurrent] = useState(SECTIONS[0].id)
   useEffect(() => {
@@ -260,7 +257,7 @@ function Limits() {
   )
 }
 
-/** A list of references, each linking to its paper, data set or page (data shared on request has no link). */
+/** A list of references, each linking to its paper, data set or page. */
 function ReferenceList({ title, references }: { title: string; references: Reference[] }) {
   return (
     <div className="how-it-works-references">
@@ -293,20 +290,7 @@ function Sources() {
   )
 }
 
-/**
- * How it works (route /how-it-works). Task F10 builds it from the Figma frame "How it works"
- * (node 12:1385) and its notes (34:380): the intro with its section tabs, the pipeline, the
- * models, testing, limits and sources. The text lives in howItWorks/content.ts, to check
- * against the paper's final text; no formula is in the main text, only behind "Show the
- * formula" (howItWorks/formulas.tsx).
- *
- * Not as Figma: the pipeline section draws no numbers. Figma's three stat cards, weekly chart
- * and score table belong to the map and Compare models (F9 draws that chart and table), so the
- * page links to both and stays text, as the plan's Screens table says. An input still awaited
- * carries the amber badge (none since A13's counts arrived). Limits and sources go beyond Figma's few lines:
- * every limit the plan and Notes.md state, and every source the app's data comes from (U8).
- * F12: Sources also credits Home's photos and QCESD's counts, which check U8 asks for here too.
- */
+/** How it works (route /how-it-works). */
 export default function HowItWorks() {
   const current = useCurrentSection()
   return (

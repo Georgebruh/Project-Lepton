@@ -1,28 +1,4 @@
-"""Benchmark data for the M3 reproduction: Parreño (2023) national weekly cases (task A9).
-
-The Mendeley file has one row per week number (1-52) and one column per disease and
-year, named like "Leptospirosis - 2019". This script picks the leptospirosis columns,
-stacks them into one series, and writes one row per ISO week to config.PARRENO_WEEKLY:
-
-    iso_year, iso_week, week_start (the Monday), cases
-
-Why ISO weeks and not the project's MMWR weeks: Latigay & Gonzaga (2026) mapped this
-data to ISO weeks, so B3 must use the same calendar to reproduce their numbers. The
-file's week numbers are used as given. Do not use src.weeks here.
-
-Weeks with no count stay as rows with empty cases (not zero). B3 does the gap filling.
-
-One empty row is not a missing report: ISO 2020 has 53 weeks, but the file has 52 rows a
-year, so 2020 week 53 has no row in the file at all. B3's seasonal baseline cannot fill it
-(no other year has a week 53); interpolating between 2020 week 52 and 2021 week 1 can.
-The paper counts 260 weeks (5 x 52), so its series may have had no week 53. With the row,
-every rolling-origin fold (all after 2020) ends one calendar week earlier than without
-it; if B3 misses the paper's MAE, try dropping the row.
-
-Run from the repository root:
-    python -m src.benchmark --inspect    # look at the file's columns
-    python -m src.benchmark              # build the clean series
-"""
+"""Benchmark data for the M3 reproduction: Parreño (2023) national weekly cases."""
 
 import re
 import sys
@@ -61,10 +37,7 @@ def inspect():
 
 
 def lepto_columns(df):
-    """{year: column name} for every column whose name contains the disease key and ends in a year.
-
-    In plain words: "Leptospirosis - 2019" becomes {2019: "Leptospirosis - 2019"}.
-    """
+    """{year: column name} for every column whose name contains the disease key and ends in a year."""
     found = {}
     for col in df.columns:
         name = str(col)
@@ -105,11 +78,7 @@ def weekly_leptospirosis(df):
 
 
 def full_week_range(table):
-    """Every ISO week from week 1 of the first year to the last week that has a count.
-
-    Years come from config.M3_DATA_YEARS. Weeks after the last count (the file has 52 rows
-    for every year, so 2023 weeks 44-52 are empty) are dropped; empty weeks before it are kept.
-    """
+    """Every ISO week from week 1 of the first year to the last week that has a count."""
     first_year, last_year = config.M3_DATA_YEARS
     table = table[table["iso_year"].between(first_year, last_year)]
     counted = table.dropna(subset=["cases"]).sort_values(["iso_year", "iso_week"])

@@ -1,46 +1,4 @@
-"""The app's Simulation mode: Quezon City's weeks since the last real count, made up, to next week (task F14).
-
-QCESD's counts (A13) stop at the last week they reach, weeks before today. The app's
-"Real data" button shows only those counts and B10's forecasts of them. Its "Simulation"
-button shows LEPTON as it would run today: the real counts, then simulated counts for
-the weeks since, and next week's forecast, made with today's real weather forecast. Nothing
-here is a result; every simulated number carries the app's "Simulated" badge.
-
-Each step reuses the functions the real run uses, so the forecasts are made exactly as
-B10 makes them:
-1. Rain for the weeks after B4's features end: ECMWF IFS 0.25 (config.FORECAST_MODEL) from
-   Open-Meteo's forecast API, its recent days and its forecast to the end of this week,
-   hour by hour, added up into UTC days as A15 does (ecmwf.utc_day_totals):
-     - weekly rain R(t) over QC, each IMERG cell's centre weighted by its residents (B4's
-       weights), and Rcum2(t) = R(t - 1) + R(t);
-     - EI(t) from the wettest 3-day total over the catchments ending in week t (A15's
-       0.25 degree cells), against ERA5's return levels for the forecast day's year, as C9
-       does; EI2(t) = max(EI(t - 1), EI(t)).
-   Both weeks of each Rcum2 and EI2 come from ECMWF, week t - 1 too, even where B4 has it:
-   rule 3, one rain product and its own return levels in a feature, never IMERG's and
-   ERA5's mixed. M4 was fitted on IMERG's features, so this swaps the product, as C9 does.
-2. Every forecast day from the week after the real run's last to this week, in order:
-   backtest.forecast_day with every model, option C and g as config. After each forecast
-   of a week that has ended, that week's count is set to the median of M4's forecast,
-   NB(mu, theta), and later forecast days see it as if it were real. That is the
-   "simulated data": a typical week by LEPTON's own model, not a random draw (one unlucky
-   draw, tried first, set a week to 2 cases after 46 and pulled every later forecast down).
-   theta comes from each model's real forecasts only (results/forecasts.csv): scoring the
-   simulation's own forecasts against counts set to their median would narrow the ranges.
-3. The last forecast day is this week, so its forecast is for next week. This week's rain
-   is partly ECMWF's forecast: the "real weather forecast".
-
-Output: app/public/data/city_simulation.json (config.APP_SIMULATION_FILE): the week the real
-counts end, when the weather forecast was fetched and the weeks it covers, then one entry
-per simulated target week in city_forecast.json's form, with y null where the week has
-not ended. Open-Meteo's reply is saved unchanged in data/raw/ecmwf_forecast/, one file per day.
-
-Run from the repository root after B10's real run (results/forecasts.csv); M3 refits
-Prophet on each forecast day, so it takes a minute:
-    python -m src.app_simulation
-    python -m src.app_simulation --day 2026-10-22   # that day again, from its saved ECMWF reply
-Run it again on another day to move the simulation to that day. Check: python -m src.checks ("F14 simulation").
-"""
+"""The app's Simulation mode: Quezon City's weeks since the last real count, made up, to next week."""
 
 import argparse
 import json
@@ -58,19 +16,10 @@ TIMEOUT_S = 120
 LABEL = "Simulated: made-up counts after QCESD's last week, and today's ECMWF rain forecast"
 
 
-# ---------------------------------------------------------------------------
 # Today's weather forecast (step 1)
-# ---------------------------------------------------------------------------
 
 def forecast_params(points, first, last):
-    """Open-Meteo's forecast request: hourly rain at each point from `first` to the day after `last`, in UTC.
-
-    past_days reaches back to `first`; forecast_days reaches the day after `last`, for that
-    day's 00:00 value (the last hour of `last`, ecmwf.utc_day_totals). Open-Meteo counts both
-    from today's date in UTC (the request's timezone), which in the Philippines is the day before
-    until 8 AM, so they are counted from it, not from the computer's date. cell_selection=nearest
-    keeps the model's own grid cell, as A15 asks for.
-    """
+    """Open-Meteo's forecast request: hourly rain at each point from `first` to the day after `last`, in UTC."""
     utc_today = datetime.now(timezone.utc).date()
     if (utc_today - first).days > config.SIM_MAX_PAST_DAYS:
         raise SystemExit(f"the simulation needs ECMWF's rain from {first}, more than Open-Meteo's "
@@ -88,12 +37,7 @@ def forecast_params(points, first, last):
 
 
 def fetch_forecast(points, first, last, today, fetch=True):
-    """Today's reply for these points, saved unchanged in data/raw/ecmwf_forecast/ and reused the same day.
-
-    Open-Meteo counts past_days from the real today, so only today's reply can be fetched: a
-    past day is made again from its saved reply, or stops (FileNotFoundError). With fetch=False
-    (the F14 check) nothing is fetched, even today.
-    """
+    """Today's reply for these points, saved unchanged in data/raw/ecmwf_forecast/ and reused the same day."""
     path = config.SIM_FORECAST_RAW / f"{config.FORECAST_MODEL}_{today:%Y%m%d}_{len(points)}points_{first:%Y%m%d}.json"
     if not path.exists() and (today != date.today() or not fetch):
         raise FileNotFoundError(f"no saved ECMWF reply {path.name}: a past day can be made again only from its saved reply")
@@ -110,10 +54,7 @@ def fetch_forecast(points, first, last, today, fetch=True):
 
 
 def weighted_daily(replies, weights, first, last, source):
-    """Rain per UTC day, first to last: each point's day totals times its weight, added up (mm).
-
-    The weights add up to 1. Stops if a point lacks an hour of any day (rule 5).
-    """
+    """Rain per UTC day, first to last: each point's day totals times its weight, added up (mm)."""
     if len(replies) != len(weights):
         raise ValueError(f"{source.name}: {len(replies)} points, expected {len(weights)} (delete it to refresh)")
     days = pd.date_range(first, last, freq="D")
@@ -131,26 +72,20 @@ def weighted_daily(replies, weights, first, last, source):
 
 
 def qc_points():
-    """B4's IMERG cells that hold QC residents, with weights that add up to 1 (residents in each)."""
+    """The IMERG cells that hold QC residents, with weights that add up to 1 (residents in each)."""
     cells = pd.read_csv(config.IMERG_WEIGHTS_QC)
     cells = cells[cells["weight"] > 0]
     return cells.assign(weight=cells["weight"] / cells["weight"].sum())[["lon", "lat", "weight"]]
 
 
 def catchment_points():
-    """A15's 0.25 degree cells over the catchments, weighted by catchment area (catchments.grid_cells)."""
+    """The 0.25 degree cells over the catchments, weighted by catchment area (catchments.grid_cells)."""
     shape = gpd.read_file(config.CATCHMENTS, layer="catchments")
     return catchments.grid_cells(shape, config.GRID_025_DEG)[["lon", "lat", "weight"]]
 
 
 def gap_features(first_week, last_week, fit_years, today, fetch=True):
-    """Rcum2 and EI2 for weeks first_week..last_week from today's ECMWF run (step 1), one set per fit year.
-
-    Each week t needs week t - 1 too, so ECMWF's rain starts at week first_week - 1, and n - 1
-    days before it for the 3-day totals. EI uses ERA5's return levels fitted on the years before
-    each fit year (rule 2), as B10's forecast days read their own year's levels. Returns (rows
-    with fit_year, week_index, rain_mm, rcum2, ei, ei2; the reply's path).
-    """
+    """Rcum2 and EI2 for weeks first_week..last_week from today's ECMWF run (step 1), one set per fit year."""
     first = weeks.week_start(first_week - 1) - timedelta(days=config.RAIN_ACCUM_DAYS - 1)
     last = weeks.week_start(last_week) + timedelta(days=config.DAYS_PER_WEEK - 1)
     points = qc_points()
@@ -176,12 +111,10 @@ def gap_features(first_week, last_week, fit_years, today, fetch=True):
     return pd.DataFrame(rows), path
 
 
-# ---------------------------------------------------------------------------
 # The forecast days (steps 2 and 3)
-# ---------------------------------------------------------------------------
 
 def simulated_count(mu, theta):
-    """One week's simulated count: the median of NB(mu, theta), Poisson where theta is infinite (B6)."""
+    """One week's simulated count: the median of NB(mu, theta), Poisson where theta is infinite."""
     return int(forecast_range.forecast_dist(mu, theta).ppf(0.5))
 
 
@@ -194,13 +127,7 @@ def with_weeks_to(cases, last):
 
 
 def simulate(cases, features, pop, real, first_day, last_day, models=backtest.MODELS):
-    """Forecast days first_day..last_day in order; after each, the target's count is simulated if
-    the week has ended and QCESD has no count for it (a real count is never replaced).
-
-    real: B10's forecasts (results/forecasts.csv), each model's past for theta: only these, so
-    theta is never scored on a simulated count. Returns (the forecast rows, cases with the
-    simulated counts added, the simulated weeks).
-    """
+    """Forecast days first_day..last_day in order, simulating each ended week QCESD has no count for."""
     cases = with_weeks_to(cases, last_day + config.FORECAST_HORIZON_WEEKS)
     past = {model: rows[["week_index", "mu"]].reset_index(drop=True) for model, rows in real.groupby("model")}
     tables, drawn = [], []
@@ -217,12 +144,7 @@ def simulate(cases, features, pop, real, first_day, last_day, models=backtest.MO
 
 
 def week_entries(table, cases, drawn, gap):
-    """The simulated target weeks in city_forecast.json's form, y null where the week has not ended.
-
-    Each also says whether its count is simulated (simulated_y; a week QCESD has a count for
-    keeps it) and, for the weeks step 1 made, its rain and EI from ECMWF (EI at the latest fit
-    year's levels).
-    """
+    """The simulated target weeks in city_forecast.json's form, y null where the week has not ended."""
     low, high = (f"q{q:.3f}" for q in (config.RANGE_LOW_Q, config.RANGE_HIGH_Q))
     counts = cases.set_index("week_index")["cases"]
     weather = gap[gap["fit_year"] == gap["fit_year"].max()].set_index("week_index")
@@ -248,13 +170,7 @@ def week_entries(table, cases, drawn, gap):
 
 
 def simulation_file(today, fetch=True, models=backtest.MODELS):
-    """city_simulation.json's content for the day `today` (a date), and what main() prints about it.
-
-    Reads today's ECMWF reply from data/raw/ecmwf_forecast/, fetching it if it is not there
-    (unless fetch=False), so a day already run is made again from the same reply (check
-    "F14 simulation" does that, without fetching and without M3, whose Prophet fits are slow
-    and differ from computer to computer).
-    """
+    """city_simulation.json's content for the day `today` (a date), and what main() prints about it."""
     real = pd.read_csv(config.FORECASTS)
     real = real.assign(model=real["model"].replace(MODEL_NAMES))
     cases = backtest.load_cases()
@@ -268,7 +184,7 @@ def simulation_file(today, fetch=True, models=backtest.MODELS):
     if missing:
         raise SystemExit(f"B4 has no fit year {missing}: extend C3 and B4 (and config.BACKTEST_LAST_YEAR) first")
 
-    gap_first = int(features.dropna()["week_index"].max()) + 1   # the first week B4 has no rain for
+    gap_first = int(features.dropna()["week_index"].max()) + 1   # the first week the weekly features have no rain for
     gap, reply = gap_features(gap_first, this_week, fit_years, today, fetch)
     features = pd.concat([features, gap[["fit_year", "week_index", "rcum2", "ei2"]]], ignore_index=True)
 

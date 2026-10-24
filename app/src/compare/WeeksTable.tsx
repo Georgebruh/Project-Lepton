@@ -18,11 +18,7 @@ type WeeksTableProps = {
   simulated: boolean
 }
 
-/**
- * F9: the chart's numbers as a table, under it (dataviz: every chart has a table view, so no
- * number needs the pointer, and a screen reader can read every week). It shows the same weeks
- * and series as the chart, and is built only when opened: the whole backtest is 456 weeks.
- */
+/** The chart's numbers as a table, under it. */
 export default function WeeksTable({ weeks, models, layers, rangeName, periodName, simulated }: WeeksTableProps) {
   const [open, setOpen] = useState(false)
   const range = layers.range && models.includes(RANGE_MODEL)

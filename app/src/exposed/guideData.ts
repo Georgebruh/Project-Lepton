@@ -3,17 +3,7 @@ import { titleCase } from '../map/plan.ts'
 import type { BarangayShapes, CentersFile } from '../map/planData.ts'
 import { shapeMiddle, shapeParts, type LonLat } from './nearest.ts'
 
-/**
- * F8: the two files the guide's last step reads, written by F2 (python -m src.app_data), and
- * what the guide keeps of them:
- *
- *   centers.json           the health centers' names, barangays and coordinates (A10's registry)
- *   qc_barangays.geojson   the 142 barangays' outlines: for the map, for the barangay the reader
- *                          is in, and for the barangay search
- *
- * They are fetched when the reader asks for the nearest health centers, and kept. They hold
- * nothing about the reader, so fetching them tells the server nothing either.
- */
+/** The two files the guide's last step reads. */
 
 /** A health center the guide can send a reader to. */
 export type GuideCenter = {
@@ -39,13 +29,7 @@ export type GuideBarangay = {
 
 export type GuideData = { centers: GuideCenter[]; barangays: GuideBarangay[] }
 
-/**
- * What the guide keeps of F2's two files. The health centers are the 66 that C7 sends stock to
- * (`left_out` empty), the plan's "66 health centers": the registry's second entry for Bago
- * Bantay Health Center has no coordinates (its first entry, with them, is listed), and Villamor
- * Barangay Health Station's point lies 11 km from the barangay it is registered in, so the guide
- * sends nobody there. Stops with an error if a listed center has no coordinates.
- */
+/** What the guide keeps of the two files. */
 export function guideData(centers: CentersFile, shapes: BarangayShapes): GuideData {
   const listed = centers.centers.filter((center) => center.left_out === null)
   const guideCenters = listed.map((center) => {
@@ -68,11 +52,7 @@ export function guideData(centers: CentersFile, shapes: BarangayShapes): GuideDa
   return { centers: guideCenters, barangays }
 }
 
-/**
- * Fetches one of F2's files and reads its JSON; a missing file (404) stops with an error. The
- * same as fetchJson in map/mapData.ts, which the router loads only with the map: imported here,
- * it would come along with every page (Vite warns of that).
- */
+/** Fetches one of the files and reads its JSON; a missing file (404) stops with an error. */
 async function fetchFile<T>(path: string): Promise<T> {
   const res = await fetch(path)
   if (!res.ok) {
@@ -83,10 +63,7 @@ async function fetchFile<T>(path: string): Promise<T> {
 
 let guideFiles: Promise<GuideData> | null = null
 
-/**
- * The guide's files, fetched together the first time the reader asks for the nearest health
- * centers, and kept for the next time. A failed fetch is tried again then.
- */
+/** The guide's files, fetched together the first time the reader asks for the nearest health centers. */
 export function loadGuideData(): Promise<GuideData> {
   if (!guideFiles) {
     guideFiles = Promise.all([

@@ -1,10 +1,10 @@
-/* F4: the date picker (DatePicker.tsx), Figma node 55:378. The date is Label/UI (.label-ui). */
+/* The date picker (DatePicker.tsx). The date is Label/UI (.label-ui). */
 .date-picker {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  /* Figma's 6 px by 10 px, between the spacing steps */
+  /* 6 px by 10 px, between the spacing steps */
   padding: 6px 10px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);

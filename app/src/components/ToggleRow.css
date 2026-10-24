@@ -1,4 +1,4 @@
-/* F3: toggle rows (ToggleRow.tsx), Figma node 3:94. The label is Body/M (.body-m). */
+/* Toggle rows (ToggleRow.tsx). The label is Body/M (.body-m). */
 .toggle-row {
   display: flex;
   align-items: center;
@@ -26,7 +26,7 @@
   background: var(--toggle-row-color, var(--color-accent-primary));
 }
 
-/* F9: a row given its series' color keeps it when off too (Figma's Compare models frame) */
+/* A row given its series' color keeps it when off too */
 .toggle-row-colored .toggle-row-swatch {
   background: var(--toggle-row-color);
 }

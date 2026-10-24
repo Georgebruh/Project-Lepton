@@ -23,7 +23,7 @@ import type { CentersFile, Storm, StormRun, StormsFile } from './planData.ts'
 import { MAP_PATHS, PLAN_PARAMS } from './routes.ts'
 import './PlanPanel.css'
 
-/** How many health centers the panel lists (Figma: "top 4 of 66"); the stock list has them all. */
+/** How many health centers the panel lists; the stock list has them all. */
 const TOP_CENTERS = 4
 
 /** The byte-order mark, U+FEFF: at the start of a file it tells a spreadsheet the file is UTF-8. */
@@ -34,15 +34,15 @@ type PlanPanelProps = {
   city: string
   storms: StormsFile
   centers: CentersFile
-  /** The storm (or F16, the day's plan) shown, or undefined: then the panel lists the storms to choose from. */
+  /** The storm shown, or undefined: then the panel lists the storms to choose from. */
   storm: Storm | undefined
   /** Its forecast the reader picked: 1 day ahead unless the address says otherwise. */
   run: StormRun | undefined
   /** The chosen date, YYYY-MM-DD: a storm opened from the list goes back to it. */
   date: string
-  /** Whether the chosen date has a plan, a storm's or (F16) its own (when the reader asked for the list, it may). */
+  /** Whether the chosen date has a plan, a storm's or its own. */
   planOnDate: boolean
-  /** F16: whether the chosen date's daily plans are still on their way. */
+  /** Whether the chosen date's daily plans are still on their way. */
   loading: boolean
   /** How many barangays the map has (142), for "72 of 142". */
   barangays: number
@@ -50,22 +50,7 @@ type PlanPanelProps = {
   onLead: (days: number) => void
 }
 
-/**
- * F5: the city panel's prophylaxis plan, Figma frame 3's "Panel" (node 56:459): the forecast's
- * rain, with the lead chips that switch between the forecasts made 1, 2 and 3 days ahead; the
- * barangays flagged, residents exposed and Quezon City's stock; the 4 health centers needing the
- * most doxycycline; and Export stock list, every health center's need as a CSV file. Every number
- * is the chosen forecast's in storms.json and centers.json, for a 1-day flood with w = 0.5
- * (plan.ts, PLAN_FLOOD).
- *
- * A date without a storm forecast lists the storms to choose from. While a storm is shown, "All
- * storms" (beside the heading; not in Figma) goes back to that list.
- *
- * F16: every date has a plan, the storm's on a storm's dates and the day's own on the others, so
- * the list shows only when the reader asks for it, with a link back to the date's plan. A day
- * before ECMWF's archive has no forecast to choose: its plan is the rain that fell. Most days'
- * plans are zero: too little rain to flood, so no stock.
- */
+/** The city panel's prophylaxis plan. */
 export default function PlanPanel(props: PlanPanelProps) {
   const { city, storms, centers, storm, run, date, planOnDate, loading, barangays, onLead } = props
   const { search } = useLocation()
@@ -74,7 +59,7 @@ export default function PlanPanel(props: PlanPanelProps) {
       <PanelModes mode="prophylaxis" />
       <div className="plan-panel-heading">
         <div className="plan-panel-title">
-          {/* F11: takes the keyboard when the plan opens (MapLayout) */}
+          {/* Takes the keyboard when the plan opens (MapLayout) */}
           <h2 className="plan-panel-city heading-l" tabIndex={-1}>
             {city}
           </h2>
@@ -101,8 +86,7 @@ export default function PlanPanel(props: PlanPanelProps) {
       ) : (
         <StormList storms={storms.storms} date={date} planOnDate={planOnDate} />
       )}
-      {/* Read out when the reader picks another forecast or date (Figma has no text here). F11:
-          always in the page, so the storm list is read out too. */}
+      {/* Read out when the reader picks another forecast or date. */}
       <p className="visually-hidden" aria-live="polite">
         {storm && run
           ? planWords(storm, run, barangays)
@@ -114,7 +98,7 @@ export default function PlanPanel(props: PlanPanelProps) {
   )
 }
 
-/** A forecast's totals in one sentence, as a screen reader hears them when the forecast or date changes. */
+/** A forecast's totals in one sentence. */
 function planWords(storm: Storm, run: StormRun, barangays: number): string {
   const flood = planFlood(storm, run)
   const made = run.lead_days === null ? 'the rain that fell' : `forecast ${leadWords(run.lead_days)}`
@@ -135,11 +119,7 @@ type PlanNumbersProps = {
   onLead: (days: number) => void
 }
 
-/**
- * The panel's numbers for one forecast: its rain, the totals, the top health centers and the
- * export. F16: for the rain that fell (a day before ECMWF's archive) the rain card says so, with no
- * lead chips.
- */
+/** The panel's numbers for one forecast: its rain, the totals, the top health centers and the export. */
 function PlanNumbers({ storms, centers, storm, run, barangays, onLead }: PlanNumbersProps) {
   const forecast = run.lead_days !== null
   const flood = planFlood(storm, run)
@@ -254,7 +234,7 @@ type TotalProps = {
   label: string
 }
 
-/** One of the panel's totals: the number in Data/L over what it counts (Figma "Totals", node 56:693). */
+/** One of the panel's totals: the number in Data/L over what it counts. */
 function Total({ value, label }: TotalProps) {
   return (
     <p className="plan-panel-total">
@@ -272,12 +252,7 @@ type StormListProps = {
   planOnDate: boolean
 }
 
-/**
- * The storms with archived forecasts to choose from (the app plan, F5): on a date without a
- * plan, which the panel says, or after "All storms". Each opens at the date its 1-day-ahead
- * forecast's rain starts. Figma has no frame for it; it uses the panel's own styles. F16: when the
- * date has a plan, a link above the storms goes back to it.
- */
+/** The storms with archived forecasts to choose from. */
 function StormList({ storms, date, planOnDate }: StormListProps) {
   const { search } = useLocation()
   return (
@@ -310,11 +285,7 @@ function StormList({ storms, date, planOnDate }: StormListProps) {
   )
 }
 
-/**
- * The query of a link that opens a storm from the list: the storm's date, its forecast 1 day
- * ahead, and the date to go back to when the reader leaves the plan (?from=, routes.ts): the
- * chosen date now, unless an earlier storm from the list already set it.
- */
+/** The query of a link that opens a storm from the list. */
 function stormSearch(search: string, storm: Storm, date: string): string {
   const params = new URLSearchParams(search)
   if (!params.has(PLAN_PARAMS.from)) {
@@ -334,17 +305,14 @@ function listSearch(search: string): string {
   return `?${params}`
 }
 
-/** F16: the query of the link from the list back to the date's plan: the same date, without ?storms=all. */
+/** The query of the link from the list back to the date's plan: the same date, without ?storms=all. */
 function planSearch(search: string): string {
   const params = new URLSearchParams(search)
   params.delete(PLAN_PARAMS.list)
   return `?${params}`
 }
 
-/**
- * Saves text as a file, as a link with `download` does. The file starts with a byte-order mark,
- * so a spreadsheet reads it as UTF-8 (the ñ in Doña Imelda).
- */
+/** Saves text as a file, as a link with `download` does. */
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([BYTE_ORDER_MARK, text], { type: 'text/csv;charset=utf-8' }))
   const link = document.createElement('a')

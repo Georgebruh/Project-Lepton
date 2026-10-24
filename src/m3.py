@@ -1,34 +1,4 @@
-"""Reproduce M3, the Prophet + XGBoost benchmark, on the paper's own data (task B3).
-
-Latigay & Gonzaga (2026) forecast national weekly leptospirosis (Parreño 2023,
-2019-2023) with a hybrid model, and report its errors in their Tables I-III.
-Before M3 is ported to Quezon City (B9), this script checks that our copy of
-their method gets the same errors on the same data. Every setting comes from the paper.
-
-Steps:
-  1. Gap filling. mu_w = mean count of ISO week w over every year except 2020.
-     A missing week during a COVID-19 lockdown gets 0.5 x mu_w; a missing week in
-     June-November gets 1.0 x mu_w; what is still missing is filled by a straight
-     line between its neighbours (linear interpolation).
-  2. Prophet on the filled series: multiplicative seasonality, changepoint prior
-     scale 0.55, weekly and yearly seasonality on, no holidays.
-  3. XGBoost learns Prophet's in-sample error r = y - yhat from two features,
-     Prophet's yhat and the ISO week number.
-  4. Hybrid forecast = max(0, yhat + r_hat).
-  5. Rolling origin: train on the first 115 weeks, forecast the next 2, move the
-     origin 16 weeks, train on everything so far, repeat: 9 folds, 18 forecast weeks.
-  6. Scores over those 18 weeks (Table I) and over the weeks above 186 cases
-     (Table II): MAE, RMSE, SMAPE and bias; the Diebold-Mariano test of Hybrid vs
-     Prophet (Table III). Seasonal naive (the value 52 weeks earlier) is scored
-     too: it has no fitting, so matching it shows we score the same weeks.
-
-Readings the paper leaves open are in config.py (M3_LOCKDOWNS, M3_DROP_WEEK_53);
-results and the reading of them are in results/m3_reproduction.md.
-
-Run from the repository root:
-    python -m src.m3              # the four runs, beside Tables I-III
-    python -m src.m3 --diagnose   # why the hybrid misses: XGBoost settings and a leakage check
-"""
+"""Reproduce M3, the Prophet + XGBoost benchmark, on the paper's own data."""
 
 import itertools
 import json
@@ -51,16 +21,10 @@ COVID_YEAR = 2020   # left out of the seasonal baseline (the paper's rule)
 MODELS = ("hybrid", "prophet", "snaive")
 
 
-# ---------------------------------------------------------------------------
 # 1. Data and gap filling
-# ---------------------------------------------------------------------------
 
 def load_series(drop_week_53=config.M3_DROP_WEEK_53):
-    """A9's national series: ds (the ISO Monday), iso_year, iso_week, cases (empty if missing).
-
-    drop_week_53 removes ISO 2020 week 53, which has no row in the Mendeley file;
-    see config.M3_DROP_WEEK_53.
-    """
+    """The national series: ds (the ISO Monday), iso_year, iso_week, cases (empty if missing)."""
     df = pd.read_csv(config.PARRENO_WEEKLY, parse_dates=["week_start"])
     df = df.rename(columns={"week_start": "ds"})
     if drop_week_53:
@@ -72,10 +36,7 @@ def load_series(drop_week_53=config.M3_DROP_WEEK_53):
 
 
 def seasonal_baseline(df):
-    """mu_w = mean count of ISO week w over every year except 2020, as {w: mu_w}.
-
-    Week 53 occurs only in 2020, so it borrows week 52's mean.
-    """
+    """mu_w = mean count of ISO week w over every year except 2020, as {w: mu_w}."""
     mu = df[df["iso_year"] != COVID_YEAR].groupby("iso_week")["cases"].mean()
     mu[53] = mu[52]
     return mu
@@ -87,12 +48,7 @@ def in_windows(day, windows):
 
 
 def gap_rule(thursday, mu_w, lockdowns):
-    """B3's first two gap rules for one missing week, judged by its Thursday: (value, rule).
-
-    In a lockdown -> (0.5 x mu_w, "lockdown"); else June-November -> (1.0 x mu_w,
-    "monsoon"); else (NaN, ""), left for the straight line. B9 (src/m3_port.py) uses
-    this too, so a change here changes both.
-    """
+    """The first two gap rules for one missing week, judged by its Thursday: (value, rule)."""
     if in_windows(thursday, lockdowns):
         return config.M3_COVID_GAP_FACTOR * mu_w, "lockdown"
     first_month, last_month = config.M3_RAINY_MONTHS
@@ -102,13 +58,7 @@ def gap_rule(thursday, mu_w, lockdowns):
 
 
 def fill_gaps(df, lockdowns=config.M3_LOCKDOWNS):
-    """Add y (the filled series) and fill_rule (how each week got its value).
-
-    In plain words, for each missing week, judged by its Thursday:
-      in a lockdown         -> 0.5 x mu_w
-      else June-November    -> 1.0 x mu_w
-      else                  -> straight line between the nearest filled neighbours
-    """
+    """Add y (the filled series) and fill_rule (how each week got its value)."""
     mu = seasonal_baseline(df)
     out = df.copy()
     out["y"] = out["cases"]
@@ -124,9 +74,7 @@ def fill_gaps(df, lockdowns=config.M3_LOCKDOWNS):
     return out
 
 
-# ---------------------------------------------------------------------------
 # 2-3. Prophet and XGBoost
-# ---------------------------------------------------------------------------
 
 def fit_prophet(train):
     """Prophet with the paper's settings, fitted on columns ds and y."""
@@ -144,11 +92,7 @@ def fit_prophet(train):
 
 
 def fit_xgboost(features, target, xgb_params, rounds=config.M3_XGB_ROUNDS):
-    """XGBoost regression trees (squared error) with `rounds` boosting rounds.
-
-    Uses xgboost's own xgb.train, so scikit-learn is not needed. Settings not in
-    xgb_params keep xgboost's defaults (learning rate 0.3, max depth 6, ...).
-    """
+    """XGBoost regression trees (squared error) with `rounds` boosting rounds."""
     return xgb.train(dict(xgb_params), xgb.DMatrix(features, label=target), num_boost_round=rounds)
 
 
@@ -162,15 +106,10 @@ def xgb_settings(xgb_params):
             **{key: tree[key] for key in keep if key in tree}}
 
 
-# ---------------------------------------------------------------------------
 # 4-5. Rolling origin and the hybrid forecast
-# ---------------------------------------------------------------------------
 
 def fold_rows():
-    """[(training rows, forecast rows)] for the 9 folds, as row positions.
-
-    Fold k trains on rows 0 .. 115 + 16k - 1 and forecasts the next 2 rows.
-    """
+    """[(training rows, forecast rows)] for the 9 folds, as row positions."""
     folds = []
     for k in range(config.M3_FOLDS):
         origin = config.M3_FIRST_WINDOW + config.M3_STEP * k
@@ -179,10 +118,7 @@ def fold_rows():
 
 
 def prophet_folds(series):
-    """Fit Prophet once per fold; keep train, test and Prophet's yhat on both.
-
-    XGBoost runs reuse these fits, since Prophet does not depend on XGBoost's settings.
-    """
+    """Fit Prophet once per fold; keep train, test and Prophet's yhat on both."""
     folds = []
     for k, (train_rows, test_rows) in enumerate(fold_rows()):
         train, test = series.iloc[train_rows], series.iloc[test_rows]
@@ -199,12 +135,7 @@ def prophet_folds(series):
 
 
 def hybrid_forecast(fold, xgb_params, rounds=config.M3_XGB_ROUNDS, leak=False):
-    """max(0, yhat + r_hat) for the fold's forecast weeks.
-
-    XGBoost target: r = y - yhat on the training weeks (Prophet's in-sample error);
-    features: [yhat, ISO week]. leak=True is a diagnostic only: XGBoost is also
-    trained on the forecast weeks' own errors, which a real forecast cannot know.
-    """
+    """max(0, yhat + r_hat) for the fold's forecast weeks."""
     train, test = fold["train"], fold["test"]
     features = np.column_stack([fold["yhat_train"], train["iso_week"]])
     target = train["y"].to_numpy() - fold["yhat_train"]
@@ -231,15 +162,10 @@ def forecasts_table(folds, xgb_params):
     return pd.concat(rows, ignore_index=True)
 
 
-# ---------------------------------------------------------------------------
 # 6. Scores
-# ---------------------------------------------------------------------------
 
 def scores(actual, forecast):
-    """MAE, RMSE, SMAPE (0-200 scale) and bias = mean(forecast - actual).
-
-    SMAPE = mean of 2|F - A| / (|A| + |F|), times 100.
-    """
+    """MAE, RMSE, SMAPE (0-200 scale) and bias = mean(forecast - actual)."""
     actual, forecast = np.asarray(actual, float), np.asarray(forecast, float)
     error = forecast - actual
     return {
@@ -251,12 +177,7 @@ def scores(actual, forecast):
 
 
 def dm_test(actual, forecast_a, forecast_b):
-    """Diebold-Mariano test, absolute errors, h = 1: is model a's error smaller than b's?
-
-    d = |e_a| - |e_b|; DM = mean(d) / (sd(d) / sqrt(n)); one-sided p from a t
-    distribution with n - 1 degrees of freedom. With h = 1 this equals R's
-    forecast::dm.test (with its small-sample correction) and a paired t test.
-    """
+    """Diebold-Mariano test, absolute errors, h = 1: is model a's error smaller than b's?"""
     d = np.abs(np.asarray(forecast_a) - actual) - np.abs(np.asarray(forecast_b) - actual)
     n = len(d)
     stat = d.mean() / (d.std(ddof=1) / np.sqrt(n))
@@ -278,12 +199,10 @@ def score_table(forecasts):
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
 # Runs
-# ---------------------------------------------------------------------------
 
 def runs():
-    """The runs to make: name -> (drop_week_53, lockdowns, xgb_params). "main" first."""
+    """The runs to make: name -> (drop_week_53, lockdowns, xgb_params)."""
     drop = config.M3_DROP_WEEK_53
     return {
         "main": (drop, config.M3_LOCKDOWNS, config.M3_XGB_PARAMS),
@@ -333,10 +252,7 @@ def main():
 
 
 def diagnose():
-    """Why the hybrid misses: every XGBoost setting in the config grid, then a leakage check.
-
-    On the main run's series and Prophet fits. Writes config.M3_DIAGNOSTICS.
-    """
+    """Why the hybrid misses: every XGBoost setting in the config grid, then a leakage check."""
     series = fill_gaps(load_series(config.M3_DROP_WEEK_53), config.M3_LOCKDOWNS)
     folds = prophet_folds(series)
     actual = np.concatenate([fold["test"]["y"].to_numpy() for fold in folds])

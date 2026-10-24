@@ -1,8 +1,4 @@
-/*
- * F13: the Layers panel (MapLayers.tsx), Figma "Layers panel": 320 px wide, opening up from the
- * Layers button, just left of the map buttons, and as tall as the map allows (it scrolls past
- * that). MapLayout.css moves it with the city panel and makes it a sheet on a phone.
- */
+/* The Layers panel (MapLayers.tsx). */
 .map-layers {
   position: absolute;
   right: calc(var(--space-5) + var(--map-buttons-width) + var(--space-3));
@@ -18,7 +14,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
-  /* the tooltips' shadow: 0 6 20, the dark text color at 14% */
+  /* The tooltips' shadow: 0 6 20, the dark text color at 14% */
   box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
   animation: map-layers-in var(--map-hover) linear;
 }
@@ -62,7 +58,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The base maps: three Figma "Base map option" cards side by side */
+/* The base maps: three cards side by side */
 .map-layers-bases {
   display: flex;
   gap: var(--space-2);
@@ -82,7 +78,7 @@
   cursor: pointer;
 }
 
-/* The chosen one (Figma's Selected: a 2 px accent border, drawn inside so nothing moves) */
+/* The chosen one */
 .map-layers-base:has(:checked) {
   border-color: var(--color-accent-primary);
   background: var(--color-accent-subtle);
@@ -124,24 +120,23 @@
   background: linear-gradient(135deg, var(--color-border-strong), var(--color-map-land) 50%, var(--color-bg-raised));
 }
 
-/* Flood hazard: the switch, the map's chips and what they mean (Figma's 8 px apart) */
+/* Flood hazard: the switch, the map's chips and what they mean */
 .map-layers-flood {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-/* As in Figma, an outlined chip's 1 px border adds to its size (24 px tall, the selected one 22),
-   so the chips line up at the top */
+/* An outlined chip's 1 px border adds to its size. */
 .map-layers-chips {
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
 }
 
-/* A chip (Figma "Chip"): outlined; the chosen one dark, with light text */
+/* A chip: outlined; the chosen one dark, with light text */
 .map-layers-chip {
-  /* Figma's 3 px by 8 px, between the spacing steps */
+  /* 3 px by 8 px, between the spacing steps */
   padding: 3px var(--space-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -177,7 +172,7 @@
   cursor: pointer;
 }
 
-/* Weather: Figma's "Radio row", a 16 px round button and a label with a caption, 6 px above and below */
+/* Weather: a 16 px round button and a label with a caption, 6 px above and below */
 .map-layers-radio {
   display: flex;
   align-items: flex-start;
@@ -187,12 +182,12 @@
   cursor: pointer;
 }
 
-/* The round button: a 1.5 px outline, or a 5 px accent ring when chosen (Figma's Off and On) */
+/* The round button: a 1.5 px outline, or a 5 px accent ring when chosen */
 .map-layers-radio-input {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  /* the label's first line is 22 px tall: the button sits in its middle */
+  /* The label's first line is 22 px tall: the button sits in its middle */
   margin: 3px 0 0;
   border: 1.5px solid var(--color-border-strong);
   border-radius: 50%;

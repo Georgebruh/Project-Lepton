@@ -11,14 +11,7 @@ type MapDataModesProps = {
   realEnd: string
 }
 
-/**
- * F14: the map's two data modes, in its top right corner: a pair of buttons, Simulation | Real
- * data (the address keeps the choice, ?data=real). QCESD's counts stop weeks before today, so
- * Simulation shows LEPTON as it would run now: the real counts, made-up counts since (amber
- * "Simulated" badge on every one), and next week's forecast made with today's ECMWF rain forecast
- * (src/app_simulation.py). Real data shows QCESD's counts and B10's forecasts only. A line under
- * the buttons says what the mode shows.
- */
+/** The map's two data modes, in its top right corner. */
 export default function MapDataModes({ mode, onMode, simulation, realEnd }: MapDataModesProps) {
   const shown = simulation ? mode : 'real'
   return (

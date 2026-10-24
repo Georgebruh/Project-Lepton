@@ -1,4 +1,4 @@
-/* F13: the live weather layer's timeline (WeatherTimeline.tsx), Figma "Weather timeline". */
+/* The live weather layer's timeline (WeatherTimeline.tsx). */
 .weather-timeline {
   display: flex;
   align-items: center;
@@ -23,7 +23,7 @@
   cursor: pointer;
 }
 
-/* The previous and next frame: 34 px squares without a border, 2 px apart (Figma) */
+/* The previous and next frame: 34 px squares without a border, 2 px apart */
 .weather-timeline-steps {
   display: flex;
   flex-shrink: 0;
@@ -40,8 +40,7 @@
   cursor: pointer;
 }
 
-/* The slider: a 4 px track, accent up to the frame shown (--weather-timeline-played), and a
-   16 px round thumb with a 2 px accent ring */
+/* The slider: a 4 px track, accent up to the frame shown. */
 .weather-timeline-slider {
   flex: 1 1 240px;
   min-width: 60px;
@@ -123,7 +122,7 @@
   }
 }
 
-/* F11's phone width: the slider steps through the frames, so the step buttons and the frame count go */
+/* The phone width: the slider steps through the frames, so the step buttons and the frame count go */
 @media (max-width: 599px) {
   .weather-timeline-steps,
   .weather-timeline-age {

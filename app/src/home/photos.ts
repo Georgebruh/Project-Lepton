@@ -7,14 +7,7 @@ import hero2880 from '../assets/home/hero-2880.webp'
 import wading1200 from '../assets/home/wading-1200.webp'
 import wading800 from '../assets/home/wading-800.webp'
 
-/**
- * F6: Home's four photos, real and licensed, in place of the AI placeholders in the Figma frame
- * (the Design notes: "Use photos you have rights to"; check U7: no AI image ships). All four are
- * from Wikimedia Commons under Creative Commons licenses that allow this use with credit: the
- * footer credits each (check U8), and says they were cropped and resized
- * (make them again from the originals at `source`, keeping these sizes: the hero 2880 × 1360
- * and 1440 × 680, the others 4:3 at 1200 × 900 and 800 × 600, as WebP).
- */
+/** Home's four photos, real and licensed. */
 
 /** Who made a photo and how it may be used. */
 export type PhotoCredit = {
@@ -43,7 +36,7 @@ const CC_BY_2 = { license: 'CC BY 2.0', licenseUrl: 'https://creativecommons.org
 const CC_BY_SA_4 = { license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/' }
 const AUSAID = 'AusAID (Australian Department of Foreign Affairs and Trade)'
 
-/** The hero: a flooded Metro Manila street with residents wading (Design notes), fairly dark under the shade. */
+/** The hero: a flooded Metro Manila street with residents wading, fairly dark under the shade. */
 export const HERO_PHOTO: Photo = {
   src: hero1440,
   srcSet: `${hero1440} 1440w, ${hero2880} 2880w`,
@@ -59,10 +52,10 @@ export const HERO_PHOTO: Photo = {
   },
 }
 
-/** A photo in the row under "Why it matters", with its line of text under it (Figma's captions). */
+/** A photo in the row under "Why it matters", with its line of text under it. */
 export type StripPhoto = Photo & { caption: string }
 
-/** The row of three: wading, a barangay under water, clearing mud (Design notes). */
+/** The row of three: wading, a barangay under water, clearing mud. */
 export const STRIP_PHOTOS: StripPhoto[] = [
   {
     src: wading800,
@@ -84,7 +77,7 @@ export const STRIP_PHOTOS: StripPhoto[] = [
     width: 800,
     height: 600,
     alt: 'E. Rodriguez Sr. Avenue in Damayang Lagi, Quezon City, under floodwater after a heavy downpour in September 2023.',
-    // Figma says "after a typhoon"; this flood came from a downpour, so the line says so
+    // Says "after a typhoon"; this flood came from a downpour, so the line says so
     caption: 'A Quezon City barangay under water after heavy rain',
     credit: {
       title: 'Damayang Lagi, Quezon City, September 2023',

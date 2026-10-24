@@ -12,10 +12,7 @@ function weeksBetween(from: string, to: string): number {
   return Math.round((Date.parse(weekStart(to)) - Date.parse(weekStart(from))) / (7 * DAY_MS))
 }
 
-/**
- * The years marked under the slider, and where each starts on it: the week holding 1 January,
- * as a share of the slider (0 at the first week, 1 at the last).
- */
+/** The years marked under the slider, and where each starts on it. */
 function yearMarks(first: string, last: string, steps: number): { year: number; at: number }[] {
   const marks = []
   for (let year = Number(first.slice(0, 4)); year <= Number(last.slice(0, 4)); year++) {
@@ -38,20 +35,12 @@ type MapTimelineProps = {
   onChange: (day: string) => void
 }
 
-/**
- * F14: the map's timeline, at the bottom in the middle of the map (it was F4's date picker in the
- * breadcrumb bar). On top, in the middle, the date picker for a day between the previous and next
- * week's buttons, and under it the week the forecast is for. Under them, a slider over every week
- * the map has forecasts for, with each year marked under it, so a reader sees where on it they
- * are. In Simulation mode the slider's simulated weeks are tinted amber, so a reader sees where
- * QCESD's counts end. The slider is a native range input: the arrow keys move it a week, and
- * screen readers hear each date.
- */
+/** The map's timeline, at the bottom in the middle of the map. */
 export default function MapTimeline({ date, first, last, forecast, onChange }: MapTimelineProps) {
   const steps = Math.max(1, weeksBetween(first, last))
   const index = weeksBetween(first, date)
   const target = forecastFor(forecast, date)
-  // The forecast week from which the counts behind the forecasts are made up (the first simulated target's week before)
+  // The forecast week from which the counts behind the forecasts are made up.
   const firstSimulated = forecast.weeks.find((week) => week.simulated)
   const simulatedFrom = firstSimulated
     ? weeksBetween(first, addDays(firstSimulated.start, -7 * forecast.horizon_weeks)) / steps

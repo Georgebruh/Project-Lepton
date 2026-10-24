@@ -1,8 +1,4 @@
-/*
- * F8: one step of the exposure guide (GuideStep.tsx), Figma's phone frames 39:301, 39:361 and
- * 39:411. Figma's 20 px sides, 14 px and 10 px gaps and 28 px under the footer's buttons fall
- * between the spacing steps, so they are written in px here, as in Figma.
- */
+/* One step of the exposure guide (GuideStep.tsx). */
 .guide-step {
   display: flex;
   flex-direction: column;
@@ -65,7 +61,7 @@
   gap: var(--space-1);
 }
 
-/* Each part of the progress bar: grey until its step is reached, then teal (Figma's 1 px corners) */
+/* Each part of the progress bar: grey until its step is reached, then teal */
 .guide-step-part {
   flex: 1;
   height: 4px;

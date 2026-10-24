@@ -1,33 +1,4 @@
-"""Barangay boundaries joined to the 2024 and 2020 census tables (task A5).
-
-Three sources, one row per Quezon City barangay (142):
-
-1. HDX boundaries (COD-AB v03): one polygon per barangay, code `adm4_pcode`.
-2. HDX 2020 census by single-year age and sex: two codes per barangay,
-   `BgyCode_new` (the official 10-digit PSGC) and `BgyCode_old` (the old 9-digit one).
-3. PSA 2024 census, barangay totals: names only, no codes.
-
-How the codes line up, using Alicia as the example:
-
-    HDX boundaries   PH1307404001   region 13, province 074, city 04, barangay 001
-    2020 old code    PH137404001    the same code with the province as 2 digits (74)
-    2020 new code    PH1381300001   the official 10-digit PSGC, which we call `psgc`
-
-So boundaries -> 2020 is an exact code join (drop the "0" in position 5 of the HDX
-code). The 2024 table has no codes, so it joins by name after both names are put in
-a plain form (no accents, punctuation, spaces or bracketed old names). As a second
-check, PSA lists barangays in code order, so the n-th 2024 row must be barangay n.
-
-Every join must match all 142 barangays one to one, and the totals must equal the
-PSA city totals in config.CENSUS_POP_QC; otherwise the script stops.
-
-Outputs (data/clean/):
-    barangays_qc.gpkg   polygons (EPSG:4326) with psgc, names, pop_2020, pop_2024
-    census_qc.csv       the same table without the shapes
-    age_sex_2020_qc.csv long table: psgc, sex (M/F), age (0-80, 80 = 80 and over), pop
-
-Run from the repository root:  python -m src.census
-"""
+"""Barangay boundaries joined to the 2024 and 2020 census tables."""
 
 import re
 import unicodedata
@@ -39,22 +10,14 @@ import config
 
 
 def name_key(name):
-    """A barangay name in a plain form for matching across tables.
-
-    Drops a bracketed old name, accents (Ñ -> N), case, and every character that
-    is not a letter or digit, so "N. S. Amoranto (Gintong Silahis)" and
-    "N.S. Amoranto" both become "nsamoranto".
-    """
+    """A barangay name in a plain form for matching across tables."""
     name = re.sub(r"\(.*?\)", "", str(name))
     name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
 def hdx_to_old_code(pcode):
-    """HDX boundary code -> old 9-digit PSGC: PH1307404001 -> PH137404001.
-
-    HDX pads the 2-digit province to 3 digits with a leading 0 (position 5).
-    """
+    """HDX boundary code -> old 9-digit PSGC: PH1307404001 -> PH137404001."""
     if len(pcode) != 12 or pcode[4] != "0":
         raise ValueError(f"unexpected HDX code {pcode}")
     return pcode[:4] + pcode[5:]
@@ -73,22 +36,14 @@ def read_boundaries():
 
 
 def read_census_2020():
-    """QC rows of the HDX 2020 age-sex table (all 250 columns), keyed by `psgc`.
-
-    Reads the whole national sheet, which takes a minute or two.
-    """
+    """QC rows of the HDX 2020 age-sex table (all 250 columns), keyed by `psgc`."""
     df = pd.read_excel(config.CENSUS_2020_AGE_XLSX, dtype={"BgyCode_new": str, "BgyCode_old": str}).copy()
     df["psgc"] = df["BgyCode_new"].str.removeprefix("PH")
     return df[df["psgc"].str.startswith(config.QC_PSGC_PREFIX)].reset_index(drop=True)
 
 
 def read_census_2024():
-    """QC barangay totals from the PSA 2024 workbook, in PSA's order.
-
-    Returns (table with columns name_2024 and pop_2024, the city total row's value).
-    In the sheet, names are in column B and totals in column D; the first such
-    row is the city itself.
-    """
+    """QC barangay totals from the PSA 2024 workbook, in PSA's order."""
     sheet = pd.read_excel(config.CENSUS_2024_XLSX, sheet_name=config.QC_SHEET_2024, header=None)
     rows = sheet[sheet[1].notna() & sheet[3].notna()]
     city_total = int(rows[3].iloc[0])
@@ -110,12 +65,7 @@ def read_city_totals():
 
 
 def age_sex_long(census_2020):
-    """The 2020 single-year columns as a long table: psgc, sex, age, pop.
-
-    Column names look like "Under 1_M", "37_F", "80 and Over_M". "Under 1" is age 0;
-    "80 and Over" is stored as age 80. Checks that the ages add up to each
-    barangay's male and female totals, and males plus females to Total_MF.
-    """
+    """The 2020 single-year columns as a long table: psgc, sex, age, pop."""
     parts = []
     for sex in ("M", "F"):
         cols = [c for c in census_2020.columns

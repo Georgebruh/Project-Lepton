@@ -14,13 +14,7 @@ type ExposureCheckProps = {
   titleRef: Ref<HTMLHeadingElement>
 }
 
-/**
- * F8: step 1 of the guide, Figma frame "1 Exposure check" (39:301): five questions, each a row
- * of answers to choose one from. Each row is a group of radio buttons drawn as Figma's answer
- * chips, so the arrow keys move between answers and a screen reader reads "1 of 4". "See what to
- * do" opens the result once all five are answered; until then it marks the questions left and
- * moves to the first.
- */
+/** Step 1 of the guide: five questions, each a row of answers to choose one from. */
 export default function ExposureCheck({ answers, onAnswer, onDone, onBack, titleRef }: ExposureCheckProps) {
   const id = useId()
   // Whether the reader tried to go on with questions unanswered: only then are they marked
@@ -30,8 +24,7 @@ export default function ExposureCheck({ answers, onAnswer, onDone, onBack, title
   function seeWhatToDo() {
     if (missing.length > 0) {
       setTried(true)
-      // Bring the first question left into the middle of the screen, clear of the footer, and
-      // move the keyboard to its first answer
+      // Bring the first question left into the middle of the screen.
       document.getElementById(`${id}-${missing[0]}-group`)?.scrollIntoView({ block: 'center' })
       document.getElementById(`${id}-${missing[0]}-0`)?.focus({ preventScroll: true })
       return

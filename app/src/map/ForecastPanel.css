@@ -1,8 +1,8 @@
-/* F4: the city panel's case forecast (ForecastPanel.tsx), Figma node 53:316. */
+/* The city panel's case forecast (ForecastPanel.tsx). */
 .forecast-panel {
   display: flex;
   flex-direction: column;
-  /* Figma's 18 px between the sections and 22 px top and bottom, between the spacing steps */
+  /* 18 px between the sections and 22 px top and bottom, between the spacing steps */
   gap: 18px;
   min-height: 100%;
   padding: 22px var(--space-5);
@@ -15,7 +15,7 @@
   color: var(--color-text-primary);
 }
 
-/* F11: the title takes focus when the city opens, for screen readers; it needs no ring */
+/* The title takes focus when the city opens, for screen readers; it needs no ring */
 .forecast-panel-title:focus {
   outline: none;
 }
@@ -40,7 +40,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  /* Figma's 10 px, between the spacing steps */
+  /* 10 px, between the spacing steps */
   gap: 10px;
   color: var(--color-text-primary);
 }
@@ -58,7 +58,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  /* Figma's 14 px, between the spacing steps */
+  /* 14 px, between the spacing steps */
   padding: 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);

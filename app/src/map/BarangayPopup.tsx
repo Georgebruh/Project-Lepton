@@ -13,17 +13,17 @@ import { placeTooltip, type MapPointer } from './tooltip.ts'
 import './BarangayTooltip.css'
 import './BarangayPopup.css'
 
-/** The pop-up's width in px, the tooltip's (Figma 3a), and the most it is tall: the tooltip's, with the report's button and its line. */
+/** The pop-up's width in px, the tooltip's, and the most it is tall. */
 const POPUP_WIDTH = 264
 const POPUP_TALLEST = 330
 
-/** F15: the barangay whose pop-up is open, the point of the map it points at, and whether the plan's list opened it (Enter). */
+/** The barangay whose pop-up is open. */
 export type PinnedBarangay = { psgc: string; at: LonLat; fromList: boolean }
 
-/** What the report is made from besides the barangay: the plan's files, and the forecast and date the map shows. */
+/** What the report is made from besides the barangay. */
 export type ReportRequest = Omit<ReportInput, 'leads' | 'psgc' | 'link' | 'made'>
 
-/** What the report's button has done: nothing yet, making the PDF, saved it (the file's name), or failed. */
+/** What the report's button has done. */
 type ReportStatus = { state: 'idle' } | { state: 'making' } | { state: 'saved'; file: string } | { state: 'failed' }
 
 const IDLE: ReportStatus = { state: 'idle' }
@@ -43,18 +43,7 @@ type BarangayPopupProps = {
   onClose: (hadFocus: boolean) => void
 }
 
-/**
- * F15: the pop-up a click (or a tap) on a barangay opens, or Enter in the plan's list: the
- * tooltip pinned where the barangay was clicked, with everything the tooltip shows (Figma 3a,
- * BarangayNumbers), a close button and Generate Report, which saves the barangay's report as a
- * PDF for health offices and LGUs (report/reportPdf.ts). It follows its point as the map moves,
- * kept beside the city panel (or above the sheet on a phone) as the tooltip is.
- *
- * A dialog that does not block the page: opened from the list it takes the keyboard, and the
- * close button or Escape gives it back to the list (or to the map). A click on the map outside
- * the barangays closes it too (barangayLayers' onPick). The report's code and the storm's other
- * forecasts are fetched as soon as it opens, so the PDF is ready when the button is pressed.
- */
+/** The pop-up a click (or a tap) on a barangay opens, or Enter in the plan's list. */
 export default function BarangayPopup({ map, pinned, name, barangay, note, report, onClose }: BarangayPopupProps) {
   const titleId = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -95,7 +84,7 @@ export default function BarangayPopup({ map, pinned, name, barangay, note, repor
   // The report's code and files, fetched now so the PDF is ready on the button's press
   useEffect(() => {
     if (report) {
-      reportParts(report).catch(() => {}) // fetched again, and its error shown, when the button is pressed
+      reportParts(report).catch(() => {}) // Fetched again, and its error shown, when the button is pressed
     }
   }, [report])
 
@@ -163,10 +152,7 @@ export default function BarangayPopup({ map, pinned, name, barangay, note, repor
   )
 }
 
-/**
- * Where a point of the map is, in the map's px, and the map's size, kept up to date as the map
- * moves (a drag, a zoom, the 3D view's turn) or changes size.
- */
+/** Where a point of the map is, in the map's px, and the map's size, kept up to date as the map moves. */
 function useMapPoint(map: MapLibreMap, [lon, lat]: LonLat): MapPointer {
   const [point, setPoint] = useState(() => mapPoint(map, lon, lat))
   useEffect(() => {
@@ -189,11 +175,7 @@ function mapPoint(map: MapLibreMap, lon: number, lat: number): MapPointer {
   return { x, y, width, height }
 }
 
-/**
- * What saving the report needs and the map may not have yet: the PDF module (with jsPDF, loaded
- * only now) and the storm's forecasts made 1 to 3 days ahead (F16: or a day's rain that fell),
- * each joined to the shapes. Fetched once and kept (loadRun), so asking again is quick.
- */
+/** What saving the report needs and the map may not have yet. */
 function reportParts(report: ReportRequest) {
   return Promise.all([
     import('../report/reportPdf.ts'),

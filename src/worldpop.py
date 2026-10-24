@@ -1,25 +1,4 @@
-"""WorldPop 2024 population grid, clipped to the rain box (task A6).
-
-Downloads WorldPop's constrained 2024 population counts for the Philippines (100 m,
-release R2025A v1) into data/raw/, unchanged, and saves a copy clipped to
-config.IMERG_BOX (the A4 rain box) in data/clean/.
-
-Each pixel holds the estimated number of people living in it in 2024. "Constrained"
-means WorldPop only puts people in pixels with buildings; every other pixel is nodata.
-The pixels are 3 arc-seconds (about 90 m here), in EPSG:4326.
-
-Why the rain box and not just QC: C1 and C2 need the pixels inside QC's barangays, and
-B4 needs the QC residents inside each IMERG cell, and some of those cells straddle the
-city edge. The box holds all of them.
-
-The clip keeps whole pixels: the box is widened to the next pixel edge, so no pixel is
-cut and the pixel values are WorldPop's, unchanged.
-
-Run from the repository root:
-    python -m src.worldpop
-The 63 MB download is skipped if the file is already in data/raw/ (e.g. copied from the
-team drive), so the clip also runs offline.
-"""
+"""WorldPop 2024 population grid, clipped to the rain box."""
 
 import math
 
@@ -35,17 +14,7 @@ CHUNK_BYTES = 1 << 20
 
 
 def download(url, path, expected_bytes):
-    """Save url to path, unchanged, and check it is the copy the project uses.
-
-    The copy used is recorded by its size, expected_bytes (config.WORLDPOP_BYTES, also in
-    the file's note in data/raw/). If path is already there with that size, nothing is
-    downloaded. A file of any other size, on disk or from the server, stops the run instead
-    of replacing the raw file: WorldPop calls R2025A an alpha release, so the server's file
-    can change, and every result must come from the recorded copy.
-
-    Writes to path + ".part" first and renames at the end, so a stopped download
-    never leaves a half file under the real name.
-    """
+    """Save url to path, unchanged, and check it is the copy the project uses."""
     if path.exists():
         size = path.stat().st_size
         if size != expected_bytes:
@@ -68,11 +37,7 @@ def download(url, path, expected_bytes):
 
 
 def box_window(src, box):
-    """The window of whole pixels that covers box = (lon_min, lat_min, lon_max, lat_max).
-
-    The box edges are moved outward to the next pixel edge, so every pixel touching
-    the box is kept whole.
-    """
+    """The window of whole pixels that covers box = (lon_min, lat_min, lon_max, lat_max)."""
     lon_min, lat_min, lon_max, lat_max = box
     left, bottom, right, top = src.bounds
     if not (left <= lon_min and lon_max <= right and bottom <= lat_min and lat_max <= top):

@@ -1,6 +1,4 @@
-/* F14: the map's timeline (MapTimeline.tsx), at the bottom in the middle of the map: the date
-   between the week steps and its forecast week under it, then the slider with the years under
-   it. The box is a container, so a narrow timeline shortens the years (below). */
+/* The map's timeline (MapTimeline.tsx), at the bottom in the middle of the map. */
 .map-timeline {
   container: map-timeline / inline-size;
   display: flex;
@@ -30,7 +28,7 @@
   gap: var(--space-1);
 }
 
-/* The previous and next week: 34 px squares, as tall as the date picker, like the weather timeline's steps */
+/* The previous and next week. */
 .map-timeline-step {
   display: flex;
   flex-shrink: 0;
@@ -55,8 +53,7 @@
   color: var(--color-text-secondary);
 }
 
-/* The slider: a 4 px track, accent up to the week shown (--map-timeline-played), the simulated
-   weeks amber (from --map-timeline-simulated), and a 16 px round thumb with a 2 px accent ring */
+/* The slider: a 4 px track, accent up to the week shown. */
 .map-timeline-slider {
   display: block;
   width: 100%;
@@ -103,9 +100,7 @@
   background: var(--color-bg-surface);
 }
 
-/* The years under the slider, each centred under the week holding its 1 January
-   (--map-timeline-at, 0 to 1). The thumb's middle runs from 8 px in to 8 px short of the end
-   (it is 16 px wide), so a year sits where the thumb would stand on its first week. */
+/* The years under the slider, each centred under the week holding its 1 January. */
 .map-timeline-years {
   position: relative;
   height: 24px;

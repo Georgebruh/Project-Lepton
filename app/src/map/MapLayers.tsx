@@ -15,7 +15,7 @@ const BASE_SHOWN: Record<BaseMap, string> = {
   terrain: 'Terrain shading shown under the map',
 }
 
-/** What screen readers hear of the weather layer `kind` as it loads, shows, fails or has no picture for `day`. */
+/** What screen readers hear of the weather layer `kind` as it loads. */
 function weatherWords(status: WeatherStatus, kind: Weather | null, day: string): string {
   if (status === 'off' || kind === null) {
     return 'Weather off'
@@ -35,7 +35,7 @@ const VIEW_WORDS = {
   off: 'Map flat, facing north',
 }
 
-/** What screen readers hear of NOAH's map `period` as it loads, shows or fails; and when the zones are turned off. */
+/** What screen readers hear of NOAH's map `period` as it loads, shows or fails. */
 function floodWords(status: FloodStatus, period: FloodPeriod | null): string {
   if (status === 'off' || period === null) {
     return 'Flood zones hidden'
@@ -52,7 +52,7 @@ type MapLayersProps = {
   /** Whether the map is in 3D: tilted, with the ground's relief and buildings (terrain.ts). */
   view3d: boolean
   on3D: (on: boolean) => void
-  /** Whether the street map loaded (if not, the map shows a plain background and the panel does not credit it). */
+  /** Whether the street map loaded. */
   hasStreetMap: boolean
   /** The NOAH map of flood zones shown, by its rain's return period; null when they are off. */
   flood: FloodPeriod | null
@@ -76,28 +76,7 @@ type MapLayersProps = {
   onClose: () => void
 }
 
-/**
- * F13: the map's Layers panel, Figma "Layers panel" (Components page) and frame "Map · L1
- * Layers open", opened by the Layers button above Zoom. It opens up from the button and covers
- * the legends while open; on a phone it is a sheet over the map's lower part (MapLayers.css).
- * Close or Escape closes it.
- *
- * The base maps are a group of radio buttons drawn as Figma's "Base map option" cards, so the
- * arrow keys move between them; the satellite's picture is a tile of its imagery, the other two
- * are drawn with the map's tokens (MapLayers.css). The choice lives in the address (?base=,
- * layerParams.ts), and a line read out by screen readers says what the map now shows.
- *
- * The 3D view: a switch that tilts the map over the ground's relief, with buildings (?view=3d).
- *
- * Flood hazard: a switch for NOAH's flood zones (floodLayer.ts) and, while they are on, the
- * chips that pick NOAH's map for a 5-, 25- or 100-year rain (?flood=), like the plan's lead
- * chips. While a map loads, or if it fails, a line under the chips says so; a failed map has
- * a Try again button.
- *
- * Weather, one layer at a time: radio rows (Figma "Radio row") for none, the three live layers
- * and the two of the map's date (?wx=, weather.ts), with a line for loading, failing, or no
- * picture for the map's date.
- */
+/** The map's Layers panel, opened by the Layers button above Zoom. */
 export default function MapLayers({
   id,
   base,

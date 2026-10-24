@@ -1,31 +1,4 @@
-/**
- * F8: the questions of the "I have been exposed to floodwater" guide, and what each set of
- * answers means. Plain functions, no React.
- *
- * The rule is the guide's notes in Figma ("Notes · Exposure guide", node 40:356), which put
- * DOH DM 2023-0309's three risk groups in a resident's words:
- *   - in floodwater more than once, or for 2 days or more: high risk;
- *   - otherwise, a cut or wound, or floodwater in the eyes, nose or mouth: moderate risk;
- *   - otherwise: low risk.
- * Fever, muscle pain or red eyes now come first: the result says "see a doctor today".
- *
- * The guide never names a medicine or a dose: a doctor or nurse decides (DM 2023-0309 requires
- * a physician's consultation before any prophylaxis). Where the advice comes from (doh.gov.ph
- * blocks automated reading; the wording was checked through search results on 2026-10-20):
- *   - DOH press release, "DOH on Code White; leptospirosis has prophylaxis": see a doctor or a
- *     health center within 24-48 hours after first wading in floodwater.
- *     https://doh.gov.ph/press-release/doh-on-code-white-leptospirosis-has-prophylaxis/
- *   - DOH press release, "Rain raises lepto cases, DOH calls for prompt medical consult after
- *     floods" (July 2024): within 24 hours.
- *     https://doh.gov.ph/press-release/rain-raises-lepto-cases-doh-calls-for-prompt-medical-consult-after-floods/
- *   - DOH health advisory, Leptospirosis: fever, muscle pain and red eyes appear 2 to 30 days
- *     after exposure; yellow skin or eyes and dark urine in severe cases; boots and gloves when
- *     wading cannot be avoided. https://doh.gov.ph/Health-Advisory/Leptospirosis
- *   - QC Helpline 122, the city's 24/7 line: https://quezoncity.gov.ph/program/qc-helpline-122/
- * Figma words only the moderate result; the low and high results and the symptoms result
- * follow its pattern. A health professional should review this wording before launch, as F7's
- * page asks for its own.
- */
+/** The questions of the "I have been exposed to floodwater" guide, and what each set of answers means. */
 
 /** The five questions' keys, in the order the guide asks them. */
 export type QuestionKey = 'when' | 'times' | 'wound' | 'splash' | 'symptoms'
@@ -34,7 +7,7 @@ export type Option = { value: string; label: string }
 
 export type Question = { key: QuestionKey; text: string; options: Option[] }
 
-/** The five questions and their answers, as Figma frame "1 Exposure check" (39:301) words them. */
+/** The five questions and their answers. */
 export const QUESTIONS: Question[] = [
   {
     key: 'when',
@@ -94,12 +67,7 @@ export function unanswered(answers: Answers): QuestionKey[] {
 
 export type RiskLevel = 'low' | 'moderate' | 'high'
 
-/**
- * The reader's risk group, by the guide's notes: in floodwater more than once or for 2 days or
- * more is high; otherwise a cut or wound, or floodwater in the eyes, nose or mouth, is moderate;
- * otherwise low. "Not sure" about the eyes, nose or mouth counts as yes (assumption: missing a
- * splash costs more than one more visit to a health center, and a nurse checks either way).
- */
+/** The reader's risk group. */
 export function riskLevel(answers: Answers): RiskLevel {
   if (answers.times === 'more') {
     return 'high'
@@ -110,7 +78,7 @@ export function riskLevel(answers: Answers): RiskLevel {
   return 'low'
 }
 
-/** Each group's badge (the Badge component's tone: amber for moderate, as in Figma; red for high). */
+/** Each group's badge. */
 export const LEVEL_BADGES: Record<RiskLevel, { label: string; tone: 'neutral' | 'warn' | 'alert' }> = {
   low: { label: 'Low risk', tone: 'neutral' },
   moderate: { label: 'Moderate risk', tone: 'warn' },
@@ -120,10 +88,7 @@ export const LEVEL_BADGES: Record<RiskLevel, { label: string; tone: 'neutral' | 
 /** The badge beside the risk group when the reader has fever, muscle pain or red eyes now. */
 export const SYMPTOMS_BADGE = 'Symptoms now'
 
-/**
- * The emergency box on every result (the guide's notes): signs of severe leptospirosis, which
- * cannot wait for a health center. `call` is the part of the sentence that dials QC Helpline 122.
- */
+/** The emergency box on every result. */
 export const EMERGENCY = {
   signs: 'Yellow eyes, dark urine, bleeding or trouble breathing? Go to a hospital now, or ',
   call: 'call QC Helpline 122',
@@ -132,7 +97,7 @@ export const EMERGENCY = {
 /** QC Helpline 122's number, for the links that dial it. */
 export const HELPLINE_PHONE = 'tel:122'
 
-/** What the guide tells the reader: Figma frame "2 Your result" (39:361). */
+/** What the guide tells the reader. */
 export type Result = {
   level: RiskLevel
   /** Fever, muscle pain or red eyes now: "see a doctor today" comes first. */
@@ -169,11 +134,7 @@ export function resultFor(answers: Answers): Result {
 
 const NO_ANTIBIOTICS = 'Don’t take antibiotics on your own.'
 
-/**
- * What to do, by group: Figma's four steps for moderate risk (and low); high risk goes today and
- * adds boots and gloves, since its exposure may go on; with symptoms, a doctor today replaces
- * the watch for symptoms.
- */
+/** What to do, by group. */
 function stepsFor(answers: Answers, level: RiskLevel, symptoms: boolean): string[] {
   const tell = tellStep(answers)
   if (symptoms) {
@@ -213,7 +174,7 @@ export function exposureSentence(answers: Answers): string {
   return `${start}, with no cut on your skin and no floodwater in your eyes, nose or mouth.`
 }
 
-/** The step that says what to tell the health worker: "Tell them when and where you waded, and about your cut." */
+/** The step that says what to tell the health worker. */
 function tellStep(answers: Answers): string {
   const start =
     answers.times === 'more'

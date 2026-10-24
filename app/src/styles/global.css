@@ -1,7 +1,4 @@
-/*
- * F1: page-wide base styles. Colors and fonts come from tokens.css; the default text style,
- * Body/M, is the class on <body> in index.html.
- */
+/* page-wide base styles. */
 
 *,
 *::before,
@@ -37,9 +34,7 @@ textarea {
   color: inherit;
 }
 
-/* F11: where the keyboard is, on every link, button and field: a 2 px ring in accent/secondary,
-   as the fields that hide the browser's own (the date picker, F4) already draw it. A control in
-   a box that clips its edges draws the ring inside itself instead (outline-offset: -2px). */
+/* Where the keyboard is, on every link, button and field. */
 :focus-visible {
   outline: 2px solid var(--color-accent-secondary);
   outline-offset: 2px;
@@ -51,8 +46,7 @@ strong {
   font-weight: 600;
 }
 
-/* F4: text for screen readers only, such as a heading the design does not show. Off screen,
-   still read out. */
+/* Text for screen readers only, such as a heading the design does not show. */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -65,7 +59,7 @@ strong {
   border: 0;
 }
 
-/* F4: the line shown while a screen's code and data load (router.tsx) */
+/* The line shown while a screen's code and data load (router.tsx) */
 .route-loading {
   padding: var(--space-8) var(--space-5);
   text-align: center;

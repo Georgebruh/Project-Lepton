@@ -1,133 +1,125 @@
 from datetime import date
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
 # Paths
-# ---------------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parent
 DATA_RAW = ROOT / "data" / "raw"        # downloads, never edited
 DATA_CLEAN = ROOT / "data" / "clean"    # processed files
 RESULTS = ROOT / "results"
 
-CALENDAR = DATA_CLEAN / "calendar_weeks.csv"          # A3
-IMERG_DAILY = DATA_RAW / "imerg_daily.nc"             # A4
-ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"            # A14
-ERA5_RAW = DATA_RAW / "era5_open_meteo"               # A14: Open-Meteo's replies, one JSON file per year
-FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"  # A15
-ECMWF_RAW = DATA_RAW / "ecmwf_previous_runs"          # A15: Open-Meteo's replies, one JSON file per storm
-CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"        # A7
-WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # A6: whole country, unchanged
-WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # A6: clipped to IMERG_BOX; C1 starts here
-WORLDPOP_SCALE_QC = DATA_CLEAN / "worldpop_scale_qc.csv"  # C1: census scale factor per barangay
-OVERLAY = DATA_CLEAN / "overlay_qc.csv"               # C2
-EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"              # C3
-CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # A13: QC weekly counts by onset week
-# A13: QCESD's case list, unchanged. Case-level records: never commit or share it (rule 11).
+CALENDAR = DATA_CLEAN / "calendar_weeks.csv"
+IMERG_DAILY = DATA_RAW / "imerg_daily.nc"
+ERA5_DAILY = DATA_CLEAN / "era5_daily.csv"
+ERA5_RAW = DATA_RAW / "era5_open_meteo"               # Open-Meteo's replies, one JSON file per year
+FORECASTS_STORMS = DATA_CLEAN / "forecasts_storms.csv"
+ECMWF_RAW = DATA_RAW / "ecmwf_previous_runs"          # Open-Meteo's replies, one JSON file per storm
+CATCHMENTS = DATA_CLEAN / "catchments_qc.gpkg"
+WORLDPOP = DATA_RAW / "phl_pop_2024_CN_100m_R2025A_v1.tif"  # whole country, unchanged
+WORLDPOP_BOX = DATA_CLEAN / "worldpop_2024_box.tif"   # clipped to IMERG_BOX; the census rescale starts here
+WORLDPOP_SCALE_QC = DATA_CLEAN / "worldpop_scale_qc.csv"  # census scale factor per barangay
+OVERLAY = DATA_CLEAN / "overlay_qc.csv"
+EI_WEEKLY = DATA_CLEAN / "ei_weekly.csv"
+CASES_WEEKLY = DATA_CLEAN / "cases_weekly.csv"        # QC weekly counts by onset week
+# QCESD's case list, unchanged. Case-level records: never commit or share it.
 QCESD_CASES_RAW = DATA_RAW / "qcesd" / "qcesd_case_list.xlsx"
-POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # B1: QC population for every week
-FORECASTS = RESULTS / "forecasts.csv"                 # B10
-IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # B4: WorldPop QC weights per IMERG cell
-RAIN_WEEKLY = DATA_CLEAN / "rain_weekly.csv"            # B4: weekly QC rain R(t) and Rcum2(t)
-FEATURES_WEEKLY = DATA_CLEAN / "features_weekly.csv"    # B4: weekly rain and exposure (R, Rcum2, EI, EI2)
-C8_RUNS = RESULTS / "c8_observed_runs.csv"            # C8: one row per storm, test, D, cut-off and w
-C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # C8: the main run, one row per barangay
-C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # C8: the main run, need per health center and pool
-C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # C9: one row per storm, run (observed or lead), D and w
-C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # C9: the same runs, one row per barangay
-C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # C9: the same runs, need per health center and pool
-D7_FORECAST_VS_OBSERVED = RESULTS / "d7_forecast_vs_observed.csv"  # D7: C9's doses at each lead beside C8's observed doses
-D7_FLAGS = RESULTS / "d7_flags.csv"                   # D7: flagged versus flooded, per storm, run and flag share
-D7_TESTS = RESULTS / "d7_tests.csv"                   # D7: C8's cut-off test (and D +/- 1): QC's adult tiers and units
-D7_CENTERS = RESULTS / "d7_centers.csv"               # D7: doses per health center, C8's main run, whole units
-D7_MAP_NAME = "d7_map_{storm}.png"                    # D7: one barangay map per storm, in RESULTS
-# D1-D6: the score tables the paper's results quote (E6), written by src/score_tables.py from
-# B10's forecasts. D8's figure 2 table (below) holds the headline MAEs and comparisons.
-D_SCORES = RESULTS / "d1_scores.csv"                  # D1-D3: every score per window and model
-D_MAE_BY_YEAR = RESULTS / "d1_mae_by_year.csv"        # D1: each model's MAE in each target year
-D_ALARMS = RESULTS / "d3_alarms.csv"                  # D3, D4: alarm cut-off p*, precision, sensitivity, episodes, lead time
-D_PRECISION_RECALL = RESULTS / "d3_precision_recall.csv"  # D3: the precision-recall curve behind p*, 2022-2026
-D_TESTS_ALL_YEARS = RESULTS / "d5_d6_all_years.csv"   # D5, D6 over 2018-2026, COVID years in: the all-years check
-D_GUARD_RERUNS = RESULTS / "d5_guard_reruns.csv"      # B2, D5, D6: MAE and the three comparisons with g = 1, 2 and 3
-# D8: the paper's five figures, drawn by src/paper_figures.py from the files above. Each chart
-# has a CSV beside it holding the numbers it shows. Stock planning, not prescriptions.
-D8_FIG1_FORECASTS = RESULTS / "d8_fig1_forecasts.png"      # D8 (1): weekly cases, M4 and M3, M4's 90% range
-D8_FIG2_MAE = RESULTS / "d8_fig2_mae.png"                  # D8 (2): MAE by model, and D5's and D6's differences
-D8_FIG2_TABLE = RESULTS / "d8_fig2_mae.csv"                # D8 (2): the numbers in figure 2
-D8_FIG3_RELIABILITY = RESULTS / "d8_fig3_reliability.png"  # D8 (3): reliability of the breach probabilities
-D8_FIG3_TABLE = RESULTS / "d8_fig3_reliability.csv"        # D8 (3): the reliability steps, forecasts per step
-D8_FIG4_MAP = RESULTS / "d8_fig4_exposure_map.png"         # D8 (4): share of residents in flood zones, per storm
-D8_FIG5_DOSES = RESULTS / "d8_fig5_doses.png"              # D8 (5): the doses table as a picture
-D8_FIG5_TABLE = RESULTS / "d8_fig5_doses.csv"              # D8 (5): the doses table
-D8_PREVIEW_PREFIX = "d8_preview_"                          # D8 --preview: figures 1-3 from another B10 file; not for the paper
-# E8: the paper's two design diagrams (Appendix A), drawn by src/diagrams.py from config.py alone
-E8_FIG_DESIGN = RESULTS / "e8_fig_design.png"              # E8: the study design, one flood computation, two layers
-E8_FIG_LAYER1 = RESULTS / "e8_fig_layer1.png"              # E8: the six steps behind every Layer 1 forecast
+POP_WEEKLY = DATA_CLEAN / "pop_weekly.csv"            # QC population for every week
+FORECASTS = RESULTS / "forecasts.csv"
+IMERG_WEIGHTS_QC = DATA_CLEAN / "imerg_weights_qc.csv"  # WorldPop QC weights per IMERG cell
+RAIN_WEEKLY = DATA_CLEAN / "rain_weekly.csv"            # weekly QC rain R(t) and Rcum2(t)
+FEATURES_WEEKLY = DATA_CLEAN / "features_weekly.csv"    # weekly rain and exposure (R, Rcum2, EI, EI2)
+C8_RUNS = RESULTS / "c8_observed_runs.csv"            # one row per storm, test, D, cut-off and w
+C8_BARANGAYS = RESULTS / "c8_observed_barangays.csv"  # the main run, one row per barangay
+C8_CENTERS = RESULTS / "c8_observed_centers.csv"      # the main run, need per health center and pool
+C9_RUNS = RESULTS / "c9_forecast_runs.csv"            # one row per storm, run (observed or lead), D and w
+C9_BARANGAYS = RESULTS / "c9_forecast_barangays.csv"  # the same runs, one row per barangay
+C9_CENTERS = RESULTS / "c9_forecast_centers.csv"      # the same runs, need per health center and pool
+D7_FORECAST_VS_OBSERVED = RESULTS / "d7_forecast_vs_observed.csv"  # the doses at each lead beside the observed doses
+D7_FLAGS = RESULTS / "d7_flags.csv"                   # flagged versus flooded, per storm, run and flag share
+D7_TESTS = RESULTS / "d7_tests.csv"                   # the cut-off test (and D +/- 1): QC's adult tiers and units
+D7_CENTERS = RESULTS / "d7_centers.csv"               # doses per health center, the main run, whole units
+D7_MAP_NAME = "d7_map_{storm}.png"                    # one barangay map per storm, in RESULTS
+# The score tables the paper's results quote, written by src/score_tables.py from the forecasts.
+D_SCORES = RESULTS / "d1_scores.csv"                  # every score per window and model
+D_MAE_BY_YEAR = RESULTS / "d1_mae_by_year.csv"        # each model's MAE in each target year
+D_ALARMS = RESULTS / "d3_alarms.csv"                  # alarm cut-off p*, precision, sensitivity, episodes, lead time
+D_PRECISION_RECALL = RESULTS / "d3_precision_recall.csv"  # the precision-recall curve behind p*, 2022-2026
+D_TESTS_ALL_YEARS = RESULTS / "d5_d6_all_years.csv"   # the all-years check, COVID years in
+D_GUARD_RERUNS = RESULTS / "d5_guard_reruns.csv"      # MAE and the three comparisons with g = 1, 2 and 3
+# The paper's five figures, drawn by src/paper_figures.py from the files above.
+D8_FIG1_FORECASTS = RESULTS / "d8_fig1_forecasts.png"      # weekly cases, M4 and M3, M4's 90% range
+D8_FIG2_MAE = RESULTS / "d8_fig2_mae.png"                  # MAE by model, and the differences
+D8_FIG2_TABLE = RESULTS / "d8_fig2_mae.csv"                # the numbers in figure 2
+D8_FIG3_RELIABILITY = RESULTS / "d8_fig3_reliability.png"  # reliability of the breach probabilities
+D8_FIG3_TABLE = RESULTS / "d8_fig3_reliability.csv"        # the reliability steps, forecasts per step
+D8_FIG4_MAP = RESULTS / "d8_fig4_exposure_map.png"         # share of residents in flood zones, per storm
+D8_FIG5_DOSES = RESULTS / "d8_fig5_doses.png"              # the doses table as a picture
+D8_FIG5_TABLE = RESULTS / "d8_fig5_doses.csv"              # the doses table
+D8_PREVIEW_PREFIX = "d8_preview_"                          # --preview: figures 1-3 from another forecasts file; not for the paper
+# The paper's two design diagrams (Appendix A), drawn by src/diagrams.py from config.py alone.
+E8_FIG_DESIGN = RESULTS / "e8_fig_design.png"              # the study design, one flood computation, two layers
+E8_FIG_LAYER1 = RESULTS / "e8_fig_layer1.png"              # the six steps behind every Layer 1 forecast
 
-# Benchmark data (A9)
-PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # A9: Mendeley file, unchanged
-PARRENO_WEEKLY = DATA_CLEAN / "parreno_national_weekly.csv"      # A9: national leptospirosis by ISO week, for B3
+# Benchmark data
+PARRENO_RAW = DATA_RAW / "parreno" / "Diseases Data (for NBL).xlsx"        # Mendeley file, unchanged
+PARRENO_WEEKLY = DATA_CLEAN / "parreno_national_weekly.csv"      # national leptospirosis by ISO week, for the M3 reproduction
 
-# Boundaries and census (A5)
+# Boundaries and census
 BOUNDARIES_ZIP = DATA_RAW / "phl_admin_boundaries.gdb.zip"           # HDX COD-AB v03
 CENSUS_2024_XLSX = DATA_RAW / "NCR - Table C - Population by Barangay.xlsx"  # PSA 2024 POPCEN
 CENSUS_2020_AGE_XLSX = DATA_RAW / "2020 Census Total Popn_Single Age_MaleFemale_Admin4.xlsx"  # HDX
-BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # A5: 142 polygons with both census totals
-CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # A5: same table without the shapes
-AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # A5: psgc, sex, age, pop (age 80 = 80 and over)
-BIRTHS_2024 = DATA_RAW / "psa_births_2024.csv"        # A12: PSA OpenSTAT table 1A1ABIB8, unchanged
-SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # C4: child, pregnant and adult shares per barangay
+BARANGAYS_QC = DATA_CLEAN / "barangays_qc.gpkg"       # 142 polygons with both census totals
+CENSUS_QC = DATA_CLEAN / "census_qc.csv"              # same table without the shapes
+AGE_SEX_2020_QC = DATA_CLEAN / "age_sex_2020_qc.csv"  # psgc, sex, age, pop (age 80 = 80 and over)
+BIRTHS_2024 = DATA_RAW / "psa_births_2024.csv"        # PSA OpenSTAT table 1A1ABIB8, unchanged
+SHARES_QC = DATA_CLEAN / "shares_qc.csv"              # child, pregnant and adult shares per barangay
 
-# Health facilities (A10)
-NHFR_RAW = DATA_RAW / "nhfr"                          # A10: registry pages as downloaded
-FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # A10: one row per QC facility, with coordinates
-CENTER_SHARES = DATA_CLEAN / "center_shares_qc.csv"   # C7: the share of each barangay's need each health center gets
-# NOAH flood hazard maps (A8)
-NOAH_RAW = DATA_RAW / "noah"                          # A8: the zips as downloaded, plus NOAH's metadata
-NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # A8: 9 rows (3 maps x Var 1-3), EPSG:32651
+# Health facilities
+NHFR_RAW = DATA_RAW / "nhfr"                          # registry pages as downloaded
+FACILITIES_QC = DATA_CLEAN / "health_facilities_qc.csv"  # one row per QC facility, with coordinates
+CENTER_SHARES = DATA_CLEAN / "center_shares_qc.csv"   # the share of each barangay's need each health center gets
+# NOAH flood hazard maps
+NOAH_RAW = DATA_RAW / "noah"                          # the zips as downloaded, plus NOAH's metadata
+NOAH_FLOOD = DATA_CLEAN / "noah_flood_mm.gpkg"        # 9 rows (3 maps x Var 1-3), EPSG:32651
 
-# ---------------------------------------------------------------------------
 # Calendar and periods
-# ---------------------------------------------------------------------------
-FIRST_WEEK_START = date(2015, 1, 4)        # 2015 week 1 (CDC/MMWR), A3
+FIRST_WEEK_START = date(2015, 1, 4)        # 2015 week 1 (CDC/MMWR)
 BURN_IN_YEARS = (2015, 2016, 2017)
 BACKTEST_FIRST_YEAR = 2018                 # first forecast day: first week of 2018
 BACKTEST_LAST_YEAR = 2026                  # to the last complete week of 2026
 COVID_YEARS = (2020, 2021)
-WEEKS_PER_YEAR = 52.18                     # period of the M4 season terms, B5
+WEEKS_PER_YEAR = 52.18                     # period of the M4 season terms
 MAX_WEEK = 52                              # week 53 is mapped to 52
-DAYS_PER_WEEK = 7                          # UTC days in one complete morbidity week, B4
+DAYS_PER_WEEK = 7                          # UTC days in one complete morbidity week
 
 # Scoring windows (Workstream D)
 MAE_YEARS = (2018, 2019, 2022, 2023, 2024, 2025, 2026)
 PROB_SCORE_YEARS = (2022, 2023, 2024, 2025, 2026)
 ALL_YEARS = tuple(range(BACKTEST_FIRST_YEAR, BACKTEST_LAST_YEAR + 1))   # every score again, COVID years in: a check (D)
-MASE_DENOM_YEARS = (2016, 2017)            # fixed denominator, D2
+MASE_DENOM_YEARS = (2016, 2017)            # fixed denominator
 
 # Gates
 GATE_A = date(2026, 10, 16)
 GATE_BC = date(2026, 10, 19)
 GATE_D = date(2026, 10, 21)
-SUBMIT = date(2026, 10, 24)                # E1: Sat, Oct 24, 11:59 PM (README)
+SUBMIT = date(2026, 10, 24)                # Sat, Oct 24, 11:59 PM (README)
 
-# ---------------------------------------------------------------------------
 # Data products
-# ---------------------------------------------------------------------------
 IMERG_PRODUCT = "GPM_3IMERGDL"
 IMERG_VERSION = "07"
 IMERG_START = date(2000, 6, 1)             # NASA's catalogue lists Late daily files from 1998-01-01; the plan starts here
-IMERG_SUBSETS = DATA_RAW / "imerg_daily"   # A4: one small file per UTC day, stacked into IMERG_DAILY
+IMERG_SUBSETS = DATA_RAW / "imerg_daily"   # one small file per UTC day, stacked into IMERG_DAILY
 IMERG_VARIABLES = ("precipitation", "precipitation_cnt")  # rain in mm/day; valid half-hours (of 48) behind it
 IMERG_DOWNLOAD_WORKERS = 4                 # downloads at once; keep it small, NASA's server is shared
-EARTHDATA_TOKEN_FILE = Path.home() / "earthdata_token.txt"  # A4: your NASA login token; outside the repo, never share it
+EARTHDATA_TOKEN_FILE = Path.home() / "earthdata_token.txt"  # your NASA login token; outside the repo, never share it
 IMERG_KEEP_2000 = True                     # assumption: keep Jun-Dec 2000; refit once without it
-ERA5_YEARS = (2000, 2025)                  # assumption: same years as IMERG, A14
-ERA5_START = IMERG_START                   # A14: start on IMERG's first day, so both fits use the same years
-ERA5_MODEL = "era5"                        # A14: Open-Meteo Historical Weather, plain ERA5 reanalysis at 0.25 deg
+ERA5_YEARS = (2000, 2025)                  # assumption: same years as IMERG
+ERA5_START = IMERG_START                   # start on IMERG's first day, so both fits use the same years
+ERA5_MODEL = "era5"                        # Open-Meteo Historical Weather, plain ERA5 reanalysis at 0.25 deg
 OPEN_METEO_HOUR_SHIFT = -1                 # shift hourly totals back 1 h before summing UTC days
-FORECAST_MODEL = "ecmwf_ifs025"            # assumption: ECMWF IFS 0.25 deg, A15
-FORECAST_LEADS_DAYS = (1, 2, 3)            # C9: the n-day total forecast 1, 2 and 3 days before its first day
+FORECAST_MODEL = "ecmwf_ifs025"            # assumption: ECMWF IFS 0.25 deg
+FORECAST_LEADS_DAYS = (1, 2, 3)            # the n-day total forecast 1, 2 and 3 days before its first day
 
-# Catchments (A7). The Philippines is in HydroSHEDS' Australasia region ("au"), not Asia.
+# Catchments. The Philippines is in HydroSHEDS' Australasia region ("au"), not Asia.
 HYDROBASINS_SHP = DATA_RAW / "hydrobasins" / "hybas_au_lev12_v1c.shp"
 # One point on each river; the sub-basin holding it is the start of the upstream trace.
 CATCHMENT_OUTLETS = {
@@ -135,20 +127,14 @@ CATCHMENT_OUTLETS = {
     "san_juan": {"lon": 121.017, "lat": 14.589, "trace_upstream": False},  # mouth at the Pasig; see note below
     "tullahan": {"lon": 121.030, "lat": 14.690, "trace_upstream": True},   # Novaliches, QC
 }
-# San Juan: its sub-basin is the Pasig's last one, which also receives Laguna de Bay
-# (4,034 km2 upstream). Tracing upstream would add the whole lake basin, which does not
-# drain into the San Juan River, so it keeps its own sub-basin only.
-# WorldPop (A6): constrained 2024 counts, 100 m, R2025A v1. Catalogue page
-# https://hub.worldpop.org/geodata/summary?id=74942 (the plan's id=78816 is the 2026 1 km grid).
+# San Juan: its sub-basin is the Pasig's last one, which also receives Laguna de Bay (4,034 km2 upstream).
 WORLDPOP_URL = ("https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2024/"
                 "PHL/v1/100m/constrained/phl_pop_2024_CN_100m_R2025A_v1.tif")
 WORLDPOP_BYTES = 63_493_139                # size of the copy used (its note); R2025A is an alpha release
 
 IMERG_CELL_DEG = 0.1
 IMERG_BOX = (120.7, 14.4, 121.5, 15.0)     # (lon_min, lat_min, lon_max, lat_max); printed by src/catchments.py
-# ERA5 (A14) and ECMWF IFS 0.25 (A15) grid points sit on multiples of 0.25 degrees.
-# Both use every cell that overlaps the catchments, weighted by area (catchments.grid_cells):
-# 4 cells; only one grid point, (14.75, 121.25), lies inside the catchments.
+# ERA5 and ECMWF IFS 0.25 grid points sit on multiples of 0.25 degrees.
 GRID_025_DEG = 0.25
 GRID_EDGE_POINTS = 25                      # points per cell edge before reprojecting (catchments.grid_cells)
 GRID_AREA_TOLERANCE = 1e-3                 # the cells must hold the catchment area to within 0.1%
@@ -157,71 +143,54 @@ CRS_LONLAT = "EPSG:4326"                   # longitude/latitude degrees: catchme
 CRS_OVERLAY = "EPSG:32651"                 # overlays
 CRS_EXACTEXTRACT = "EPSG:4326"             # convert to this before exactextract
 QC_BARANGAYS = 142                         # check S3
-QC_HDX_ADM3_PCODE = "PH1307404"            # QC in the HDX boundaries (A5)
-QC_PSGC_PREFIX = "13813"                   # QC in the official 10-digit PSGC: 13813xxxxx (A5)
-QC_SHEET_2024 = "Quezon City"              # QC's sheet in the PSA 2024 workbook (A5)
-# A10: DOH National Health Facility Registry (https://nhfr.doh.gov.ph), list "Active facilities".
+QC_HDX_ADM3_PCODE = "PH1307404"            # QC in the HDX boundaries
+QC_PSGC_PREFIX = "13813"                   # QC in the official 10-digit PSGC: 13813xxxxx
+QC_SHEET_2024 = "Quezon City"              # QC's sheet in the PSA 2024 workbook
+# DOH National Health Facility Registry (https://nhfr.doh.gov.ph), list "Active facilities".
 NHFR_REGION_NCR = "13"
 NHFR_QC_NAME = "QUEZON CITY (HUC)"         # QC in the registry's Province Name column
-# Registry facility types kept. QC's health centers are registered as "Rural Health Unit"
-# (2026-10-15: 67 of them, 1 Barangay Health Station, 1 City Health Office).
+# Registry facility types kept.
 NHFR_FACILITY_TYPES = {"17": "Rural Health Unit", "20": "Barangay Health Station", "21": "City Health Office"}
 NHFR_PAUSE_S = 1.0                         # wait between page requests; the registry is a shared server
 NOAH_RETURN_PERIODS = (5, 25, 100)
 NOAH_HAZARD_LEVELS = (1, 2, 3)             # the `Var` field
-NOAH_OVERLAP_TOLERANCE_KM2 = 1e-6          # C2: levels of one map may share at most 1 m2 in a barangay (rounding)
-# A8: Google Drive file ids of NOAH's Metro Manila flood maps. NOAH's download page
-# (https://noah.up.edu.ph, "Downloads") links the public folder
-# https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o
-# -> Flood -> 5yr / 25yr / 100yr -> MetroManila.zip ("Metro Manila.zip" for 100yr).
+NOAH_OVERLAP_TOLERANCE_KM2 = 1e-6          # levels of one map may share at most 1 m2 in a barangay (rounding)
+# Google Drive file ids of NOAH's Metro Manila flood maps.
 NOAH_FLOOD_FILES = {
     5: "1IC5LnscUt7D_5c1BvlwcngR3cFKgDshV",
     25: "1VAcWkVeY2uXWhZVvDYh5viedhihwBBci",
     100: "1n-IrwfWqLRDyDg-wmt68luk_DU5Xzg9S",
 }
-NOAH_METADATA_FILES = {                    # A8: NOAH's own notes, kept beside the maps
+NOAH_METADATA_FILES = {                    # NOAH's own notes, kept beside the maps
     "metadata_flood.txt": "1qbOoN_CZ6AUIk22owtJxRFENALIWCszq",
     "01ReadMe_Flood.pdf": "1Z6gT7FDUCMps-qHT5Jiy7nwCdaH0rhwR",
     "NOAH_License.pdf": "1z6MH_QI6gU_e2gNnhIMsKkENugHscNl9",
 }
 
-# Census reference days for pop_at (B1). src/population.py turns them into decimal
-# years (1 Aug 2015 = 2015.58, 1 May 2020 = 2020.33, 1 Jul 2024 = 2024.50).
+# Census reference days for pop_at.
 CENSUS_DAYS = {2015: date(2015, 8, 1), 2020: date(2020, 5, 1), 2024: date(2024, 7, 1)}
-# A5: PSA official totals, from Table B of the PSA 2024 NCR workbook (census days
-# 1 Aug 2015, 1 May 2020, 1 Jul 2024). src/census.py stops if the workbook disagrees.
+# PSA official totals from Table B of the 2024 NCR workbook; src/census.py stops if it disagrees.
 CENSUS_POP_QC = {2015: 2_936_116, 2020: 2_960_048, 2024: 3_084_270}
 
-# ---------------------------------------------------------------------------
-# Layer 1: case data view (B2)
-# ---------------------------------------------------------------------------
-# A13 (2026-10-20): QCESD's case list gives onset and admission dates but no report dates,
-# so the decision tree's row is "QC weekly counts by onset week": option C, the delay guard.
-DATA_OPTION = "C"                          # "A", "B" or "C"; set by the A13 decision
+# Layer 1: case data view
+# The case list has onset dates but no report dates, so option C: the delay guard.
+DATA_OPTION = "C"                          # "A", "B" or "C"; set by the case-data decision
 DELAY_GUARD_G = 2                          # assumption, option C only
 DELAY_GUARD_G_TESTS = (1, 3)
-FORECAST_HORIZON_WEEKS = 1                 # B2, B10: forecast day T forecasts week T + 1 (the B11 stretch: 2)
+FORECAST_HORIZON_WEEKS = 1                 # forecast day T forecasts week T + 1
 REPORTED_SHARE_CUTOFF = 0.50               # assumption, option A only
 REPORTED_SHARE_CUTOFF_TEST = 0.80
 
-# ---------------------------------------------------------------------------
-# Layer 1: case data (A13)
-# ---------------------------------------------------------------------------
-# QCESD's case list: one sheet per year, one row per case, these columns. Only the two dates
-# are read; a case's week is the MMWR week of its onset. The file's Morbidity_week column is
-# not used: its meaning changes from year to year (src/cases.py).
+# Layer 1: case data
+# QCESD's case list: one sheet per year, one row per case, these columns.
 QCESD_COLUMNS = ("Year_of_onset", "Date_of_onset", "Morbidity_week", "Date_of_Admission", "District", "Barangay")
 QCESD_ONSET = "Date_of_onset"
 QCESD_ADMISSION = "Date_of_Admission"
-# Assumption: a week's count is final once 17 days have passed between its last day and the
-# list's latest date; later weeks are missing, not zero (check S4). 99% of cases with both
-# dates were admitted within 17 days of onset (checked 2026-10-20). The delay from admission
-# to report is not in the list, so this is a lower bound.
+# Assumption: a week's count is final 17 days after it ends; later weeks are missing, not zero.
 CASES_COMPLETE_DAYS = 17
 CASES_COMPLETE_SHARE = 0.99                # S4: at least this share of onset-to-admission delays within CASES_COMPLETE_DAYS
-CASES_DELAY_FLAG_DAYS = 30                 # A13 printout: an admission before onset or over 30 days after it is a likely date typo, counted, kept as given
-# S4: QCESD totals published during 2025, reproduced from the list by onset date. Published
-# mid-season, so later reports can add a few cases.
+CASES_DELAY_FLAG_DAYS = 30                 # an admission before onset or over 30 days after it is a likely date typo, counted, kept as given
+# S4: QCESD totals published during 2025, reproduced from the list by onset date.
 CASES_PUBLISHED = (
     {"start": date(2025, 1, 1), "end": date(2025, 8, 20), "cases": 510,
      "source": "https://www.dzrh.com.ph/post/leptospirosis-cases-in-quezon-city-rise-to-510-deaths-double-in-just-over-a-month-to-55"},
@@ -231,24 +200,20 @@ CASES_PUBLISHED = (
 )
 S4_PUBLISHED_TOLERANCE = 0.05              # S4: "reproduced closely" = within 5% of the published total
 
-# ---------------------------------------------------------------------------
 # Layer 1: models
-# ---------------------------------------------------------------------------
-M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the target week (B8)
+M0_LAG_WEEKS = 52                          # M0: the count 52 weeks before the target week
 FOURIER_K = 3                              # M4 sin/cos pairs
 RAIN_SCALE_MM = 50                         # M4 uses Rcum2 / 50
-RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone (B5)
-# B5: statsmodels' optimizers for the negative binomial fit, in order. Newton is fast and
-# exact, but can break down to NaN coefficients still flagged "converged" (seen on made-up
-# data, 2026-10-18); BFGS then reaches the same maximum. Both failing stops the run.
+RAIN_EI_MAX_CORR = 0.8                     # above this, keep EI2 alone
+# statsmodels' optimizers for the negative binomial fit, in order.
 M4_FIT_METHODS = ("newton", "bfgs")
-M4_MAX_ITER = 100                          # B5: iterations before a fit counts as not converged
-M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # B5: v2's residual autocorrelation check
-M4_RESIDUAL_ACF_TABLE = RESULTS / "m4_residual_acf.csv"  # B5: the numbers in that plot, one row per lag
-M4_ACF_LAGS = 26                           # B5: lags plotted, half a year
-M4_ACF_ALPHA = 0.05                        # B5: the plot's shaded band holds 95% of the autocorrelations of independent weeks
+M4_MAX_ITER = 100                          # iterations before a fit counts as not converged
+M4_RESIDUAL_ACF = RESULTS / "m4_residual_acf.png"  # the residual autocorrelation check
+M4_RESIDUAL_ACF_TABLE = RESULTS / "m4_residual_acf.csv"  # the numbers in that plot, one row per lag
+M4_ACF_LAGS = 26                           # lags plotted, half a year
+M4_ACF_ALPHA = 0.05                        # the plot's shaded band holds 95% of the autocorrelations of independent weeks
 
-# M3 benchmark (B3), read from Latigay & Gonzaga (2026)
+# M3 benchmark, read from Latigay & Gonzaga (2026)
 M3_DATA_YEARS = (2019, 2023)
 M3_CHANGEPOINT_PRIOR = 0.55
 M3_SEASONALITY_MODE = "multiplicative"
@@ -263,7 +228,7 @@ M3_XGB_PARAMS_TEST = {"max_depth": 2}
 M3_XGB_ROUNDS = 100                        # assumption: XGBRegressor's default n_estimators (xgb.train alone uses 10)
 M3_TARGET_MAE = {"hybrid": 16.72, "prophet": 23.68}
 M3_TOLERANCE = 0.10
-# B3: the paper's Table I, all 18 forecast weeks (SARIMA not reproduced: R auto.arima)
+# The paper's Table I, all 18 forecast weeks (SARIMA not reproduced).
 M3_TABLE_I = {
     "hybrid": {"mae": 16.7237, "rmse": 21.9313, "smape": 38.7985, "bias": -0.7196},
     "prophet": {"mae": 23.6831, "rmse": 28.1622, "smape": 50.6627, "bias": 1.0455},
@@ -276,70 +241,56 @@ M3_TABLE_II = {
     "snaive": {"mae": 180.5000, "rmse": 218.1433, "smape": 103.8144, "bias": -122.5000},
 }
 M3_TABLE_III_DM = {"stat": -1.8242, "p": 0.04287}   # Hybrid vs Prophet
-# B3 diagnostics (python -m src.m3 --diagnose): XGBoost settings tried when the hybrid misses
+# M3 diagnostics (python -m src.m3 --diagnose): XGBoost settings tried when the hybrid misses
 M3_DIAG_MAX_DEPTH = (1, 2, 3, 4, 6)
 M3_DIAG_ROUNDS = (10, 25, 50, 100, 200)
 M3_DIAG_ETA = (0.05, 0.1, 0.3)
-M3_DIAGNOSTICS = RESULTS / "m3_diagnostics.csv"       # B3: hybrid scores for every setting tried
+M3_DIAGNOSTICS = RESULTS / "m3_diagnostics.csv"       # hybrid scores for every setting tried
 M3_SEASONAL_PERIOD = 52                    # seasonal naive: the value 52 rows earlier
 M3_RAINY_MONTHS = (6, 11)                  # "monsoon season (June-November)"
-# Assumption: the paper cites a news timeline but gives no dates. "Lockdown" read as
-# ECQ and MECQ in Metro Manila / Luzon; a week counts if its Thursday falls inside.
+# Assumption: the paper cites a news timeline but gives no dates.
 M3_LOCKDOWNS = ((date(2020, 3, 15), date(2020, 5, 31)), (date(2020, 8, 4), date(2020, 8, 18)))
 M3_LOCKDOWNS_TEST = ((date(2020, 3, 15), date(2020, 12, 31)),)   # any community quarantine in 2020
-# Assumption: the paper counts 260 weeks = 5 x 52, so its series has no ISO 2020 week 53
-# row. True drops that (empty) row; False keeps A9's full ISO grid. Both are run.
+# Assumption: the paper counts 260 weeks = 5 x 52, so its series has no ISO 2020 week 53 row.
 M3_DROP_WEEK_53 = True
-M3_RESULTS = RESULTS / "m3_reproduction.csv"          # B3: scores of every run beside Table I
-M3_FORECASTS = RESULTS / "m3_forecasts.csv"           # B3: the 18 forecast weeks of every run
+M3_RESULTS = RESULTS / "m3_reproduction.csv"          # scores of every run beside Table I
+M3_FORECASTS = RESULTS / "m3_forecasts.csv"           # the 18 forecast weeks of every run
 
-# A9: layout of the Mendeley file. One row per week number; one column per disease and year,
-# named like "<Disease> - <year>" (e.g. "Acute Flaccid Paralysis (AFP) - 2019").
+# Layout of the Mendeley file.
 PARRENO_URL = "https://data.mendeley.com/datasets/v98325dpxv/1"   # DOI matches Latigay & Gonzaga's ref. 9 (data/raw/parreno.md)
 PARRENO_SHEET = 0                          # sheet name or position
 PARRENO_WEEK_COL = "Week"                  # the column holding the week number
 PARRENO_DISEASE_KEY = "Leptospirosis"      # columns whose name contains this (any case) and ends in a year
 
-# Forecast range (B6)
+# Forecast range
 THETA_WINDOW = 104                         # last 104 non-COVID past forecasts
 THETA_MIN_FORECASTS = 26                   # fewer -> training fit's theta
 RANGE_LOW_Q = 0.05                         # 90% range
 RANGE_HIGH_Q = 0.95
 WIS_ALPHAS = (0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)  # 11 central ranges; S7's WIS values (2.12, 32.0) need all 11
 
-# Threshold (B7)
+# Threshold
 THRESHOLD_SD = 2                           # assumption: mean + 2 SD
 THRESHOLD_MAX_YEARS = 5
 THRESHOLD_MIN_YEARS = 3
 
-# ---------------------------------------------------------------------------
-# Layer 2: rain and exposure (C3)
-# ---------------------------------------------------------------------------
+# Layer 2: rain and exposure
 GUMBEL_MIN_YEARS = 10                      # assumption: fit on >= 10 years before the forecast year
-# Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days), for the
-# return levels, the storms and the weekly EI alike; C9 uses the same on ERA5 and the ECMWF
-# forecasts. 1 = the plan's single wettest day, kept as the comparison run. The single day
-# missed the long habagat floods of 2025 and 2026 (C9 test run, 2026-10-18).
+# Assumption: the trigger rain is the wettest 3-day total (3 consecutive UTC days).
 RAIN_ACCUM_DAYS = 3
 RAIN_ACCUM_DAYS_TEST = 1
-# A15: a lead-L forecast of an n-day total takes day i of the window (i = 0 .. n-1) from
-# Open-Meteo's precipitation_previous_day(L + i), so every hour comes from runs started L
-# days before the window. Leads 1-3 with n = 3 need previous days 1-5. A15 also fetches the
-# n - 1 days before each storm's first wettest day, for windows that start there.
+# A lead-L forecast takes day i of the window from precipitation_previous_day(L + i).
 FORECAST_PREVIOUS_DAYS = tuple(range(1, max(FORECAST_LEADS_DAYS) + RAIN_ACCUM_DAYS))
 R0_FACTOR = 0.5                            # assumption: R0 = 0.5 x R(5)
 
-# ---------------------------------------------------------------------------
-# Layer 2: people and doses (C4-C7)
-# ---------------------------------------------------------------------------
+# Layer 2: people and doses
 PREG_BIRTHS_FACTOR = 0.75                  # assumption: pregnant = births x 0.75
 PREG_UPPER_SHARE = 0.035                   # test: 3.5% of population as upper bound
-# C4 groups from the 2020 census by single-year age (first and last age both included)
+# Age groups from the 2020 census by single-year age (first and last age both included)
 CHILD_AGES = (0, 17)                       # children under 18
 WOMEN_AGES = (15, 49)                      # women 15-49; the city's pregnant count is split by them (assumption)
 GIRLS_AGES = (15, 17)                      # women 15-17: their pregnant share moves out of the child group
-# A12's births file: OpenSTAT's CSV is Windows-1252 and has no codes. Seven other rows
-# contain "Quezon" (Quezon province, towns named Quezon), so the whole name must match.
+# The births file: OpenSTAT's CSV is Windows-1252 and has no codes.
 BIRTHS_ENCODING = "cp1252"
 BIRTHS_QC_ROW = "Quezon City"
 BIRTHS_COLUMN = "Usual Residence Both Sexes"  # mothers who live in QC, not births in QC's hospitals
@@ -348,7 +299,7 @@ UPTAKE_U = 1.0
 CONTACT_BY_LEVEL = {1: 1.0, 2: 1.0, 3: 1.0}  # assumption: r_k = 1 for every level
 WOUND_SHARE_W = (0.0, 0.5, 1.0)            # assumption: illustrative grid; 0 and 1 are bounds
 CONTINUOUS_EXPOSURE_DAYS = 2               # assumption: D >= 2 -> every exposed adult high risk
-CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)    # C8 reruns each storm with these cut-offs
+CONTINUOUS_EXPOSURE_DAYS_TESTS = (1, 3)    # each storm is rerun with these cut-offs
 MODERATE_COURSE_DAYS = 5                   # assumption: upper end of 3-5 days
 
 # Units (DOH DM 2023-0309; stock planning, not prescriptions)
@@ -358,32 +309,17 @@ DOXY_CAPS_HIGH_PER_WEEK = 2                # 200 mg once a week
 AMOX_TABS_PREG = 6                         # 500 mg twice a day for 3 days
 DOSE_WEEK_DAYS = 7                         # ceil(D / 7) weeks: high-risk adults' weekly dose; children's course repeats after 1 week
 
-# Stock per health center (C7)
-# Assumption: stock goes to health centers ("Rural Health Unit" in the registry) and barangay
-# health stations; the City Health Office runs the city's stock rather than handing it out.
+# Stock per health center
+# Assumption: stock goes to health centers and barangay health stations, not the City Health Office.
 CENTER_FACILITY_TYPES = ("Rural Health Unit", "Barangay Health Station")
 ALLOCATE_PREVIEW_STOCK_SHARE = 0.5         # preview only (python -m src.allocation): stock covering half of each pool's need
 
-FORECAST_RUN_D = (1, 7)                    # assumption: C9 flood durations
-STORM_D_TEST_DAYS = 1                      # assumption test: C8 reruns each storm with A11's D +/- 1 day
-# Assumption (C8, C9): a barangay is "flagged" when at least this share of its 2024
-# residents live in zones the storm's rain floods (C3's graded exposure). Every barangay
-# has some residents in the 5-year zones, so "anyone exposed" would flag all 142 once the
-# rain passes R0. Reported at both values; the team confirmed the rule on 2026-10-23
-# (Notes.md 1.2).
+FORECAST_RUN_D = (1, 7)                    # assumption: flood durations for the forecast runs
+STORM_D_TEST_DAYS = 1                      # assumption test: each storm is rerun with D +/- 1 day
+# Assumption: a barangay is flagged when at least this share of its residents live in flooded zones.
 FLAG_EXPOSED_SHARES = (0.25, 0.50)
 
-# Storms (A11: start_date, end_date, wettest_days UTC range, D, and flooded barangays by PSGC).
-# Sources and the rules below: data/raw/storm-facts.md.
-# - wettest_days: 3 consecutive UTC days. C3 and C8 take the storm's wettest n-day total among
-#   the windows ending on these days, and A15 fetches the forecasts for them and the n - 1
-#   days before. So they must hold the last day of IMERG's wettest n-day window during the
-#   flood (catchment rain, checked 2026-10-18; the peak is noted on each storm).
-# - flooded_psgc: a barangay is listed only if a source from the storm names it as flooded,
-#   affected, or with its residents evacuated, rescued or made homeless. Not counted: a road
-#   that shares a barangay's name (E. Rodriguez, Don Manuel, N.S. Amoranto are also streets),
-#   a barangay that only hosts an evacuation center, and reports from other surges.
-#   C8 compares the barangays its run flags with these lists.
+# Storms.
 STORMS = {
     "carina_2024": {
         "year": 2024,
@@ -455,9 +391,7 @@ STORMS = {
             "1381300129",  # Vasra
         ),
     },
-    # Added 2026-10-18 (not in the proposal): a storm IMERG registers, beside Carina, which
-    # IMERG reads near R0. STS Kristine (Trami); QC declared a state of calamity on 25 Oct.
-    # The reports found show QC flooding on 24 Oct only, so D = 1 (the +/- 1 day test gives 2).
+    # Added 2026-10-18: a storm IMERG registers, beside Carina, which IMERG reads near R0.
     "kristine_2024": {
         "year": 2024,
         "start_date": date(2024, 10, 24),
@@ -477,25 +411,22 @@ STORMS = {
     },
 }
 
-# ---------------------------------------------------------------------------
 # Sanity checks (src/checks.py)
-# ---------------------------------------------------------------------------
 S2_CARINA_TOP_SHARE = 0.05                 # S2: Carina's wettest day must be in 2024's wettest 5% of days
 S2_KNOWN_STORMS_TOP_SHARE = 0.01           # S2: each storm below must have a day in the record's wettest 1%
-# Metro Manila's worst rain events as UTC days: from the day before the Philippine dates
-# (00:00-08:00 PHT falls in the previous UTC day) to the last Philippine date.
+# Metro Manila's worst rain events as UTC days (00:00-08:00 PHT falls in the previous UTC day).
 S2_KNOWN_STORMS = {
     "ondoy_2009": (date(2009, 9, 25), date(2009, 9, 26)),      # PHT 26 Sep 2009 (Ketsana)
     "habagat_2012": (date(2012, 8, 5), date(2012, 8, 8)),      # PHT 6-8 Aug 2012 (with Saola/Gener)
     "maring_2013": (date(2013, 8, 17), date(2013, 8, 21)),     # PHT 18-21 Aug 2013 (habagat with Trami/Maring)
     "ulysses_2020": (date(2020, 11, 10), date(2020, 11, 12)),  # PHT 11-12 Nov 2020 (Vamco)
 }
-# S5 (B5): made-up datasets that follow M4, fitted to see if M4 gets the true values back.
+# S5: made-up datasets that follow M4, fitted to see if M4 gets the true values back.
 S5_DATASETS = 50                           # the plan: 50 datasets...
 S5_WEEKS = 400                             # ...of 400 target weeks each
 S5_TRUE = {"rho": 0.30, "beta1": 0.15, "beta2": 0.05, "delta": -0.40}   # the plan's true values
 S5_THETA = 5                               # the plan's true theta
-# Our choice (the plan gives none): about 20-60 cases a week, a June-November wet season.
+# Our choice: about 20-60 cases a week, a June-November wet season.
 S5_BASE = {"Intercept": -13.0, "sin1": 0.4, "cos1": -0.3, "sin2": 0.1, "cos2": 0.05, "sin3": 0.0, "cos3": 0.0}
 S5_SIM = {
     "start_cases": 20,                     # mean count of the 2 weeks before the first target (y~ needs them)
@@ -506,65 +437,51 @@ S5_SIM = {
     "flood_chance": 0.15,                  # chance a wet-season week has a flood (EI above 0)
     "ei_range": (1.0, 20.0),               # a flood week's EI, % of residents, drawn evenly in this range
 }
-# Mean of 50 fits within this of the truth. rho leans about 0.02 low at 400 weeks: a model fed
-# its own past counts is biased in short series (0.273 at 400 weeks, 0.298 at 1,600, 0.299 at
-# 3,000 in a 30-dataset test on 2026-10-18), so 0.03 leaves room for that lean, not for a bug.
+# Mean of 50 fits within this of the truth; rho runs about 0.02 low at 400 weeks.
 S5_TOLERANCE = {"rho": 0.03, "beta1": 0.03, "beta2": 0.01, "delta": 0.06}
-S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range (the plan's run: 5.25)
+S5_THETA_RANGE = (4.5, 5.75)               # mean fitted theta in this range
 S5_PREDICTION_TOLERANCE = 0.10             # median |forecast / true mean - 1| below this
 S6_DRAWS = 20_000                          # S6: draws from forecast_dist(20, 5)...
 S6_THETA_RANGE = (4.8, 5.2)                # ...whose estimate_theta must land in this range
-B9_FIT_THETA_RANGE = (4.0, 6.5)            # B9 check: M3's fit_theta on simulated NB counts with theta 5 (run: 5.26)
+B9_FIT_THETA_RANGE = (4.0, 6.5)            # M3 check: fit_theta on simulated NB counts with theta 5
 S8_CENSUS_TOLERANCE = 0.001                # S8: each barangay's rescaled pixels within 0.1% of its census total
 S9_SAMPLES = 500                           # S9: fit this many samples...
 S9_SAMPLE_YEARS = 25                       # ...of this many annual maxima each
 S9_FIT_TOLERANCE_MM = 5                    # S9: median and 5th/95th percentile of fitted R(25) within 5 mm of 191, 164, 224
 S10_SHARE_TOLERANCE = 1e-9                 # S10: the three shares add to 1 up to rounding
-S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this (rule 1)
-S11_REAL_DAYS = ((2018, 30), (2023, 30))   # S11 on A13's real counts: forecast days (year, week), each at g = 2, 1 and 3
+S11_HIDDEN_COUNT = -999                    # S11: counts a model may not see are overwritten with this
+S11_REAL_DAYS = ((2018, 30), (2023, 30))   # S11 on the real counts: forecast days (year, week), each at g = 2, 1 and 3
 
-# ---------------------------------------------------------------------------
-# Evaluation (D1, D3, D5, D6)
-# ---------------------------------------------------------------------------
-COVERAGE_LEVELS = (0.5, 0.9)               # D1: how often the central 50% and 90% ranges hold the truth
-EPISODE_GAP_WEEKS = 2                      # D3, assumption: a breach week at most 2 weeks after the last one joins its episode (S7: [3, 4, 6] is one)
-EPISODE_CI_METHOD = "beta"                 # D3: exact (Clopper-Pearson) 95% interval for "k of n episodes caught"
-LEAD_TIME_IN_ADVANCE_WEEKS = 1             # D4: an episode is caught in advance if its lead time is at least 1 week
+# Evaluation
+COVERAGE_LEVELS = (0.5, 0.9)               # how often the central 50% and 90% ranges hold the truth
+EPISODE_GAP_WEEKS = 2                      # assumption: a breach week at most 2 weeks after the last one joins its episode
+EPISODE_CI_METHOD = "beta"                 # exact (Clopper-Pearson) 95% interval for "k of n episodes caught"
+LEAD_TIME_IN_ADVANCE_WEEKS = 1             # an episode is caught in advance if its lead time is at least 1 week
 BOOT_BLOCK_WEEKS = 8                       # assumption
 BOOT_BLOCK_WEEKS_TESTS = (4, 13)
 BOOT_RESAMPLES = 2000
-BOOT_INTERVAL = 0.95                       # D5, D6: the bootstrap interval runs from the 2.5% to the 97.5% point
+BOOT_INTERVAL = 0.95                       # the bootstrap interval runs from the 2.5% to the 97.5% point
 RANDOM_SEED = 2026
-# D5: the primary endpoint, model a against model b. Names as in B10's forecasts table (column model).
+# The primary endpoint, model a against model b, named as in the forecasts table.
 PRIMARY_COMPARISON = ("M4", "M3")
-FLOOD_TEST = ("M4", "M4_no_EI2")           # D6: does the flood exposure index help? (nested: no DM)
-PRACTICAL_TEST = ("M4", "M1")              # D6: does M4 beat the same-week average health offices use?
+FLOOD_TEST = ("M4", "M4_no_EI2")           # does the flood exposure index help? (nested: no DM)
+PRACTICAL_TEST = ("M4", "M1")              # does M4 beat the same-week average health offices use?
 
-# Layer 2 results (D7): maps and tables from C8 and C9. Stock planning, not prescriptions.
-# Map classes, the same for every storm so the maps compare. A value on a break goes to
-# the class above it, so the classes from FLAG_EXPOSED_SHARES up are exactly the
-# barangays C8 flags.
+# Layer 2 results: maps and tables from the storm runs.
 D7_MAP_SHARE_BREAKS = (0.01, 0.05, 0.10, *FLAG_EXPOSED_SHARES)    # share of a barangay's residents in flood zones
 D7_MAP_DOXY_BREAKS = (100, 1_000, 5_000, 10_000, 25_000, 50_000)  # doxycycline 100 mg capsules per barangay
 D7_MAP_W = 0.5                             # a short flood's dose map shows w = 0.5, the middle of WOUND_SHARE_W; the tables give every w
-D7_RUNS_TOLERANCE = 0.01                   # C8's main run and C9's observed run must agree to 0.01 people or units (both files keep 4 decimals)
+D7_RUNS_TOLERANCE = 0.01                   # the main run and the observed run must agree to 0.01 people or units (both files keep 4 decimals)
 
-# Paper figures (D8). Stock planning, not prescriptions.
-# Assumption: figure 4, the plan's "Carina exposure map", also shows Kristine on the same
-# scale. Carina's IMERG rain sits at R0, so its map is almost empty (Notes.md 1.1); Kristine
-# shows what a storm IMERG registers looks like. If the team does not confirm Kristine,
-# set this to ("carina_2024",).
+# Paper figures.
 D8_MAP_STORMS = ("carina_2024", "kristine_2024")
-D8_RELIABILITY_YEARS = PROB_SCORE_YEARS    # figure 3 scores the breach probabilities on D3's window (2022-2026)
+D8_RELIABILITY_YEARS = PROB_SCORE_YEARS    # figure 3 scores the breach probabilities on the window (2022-2026)
 
-# ---------------------------------------------------------------------------
-# App data (F2): the files the web app (app/) reads. Stock planning, not prescriptions.
-# ---------------------------------------------------------------------------
+# App data: the files the web app (app/) reads. Stock planning, not prescriptions.
 APP_DATA = ROOT / "app" / "public" / "data"    # served to the app as /data/<file>; committed, so Vercel ships it
 APP_BARANGAY_RUNS = APP_DATA / "barangays"     # one file per storm and run
-FORECASTS_SIMULATED = RESULTS / "forecasts_simulated_C.csv"   # B10 --simulate --option C: the app's Layer 1 until A13
-# NCR's 17 cities and municipalities (PSGC as of 31 Dec 2023) from faeldon/philippines-json-maps
-# (MIT): its four NCR district files at "hires" (mapshaper's 10%), pinned to one commit.
+FORECASTS_SIMULATED = RESULTS / "forecasts_simulated_C.csv"   # backtest --simulate --option C: the app's Layer 1 without case data
+# NCR's 17 cities and municipalities from faeldon/philippines-json-maps (MIT), pinned to one commit.
 NCR_CITIES_RAW = DATA_RAW / "ncr_cities"
 NCR_CITIES_URL = ("https://raw.githubusercontent.com/faeldon/philippines-json-maps/"
                   "8eeead560246863c8c820c31ca6fbca81a279477/2023/geojson/provdists/hires/"
@@ -573,18 +490,14 @@ NCR_DISTRICTS = ("1303900000", "1307400000", "1307500000", "1307600000")   # Man
 NCR_CITIES_BYTES = {"1303900000": 29_016, "1307400000": 23_439, "1307500000": 45_025, "1307600000": 78_208}   # the pinned files' sizes
 NCR_CITY_COUNT = 17
 QC_CITY_PSGC = QC_PSGC_PREFIX + "00000"        # Quezon City's own 10-digit PSGC: the only city with data
-# F14: the map shows every city and municipality of the Philippines, from the same commit of
-# faeldon's maps. Its region files (at "lowres": only their province PSGCs are read) name each
-# province's file, read at "hires" as NCR's are. NCR's own come from NCR_CITIES_RAW.
+# The map shows every city and municipality of the Philippines, from the same commit of faeldon's maps.
 FAELDON_URL = NCR_CITIES_URL.split("provdists/")[0] + "{path}"   # the same commit's 2023/geojson/ folder
 PH_CITIES_RAW = DATA_RAW / "ph_cities"
 PH_REGIONS = ("100000000", "200000000", "300000000", "400000000", "500000000", "600000000",
               "700000000", "800000000", "900000000", "1000000000", "1100000000", "1200000000",
               "1300000000", "1400000000", "1600000000", "1700000000", "1900000000")   # faeldon's 17 regions, NCR is 1300000000
 PH_CITY_COUNT = 1642                           # cities and municipalities in faeldon's 2023 maps, one file each
-# The towns no province file holds: the highly urbanized cities outside NCR and BARMM's Special
-# Geographic Area. faeldon draws only their barangays, without the town's name, so each is its
-# barangays joined; name and the province it lies in, checked against OpenStreetMap on 2026-10-22.
+# The towns no province file holds: each outline is built by joining its barangays.
 PH_TOWNS_APART = {
     "0330100000": ("City of Angeles", "Pampanga"),
     "0331400000": ("City of Olongapo", "Zambales"),
@@ -611,78 +524,55 @@ PH_TOWNS_APART = {
     "1999907000": ("Ligawasan", "Special Geographic Area"),
     "1999908000": ("Tugunan", "Special Geographic Area"),
 }
-# Assumption: outside NCR the outlines keep detail to about 100 m (a pixel at a province's view),
-# so the whole country is 6 MB (1.4 MB sent compressed; 50 m made it 9.9 MB); NCR keeps
-# MAP_SIMPLIFY_M, since the map drills down into Quezon City.
+# Assumption: outlines outside NCR keep detail to about 100 m.
 PH_SIMPLIFY_M = 100
 APP_CITIES_FILE = "ph_cities.json"             # .json, not .geojson, so the web host sends it compressed
-# F14: the islands' coastlines, which the map draws between the country's view and the towns'
-# borders (app/src/map/borders.ts): every city and municipality joined, with the gaps between
-# faeldon's province files (a border two files leave up to twice PH_ISLANDS_GAP_M apart) closed.
-# Assumptions: islands under PH_ISLANDS_MIN_KM2 are left out, and the coasts keep detail to
-# PH_ISLANDS_SIMPLIFY_M: both under a pixel at the zooms the map draws them at (6 to 8.75).
+# The islands' coastlines, which the map draws between the country view and the town borders.
 PH_ISLANDS_GAP_M = 150
 PH_ISLANDS_MIN_KM2 = 1
 PH_ISLANDS_SIMPLIFY_M = 250
 APP_ISLANDS_FILE = "ph_islands.json"
-# F14: the app's Simulation mode (src/app_simulation.py): made-up counts after A13's last week, and
-# next week's forecast with today's ECMWF rain forecast from Open-Meteo's forecast API.
+# The app's Simulation mode (src/app_simulation.py).
 SIM_FORECAST_API = "https://api.open-meteo.com/v1/forecast"
 SIM_FORECAST_RAW = DATA_RAW / "ecmwf_forecast"   # each day's reply, unchanged
 APP_SIMULATION_FILE = "city_simulation.json"
 SIM_MAX_PAST_DAYS = 92                           # the most past days Open-Meteo's forecast API gives
-# F16: a prophylaxis plan for every day of the app's timeline, not only the four storms
-# (src/app_days.py): the 3-day rain window from each day, on ECMWF's archived forecasts where
-# Open-Meteo's Previous Runs archive has them, else on the rain that fell (IMERG).
-FORECAST_ARCHIVE_START = date(2024, 2, 1)        # A15: the archive's first hour is 3 Feb 2024; earlier days come back empty
+# A prophylaxis plan for every day of the app's timeline, not only the four storms (src/app_days.py).
+FORECAST_ARCHIVE_START = date(2024, 2, 1)        # the archive's first hour is 3 Feb 2024; earlier days come back empty
 APP_DAYS = APP_DATA / "days"                     # one file per year: each day's plan
 APP_DAY_RUNS = APP_BARANGAY_RUNS / "days"        # one barangay file per day and run that exposes anyone
-# Assumption: shape detail kept for the web, in metres (about a pixel at the city's view). One
-# value for cities and barangays, which are simplified together so their borders stay one line.
+# Assumption: shape detail kept for the web, in metres (about a pixel at the city's view).
 MAP_SIMPLIFY_M = 10
 APP_COORD_DECIMALS = 5                         # about 1 m
-APP_FLAG_SHARE = FLAG_EXPOSED_SHARES[0]        # the app flags a barangay at 25% (Notes.md 1.2)
+APP_FLAG_SHARE = FLAG_EXPOSED_SHARES[0]        # the app flags a barangay at 25%
 APP_SHARE_BREAKS = (0.05, 0.15, *FLAG_EXPOSED_SHARES)   # the map's five classes: under 5%, 5-15%, 15-25%, 25-50%, 50% or more
-APP_SHORT_FLOOD_W = D7_MAP_W                   # a short flood is shown at w = 0.5, as on D7's maps
+APP_SHORT_FLOOD_W = D7_MAP_W                   # a short flood is shown at w = 0.5, as on the maps
 
-# The map (F4). A city's color on the map and its panel's outbreak level come from one model's
-# chance of an outbreak next week, Pr(breach) (B7). Assumption (app plan, open question 3):
-# Low below 10%, Watch from 10% to under 50%, High from 50%, so the design's 22% reads Watch.
+# The map.
 APP_LEVEL_MODEL = "M4"                         # LEPTON's model fills the map and the city panel
 APP_LEVELS = (("low", 0.0), ("watch", 0.10), ("high", 0.50))   # each level and the Pr(breach) it starts at
-# Assumption: a city smaller than this gets no name written on the map, as in Figma (only
-# Pateros, 1.6 km2; the next smallest, San Juan, is 5.8 km2). Its name still shows on hover.
+# Assumption: a city smaller than this gets no name on the map (only Pateros).
 APP_LABEL_MIN_KM2 = 3
 
-# NOAH's flood patches on the map (F13; F14: the whole country, src/noah_national.py). Assumption:
-# a flood patch smaller than a 20 m square is dropped; most are one to four of NOAH's grid cells,
-# under a pixel at a city's view. For looking at only: C2 and every LEPTON number use A8's full maps.
+# NOAH's flood patches on the map.
 APP_NOAH_MIN_M2 = 400
 
-# F14: the map shows NOAH's flood maps for the whole country (src/noah_national.py), as vector
-# tiles. NOAH's Drive folders of province zips, one per map (the folder A8's Metro Manila came from):
+# The map shows NOAH's flood maps for the whole country (src/noah_national.py), as vector tiles.
 NOAH_NATIONAL_FOLDERS = {
     5: "17ecJuf2vnkrpCzNVLes0fI08XFsR1x8N",
     25: "1PYdJFtfxzmAwk1gIgn8wYLh8WPkiZvOf",
     100: "10pCWTfU-gVuAbdx4gdUGaDcNrSzMz0Mm",
 }
 NOAH_NATIONAL_CLEAN = DATA_CLEAN / "noah_national"   # one FlatGeobuf per province and map, and manifest.csv
-# Assumption: before tiling, each patch's outline loses points that move it less than 5 m; the
-# highest zoom's pixel is about 10 m, so the tiles look the same and the files are much smaller.
+# Assumption: before tiling, outlines drop points that move them less than 5 m.
 NOAH_NATIONAL_PRESIMPLIFY_M = 5
-# Assumption: tiles from zoom 4 (the whole country) to 11 (a city), each tile 2^11 units across,
-# about 10 m a unit at zoom 11, NOAH's own grid; the map stretches zoom 11's tiles further in.
-# Zoom 12 at full detail would double the files (tested on Marinduque), past GitHub's 100 MB a file.
+# Assumption: tiles from zoom 4 (the whole country) to 11 (a city), 2^11 units across.
 NOAH_TILE_ZOOMS = (4, 11)
 NOAH_TILE_DETAIL = 11
-# Assumption: each map gets the largest of these tile size limits (bytes; tippecanoe's default is
-# 500,000) that keeps its file under APP_NOAH_TILES_MAX_BYTES: a tile over its limit drops its
-# smallest patches. The 5- and 25-year maps fit at the default; the 100-year map, NOAH's largest,
-# was 106 MB at it.
+# Assumption: each map uses the largest tile size limit that keeps its file under APP_NOAH_TILES_MAX_BYTES.
 NOAH_TILE_LIMITS = (500_000, 300_000, 200_000)
 APP_NOAH_TILES = "noah_flood_{return_period}yr.pmtiles"
 APP_NOAH_TILES_MAX_BYTES = 95_000_000
-# Check "F14 NOAH tiles": each file must reach at least this far (west, south, east, north, degrees):
-# from Palawan and Mindanao to northern Luzon, so a file of a few provinces fails.
+# The NOAH tiles check: each file must reach at least this far (west, south, east, north).
 APP_NOAH_TILES_REACH = (120.0, 7.5, 125.5, 18.0)
 TIPPECANOE_WSL_DIR = "$HOME/tools/tippecanoe"   # Windows only: the WSL folder tippecanoe was built in (make)

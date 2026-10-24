@@ -1,11 +1,10 @@
-/* F3: the logo (Logo.tsx), Figma node 3:47: concept G, the wordmark with a ripple for its O. */
+/* The logo (Logo.tsx): concept G, the wordmark with a ripple for its O. */
 .logo {
   display: inline-flex;
   align-items: center;
 }
 
-/* The wordmark is set in Instrument Sans SemiBold, as in Figma; index.html loads only the five
-   letters it sets. Its 2.8 px letter spacing is 14% of the 20 px size. */
+/* The wordmark is set in Instrument Sans SemiBold; index.html loads only the five letters it sets. */
 .logo-word {
   font-family: 'Instrument Sans', var(--font-sans);
   font-weight: 600;
@@ -16,9 +15,7 @@
   color: var(--color-text-primary);
 }
 
-/* The O: a square 0.93 em wide, as in Figma, with the letter spacing after it that every letter
-   has. Its bottom sits 0.115 em below the baseline, which puts the ring's middle halfway up the
-   capitals. */
+/* The O: a square 0.93 em wide with the letter spacing after it that every letter has. */
 .logo-o {
   display: inline-block;
   width: 0.93em;
@@ -27,8 +24,7 @@
   vertical-align: -0.115em;
 }
 
-/* The ring is drawn thicker than concept F's (5.6 of 48 px, 2.2 px here) so it matches the
-   letters' strokes */
+/* The ring is drawn thicker (2.2 px) so it matches the letters' strokes. */
 .logo-o-ring {
   fill: none;
   stroke: var(--color-accent-primary);

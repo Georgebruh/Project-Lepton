@@ -9,10 +9,7 @@ const GITHUB_URL = 'https://github.com/Georgebruh/Project-Lepton'
 /** One kind of data the app uses, and who it comes from: each source's name, link and licence. */
 type Credit = { what: string; sources: { name: string; url?: string; license?: string }[] }
 
-/**
- * F12: every source of the app's data, maps and fonts, credited in the footer as check U8 asks
- * (How it works' Sources gives each in full). A source whose licence asks for credit names it.
- */
+/** Every source of the app's data, maps and fonts, credited in the footer. */
 const CREDITS: Credit[] = [
   {
     what: 'Boundaries',
@@ -79,10 +76,7 @@ function DataCredits() {
   )
 }
 
-/**
- * The paper's public address. The Paper link stays hidden while this is null, so the footer
- * never shows a link that goes nowhere (check U7); set it once the paper is online.
- */
+/** The paper's public address. */
 const PAPER_URL: string | null = null
 
 type FooterProps = {
@@ -90,14 +84,7 @@ type FooterProps = {
   credits?: ReactNode
 }
 
-/**
- * F3: the footer, from the Figma frame "Home" (node 20:364): the logo, the event, links to the
- * code, the paper and the sources, and the stock-planning note that every dose figure needs.
- * No team or school name anywhere in the app: PJDSC's guidelines ask for none.
- * F6: `credits` names the sources of what the page shows under the note, such as Home's
- * photos; check U8 wants every source credited in the footer and in How it works. F12: the
- * sources of the app's data and fonts come first, on every page with this footer.
- */
+/** The footer: logo, links to the code, paper and sources, and the stock-planning note. */
 export default function Footer({ credits }: FooterProps) {
   return (
     <footer className="footer">

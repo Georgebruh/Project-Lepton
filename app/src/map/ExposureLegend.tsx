@@ -9,11 +9,7 @@ type ExposureLegendProps = {
   flagShare: number
 }
 
-/**
- * F5: the map's legend at level 3, Figma "Legend · exposure" (node 56:649): the five classes of
- * the share of residents exposed, light to dark, and which of them are flagged. Its labels come
- * from storms.json, so they follow config.APP_SHARE_BREAKS.
- */
+/** The map's legend at level 3. */
 export default function ExposureLegend({ classes, flagShare }: ExposureLegendProps) {
   return (
     <div className="exposure-legend">

@@ -14,7 +14,7 @@ import Tab from '../components/Tab.tsx'
 import ToggleRow from '../components/ToggleRow.tsx'
 import './Kit.css'
 
-/** The three themes in tokens.css. Clinic is the app's; Monsoon is the Figma Components page's. */
+/** The three themes in tokens.css; Clinic is the app's. */
 const THEMES = [
   { id: 'clinic', name: 'Clinic' },
   { id: 'monsoon', name: 'Monsoon' },
@@ -22,16 +22,16 @@ const THEMES = [
 ]
 
 type KitSectionProps = {
-  /** The component's name, as in Figma. */
+  /** The component's name. */
   title: string
-  /** Where it is in Figma, e.g. "Components · 3:65". */
+  /** Where it is, e.g. "Components · 3:65". */
   node: string
   /** Wide sections (the headers and the footer) fill the page with no padding. */
   wide?: boolean
   children: ReactNode
 }
 
-/** One component's variants, laid out as on the Figma Components page: 16 px padding and gaps. */
+/** One component's variants: 16 px padding and gaps. */
 function KitSection({ title, node, wide = false, children }: KitSectionProps) {
   return (
     <section className="kit-section">
@@ -44,14 +44,7 @@ function KitSection({ title, node, wide = false, children }: KitSectionProps) {
   )
 }
 
-/**
- * F3: the component kit (route /kit). It shows every shared component in
- * app/src/components/, in every variant, with Figma's sample text, so each one can be checked
- * against its Figma component side by side at 100% zoom. The Figma Components page is drawn
- * in the Monsoon theme, so the theme switch at the top applies Monsoon (or Ember) to this
- * page; the choice is kept in the address (?theme=monsoon). Not a screen of the app: nothing
- * links here.
- */
+/** The component kit (route /kit). */
 export default function Kit() {
   const [searchParams, setSearchParams] = useSearchParams()
   const theme = searchParams.get('theme') ?? 'clinic'

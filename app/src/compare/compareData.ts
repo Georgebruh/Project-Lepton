@@ -1,32 +1,23 @@
 import { fetchJson, type CityForecast } from '../map/mapData.ts'
 import type { Storm, StormsFile } from '../map/planData.ts'
 
-/**
- * F9: the files Compare models reads, written by F2 (python -m src.app_data) into
- * public/data/, and the loader that fetches them (F14: for the city panel's Compare models tab):
- *
- *   city_forecast.json   B10's forecasts per target week; made-up counts while "simulated"
- *   scores.json          each model's scores (D1-D3) and D5's primary endpoint. F2 writes it
- *                        beside B10's real run only, so it is fetched only then: while the
- *                        forecasts are simulated, no score can reach the page
- *   storms.json          the storms' flood dates (A11), marked on the chart
- */
+/** The files Compare models reads. */
 
 /** One model's scores in scores.json. */
 export type ModelScores = {
-  /** Mean absolute error, cases a week (D1), over the MAE window. */
+  /** Mean absolute error, cases a week, over the MAE window. */
   mae: number
-  /** The MAE over the "same week last year" miss of 2016-2017 (D2). */
+  /** The MAE over the "same week last year" miss of 2016-2017. */
   mase: number
-  /** Weighted interval score (D1), over the range-score window. */
+  /** Weighted interval score, over the range-score window. */
   wis: number
-  /** The share of weeks whose count fell inside the 90% range (D1), 0 to 1. */
+  /** The share of weeks whose count fell inside the 90% range, 0 to 1. */
   coverage_90: number
-  /** Brier score of the chance of an outbreak, Pr(breach) (D3), 0 to 1. */
+  /** Brier score of the chance of an outbreak, Pr(breach), 0 to 1. */
   brier: number
 }
 
-/** D5's primary endpoint: the mean of |error M4| - |error M3| with its 95% block-bootstrap interval. */
+/** The primary endpoint: the mean of |error M4| - |error M3| with its 95% block-bootstrap interval. */
 export type PrimaryResult = {
   /** "M4 vs M3" (config.PRIMARY_COMPARISON). */
   comparison: string
@@ -43,7 +34,7 @@ export type PrimaryResult = {
 
 /** scores.json. */
 export type Scores = {
-  /** The B10 file the scores come from; city_forecast.json names the same one. */
+  /** The forecasts file the scores come from; city_forecast.json names the same one. */
   source: string
   /** The years each score is over: MAE and MASE, then WIS, 90% coverage and the Brier score. */
   windows: { mae_mase: number[]; wis_coverage_brier: number[] }
@@ -58,7 +49,7 @@ export type CompareData = {
   scores: Scores | null
 }
 
-/** scores.json, or null when it is missing; any other failure stops with an error, which ErrorPage shows. */
+/** scores.json, or null when it is missing. */
 async function fetchScores(): Promise<Scores | null> {
   const res = await fetch('/data/scores.json')
   if (res.status === 404) {
@@ -71,11 +62,7 @@ async function fetchScores(): Promise<Scores | null> {
   return (await res.json()) as Scores
 }
 
-/**
- * The scores to show beside `forecast`: only those made from the same real run. A scores.json
- * from another B10 file than city_forecast.json's is left out, and the page shows "—" (nothing
- * on the page may read as a real result that is not one).
- */
+/** The scores to show beside `forecast`: only those made from the same real run. */
 export function scoresFor(forecast: CityForecast, scores: Scores | null): Scores | null {
   if (forecast.simulated || !scores) {
     return null
@@ -87,10 +74,7 @@ export function scoresFor(forecast: CityForecast, scores: Scores | null): Scores
   return scores
 }
 
-/**
- * F14: the loader of Compare models, now a tab of the map's city panel (/map/quezon-city/compare):
- * the storms and the scores. The forecast comes from the map (MapLayout), in the mode shown.
- */
+/** The loader of Compare models, now a tab of the map's city panel (/map/quezon-city/compare). */
 export async function loadCompareData(): Promise<Omit<CompareData, 'forecast'>> {
   const [stormsFile, scores] = await Promise.all([fetchJson<StormsFile>('/data/storms.json'), fetchScores()])
   return { storms: stormsFile.storms, scores }

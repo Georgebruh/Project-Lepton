@@ -8,11 +8,7 @@ type MapZoomProps = {
   map: MapLibreMap | null
 }
 
-/**
- * F4: the map's zoom buttons, Figma "Zoom" (node 55:364). MapLibre's own zoom animation
- * follows the reader's reduced-motion setting. F13: their zooms are the reader's moves
- * (READER_MOVE), so a resize no longer brings the level's view back.
- */
+/** The map's zoom buttons. */
 export default function MapZoom({ map }: MapZoomProps) {
   return (
     <div className="map-zoom" role="group" aria-label="Zoom">

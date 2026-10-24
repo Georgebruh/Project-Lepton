@@ -33,7 +33,7 @@ import SeriesKey from './SeriesKey.tsx'
 import WeeksTable from './WeeksTable.tsx'
 import './CompareChart.css'
 
-/** The shaded COVID years' label, short enough for the two years at 1440 px (the caption says it in full). */
+/** The shaded COVID years' label, short enough for the two years at 1440 px. */
 const COVID_LABEL = 'COVID years: not scored'
 
 /** The tooltip's distance from the crosshair, px. */
@@ -48,7 +48,7 @@ type CompareChartProps = {
   weeks: ForecastWeek[]
   /** The week indexes the x axis spans. */
   span: Span
-  /** The x axis's labels (periodTicks): under their week ('middle', the 12 weeks) or starting at it (months, years). */
+  /** The x axis's labels (periodTicks). */
   ticks: Tick[]
   tickAnchor: 'start' | 'middle'
   /** The storms whose flood began in the span. */
@@ -89,20 +89,7 @@ function horizonWords(weeks: number): string {
   return weeks === 1 ? 'made the week before' : `made ${weeks} weeks before`
 }
 
-/**
- * F9: the Compare models chart. Figma's frame "Compare models" leaves the room right of its
- * controls empty; this is the chart drawn for it, "Weekly leptospirosis cases, Quezon City · 2024"
- * (How it works, node 12:1010): each week's count as a grey bar, each model's forecast for the
- * week as a line (made the week before), M4's 90% range shaded in its teal, and the epidemic
- * threshold as an amber dashed line, with the storms marked at the week their flood began.
- *
- * The plot is drawn at the card's width in px, so its labels stay 12 px on any screen. The
- * counts axis starts at 0 and reaches the tallest count or forecast drawn; a range end or
- * threshold above it raises the axis by at most half again (axisTop) and otherwise runs off the
- * top, which the caption then says. Pointing at the plot, or the arrow keys once it has the
- * focus, picks a week: a crosshair marks it and the tooltip lists every series that week. The
- * table under the chart holds the same numbers.
- */
+/** The Compare models chart. */
 export default function CompareChart({
   weeks,
   span,
@@ -248,9 +235,9 @@ export default function CompareChart({
     : null
 
   const drawn = models.map((model) => modelStyle(model).key)
-  // F14: a simulated week still under way has no count
+  // A simulated week still under way has no count
   const counted = weeks.flatMap((week) => (week.y === null ? [] : [week.y]))
-  // F14: the badge also when the Simulation mode added some of the weeks
+  // The badge also when the Simulation mode added some of the weeks
   const simulatedWords = simulated || weeks.some((week) => week.simulated) ? badgeWords(simulated) : null
   const summary =
     `${weeks.length} weeks, ${formatWeek(weeks[0].start, weeks[weeks.length - 1].end)}: ` +
@@ -378,7 +365,7 @@ export default function CompareChart({
               {layers.observed &&
                 weeks.map(
                   (week) =>
-                    // F14: a week under way has no bar; a simulated week's bar is outlined, not filled
+                    // A week under way has no bar; a simulated week's bar is outlined, not filled
                     week.y !== null && (
                       <rect
                         key={week.week_index}

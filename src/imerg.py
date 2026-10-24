@@ -1,43 +1,4 @@
-"""IMERG Late daily rain over Quezon City's catchments (task A4).
-
-Downloads NASA's IMERG Late daily rain (GPM_3IMERGDL, version 07) for every UTC day
-from config.IMERG_START to the latest day NASA has, clipped to config.IMERG_BOX (the
-A7 catchments plus one 0.1 degree cell of margin), and saves it as imerg_daily.nc.
-
-Each value is one day's rain in mm for one 0.1 x 0.1 degree cell. Days are UTC days:
-00:00-24:00 UTC is 8 AM-8 AM Philippine time, the same day PAGASA uses.
-
-How the download works:
-1. Ask NASA's catalogue (CMR) for every daily file ("granule") and its OPeNDAP
-   address. No login needed for this step.
-2. Ask OPeNDAP for only the cells inside the box. This is the service the GES DISC
-   subsetter uses. One request per day (about 9,600), each saved as a small file in
-   data/raw/imerg_daily/. A stopped run picks up where it left off: days already on
-   disk are skipped.
-3. Stack the days into one file, imerg_daily.nc.
-
-IMERG stores longitude before latitude (rule 8). This script never assumes an order:
-it asks the server for the dimension names and builds every request from them.
-
-Before the first run (once per computer):
-1. Log in at https://urs.earthdata.nasa.gov (a free account; signing in with Google
-   works). In your profile, under Applications > Authorized Apps, approve
-   "NASA GESDISC DATA ARCHIVE".
-2. In your profile, click "Generate Token" and copy the token. Paste it into Notepad
-   and save it as earthdata_token.txt in your home folder (C:\\Users\\<you>\\), which is
-   config.EARTHDATA_TOKEN_FILE. A token works like a password for 60 days: never
-   paste it in a chat or a command, and never commit it.
-   (If you have an Earthdata password, a netrc file works instead: ~/.netrc or
-   ~/_netrc holding "machine urs.earthdata.nasa.gov login <user> password <pass>".)
-
-Run from the repository root:
-    python -m src.imerg --start 2024-07-23 --end 2024-07-25   # Carina only: tests your login
-    python -m src.imerg                                       # every day (an hour or more)
-then run the sanity checks (S2):  python -m src.checks
-Only a run without --start and --end writes imerg_daily.nc. A test run with either
-option writes imerg_daily_<first day>_<last day>.nc beside it, so a 3-day test never
-replaces the full record.
-"""
+"""IMERG Late daily rain over Quezon City's catchments."""
 
 import argparse
 import time
@@ -67,7 +28,7 @@ LOGIN_HELP = f"""Check your Earthdata login (steps at the top of src/imerg.py):
 
 
 class LoginError(Exception):
-    """NASA refused the login. Retrying will not help."""
+    """NASA refused the login."""
 
 
 class DownloadError(Exception):
@@ -75,12 +36,7 @@ class DownloadError(Exception):
 
 
 def find_granules(start, end):
-    """Every IMERG Late daily file from start to end (dates), from NASA's catalogue (CMR).
-
-    Returns a table with one row per UTC day: date, granule (the file's name) and url
-    (its OPeNDAP address). The file label changes over time (V07B, then V07C from
-    3 March 2026), so the addresses come from CMR instead of being built by hand.
-    """
+    """Every IMERG Late daily file from start to end (dates), from NASA's catalogue (CMR)."""
     params = {
         "short_name": config.IMERG_PRODUCT,
         "version": config.IMERG_VERSION,
@@ -117,15 +73,7 @@ def find_granules(start, end):
 
 
 def earthdata_session():
-    """A requests session that logs in to NASA Earthdata.
-
-    With a token file, every request carries the header "Authorization: Bearer <token>".
-    requests drops that header if a reply redirects to another host, so the token only
-    ever goes to NASA's OPeNDAP server.
-    Without one, a netrc file is used: NASA redirects the first request to
-    urs.earthdata.nasa.gov, requests sends the netrc username and password to that
-    host only, and NASA sets a cookie that the session keeps for later requests.
-    """
+    """A requests session that logs in to NASA Earthdata."""
     session = requests.Session()
     token_file = config.EARTHDATA_TOKEN_FILE
     if token_file.exists():
@@ -137,12 +85,7 @@ def earthdata_session():
 
 
 def fetch(session, url, constraint, path):
-    """Download one OPeNDAP subset of one daily file and save it at path (netCDF-4).
-
-    constraint says which variables and index ranges to send (DAP4 "dap4.ce").
-    The file is written under a temporary name first, so a stopped run never leaves
-    half a file that a rerun would skip.
-    """
+    """Download one OPeNDAP subset of one daily file and save it at path (netCDF-4)."""
     r = session.get(
         url + ".dap.nc4",
         params={"dap4.ce": constraint},
@@ -173,12 +116,7 @@ def download(session, url, constraint, path):
 
 
 def read_grid(session, url, folder):
-    """IMERG's full lon and lat axes, and the order of the rain variables' dimensions.
-
-    Two small requests to one daily file: first the two axes, then one cell of each
-    rain variable. Index 0 on every dimension is the same cell whatever the order is,
-    so the second request works before we know the order.
-    """
+    """IMERG's full lon and lat axes, and the order of the rain variables' dimensions."""
     axes_path = folder / "grid_axes.nc4"
     download(session, url, "lon;lat", axes_path)
     with xr.open_dataset(axes_path) as ds:
@@ -198,11 +136,7 @@ def read_grid(session, url, folder):
 
 
 def box_ranges(lon, lat, box):
-    """First and last index, per axis, of the cells whose centres lie inside the box.
-
-    box is (lon_min, lat_min, lon_max, lat_max). IMERG cell centres sit at x.x5 degrees
-    and A7 snapped the box edges to x.x0, so every cell is wholly inside or outside.
-    """
+    """First and last index, per axis, of the cells whose centres lie inside the box."""
     lon_min, lat_min, lon_max, lat_max = box
     ranges = {"time": (0, 0)}  # a daily file holds one time step
     for name, axis, low, high in (("lon", lon, lon_min, lon_max), ("lat", lat, lat_min, lat_max)):
@@ -214,12 +148,7 @@ def box_ranges(lon, lat, box):
 
 
 def day_constraint(dims, ranges):
-    """The DAP4 request for one day: each rain variable over the box, plus its axes.
-
-    dims is the dimension order the file uses, e.g. ("time", "lon", "lat"), and ranges
-    gives (first, last) index per dimension. "[a:1:b]" means indices a to b, step 1.
-    Example: precipitation[0:1:0][3007:1:3014][1044:1:1049];...;lon[3007:1:3014];...
-    """
+    """The DAP4 request for one day: each rain variable over the box, plus its axes."""
     def cut(dim):
         first, last = ranges[dim]
         return f"[{first}:1:{last}]"
@@ -235,13 +164,7 @@ def day_path(folder, day):
 
 
 def read_day(path, day):
-    """One day's subset, labelled with its UTC day from the catalogue.
-
-    Read with netCDF4 directly: for thousands of small files it is about 70 times
-    faster than xr.open_dataset. Fill values come back masked and become NaN.
-    The file's own time value is not used; the catalogue date labels the day, so a
-    calendar setting inside the file can never shift the dates.
-    """
+    """One day's subset, labelled with its UTC day from the catalogue."""
     data_vars = {}
     with netCDF4.Dataset(path) as nc:
         for name in config.IMERG_VARIABLES:
@@ -258,7 +181,7 @@ def read_day(path, day):
 
 
 def download_all(session, granules, constraint, folder, workers):
-    """Download every day not yet on disk, several at once. Stops if any day fails."""
+    """Download every day not yet on disk, several at once."""
     todo = [row for row in granules.itertuples() if not day_path(folder, row.date).exists()]
     print(f"{len(granules) - len(todo)} days already on disk, {len(todo)} to download")
     if not todo:
@@ -315,11 +238,7 @@ def combine(granules, folder):
 
 
 def save(ds, path):
-    """Write the dataset compressed, under a temporary name first, then rename it.
-
-    The downloaded files' storage settings are dropped. A fill value in NASA's files
-    was read in as missing (NaN) and is written as NaN, where check S2 looks for it.
-    """
+    """Write the dataset compressed, under a temporary name first, then rename it."""
     for name in ds.variables:
         ds[name].encoding = {}
     part = path.with_suffix(".part")
@@ -328,11 +247,7 @@ def save(ds, path):
 
 
 def output_path(full_run, granules):
-    """Where the stacked file is saved.
-
-    A full run (no --start, no --end) writes config.IMERG_DAILY, the file check S2 and
-    task C3 read. A test run writes imerg_daily_<first day>_<last day>.nc beside it.
-    """
+    """Where the stacked file is saved."""
     if full_run:
         return config.IMERG_DAILY
     first, last = granules["date"].iloc[0], granules["date"].iloc[-1]
