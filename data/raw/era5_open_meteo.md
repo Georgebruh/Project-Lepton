@@ -1,7 +1,6 @@
 Source URL: https://archive-api.open-meteo.com/v1/archive (Open-Meteo Historical Weather API;
   docs https://open-meteo.com/en/docs/historical-weather-api)
 Downloaded on (YYYY-MM-DD): 2026-10-17
-Downloaded by: a team member
 Version / release: the live archive, no version number. Model ERA5 (models=era5, the plain
   ECMWF ERA5 reanalysis at 0.25 degree, not Open-Meteo's ERA5-Land or blended "best match"),
   variable precipitation (mm, hourly).

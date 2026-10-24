@@ -2,7 +2,6 @@ Source URL: https://previous-runs-api.open-meteo.com/v1/forecast (Open-Meteo Pre
   docs https://open-meteo.com/en/docs/previous-runs-api)
 Downloaded on (YYYY-MM-DD): 2026-10-16 (Carina, previous days 1-3); 2026-10-18 (all four
   storms, previous days 1-5)
-Downloaded by: a team member
 Version / release: the live archive, no version number. Model ECMWF IFS 0.25 degree
   (models=ecmwf_ifs025), variables precipitation_previous_day1 to _day5 (mm, hourly;
   config.FORECAST_PREVIOUS_DAYS). The 2026-10-16 file has _day1 to _day3 only.

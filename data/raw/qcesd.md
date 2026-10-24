@@ -1,7 +1,6 @@
 Source URL: none; sent by e-mail by the Quezon City Epidemiology and Surveillance Division
   (QCESD, QC Health Department), in reply to the team's A1 request.
 Downloaded on (YYYY-MM-DD): 2026-10-20 (saved from the e-mail; confirm the date QCESD replied)
-Downloaded by: a team member
 Version / release: QCESD's case list as extracted for us, no version number. Latest date in it:
   2026-10-18 (an admission), so the extract is from that day or later.
 Notes: Task A13. CASE-LEVEL RECORDS: saved unchanged in data/raw/qcesd/ (config.QCESD_CASES_RAW),

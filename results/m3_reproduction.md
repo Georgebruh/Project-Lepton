@@ -63,7 +63,7 @@ all eight of its published scores to four decimals confirms:
 
 Our reading: the published hybrid gain cannot be reached from the method as described. A
 leak in the XGBoost step is consistent with the numbers but **not proven**; only the
-authors' code can settle it. Asking them for it (jglatigay@up.edu.ph) is worth one email.
+authors' code can settle it. Asking them for it is worth one email.
 
 ## What this means for LEPTON
 

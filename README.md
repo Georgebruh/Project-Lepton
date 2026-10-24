@@ -534,7 +534,8 @@ For anyone extending the project:
 - **New data:** save the download unchanged in `data/raw/` with a note `<file>.md` (the template
   is in [`data/raw/README.md`](data/raw/README.md)); cleaned versions go in `data/clean/`.
 - **Never commit case-level records** (safeguard 11). The submission names no team, school or
-  member, as PJDSC's guidelines ask, so data notes say "a team member".
+  member, as PJDSC's guidelines ask, so data notes say who published a file, never who
+  downloaded it.
 - The paper has its own writing rules ([`paper/README.md`](paper/README.md)), and the app its own
   conventions ([`app/README.md`](app/README.md)).
 

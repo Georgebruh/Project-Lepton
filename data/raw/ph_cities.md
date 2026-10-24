@@ -2,7 +2,7 @@ Source URL: https://github.com/faeldon/philippines-json-maps (MIT License, (c) J
   pinned to commit 8eeead560246863c8c820c31ca6fbca81a279477 (17 Sep 2024), as data/raw/ncr_cities/;
   the full URL pattern is config.FAELDON_URL.
 Downloaded on (YYYY-MM-DD): 2026-10-22
-Downloaded by: a team member (by python -m src.app_data, which fetches them if they are missing)
+Script: python -m src.app_data, which fetches them if they are missing
 Version / release: the repository's 2023 maps: PSGC as of 31 December 2023, longitude/latitude.
 Notes: Task F14 (the app's map of the whole Philippines). Saved unchanged in data/raw/ph_cities/
   (config.PH_CITIES_RAW):

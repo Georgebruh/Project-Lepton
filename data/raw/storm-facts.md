@@ -1,6 +1,6 @@
 # Task A11: Storm Facts (Quezon City)
 
-Documented by: a team member. Barangay lists and wettest days checked against every source on
+Barangay lists and wettest days checked against every source on
 2026-10-18 and corrected (review fix); the fourth storm, Kristine, was added the same day.
 The values used by the code are in `config.STORMS`; check "A11 storm facts" in
 `python -m src.checks` tests them.

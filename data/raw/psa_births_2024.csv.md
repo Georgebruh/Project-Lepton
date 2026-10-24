@@ -2,7 +2,6 @@ Source URL: https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/1A/VS/BI/0011A1ABIB8.
   (PSA OpenSTAT, Vital Statistics > Births, table 1A1ABIB8; table list at
   https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1A__VS__BI/?tablelist=true)
 Downloaded on (YYYY-MM-DD): 2026-10-17
-Downloaded by: a team member
 Version / release: "Number of Registered Live Births by Place of Occurence, Usual Residence of
   Mother, Sex of the Child, and by Region, Province, and City/Municipality, Philippines: 2024",
   PSA Vital Statistics Division. Data last updated 2026-03-12, table created 2026-07-01,

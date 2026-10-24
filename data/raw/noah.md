@@ -2,7 +2,6 @@ Source URL: https://noah.up.edu.ph ("Downloads" button), which links the public 
 https://drive.google.com/drive/folders/1ALE4-E9c-4AGjm1fqiPprWHrLUskeY9o -> Flood -> 5yr / 25yr / 100yr
 (file ids in config.NOAH_FLOOD_FILES and config.NOAH_METADATA_FILES)
 Downloaded on (YYYY-MM-DD): 2026-10-15
-Downloaded by: a team member
 Version / release: NOAH gives no version number, so each map's version is its two dates:
 | Map | Saved as | Drive file, last modified | Shapefile inside, dated | Bytes |
 | 5-year | MetroManila_5yr.zip (Drive name MetroManila.zip) | 2021-11-11 | MetroManila_Flood_5year.shp, 2021-11-09 | 33,382,053 |
