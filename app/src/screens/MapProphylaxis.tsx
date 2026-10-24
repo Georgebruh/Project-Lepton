@@ -31,7 +31,7 @@ const TOOLTIP_TALLEST = 230
 
 /** Map, level 3: the prophylaxis plan. */
 export default function MapProphylaxis() {
-  const { cities, forecast, date, week, map, legendSlot, overlay, setOpenBarangay } = useMapContext()
+  const { cities, date, map, legendSlot, overlay, setOpenBarangay } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pinned, setPinned] = useState<PinnedBarangay | null>(null)
@@ -144,8 +144,8 @@ export default function MapProphylaxis() {
 
   // What a barangay's report is made from, while a storm's forecast is shown
   const report: ReportRequest | undefined = useMemo(
-    () => (storm && run ? { storms, centers: planCenters, shapes, storm, run, forecast, week, date } : undefined),
-    [storms, planCenters, shapes, storm, run, forecast, week, date],
+    () => (storm && run ? { storms, centers: planCenters, shapes, storm, run } : undefined),
+    [storms, planCenters, shapes, storm, run],
   )
 
   return (
