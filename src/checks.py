@@ -1492,37 +1492,54 @@ def f14_noah_tiles():
     return "; ".join(lines)
 
 
-def f13_noah_barangays():
-    """Each barangay's flood zones (app/public/data/noah_barangays/<T>yr/<psgc>.json) lie in that barangay."""
+def f13_noah_cities():
+    """Each NCR city's flood zones (app/public/data/noah_cities/<T>yr/<psgc>.json) lie in that city."""
     import geopandas as gpd
+    import numpy as np
+    import shapely
 
-    from src.noah_barangays import barangay_path
+    from src.noah_cities import city_path, load_cities
+    from src.noah_national import METRES_PER_DEGREE
 
-    rerun = "rerun python -m src.noah_barangays"
-    need_file(config.APP_NOAH_BARANGAYS, "F13 (python -m src.noah_barangays)")
-    shapes = gpd.read_file(config.APP_DATA / "qc_barangays.geojson").to_crs(config.CRS_OVERLAY).set_index("psgc")
+    rerun = "rerun python -m src.noah_cities"
+    need_file(config.APP_NOAH_CITIES, "F13 (python -m src.noah_cities)")
+    shapes = load_cities().set_index("psgc")
+    # Rounding moves a point at most half a step along each axis: about 8 cm at 6 decimals
+    shift_m = 0.5 * np.hypot(1, 1) * 10.0 ** -config.APP_NOAH_CITY_DECIMALS * METRES_PER_DEGREE
     lines = []
     for t in config.NOAH_RETURN_PERIODS:
-        on_disk = {path.stem for path in (config.APP_NOAH_BARANGAYS / f"{t}yr").glob("*.json")}
-        assert on_disk == set(shapes.index), f"{t}-year map: not one file per barangay of qc_barangays.geojson: {rerun}"
+        on_disk = {path.stem for path in (config.APP_NOAH_CITIES / f"{t}yr").glob("*.json")}
+        assert on_disk == set(shapes.index), f"{t}-year map: not one file per NCR city of ph_cities.json: {rerun}"
         area = 0.0
         for psgc, outline in shapes.geometry.items():
-            zones = gpd.read_file(barangay_path(t, psgc))
+            zones = gpd.read_file(city_path(t, psgc))
             if zones.empty:
                 continue
             assert zones["var"].is_unique and set(zones["var"]) <= set(config.NOAH_HAZARD_LEVELS), (
                 f"{t}-year {psgc}.json: hazard levels {list(zones['var'])}, expected one row each of 1-3: {rerun}")
             assert zones.geom_type.isin(["Polygon", "MultiPolygon"]).all(), f"{t}-year {psgc}.json holds a non-polygon"
-            # The points are rounded to about 0.1 m (config.APP_NOAH_BARANGAY_DECIMALS), so the outline gets 1 m of room
-            zones = zones.to_crs(config.CRS_OVERLAY).make_valid()
-            outside = zones.difference(outline.buffer(1)).area.sum()
-            assert outside < 1, f"{t}-year {psgc}.json: {outside:,.0f} m2 of flood zones outside the barangay: {rerun}"
-            overlap = (zones.area.sum() - zones.union_all().area) / 1e6
-            assert overlap <= config.NOAH_OVERLAP_TOLERANCE_KM2, (
-                f"{t}-year {psgc}.json: its hazard levels overlap by {overlap * 1e6:,.0f} m2: {rerun}")
-            area += zones.area.sum()
+            # Piece by piece (a whole level is too big to test quickly), repairing the few that rounding broke
+            parts, level = shapely.get_parts(zones.to_crs(config.CRS_OVERLAY).geometry.values, return_index=True)
+            broken = ~shapely.is_valid(parts)
+            parts[broken] = shapely.make_valid(parts[broken])
+            # The points are rounded to about 0.1 m (config.APP_NOAH_CITY_DECIMALS), so the outline gets 1 m of room
+            room = outline.buffer(1)
+            shapely.prepare(room)
+            out = ~shapely.within(parts, room)
+            outside = shapely.area(shapely.difference(parts[out], room)).sum()
+            assert outside < 1, f"{t}-year {psgc}.json: {outside:,.0f} m2 of flood zones outside the city: {rerun}"
+            # The levels meet before rounding; after it two levels may overlap only in slivers along their
+            # borders, no wider than rounding moved a point
+            a, b = shapely.STRtree(parts).query(parts, predicate="overlaps")
+            pair = level[a] < level[b]   # pieces of two different levels, each pair once
+            overlap = shapely.area(shapely.intersection(parts[a[pair]], parts[b[pair]])).sum()
+            allowed = shift_m * shapely.length(parts).sum()
+            assert overlap <= allowed, (
+                f"{t}-year {psgc}.json: its hazard levels overlap by {overlap:,.0f} m2, more than rounding "
+                f"explains ({allowed:,.0f} m2): {rerun}")
+            area += shapely.area(parts).sum()
         lines.append(f"{t}-year {area / 1e6:.1f} km2")
-    return f"{len(shapes)} barangays, flood zones of " + ", ".join(lines)
+    return f"{len(shapes)} NCR cities, flood zones of " + ", ".join(lines)
 
 
 def f14_simulation():
@@ -1712,7 +1729,7 @@ CHECKS = {
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
     "E6 score tables": e6_score_tables,
-    "F13 NOAH barangays": f13_noah_barangays,
+    "F13 NOAH cities": f13_noah_cities,
     "F14 NOAH tiles": f14_noah_tiles,
     "F14 simulation": f14_simulation,
     "F16 daily plans": f16_daily_plans,

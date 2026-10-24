@@ -35,13 +35,13 @@ const VIEW_WORDS = {
   off: 'Map flat, facing north',
 }
 
-/** What screen readers hear of NOAH's map `period` as it loads, shows or fails; `barangay`: only its zones. */
-function floodWords(status: FloodStatus, period: FloodPeriod | null, barangay: string | null): string {
+/** What screen readers hear of NOAH's map `period` as it loads, shows or fails; `city`: only its zones. */
+function floodWords(status: FloodStatus, period: FloodPeriod | null, city: string | null): string {
   if (status === 'off' || period === null) {
     return 'Flood zones hidden'
   }
   const map = `NOAH's ${period}-year map`
-  const shown = barangay ? `${map} of flood zones shown in ${barangay} only` : `${map} of flood zones shown`
+  const shown = city ? `${map} of flood zones shown in ${city} only` : `${map} of flood zones shown`
   return { loading: `Loading ${map}`, shown, failed: `Couldn't load ${map}` }[status]
 }
 
@@ -61,8 +61,8 @@ type MapLayersProps = {
   floodChoice: FloodPeriod
   /** How the NOAH map shown is doing (floodLayer.ts). */
   floodStatus: FloodStatus
-  /** The barangay whose zones alone are shown while its pop-up is open; null: every zone. */
-  floodBarangay: string | null
+  /** The city whose zones alone are shown while it is open or found; null: every zone. */
+  floodCity: string | null
   onFlood: (period: FloodPeriod | null) => void
   /** Fetches a map that failed to load again. */
   onFloodRetry: () => void
@@ -90,7 +90,7 @@ export default function MapLayers({
   flood,
   floodChoice,
   floodStatus,
-  floodBarangay,
+  floodCity,
   onFlood,
   onFloodRetry,
   weather,
@@ -233,7 +233,7 @@ export default function MapLayers({
       <p className="visually-hidden" aria-live="polite">
         <span>{BASE_SHOWN[base]}. </span>
         <span>{VIEW_WORDS[view3d ? 'on' : 'off']}. </span>
-        <span>{floodWords(floodStatus, flood, floodBarangay)}. </span>
+        <span>{floodWords(floodStatus, flood, floodCity)}. </span>
         <span>{weatherWords(weatherStatus, weather, day)}.</span>
       </p>
     </section>

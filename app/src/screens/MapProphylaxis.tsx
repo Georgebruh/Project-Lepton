@@ -31,7 +31,7 @@ const TOOLTIP_TALLEST = 230
 
 /** Map, level 3: the prophylaxis plan. */
 export default function MapProphylaxis() {
-  const { cities, forecast, date, week, map, legendSlot, overlay, setOpenBarangay } = useMapContext()
+  const { cities, forecast, date, week, map, legendSlot, overlay } = useMapContext()
   const { storms, centers, shapes } = useLoaderData<typeof loadPlanData>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pinned, setPinned] = useState<PinnedBarangay | null>(null)
@@ -92,18 +92,6 @@ export default function MapProphylaxis() {
       barangayLayers(map).select(pinned?.psgc ?? null)
     }
   }, [map, pinned])
-
-  // While its pop-up is open, NOAH's flood zones show only inside it (MapLayout)
-  const pinnedPsgc = pinned?.psgc ?? null
-  const pinnedShape = shapes.features.find((feature) => feature.properties.psgc === pinnedPsgc)
-  const pinnedName = pinnedShape?.properties.name ?? pinnedPsgc
-  useEffect(() => {
-    if (!pinnedPsgc || !pinnedName) {
-      return
-    }
-    setOpenBarangay({ psgc: pinnedPsgc, name: pinnedName })
-    return () => setOpenBarangay(null)
-  }, [pinnedPsgc, pinnedName, setOpenBarangay])
 
   /** Enter (or a click) on a row of the list opens the barangay's pop-up, pointing near its middle. */
   function openFromList(psgc: string) {
@@ -190,7 +178,7 @@ export default function MapProphylaxis() {
             key={pinned.psgc}
             map={map}
             pinned={pinned}
-            name={pinnedName ?? pinned.psgc}
+            name={shapes.features.find((feature) => feature.properties.psgc === pinned.psgc)?.properties.name ?? pinned.psgc}
             barangay={numbers?.get(pinned.psgc)}
             note={`${none}.`}
             report={report}

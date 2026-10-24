@@ -556,14 +556,15 @@ APP_LABEL_MIN_KM2 = 3
 
 # NOAH's flood patches on the map.
 APP_NOAH_MIN_M2 = 400
-# While a barangay is open, the map draws only its own flood zones (src/noah_barangays.py), one file per map and barangay.
-APP_NOAH_BARANGAYS = APP_DATA / "noah_barangays"
-# Assumption: a barangay's flood zones keep detail to about 10 m, one cell of NOAH's grid: it smooths the cells'
-# steps, a third as many points and 0.1% of the area lost (25-year map).
-APP_NOAH_BARANGAY_SIMPLIFY_M = 10
+# While a Metro Manila city is open or found, the map draws only its own flood zones (src/noah_cities.py),
+# one file per map and city.
+APP_NOAH_CITIES = APP_DATA / "noah_cities"
+# Assumption: a city's flood zones keep detail to about 10 m, one cell of NOAH's grid: it smooths the cells'
+# steps, a third as many points and 0.1% of the area lost (Quezon City, 25-year map).
+APP_NOAH_CITY_SIMPLIFY_M = 10
 # About 0.1 m, not APP_COORD_DECIMALS: rounded to 1 m, patches that meet at a corner of NOAH's cells overlap
 # by up to 1.2 m2 (at 0.1 m, none), for 9% more bytes.
-APP_NOAH_BARANGAY_DECIMALS = 6
+APP_NOAH_CITY_DECIMALS = 6
 
 # The map shows NOAH's flood maps for the whole country (src/noah_national.py), as vector tiles.
 NOAH_NATIONAL_FOLDERS = {
