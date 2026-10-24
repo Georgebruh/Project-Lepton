@@ -9,7 +9,6 @@ export default function MapPhilippines() {
   const qc = cities.features.find((feature) => feature.properties.psgc === QC_PSGC)!.properties
   return (
     <>
-      <title>Leptospirosis map of the Philippines · LEPTON</title>
       <ForecastPanel city={shortName(qc)} forecast={forecast} week={week} />
     </>
   )

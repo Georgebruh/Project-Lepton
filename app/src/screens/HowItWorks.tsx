@@ -128,15 +128,11 @@ function Pipeline() {
       <SectionHead id="pipeline" number="01 · Pipeline" title="From rain to a stock list in four steps" />
       <div className="how-it-works-pipeline-links" data-reveal>
         <p className="body-m">
-          The numbers it makes are on the map, with the city’s forecast and each storm’s stock
-          plan, and in Compare models, with every model’s weekly forecast and score.
+          The numbers it makes are on the map, with the city’s forecast and each storm’s stock plan.
         </p>
         <div className="how-it-works-pipeline-buttons">
           <Button variant="secondary" icon="arrow-right" to="/map">
             Open the map
-          </Button>
-          <Button variant="secondary" icon="arrow-right" to="/map/quezon-city/compare?data=real">
-            Compare models
           </Button>
         </div>
       </div>
@@ -297,7 +293,6 @@ export default function HowItWorks() {
   const reveal = useReveal<HTMLElement>()
   return (
     <>
-      <title>How it works · LEPTON</title>
       <SiteHeader />
       <main ref={reveal}>
         <Intro current={current} />

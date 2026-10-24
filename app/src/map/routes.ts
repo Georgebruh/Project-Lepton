@@ -10,17 +10,14 @@ export const MAP_PATHS: Record<MapLevel, string> = {
   3: '/map/quezon-city/prophylaxis',
 }
 
-/** Compare models, a tab of the city panel at level 2. */
-export const COMPARE_PATH = '/map/quezon-city/compare'
-
 /** Quezon City's 10-digit PSGC (config.QC_CITY_PSGC): the only city with weekly case counts. */
 export const QC_PSGC = '1381300000'
 
 /** The address of each city whose forecast can be opened, by PSGC: Quezon City only, so far. */
 export const CITY_PATHS: Record<string, string> = { [QC_PSGC]: MAP_PATHS[2] }
 
-/** The prophylaxis plan's own settings in the address. */
-export const PLAN_PARAMS = { lead: 'lead', list: 'storms', from: 'from' }
+/** The prophylaxis plan's own settings in the address: which forecast, by its lead time in days. */
+export const PLAN_PARAMS = { lead: 'lead' }
 
 /** The query a link to a map level carries: the address's own, so the date stays. */
 export function levelSearch(level: MapLevel, search: string): string {
@@ -28,10 +25,6 @@ export function levelSearch(level: MapLevel, search: string): string {
     return search
   }
   const params = new URLSearchParams(search)
-  const from = params.get(PLAN_PARAMS.from)
-  if (from) {
-    params.set('date', from)
-  }
   for (const name of Object.values(PLAN_PARAMS)) {
     params.delete(name)
   }

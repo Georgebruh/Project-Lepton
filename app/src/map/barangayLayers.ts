@@ -1,5 +1,5 @@
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec'
-import type { Map as MapLibreMap, MapLayerMouseEvent, MapMouseEvent } from 'maplibre-gl'
+import type { Map as MapLibreMap, MapLayerMouseEvent, MapMouseEvent, PointLike } from 'maplibre-gl'
 import { shapeMiddle, shapeParts, type LonLat } from '../exposed/nearest.ts'
 import { CITY_LAYERS } from './cityLayers.ts'
 import { featureFader, stagger } from './featureFades.ts'
@@ -191,6 +191,16 @@ function makeBarangayLayers(map: MapLibreMap) {
       selectFader?.fade(next, 1)
     }
     selected = next
+  }
+
+  /** The barangay whose pop-up is open (select), or null. A click on the map then only closes the pop-up. */
+  function selection(): string | null {
+    return selected
+  }
+
+  /** Whether a barangay is under the map's point `point`, in px: a click there is the barangays', not the map's. */
+  function covers(point: PointLike): boolean {
+    return stage === 'open' && map.queryRenderedFeatures(point, { layers: [LAYERS.fill] }).length > 0
   }
 
   /** A point inside the barangay `psgc`, near its middle, where a pop-up opened from the list points. */
@@ -393,5 +403,5 @@ function makeBarangayLayers(map: MapLibreMap) {
     }
   }
 
-  return { open, show, close, onHover, highlight, setFillOpacity, onPick, select, middleOf }
+  return { open, show, close, onHover, highlight, setFillOpacity, onPick, select, selection, covers, middleOf }
 }

@@ -339,7 +339,6 @@ export default function Leptospirosis() {
   const reveal = useReveal<HTMLElement>()
   return (
     <>
-      <title>Leptospirosis · LEPTON</title>
       <SiteHeader />
       <main ref={reveal}>
         <Hero />

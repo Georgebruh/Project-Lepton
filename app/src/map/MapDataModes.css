@@ -1,4 +1,4 @@
-/* The map's data modes (MapDataModes.tsx), top right: Simulation | Real data, and what the mode shows. */
+/* The map's data modes (MapDataModes.tsx), top right: Simulation | Real data. */
 .map-data-modes {
   display: flex;
   flex-direction: column;
@@ -44,21 +44,4 @@
 .map-data-modes-button:disabled {
   color: var(--color-text-tertiary);
   cursor: not-allowed;
-}
-
-/* What the mode shows, on the map, right-aligned under the buttons */
-.map-data-modes-note {
-  max-width: 320px;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
-  color: var(--color-text-secondary);
-  text-align: right;
-}
-
-/* A phone's map needs the room. */
-@media (max-width: 599px) {
-  .map-data-modes-note {
-    display: none;
-  }
 }

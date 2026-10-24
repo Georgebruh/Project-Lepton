@@ -4,7 +4,7 @@ import type {
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec'
 import type { FeatureCollection, Point } from 'geojson'
-import type { IControl, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import type { Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router'
@@ -22,7 +22,7 @@ import { orbit } from './orbit.ts'
 import { TILT, set3D } from './terrain.ts'
 import { shortName, type Cities, type CityForecast, type CityProperties, type ForecastWeek } from './mapData.ts'
 import { CAMERA_MS, CROSSFADE_MS, DIMMED_OPACITY, HOVER_MS, easeInOut, prefersReducedMotion } from './motion.ts'
-import { CITY_PATHS, QC_PSGC, type MapLevel } from './routes.ts'
+import { CITY_PATHS, MAP_PATHS, QC_PSGC, levelSearch, type MapLevel } from './routes.ts'
 import { tokenColor } from './tokens.ts'
 import { placeTooltip, type MapPointer } from './tooltip.ts'
 import { READER_MOVE, cityView, closeCamera, levelCamera, moveToLevel, viewFor } from './view.ts'
@@ -47,6 +47,9 @@ const FILL_EDGES: ExpressionSpecification = ['step', ['zoom'], false, CITIES_ZOO
 
 /** How opaque a city without data is filled: the street map shows through most of the country. */
 const NO_DATA_ALPHA = 0.35
+
+/** How long, in ms, a click on empty map waits before it closes the panel: a second click in time is a double click. */
+const CLOSE_WAIT_MS = 300
 
 /** The tooltip's width in px, and the most it is tall. */
 const TOOLTIP_WIDTH = 256
@@ -184,20 +187,6 @@ function setNameRoom(map: MapLibreMap, level: MapLevel) {
   }
 }
 
-/** A box in the map's bottom right corner, beside the sources' credits. */
-class MethodsControl implements IControl {
-  readonly element = document.createElement('div')
-
-  onAdd() {
-    this.element.className = 'maplibregl-ctrl city-map-methods'
-    return this.element
-  }
-
-  onRemove() {
-    this.element.remove()
-  }
-}
-
 /** The city under the pointer, and where the pointer is in the map, in px. */
 type Pointer = MapPointer & { psgc: string }
 
@@ -255,7 +244,6 @@ export default function CityMap({
   const [loaded, setLoaded] = useState(false)
   const [spots, setSpots] = useState<LabelSpot[]>([])
   const [pointer, setPointer] = useState<Pointer | null>(null)
-  const [methods] = useState(() => new MethodsControl()) // The Methods link's box, bottom right
   const readerMoved = useRef(false) // The reader has panned, zoomed or turned the map since the camera last fit the level
   const fillOpacity = useRef(DATA_OPACITY[base]) // How opaque the fills are on the base map shown
   const shown3D = useRef<boolean | null>(null) // Whether the map is drawn in 3D; null until first set
@@ -291,18 +279,7 @@ export default function CityMap({
     if (start) {
       map.setPadding(view.padding)
     }
-    // The sources' credits, folded behind an "i" button.
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
-    map.addControl(methods, 'bottom-right')
-    // MapLibre opens them when they first arrive and closes them on the first drag; here they start closed
-    const closeCredits = () => {
-      const credits = container.querySelector('.maplibregl-ctrl-attrib')
-      if (credits?.classList.contains('maplibregl-compact')) {
-        credits.classList.remove('maplibregl-compact-show')
-        map.off('sourcedata', closeCredits)
-      }
-    }
-    map.on('sourcedata', closeCredits)
+    // The sources' credits are in the info pop-up (MapInfo.tsx), not on the map.
     // A move the reader makes comes with their event.
     map.on('movestart', (event) => {
       if (event.originalEvent || 'readerMove' in event) {
@@ -425,6 +402,28 @@ export default function CityMap({
         openRef.current.navigate(path + openRef.current.search)
       }
     })
+    // Levels 2 and 3: a click on the map outside the open city closes the panel (it has no Close button).
+    // A click on the city (or one of its barangays) does what it did; a drag is no click. With a barangay's
+    // pop-up open, the click only closes the pop-up (barangayLayers.ts). The panel closes CLOSE_WAIT_MS
+    // after the click, so a double click (or a double tap) zooms instead.
+    let closeTimer = 0
+    const keepOpen = () => window.clearTimeout(closeTimer)
+    map.on('click', (event) => {
+      const barangays = barangayLayers(map)
+      if (shownLevel.current === 1 || barangays.selection() !== null || barangays.covers(event.point)) {
+        return
+      }
+      if (map.queryRenderedFeatures(event.point, { layers: [LAYERS.openFill] }).length > 0) {
+        return
+      }
+      keepOpen()
+      closeTimer = window.setTimeout(
+        () => openRef.current.navigate(MAP_PATHS[1] + levelSearch(1, openRef.current.search)),
+        CLOSE_WAIT_MS,
+      )
+    })
+    map.on('dblclick', keepOpen)
+    map.on('zoomstart', keepOpen)
     // A new map size: show the level's view again, unless the reader has moved away from it
     map.on('resize', () => {
       if (readerMoved.current) {
@@ -435,6 +434,7 @@ export default function CityMap({
     })
 
     return () => {
+      keepOpen()
       fader.stop()
       markers.forEach((marker) => marker.remove())
       map.remove()
@@ -448,7 +448,7 @@ export default function CityMap({
       setLoaded(false)
       onMap(null)
     }
-  }, [cities, islands, baseStyle, onMap, controls, topBar, methods])
+  }, [cities, islands, baseStyle, onMap, controls, topBar])
 
   // The base map chosen in the Layers panel.
   useEffect(() => {
@@ -572,13 +572,6 @@ export default function CityMap({
       data-view={view3d ? '3d' : undefined}
     >
       <div ref={containerRef} className="city-map-canvas" />
-      {/* Methods (How it works), bottom right beside the credits */}
-      {createPortal(
-        <Link to="/how-it-works" className="city-map-methods-link label-ui-s">
-          Methods
-        </Link>,
-        methods.element,
-      )}
       {spots.map(({ city, element }) =>
         createPortal(
           CITY_PATHS[city.psgc] ? (
@@ -662,7 +655,6 @@ function CityTooltip({ city, forecast, week, style }: CityTooltipProps) {
           {simulatedLabel(forecast)}
         </Badge>
       )}
-      <p className="city-map-tooltip-hint body-s">Click to open the forecast</p>
     </div>
   )
 }

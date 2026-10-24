@@ -17,8 +17,6 @@ export type MapContext = {
   legendSlot: HTMLElement | null
   /** A layer over the map for a level's own tooltips, in the map's px; null until drawn. */
   overlay: HTMLElement | null
-  /** Where a level puts its own list for the keyboard, in the map's top left corner (with createPortal). */
-  listSlot: HTMLElement | null
   /** Tells the layout which barangay's pop-up is open (null: none): NOAH's flood zones then show only inside it. */
   setOpenBarangay: (barangay: OpenBarangay | null) => void
 }

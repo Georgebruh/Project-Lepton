@@ -1,9 +1,9 @@
-import { Navigate, useLocation } from 'react-router'
-import { COMPARE_PATH } from '../map/routes.ts'
+import { Navigate } from 'react-router'
 
-/** /compare, the address of the Compare models screen. */
+/**
+ * /compare and /map/quezon-city/compare, Compare models' old addresses. It has left the map's panel and is to
+ * move into How it works; until then they open How it works' Models part, as the site header's Results does.
+ */
 export default function CompareRedirect() {
-  const params = new URLSearchParams(useLocation().search)
-  params.set('data', 'real')
-  return <Navigate to={`${COMPARE_PATH}?${params}`} replace />
+  return <Navigate to="/how-it-works#models" replace />
 }

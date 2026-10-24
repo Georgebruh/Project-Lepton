@@ -1,4 +1,4 @@
-import type { CityForecast, ForecastWeek, OutbreakLevel } from './mapData.ts'
+import type { CityForecast, DataMode, ForecastWeek, OutbreakLevel, Simulation } from './mapData.ts'
 
 /** Reading Quezon City's forecast for the date the reader picks. */
 
@@ -136,6 +136,14 @@ export function formatCount(count: number): string {
 export function formatDay(day: string): string {
   const date = utc(day)
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
+}
+
+/** What a data mode shows, in one sentence: whose counts, to when, and (simulated) which rain. In the info pop-up. */
+export function dataNote(mode: DataMode, simulation: Simulation | null, realEnd: string): string {
+  return mode === 'simulation' && simulation
+    ? `QCESD's counts to ${formatDay(simulation.last_real_week.end)}, then made up. This week's rain: ` +
+        `ECMWF's forecast of ${formatDay(simulation.weather.fetched_on)}.`
+    : `QCESD's counts and LEPTON's forecasts, to ${formatDay(realEnd)}.`
 }
 
 /** A date as day and month, for a year the reader already sees. */

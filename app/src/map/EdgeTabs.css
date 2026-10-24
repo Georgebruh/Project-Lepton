@@ -1,0 +1,99 @@
+/* The city panel's tabs (EdgeTabs.tsx): two bookmarks past the panel's right edge, at its top. */
+.edge-tabs {
+  position: absolute;
+  top: 20px;
+  /* 1 px over the panel's border, so the open tab joins the panel */
+  left: calc(100% - 1px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edge-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--map-edge-tabs, 48px);
+  height: 52px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 0 10px 10px 0;
+  background: var(--color-bg-raised);
+  color: var(--color-text-secondary);
+  transition:
+    background-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .edge-tab:not(.edge-tab-open):hover {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+  }
+}
+
+/* The open tab: the panel's own white, without its left border, its icon teal */
+.edge-tab-open {
+  border-left-color: transparent;
+  background: var(--color-bg-surface);
+  box-shadow: 2px 2px 6px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  color: var(--color-accent-primary);
+}
+
+/* The tab's name (or Close, on the open tab), on hover and with the keyboard */
+.edge-tab-label {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: var(--color-bg-surface);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -50%;
+  transition:
+    opacity var(--motion-hover) linear,
+    visibility 0s linear var(--motion-hover);
+}
+
+.edge-tab:hover .edge-tab-label,
+.edge-tab:focus-visible .edge-tab-label {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--motion-hover) linear,
+    visibility 0s;
+}
+
+/* Below 600 px the panel is a sheet: the tabs stand on its top edge, at the right */
+@media (max-width: 599px) {
+  .edge-tabs {
+    top: auto;
+    right: var(--space-4);
+    bottom: calc(100% - 1px);
+    left: auto;
+    flex-direction: row;
+  }
+
+  .edge-tab {
+    width: 52px;
+    height: 44px;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .edge-tab-open {
+    border-left-color: var(--color-border-subtle);
+    border-bottom-color: transparent;
+    box-shadow: none;
+  }
+
+  .edge-tab-label {
+    top: auto;
+    bottom: calc(100% + var(--space-2));
+    left: 50%;
+    translate: -50% 0;
+  }
+}

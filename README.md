@@ -307,7 +307,6 @@ npm run dev      # http://localhost:5173
 | `/` | Home: the project, the latest forecast and a storm's stock plan |
 | `/map` | The map of the whole Philippines; Quezon City is the first city with data |
 | `/map/quezon-city` | Next week's forecast for Quezon City, any week since 2018 (`?date=2024-10-22`) |
-| `/map/quezon-city/compare` | The five models' forecasts and scores |
 | `/map/quezon-city/prophylaxis?date=2024-10-22` | Kristine's prophylaxis plan per barangay and health center, 1 to 3 days ahead; click a barangay for its PDF report |
 | `/exposed` | The "I have been exposed to floodwater" guide for residents |
 | `/leptospirosis` | Leptospirosis explained for residents, each fact linked to its DOH source |

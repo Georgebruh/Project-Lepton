@@ -12,10 +12,14 @@ export const CROSSFADE_MS = 150
 /** The other cities' opacity while one city is open. */
 export const DIMMED_OPACITY = 0.45
 
-/** The city panel covers the left of the map. */
-export const PANEL_SHARE = 0.36
+/** The city panel is a card on the left of the map, under the logo: 30% of the width, 432 px on a 1440 px screen. */
+export const PANEL_SHARE = 0.3
 export const PANEL_MIN_WIDTH = 400
-export const PANEL_MAX_WIDTH = 560
+export const PANEL_MAX_WIDTH = 480
+
+/** The card's gap to the map's edges (MapLayout.css's --map-edge), and its tabs' width past its right edge. */
+export const PANEL_INSET = 24
+export const EDGE_TAB_WIDTH = 48
 
 /** The panel's width in px beside a map `width` px wide (never wider than the map). */
 export function panelWidth(width: number): number {
@@ -26,9 +30,11 @@ export function panelWidth(width: number): number {
 export const SHEET_BELOW = 600
 export const SHEET_SHARE = 0.55
 
-/** How much of a map `width` by `height` px the open panel covers, in px. */
+/** How much of a map `width` by `height` px the open panel covers, in px: the card, its gap and its tabs. */
 export function panelCover(width: number, height: number): { left: number; bottom: number } {
-  return width < SHEET_BELOW ? { left: 0, bottom: Math.round(height * SHEET_SHARE) } : { left: panelWidth(width), bottom: 0 }
+  return width < SHEET_BELOW
+    ? { left: 0, bottom: Math.round(height * SHEET_SHARE) }
+    : { left: PANEL_INSET + panelWidth(width) + EDGE_TAB_WIDTH, bottom: 0 }
 }
 
 /** Opening the prophylaxis plan. */

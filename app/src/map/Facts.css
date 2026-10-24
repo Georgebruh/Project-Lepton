@@ -1,0 +1,27 @@
+/* The city panel's facts (Facts.tsx): label and value rows with a line under each. */
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.facts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  /* 10 px above and below, between the spacing steps */
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.facts-label {
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.facts-value {
+  margin: 0;
+  color: var(--color-text-primary);
+  text-align: right;
+}

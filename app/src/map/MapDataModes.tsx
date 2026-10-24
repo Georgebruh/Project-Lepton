@@ -1,4 +1,4 @@
-import { formatDay } from './forecast.ts'
+import { dataNote } from './forecast.ts'
 import type { DataMode, Simulation } from './mapData.ts'
 import './MapDataModes.css'
 
@@ -11,7 +11,7 @@ type MapDataModesProps = {
   realEnd: string
 }
 
-/** The map's two data modes, in its top right corner. */
+/** The map's two data modes, in its top right corner. Their sentence is in the info pop-up (MapInfo). */
 export default function MapDataModes({ mode, onMode, simulation, realEnd }: MapDataModesProps) {
   const shown = simulation ? mode : 'real'
   return (
@@ -35,11 +35,9 @@ export default function MapDataModes({ mode, onMode, simulation, realEnd }: MapD
           Real data
         </button>
       </div>
-      <p className="map-data-modes-note body-s" aria-live="polite">
-        {shown === 'simulation' && simulation
-          ? `QCESD's counts to ${formatDay(simulation.last_real_week.end)}, then made up. This week's rain: ` +
-            `ECMWF's forecast of ${formatDay(simulation.weather.fetched_on)}.`
-          : `QCESD's counts and LEPTON's forecasts, to ${formatDay(realEnd)}.`}
+      {/* Read out when the mode changes */}
+      <p className="visually-hidden" aria-live="polite">
+        {dataNote(shown, simulation, realEnd)}
       </p>
     </div>
   )

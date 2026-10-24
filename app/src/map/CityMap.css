@@ -16,49 +16,6 @@
   background: var(--color-map-land);
 }
 
-/* The sources' credits (MapLibre's attribution control): an "i" button that opens them over the map. */
-.city-map .maplibregl-ctrl-bottom-right {
-  left: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: 0 var(--map-edge, var(--space-5)) var(--space-2) 0;
-  pointer-events: none;
-}
-
-.city-map .maplibregl-ctrl-bottom-right > .maplibregl-ctrl {
-  float: none;
-  margin: 0;
-  pointer-events: auto;
-}
-
-.city-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
-  max-width: calc(100% - 2 * var(--map-edge, var(--space-5)) - 80px);
-  color: var(--color-text-secondary);
-  font: 400 13px/18px var(--font-sans);
-}
-
-.city-map .maplibregl-ctrl-attrib a {
-  color: inherit;
-}
-
-/* Methods, beside the credits: How it works, where the methods are told */
-.city-map-methods-link {
-  display: block;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
-  color: var(--color-text-secondary);
-}
-
-@media (hover: hover) {
-  .city-map-methods-link:hover {
-    color: var(--color-text-primary);
-  }
-}
-
 /* MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom). */
 .city-map-canvas canvas:focus-visible {
   outline-offset: -2px;
@@ -170,8 +127,4 @@
 
 .city-map-tooltip-badge {
   align-self: flex-start;
-}
-
-.city-map-tooltip-hint {
-  color: var(--color-text-tertiary);
 }

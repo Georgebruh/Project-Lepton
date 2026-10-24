@@ -1,0 +1,56 @@
+/* The panel's ? and its words (WordHelp.tsx). */
+.word-help {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* The words open upward from the ?, right-aligned with it, as wide as the panel's content */
+.word-help-box {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: calc(var(--map-panel-width, 432px) - 2 * var(--space-5));
+  /* Never taller than the panel above the ? */
+  max-height: calc(100dvh - 260px);
+  overflow-y: auto;
+  /* 18 px by 20 px, between the spacing steps */
+  padding: 18px 20px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+  color: var(--color-text-primary);
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
+.word-help-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.word-help-word {
+  display: flex;
+  flex-direction: column;
+  /* 2 px between a word and its meaning */
+  gap: 2px;
+}
+
+.word-help-word dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* On a phone's sheet the words fit in the sheet */
+@media (max-width: 599px) {
+  .word-help-box {
+    width: calc(100vw - 2 * var(--space-5));
+    /* The sheet is 55% of the screen (motion.ts's SHEET_SHARE), less its title and the ?'s row */
+    max-height: calc(55dvh - 120px);
+  }
+}

@@ -2,26 +2,33 @@
 .forecast-panel {
   display: flex;
   flex-direction: column;
-  /* 18 px between the sections and 22 px top and bottom, between the spacing steps */
-  gap: 18px;
   min-height: 100%;
+  /* 22 px top and bottom, between the spacing steps */
   padding: 22px var(--space-5);
 }
 
-.forecast-panel-heading {
+/* 18 px between the sections, between the spacing steps */
+.forecast-panel-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: var(--space-1);
-  color: var(--color-text-primary);
+  gap: 18px;
+}
+
+/* The ? at the bottom right, where the plan has it */
+.forecast-panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18px;
 }
 
 /* The title takes focus when the city opens, for screen readers; it needs no ring */
-.forecast-panel-title:focus {
-  outline: none;
+.forecast-panel-title {
+  color: var(--color-text-primary);
 }
 
-.forecast-panel-subtitle {
-  color: var(--color-text-tertiary);
+.forecast-panel-title:focus {
+  outline: none;
 }
 
 /* A badge keeps its own width in the column */
@@ -32,7 +39,7 @@
 .forecast-panel-forecast {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 /* A big number and its words, on one baseline */
@@ -53,13 +60,13 @@
   color: var(--color-text-secondary);
 }
 
-/* The chance of an outbreak: a card with the level, the percentage and a bar */
+/* The chance of an outbreak: a card with the level, the percentage, a bar and the threshold */
 .forecast-panel-chance {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   /* 14 px, between the spacing steps */
-  padding: 14px;
+  padding: 14px 14px var(--space-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   background: var(--color-bg-canvas);
@@ -72,12 +79,9 @@
   gap: var(--space-2);
 }
 
-.forecast-panel-chance-head h3 {
-  color: var(--color-text-primary);
-}
-
+.forecast-panel-chance-head h3,
 .forecast-panel-chance-value {
-  gap: var(--space-2);
+  color: var(--color-text-primary);
 }
 
 .forecast-panel-chance-bar {
@@ -113,4 +117,9 @@
 
 .forecast-panel-chance-fill-high {
   background: var(--color-status-alert);
+}
+
+/* The threshold, the card's last row: no line under it */
+.forecast-panel-chance-facts .facts-row:last-child {
+  border-bottom: 0;
 }

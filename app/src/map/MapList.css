@@ -1,45 +1,17 @@
-/* The list beside the map (MapList.tsx). */
+/* The plan's list of barangays (MapList.tsx), in the panel's Barangays view. */
 .map-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   min-height: 0;
-  max-width: 100%;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-surface);
 }
 
-/* Open, it is as wide as the map's hint, 280 px, and takes the height its rows need */
-.map-list-open {
-  width: 280px;
-  padding-bottom: var(--space-3);
-}
-
-.map-list-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-1);
-  color: var(--color-text-secondary);
-}
-
-/* The rows: they scroll inside the card, which the map's corner keeps inside the map */
+/* The rows scroll inside the view */
 .map-list-items {
   min-height: 0;
   margin: 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
-}
-
-/* The open list fades in under its header */
-.map-list-note,
-.map-list-items,
-.map-list-instructions {
-  animation: motion-fade var(--motion-crossfade) linear;
 }
 
 /* The listbox takes the keyboard but the ring goes round the row reached (aria-activedescendant) */
@@ -50,25 +22,36 @@
 .map-list-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  /* 10 px between the swatch, the name and the share, between the spacing steps */
+  gap: 10px;
+  /* 10 px by 8 px, as the Figma "Barangay row" */
+  padding: 10px var(--space-2);
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   cursor: pointer;
   transition: background-color var(--motion-hover) linear;
 }
 
-.map-list-option[aria-selected='true'] {
-  background: var(--color-bg-raised);
+/* The row under the pointer, and the row the keyboard reached */
+@media (hover: hover) {
+  .map-list-option:hover {
+    background: var(--color-bg-raised);
+  }
 }
 
 .map-list-items:focus-visible .map-list-option[aria-selected='true'] {
+  background: var(--color-bg-raised);
   outline: 2px solid var(--color-accent-secondary);
   outline-offset: -2px;
 }
 
+.map-list-marker {
+  display: flex;
+  flex-shrink: 0;
+}
+
 .map-list-name {
+  flex: 1;
   min-width: 0;
 }
 
@@ -77,10 +60,5 @@
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
-  color: var(--color-text-secondary);
-}
-
-.map-list-instructions {
-  padding: 0 var(--space-1);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
 }

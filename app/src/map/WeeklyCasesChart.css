@@ -55,6 +55,32 @@
   }
 }
 
+/* The bars and the threshold's count, which sits over the line's right end */
+.weekly-cases-chart-area {
+  position: relative;
+}
+
+.weekly-cases-chart-threshold-label {
+  position: absolute;
+  right: 0;
+  color: var(--color-status-warn);
+  translate: 0 calc(-100% - 2px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .weekly-cases-chart-threshold-label {
+    transition: top var(--motion-change) var(--motion-ease);
+  }
+}
+
+/* "Last 15 weeks" under the first bars, "Next week" under next week's marks */
 .weekly-cases-chart-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
   color: var(--color-text-tertiary);
+}
+
+.weekly-cases-chart-next {
+  margin-left: auto;
 }

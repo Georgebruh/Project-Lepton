@@ -50,16 +50,6 @@ export function stormOn(storms: Storm[], date: string): Storm | undefined {
   })
 }
 
-/** The storms that have forecasts, the earliest first: the links shown on a date without one. */
-export function stormsWithForecasts(storms: Storm[]): Storm[] {
-  return storms.filter((storm) => stormDates(storm) !== null).sort((a, b) => stormDate(a).localeCompare(stormDate(b)))
-}
-
-/** The date a link to a storm opens. */
-export function stormDate(storm: Storm): string {
-  return forecastRuns(storm)[0].window.start
-}
-
 /** The forecast the address asks for (?lead=2), if the storm has one made that many days ahead. */
 export function chosenRun(storm: Storm, lead: string | null): StormRun {
   const runs = planRuns(storm)
@@ -129,15 +119,6 @@ const POSITION_WORDS: Record<string, string> = {
 /** Where a run's rain falls against the return levels, in words: "between a 5- and a 25-year storm". */
 export function positionWords(run: StormRun): string {
   return POSITION_WORDS[run.position] ?? run.position
-}
-
-/** When the forecast was made and where its rain falls, in the panel's words. */
-export function issuedLine(run: StormRun): string {
-  const where =
-    run.position === 'below R0'
-      ? `${positionWords(run)}: floods start above ${Math.round(run.levels_mm.R0)} mm`
-      : positionWords(run)
-  return run.issued ? `Issued ${formatDayMonth(run.issued)} · ${where}` : where
 }
 
 /** A share of residents as a whole percentage: "63%"; a share above 0 but under 0.5% is "<1%". */
