@@ -89,13 +89,7 @@ export const LEVEL_BADGES: Record<RiskLevel, { label: string; tone: 'neutral' | 
 export const SYMPTOMS_BADGE = 'Symptoms now'
 
 /** The emergency box on every result. */
-export const EMERGENCY = {
-  signs: 'Yellow eyes, dark urine, bleeding or trouble breathing? Go to a hospital now, or ',
-  call: 'call QC Helpline 122',
-}
-
-/** QC Helpline 122's number, for the links that dial it. */
-export const HELPLINE_PHONE = 'tel:122'
+export const EMERGENCY = 'Yellow eyes, dark urine, bleeding or trouble breathing? Go to a hospital now.'
 
 /** What the guide tells the reader. */
 export type Result = {

@@ -3,7 +3,7 @@ import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
 import Icon from '../components/Icon.tsx'
 import GuideStep from './GuideStep.tsx'
-import { EMERGENCY, HELPLINE_PHONE, LEVEL_BADGES, resultFor, SYMPTOMS_BADGE, type Answers } from './risk.ts'
+import { EMERGENCY, LEVEL_BADGES, resultFor, SYMPTOMS_BADGE, type Answers } from './risk.ts'
 import './YourResult.css'
 
 type YourResultProps = {
@@ -22,14 +22,9 @@ export default function YourResult({ answers, onFindCenters, onBack, from, title
   const result = resultFor(answers)
   const badge = LEVEL_BADGES[result.level]
   const footer = (
-    <>
-      <Button icon="arrow-right" onClick={onFindCenters} className="guide-step-button">
-        Find the nearest health center
-      </Button>
-      <Button variant="secondary" href={HELPLINE_PHONE} className="guide-step-button">
-        Call QC Helpline 122
-      </Button>
-    </>
+    <Button icon="arrow-right" onClick={onFindCenters} className="guide-step-button">
+      Find the nearest health center
+    </Button>
   )
 
   return (
@@ -58,13 +53,7 @@ export default function YourResult({ answers, onFindCenters, onBack, from, title
         </section>
         <aside className="your-result-urgent" aria-label="Emergency">
           <Icon name="info" size={20} className="your-result-urgent-icon" />
-          <p className="body-s">
-            {EMERGENCY.signs}
-            <a href={HELPLINE_PHONE} className="your-result-call">
-              {EMERGENCY.call}
-            </a>
-            .
-          </p>
+          <p className="body-s">{EMERGENCY}</p>
         </aside>
       </div>
     </GuideStep>

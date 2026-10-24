@@ -468,21 +468,33 @@ prescriptions: the pop-up and every page of the report carry the label.
   gives the keyboard back to the list. On a date without a storm it says so and offers no report.
 - **The report** (`src/report/`). Generate Report saves
   `lepton-barangay-report_<barangay>_<storm>_lead<n>.pdf`, made in the browser with jsPDF, as the
-  stock list's CSV is: nothing is sent anywhere. A4, for the forecast on the map. Page 1: the
-  barangay (PSGC, 2024 residents, flagged or not), the forecast's rain, its residents exposed and
-  three units, the stock to prepare for a 1-day and a 7-day flood with how each unit is counted,
-  and the storm's three forecasts, made 3, 2 and 1 days ahead. Then where the stock goes (the
-  health centers that hold it, each with its share and its whole need, and the other barangays
-  each holds stock for), the barangay on a map of its neighbours with its centers pinned, Quezon
-  City's case forecast for the week after (the whole city's, under the Simulated badge when made
-  up), how the figures were made, their limits and the sources. `reportContent.ts` writes the
-  words and tables, `reportPdf.ts` draws them, `reportMap.ts` holds the maps' geometry.
-- **Its numbers** are the files', written out as the map writes them; only the barangay's rank
-  among the 142, and the units per person its text explains (from `counting`), are worked out in
-  the browser. Two fields were added to F2's files for it:
+  stock list's CSV is: nothing is sent anywhere. A4, for the forecast on the map, written for the
+  health centers and barangay health stations that hold the stock. Three pages:
+  1. A cover: the LEPTON logo, the barangay and its 2024 residents, the storm, when the forecast
+     was made and its rain, the health centers it is prepared for, and a QR code (with the link
+     under it) that opens this forecast on the map.
+  2. What to stock and where: residents exposed and whether the barangay is flagged, a card per
+     unit for the map's 1-day flood (the line under the cards says whether those counts also
+     cover the 7-day flood), the health centers that hold the stock (each with its share and its
+     whole order, and the other barangays it supplies), and the barangay on a map of its
+     neighbours with its centers pinned; the map fills what the page leaves.
+  3. Details: who gets what (units per person, a column per flood), five plain points about the
+     numbers, and the sources with their licences.
+
+  It leaves out what a health center cannot act on: the PSGC, the barangay's rank among the 142,
+  the storm's earlier forecasts, Quezon City's case forecast and the rain method in mm.
+  `reportContent.ts` writes the words and tables, `reportPdf.ts` draws them, `reportMap.ts`
+  holds the maps' geometry.
+- **Its numbers** are the files', written out as the map writes them; only the units per person
+  its text explains (from `counting`), and whether the 1-day counts cover the 7-day flood, are
+  worked out in the browser. Two fields were added to F2's files for it:
   `centers.json`'s `barangay_centers` and `storms.json`'s `counting` (the Data table above).
   Check "F2 app data" compares both with a fresh export.
-- **Loading.** The report's code with jsPDF is about 420 kB (140 kB compressed). The plan fetches
+- **Logo and QR code.** The logo is `src/assets/logo/wordmark-1024.png`, built into the report's
+  code (`?inline`). The QR code is drawn as squares (`qrcode-generator`, error correction M), so
+  it prints sharp; it and the link under it are links in the PDF too.
+- **Loading.** The report's code with jsPDF, the QR code and the logo is about 470 kB (170 kB
+  compressed). The plan fetches
   it, with the storm's other forecasts, when a pop-up first opens, so the map carries none of it
   and the PDF is ready by the time the button is pressed. jsPDF's optional parts (html2canvas,
   DOMPurify, canvg) are built as files of their own that nothing loads.
@@ -495,9 +507,12 @@ prescriptions: the pop-up and every page of the report carry the label.
   390 × 844 phone, reduced motion on and off). Tatalon, Kristine 1 day ahead: the pop-up equals
   the tooltip and the files (36,809 of 58,286 exposed, 63%; 138,400, 13,463, 1,680), and so does
   the report, worked out by hand (7-day flood 46,133 capsules; Tatalon Health Center's whole
-  need 170,644, 16,058, 2,063; 7th of 142 by share). Every way of opening and closing it, the
-  keyboard path, a tap on the phone, the lead chips and the plan's circling; axe finds nothing
-  in the pop-up; no console error.
+  need 170,644, 16,058, 2,063). Every way of opening and closing it, the keyboard path, a tap on
+  the phone, the lead chips and the plan's circling; axe finds nothing in the pop-up; no console
+  error. The three-page report (October 24) was drawn from the files in Node for six barangays:
+  Tatalon, Payatas (4 centers), Claro (no center of its own), Santo Domingo (a long name),
+  Doña Imelda (a center left out) and Tatalon on a forecast that floods nobody; each fits three
+  pages.
 
 ## Home (F6)
 
@@ -542,7 +557,7 @@ Text only; no data files.
 
 - **Sources.** Every medical fact ends with numbered links, `[1]`, to the Sources list at the
   bottom, each a DOH page (DM 2023-0309, DOH's disease page and two 2024 press releases) or,
-  for the helpline and the waterproof bandage, the QC government and PIA. They are in
+  for the waterproof bandage, PIA. They are in
   `SOURCES` at the top of `Leptospirosis.tsx`; a new fact cites one with `<Cite sources={[...]} />`.
 - **Text that differs from Figma**, so each fact matches its source: incubation 2 to 30 days, usually 1 to 2 weeks; "infected animals, especially
   rats"; high risk is DM 2023-0309's repeated or continuous exposure, not LEPTON's 2-day

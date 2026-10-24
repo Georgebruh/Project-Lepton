@@ -1,11 +1,13 @@
 import { jsPDF } from 'jspdf'
+import qrcode from 'qrcode-generator'
+import wordmark from '../assets/logo/wordmark-1024.png?inline'
 import { shapeMiddle, shapeParts, type LonLat } from '../exposed/nearest.ts'
 import type { BarangayShapes } from '../map/planData.ts'
 import { tokenColor } from '../map/tokens.ts'
 import { reportContent, type ReportContent, type ReportInput, type Table } from './reportContent.ts'
 import { boundsOf, contains, fitView, overlaps, pagePoints, ringsOf, scaleKm, type Box, type MapView } from './reportMap.ts'
 
-/* The barangay report as a PDF. */
+/* The barangay report as a PDF: a cover, a page of what to stock and where, then the details. */
 
 /** A4 portrait, in mm. */
 const PAGE_WIDTH = 210
@@ -14,7 +16,7 @@ const MARGIN = 16
 const WIDTH = PAGE_WIDTH - 2 * MARGIN
 /** Where each page's header sits. */
 const HEADER_Y = 11
-const CONTENT_TOP = 23
+const CONTENT_TOP = 24
 const CONTENT_BOTTOM = 278
 const FOOTER_Y = 284
 /** Millimetres in a typographic point. */
@@ -22,22 +24,34 @@ const PT = 25.4 / 72
 /** Lines are this many times their font size apart. */
 const LEADING = 1.3
 /** Font sizes, in pt. */
-const SIZE = { eyebrow: 7.5, title: 24, about: 9, heading: 11, body: 8.5, table: 8, small: 7.5, tiny: 6.5, figure: 17 }
-/** Padding inside a table's cell and inside a shaded box, in mm. */
+const SIZE = { headline: 10, heading: 11, body: 8.5, table: 8, small: 7.5, tiny: 6.5, figure: 18 }
+/** The cover's font sizes, in pt; the logo's height, the QR code's side and its top, in mm. */
+const COVER = { eyebrow: 9, name: 40, place: 11, storm: 15, line: 10.5, centers: 11, logo: 9, qr: 40, qrTop: 222 }
+/** The logo's height in each page's header, in mm, and the name the PDF keeps its one copy of the image under. */
+const HEADER_LOGO = 3.4
+const LOGO_ALIAS = 'lepton-wordmark'
+/** The line under the cover's logo (index.html's description, shortened). */
+const TAGLINE = 'Leptospirosis forecasts and prophylaxis stock planning for Quezon City'
+/** The QR code: its error correction (M: about 15% of it may be lost) and the white border around it, in modules. */
+const QR_LEVEL = 'M'
+const QR_QUIET = 4
+/** Padding inside a table's cell and inside a box, in mm. */
 const CELL_PAD = 1.8
 const BOX_PAD = 3.5
-/** The gap between the key figures, in mm. */
-const FIGURE_GAP = 3
-/** The map: its height, the legend's column beside it. */
-const MAP = { height: 86, column: 48, gap: 5, locator: 34 }
+/** The gap between the stock cards, in mm. */
+const CARD_GAP = 4
+/** The map: the legend's column beside it, its height between these, filling what is left of page 1. */
+const MAP = { column: 48, gap: 5, least: 66, most: 125 }
+/** The small map of the city under the legend: at most this tall, and left out below the least. */
+const LOCATOR = { most: 34, least: 18 }
 /** The map shows at least this many km across. */
 const MAP_MIN_KM = 1.5
 const MAP_PAD = 0.3
 /** The shortest step the outlines keep, in mm: on the map, and on the small map of the city. */
 const MAP_STEP_MM = 0.12
 const LOCATOR_STEP_MM = 0.3
-/** The words in the header's box, beside the header's title. */
-const HEADER_LABEL = 'STOCK PLANNING, NOT PRESCRIPTIONS'
+/** The tag beside the stock's heading. */
+const STOCK_TAG = 'STOCK PLANNING, NOT PRESCRIPTIONS'
 
 /** The characters past Latin-1 that a PDF's Helvetica prints (Windows-1252's, WinAnsiEncoding). */
 const WIN_ANSI_EXTRAS = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ'
@@ -115,8 +129,22 @@ function assertPrintable(text: string) {
   }
 }
 
-/** The PDF being drawn, its colors. */
-type Pen = { doc: jsPDF; colors: ReportColors; name: string; y: number }
+/** A color mixed with white: `amount` 0 is white, 1 the color. */
+function tint(hex: string, amount: number): string {
+  const mix = (at: number) => {
+    const value = parseInt(hex.slice(at, at + 2), 16)
+    return Math.round(255 - (255 - value) * amount)
+      .toString(16)
+      .padStart(2, '0')
+  }
+  return `#${mix(1)}${mix(3)}${mix(5)}`
+}
+
+/** The logo: a PNG data URL, and its width over its height. */
+type Logo = { data: string; ratio: number }
+
+/** The PDF being drawn, its colors, the logo, and what each page's header says. */
+type Pen = { doc: jsPDF; colors: ReportColors; logo: Logo; name: string; made: string; y: number }
 
 /** Sets the font for the text that follows: Helvetica, `size` pt, plain or bold, in `color`. */
 function font(pen: Pen, size: number, style: 'normal' | 'bold', color: string) {
@@ -176,44 +204,49 @@ function paragraph(pen: Pen, text: string, options: ParagraphStyle = {}) {
 }
 
 /** The room a heading takes, in mm: the space above it, its line and the space below. */
-const HEADING_ROOM = 4 + lineHeight(SIZE.heading) + 1.8
+const HEADING_ROOM = 5 + lineHeight(SIZE.heading) + 2
 
-/** A section's heading, with a short teal bar at its left. */
-function heading(pen: Pen, text: string, keepWith: number) {
+/** A section's heading, with a short teal bar at its left and an optional tag at the right. */
+function heading(pen: Pen, text: string, keepWith: number, tag?: string) {
   ensure(pen, HEADING_ROOM + keepWith)
-  pen.y += 4
+  pen.y += 5
   const { doc, colors } = pen
   doc.setFillColor(colors.accent)
   doc.rect(MARGIN, pen.y + 0.3, 1, lineHeight(SIZE.heading) - 1.2, 'F')
   font(pen, SIZE.heading, 'bold', colors.text)
   write(pen, [text], MARGIN + 3, pen.y)
-  pen.y += lineHeight(SIZE.heading) + 1.8
+  if (tag) {
+    font(pen, SIZE.tiny, 'bold', colors.warn)
+    write(pen, [tag], MARGIN + WIDTH, pen.y + 1, 'right')
+  }
+  pen.y += lineHeight(SIZE.heading) + 2
 }
 
-/** Each page's header: LEPTON. */
+/** Draws the logo `height` mm tall with its top left corner at x, y; returns its width in mm. */
+function drawLogo(pen: Pen, x: number, y: number, height: number): number {
+  const width = height * pen.logo.ratio
+  pen.doc.addImage(pen.logo.data, 'PNG', x, y, width, height, LOGO_ALIAS, 'FAST')
+  return width
+}
+
+/** Each page's header after the cover: the logo, what the report is and for whom, and when it was made. */
 function drawHeader(pen: Pen) {
   const { doc, colors } = pen
-  font(pen, 9.5, 'bold', colors.accent)
-  write(pen, ['LEPTON'], MARGIN, HEADER_Y - 1.7)
-  const brand = doc.getTextWidth('LEPTON')
+  const brand = drawLogo(pen, MARGIN, HEADER_Y - 1.9, HEADER_LOGO)
   font(pen, 8, 'normal', colors.secondary)
-  write(pen, [`Barangay prophylaxis stock report  ·  ${pen.name}, Quezon City`], MARGIN + brand + 2.5, HEADER_Y - 1.45)
-  font(pen, SIZE.tiny, 'bold', colors.warn)
-  const width = doc.getTextWidth(HEADER_LABEL) + 4.4
-  doc.setDrawColor(colors.warn)
-  doc.setLineWidth(0.3)
-  doc.roundedRect(MARGIN + WIDTH - width, HEADER_Y - 2.7, width, 5.4, 0.7, 0.7, 'S')
-  write(pen, [HEADER_LABEL], MARGIN + WIDTH - width / 2, HEADER_Y - 1.15, 'center')
+  write(pen, [`Barangay prophylaxis stock report for ${pen.name}`], MARGIN + brand + 3, HEADER_Y - 1.45)
+  font(pen, SIZE.small, 'normal', colors.tertiary)
+  write(pen, [pen.made], MARGIN + WIDTH, HEADER_Y - 1.3, 'right')
   doc.setDrawColor(colors.border)
   doc.setLineWidth(0.25)
   doc.line(MARGIN, HEADER_Y + 5, MARGIN + WIDTH, HEADER_Y + 5)
 }
 
-/** Every page's footer, once all the pages are drawn. */
+/** Every page's footer but the cover's, once all the pages are drawn: the stock-planning label and the page number. */
 function drawFooters(pen: Pen, label: string) {
   const { doc, colors } = pen
   const pages = doc.getNumberOfPages()
-  for (let page = 1; page <= pages; page++) {
+  for (let page = 2; page <= pages; page++) {
     doc.setPage(page)
     doc.setDrawColor(colors.border)
     doc.setLineWidth(0.25)
@@ -224,97 +257,180 @@ function drawFooters(pen: Pen, label: string) {
   }
 }
 
-/** The title: what the report is, the barangay's name, and what it is, under the first page's header. */
-function drawTitle(pen: Pen, content: ReportContent) {
+/** A QR code `size` mm square at x, y that opens `url`, drawn as squares so it prints sharp; it is a link too. */
+function drawQr(pen: Pen, url: string, x: number, y: number, size: number) {
   const { doc, colors } = pen
-  font(pen, SIZE.eyebrow, 'bold', colors.accent)
-  doc.setCharSpace(0.25)
-  write(pen, ['BARANGAY PROPHYLAXIS STOCK REPORT'], MARGIN, pen.y)
-  doc.setCharSpace(0)
-  pen.y += lineHeight(SIZE.eyebrow) + 0.8
-  font(pen, SIZE.title, 'bold', colors.text)
-  const name = wrap(pen, content.name, WIDTH)
-  write(pen, name, MARGIN, pen.y)
-  pen.y += name.length * SIZE.title * PT * 1.15 + 1
-  paragraph(pen, content.about, { size: SIZE.about, color: colors.secondary, after: 3 })
+  const qr = qrcode(0, QR_LEVEL)
+  qr.addData(url)
+  qr.make()
+  const count = qr.getModuleCount()
+  const cell = size / (count + 2 * QR_QUIET)
+  doc.setFillColor(colors.surface)
+  doc.rect(x, y, size, size, 'F')
+  doc.setFillColor(colors.text)
+  // Each row's dark modules as runs, a little taller than a module so no hairline shows between rows
+  for (let row = 0; row < count; row++) {
+    let col = 0
+    while (col < count) {
+      if (!qr.isDark(row, col)) {
+        col++
+        continue
+      }
+      const start = col
+      while (col < count && qr.isDark(row, col)) {
+        col++
+      }
+      doc.rect(x + (QR_QUIET + start) * cell, y + (QR_QUIET + row) * cell, (col - start) * cell, cell + 0.02, 'F')
+    }
+  }
+  doc.setDrawColor(colors.border)
+  doc.setLineWidth(0.3)
+  doc.roundedRect(x, y, size, size, 1.2, 1.2, 'S')
+  doc.link(x, y, size, size, { url })
 }
 
-/** The flag: a chip, red when the barangay is flagged, and the reason beside it. */
-function drawFlag(pen: Pen, content: ReportContent) {
+/** Small capitals, spaced out, at the pen; the pen moves below them. */
+function eyebrow(pen: Pen, text: string, size: number, color: string) {
+  font(pen, size, 'bold', color)
+  pen.doc.setCharSpace(0.4)
+  write(pen, [text], MARGIN, pen.y)
+  pen.doc.setCharSpace(0)
+  pen.y += lineHeight(size) + 2.5
+}
+
+/** Text at the pen in one font, wrapped across the page; the pen moves below it. */
+function coverText(pen: Pen, text: string, size: number, style: 'normal' | 'bold', color: string, after: number) {
+  font(pen, size, style, color)
+  const wrapped = wrap(pen, text, WIDTH)
+  write(pen, wrapped, MARGIN, pen.y)
+  pen.y += wrapped.length * lineHeight(size) + after
+}
+
+/** The centers on the cover, as many as fit above the QR code; "and n more" stands for the rest. */
+function coverCenters(pen: Pen, names: string[]) {
+  const { colors } = pen
+  const bottom = COVER.qrTop - 6
+  let shown = 0
+  for (const name of names) {
+    font(pen, COVER.centers, 'bold', colors.text)
+    const height = wrap(pen, name, WIDTH).length * lineHeight(COVER.centers) + 1
+    const more = shown < names.length - 1 ? lineHeight(COVER.centers) : 0 // Room for "and n more" after it
+    if (pen.y + height + more > bottom) {
+      break
+    }
+    coverText(pen, name, COVER.centers, 'bold', colors.text, 1)
+    shown++
+  }
+  if (shown < names.length) {
+    coverText(pen, `and ${names.length - shown} more: see Where the stock goes`, COVER.centers, 'normal', colors.secondary, 0)
+  }
+}
+
+/** The cover: the logo, the barangay, the storm and forecast, the centers it is for, and a QR code to the map. */
+function drawCover(pen: Pen, content: ReportContent) {
   const { doc, colors } = pen
-  const { flagged, label, text: reason } = content.flag
+  drawLogo(pen, MARGIN, 24, COVER.logo)
+  font(pen, SIZE.body, 'normal', colors.secondary)
+  write(pen, [TAGLINE], MARGIN, 24 + COVER.logo + 3.5)
+  doc.setDrawColor(colors.border)
+  doc.setLineWidth(0.25)
+  doc.line(MARGIN, 48, MARGIN + WIDTH, 48)
+  pen.y = 80
+  eyebrow(pen, 'BARANGAY PROPHYLAXIS STOCK REPORT', COVER.eyebrow, colors.accent)
+  coverText(pen, content.name, COVER.name, 'bold', colors.text, 1)
+  coverText(pen, content.place, COVER.place, 'normal', colors.secondary, 14)
+  coverText(pen, content.storm, COVER.storm, 'bold', colors.text, 1.5)
+  coverText(pen, content.forecastLine, COVER.line, 'normal', colors.text, 0.5)
+  coverText(pen, content.rainLine, COVER.line, 'normal', colors.secondary, 14)
+  eyebrow(pen, 'PREPARED FOR', SIZE.small, colors.tertiary)
+  coverCenters(pen, content.centers.names)
+  // The QR code and its words, above the cover's foot
+  const top = COVER.qrTop
+  drawQr(pen, content.link, MARGIN, top, COVER.qr)
+  const x = MARGIN + COVER.qr + 7
+  const width = WIDTH - COVER.qr - 7
+  font(pen, COVER.centers, 'bold', colors.text)
+  write(pen, ["Open this forecast on LEPTON's map"], x, top + 6)
+  font(pen, SIZE.body, 'normal', colors.secondary)
+  write(pen, ["Scan the code with a phone's camera, or open the link:"], x, top + 12)
+  font(pen, SIZE.small, 'normal', colors.accent)
+  const link = wrap(pen, content.link, width)
+  write(pen, link, x, top + 17)
+  doc.link(x, top + 17, width, link.length * lineHeight(SIZE.small), { url: content.link })
+  // The foot: when it was made, and the stock-planning label
+  doc.setDrawColor(colors.border)
+  doc.line(MARGIN, 272, MARGIN + WIDTH, 272)
+  font(pen, SIZE.body, 'normal', colors.secondary)
+  write(pen, [content.made], MARGIN, 275)
+  font(pen, SIZE.tiny, 'normal', colors.tertiary)
+  write(pen, wrap(pen, content.label, WIDTH - 60), MARGIN, 280)
+  font(pen, SIZE.tiny, 'bold', colors.warn)
+  const tag = doc.getTextWidth(STOCK_TAG) + 4.4
+  doc.setDrawColor(colors.warn)
+  doc.setLineWidth(0.3)
+  doc.roundedRect(MARGIN + WIDTH - tag, 274.5, tag, 5.4, 0.7, 0.7, 'S')
+  write(pen, [STOCK_TAG], MARGIN + WIDTH - tag / 2, 276.05, 'center')
+}
+
+/** The status band: a chip, red when the barangay is flagged, and the residents exposed beside it. */
+function drawStatus(pen: Pen, content: ReportContent) {
+  const { doc, colors } = pen
+  const { flagged, label, headline, text } = content.flag
   const chip = label.toUpperCase()
-  font(pen, SIZE.tiny, 'bold', flagged ? colors.surface : colors.secondary)
+  font(pen, SIZE.tiny, 'bold', colors.surface)
   const chipWidth = doc.getTextWidth(chip) + 4
   const chipHeight = 4.8
-  font(pen, SIZE.body, 'normal', colors.text)
-  const lines = wrap(pen, reason, WIDTH - chipWidth - 3)
-  const height = Math.max(chipHeight, lines.length * lineHeight(SIZE.body))
-  ensure(pen, height)
-  doc.setFillColor(flagged ? colors.alert : colors.raised)
-  doc.roundedRect(MARGIN, pen.y, chipWidth, chipHeight, 0.7, 0.7, 'F')
-  font(pen, SIZE.tiny, 'bold', flagged ? colors.surface : colors.secondary)
-  write(pen, [chip], MARGIN + chipWidth / 2, pen.y + 1.25, 'center')
-  font(pen, SIZE.body, flagged ? 'bold' : 'normal', flagged ? colors.alert : colors.secondary)
-  write(pen, lines, MARGIN + chipWidth + 3, pen.y + 0.6)
-  pen.y += height + 4
-}
-
-/** One paragraph of a shaded box: its text, size, weight and color. */
-type BoxPart = { text: string; size: number; style: 'normal' | 'bold'; color: string }
-
-/** A shaded box's paragraphs broken into lines, and the box's height in mm, before it is drawn. */
-function layoutBox(pen: Pen, parts: BoxPart[]) {
-  const wrapped = parts.map((part) => {
-    font(pen, part.size, part.style, part.color)
-    return wrap(pen, part.text, WIDTH - 2 * BOX_PAD)
-  })
-  const text = wrapped.reduce((sum, lines, i) => sum + lines.length * lineHeight(parts[i].size), 0)
-  return { wrapped, height: 2 * BOX_PAD + text + 1.4 * (parts.length - 1) }
-}
-
-/** A shaded box across the page holding a few paragraphs. */
-function shadedBox(pen: Pen, parts: BoxPart[], fill: string, box = layoutBox(pen, parts)) {
-  ensure(pen, box.height)
-  pen.doc.setFillColor(fill)
-  pen.doc.roundedRect(MARGIN, pen.y, WIDTH, box.height, 1.5, 1.5, 'F')
-  let y = pen.y + BOX_PAD
-  parts.forEach((part, i) => {
-    font(pen, part.size, part.style, part.color)
-    write(pen, box.wrapped[i], MARGIN + BOX_PAD, y)
-    y += box.wrapped[i].length * lineHeight(part.size) + 1.4
-  })
-  pen.y += box.height + 4
-}
-
-/** The key figures: four boxes, each a large number over what it counts, a teal rule on top. */
-function drawFigures(pen: Pen, content: ReportContent) {
-  const { doc, colors } = pen
-  const count = content.figures.length
-  const width = (WIDTH - FIGURE_GAP * (count - 1)) / count
+  const left = MARGIN + BOX_PAD + 1.2 + chipWidth + 3.5
   font(pen, SIZE.small, 'normal', colors.secondary)
-  const labels = content.figures.map((figure) => wrap(pen, figure.label, width - 2 * BOX_PAD))
-  const tallest = Math.max(...labels.map((label) => label.length))
-  const valueHeight = SIZE.figure * PT * 1.15
-  const height = 2 * BOX_PAD + valueHeight + 1.5 + (tallest + 1) * lineHeight(SIZE.small)
+  const lines = wrap(pen, text, MARGIN + WIDTH - BOX_PAD - left)
+  const height = 2 * BOX_PAD + lineHeight(SIZE.headline) + 0.6 + lines.length * lineHeight(SIZE.small)
   ensure(pen, height)
-  content.figures.forEach((figure, i) => {
-    const x = MARGIN + i * (width + FIGURE_GAP)
+  doc.setFillColor(flagged ? tint(colors.alert, 0.08) : colors.raised)
+  doc.roundedRect(MARGIN, pen.y, WIDTH, height, 1.5, 1.5, 'F')
+  doc.setFillColor(flagged ? colors.alert : colors.borderStrong)
+  doc.rect(MARGIN, pen.y, 1.2, height, 'F')
+  doc.setFillColor(flagged ? colors.alert : colors.secondary)
+  doc.roundedRect(MARGIN + BOX_PAD + 1.2, pen.y + BOX_PAD, chipWidth, chipHeight, 0.7, 0.7, 'F')
+  font(pen, SIZE.tiny, 'bold', colors.surface)
+  write(pen, [chip], MARGIN + BOX_PAD + 1.2 + chipWidth / 2, pen.y + BOX_PAD + 1.25, 'center')
+  font(pen, SIZE.headline, 'bold', colors.text)
+  write(pen, [headline], left, pen.y + BOX_PAD + 0.2)
+  font(pen, SIZE.small, 'normal', colors.secondary)
+  write(pen, lines, left, pen.y + BOX_PAD + lineHeight(SIZE.headline) + 0.6)
+  pen.y += height
+}
+
+/** The stock to prepare: a card per unit, its count large over what it is and who it is for. */
+function drawStock(pen: Pen, content: ReportContent) {
+  const { doc, colors } = pen
+  const { items, note } = content.stock
+  const width = (WIDTH - CARD_GAP * (items.length - 1)) / items.length
+  font(pen, SIZE.body, 'bold', colors.text)
+  const unitLines = items.map((item) => wrap(pen, item.unit, width - 2 * BOX_PAD))
+  const valueHeight = SIZE.figure * PT * 1.15
+  const units = Math.max(...unitLines.map((lines) => lines.length))
+  const height = 2 * BOX_PAD + valueHeight + 1.2 + units * lineHeight(SIZE.body) + lineHeight(SIZE.small)
+  const notes = measure(pen, note, { size: SIZE.small, after: 0 })
+  heading(pen, 'Stock to prepare', height + 2 + notes.height, STOCK_TAG)
+  items.forEach((item, i) => {
+    const x = MARGIN + i * (width + CARD_GAP)
+    const top = pen.y
     doc.setDrawColor(colors.border)
     doc.setLineWidth(0.3)
-    doc.roundedRect(x, pen.y, width, height, 1.2, 1.2, 'S')
+    doc.roundedRect(x, top, width, height, 1.2, 1.2, 'S')
     doc.setFillColor(colors.accent)
-    doc.rect(x + 0.15, pen.y, width - 0.3, 0.9, 'F')
+    doc.rect(x + 0.15, top, width - 0.3, 0.9, 'F')
     font(pen, SIZE.figure, 'bold', colors.text)
-    write(pen, [figure.value], x + BOX_PAD, pen.y + BOX_PAD)
-    const labelTop = pen.y + BOX_PAD + valueHeight + 1.5
+    write(pen, [item.value], x + BOX_PAD, top + BOX_PAD)
+    let y = top + BOX_PAD + valueHeight + 1.2
+    font(pen, SIZE.body, 'bold', colors.text)
+    write(pen, unitLines[i], x + BOX_PAD, y)
+    y += units * lineHeight(SIZE.body)
     font(pen, SIZE.small, 'normal', colors.secondary)
-    write(pen, labels[i], x + BOX_PAD, labelTop)
-    font(pen, SIZE.small, 'normal', colors.tertiary)
-    write(pen, [figure.detail], x + BOX_PAD, labelTop + labels[i].length * lineHeight(SIZE.small))
+    write(pen, [item.who], x + BOX_PAD, y)
   })
   pen.y += height + 2
-  paragraph(pen, content.figuresNote, { size: SIZE.small, color: colors.tertiary, after: 2 })
+  paragraph(pen, note, { size: SIZE.small, color: colors.tertiary, after: 0 })
 }
 
 /** A table column: its width in mm, which side its text keeps to, and whether its cells are bold. */
@@ -382,49 +498,28 @@ function drawTable(pen: Pen, table: Table, columns: Column[], layout = layoutTab
   pen.y += 2
 }
 
-/** A heading with its table under it, and the table's notes. */
-function tableSection(pen: Pen, title: string, table: Table, columns: Column[], notes: string[]) {
-  const layout = layoutTable(pen, table, columns)
-  heading(pen, title, layout.height)
-  drawTable(pen, table, columns, layout)
+/** Notes under a table, in small type. */
+function tableNotes(pen: Pen, notes: string[]) {
   for (const note of notes) {
-    paragraph(pen, note, { size: SIZE.small, color: pen.colors.secondary, after: 1.2 })
+    paragraph(pen, note, { size: SIZE.small, color: pen.colors.secondary, after: 1 })
   }
 }
 
-/** The stock to prepare: a row per unit, who it is for and how it is counted, and a column per flood. */
-function drawStock(pen: Pen, content: ReportContent) {
-  const floods = content.stock.table.heads.length - 2
-  const [name, value] = [34, 23]
-  const columns: Column[] = [
-    { width: name, align: 'left', bold: true },
-    { width: WIDTH - name - value * floods, align: 'left' },
-    ...Array.from({ length: floods }, (): Column => ({ width: value, align: 'right', bold: true })),
-  ]
-  tableSection(pen, 'Stock to prepare', content.stock.table, columns, content.stock.notes)
-}
-
-/** The storm's forecasts made 1 to 3 days ahead, the one on the map in bold. */
-function drawLeads(pen: Pen, content: ReportContent) {
-  const widths = [33, 33, 32, 30, 18, 16, 16]
-  const columns = widths.map((width, i): Column => ({ width, align: i >= 4 ? 'right' : 'left' }))
-  tableSection(pen, content.leads.title, content.leads.table, columns, [content.leads.note])
-}
-
-/** Where the stock goes. */
+/** Where the stock goes: how the need reaches the centers, and each center's order. */
 function drawCenters(pen: Pen, content: ReportContent) {
-  const { intro, table, serves, leftOut, note } = content.centers
-  const widths = [6, 48, 30, 24, 24, 23, 23]
-  const columns = widths.map((width, i): Column => ({ width, align: i >= 3 ? 'right' : 'left', bold: i === 1 }))
+  const { intro, table, notes } = content.centers
+  // The pin's number, the center's name, then the share (when split) and the three units; the name takes what is left
+  const numbers = table.heads.length - 2
+  const widths = [6, WIDTH - 6 - 24 * numbers, ...Array.from({ length: numbers }, () => 24)]
+  const columns = widths.map((width, i): Column => ({ width, align: i >= 2 ? 'right' : 'left', bold: i === 1 }))
   const layout = layoutTable(pen, table, columns)
-  const first = measure(pen, intro, { after: 2 })
-  heading(pen, 'Where the stock goes', first.height + layout.height)
-  paragraph(pen, intro, { after: 2 })
-  drawTable(pen, table, columns, layout)
-  for (const line of [...serves, ...leftOut]) {
-    paragraph(pen, line, { size: SIZE.small, color: pen.colors.secondary, after: 1 })
+  const first = intro ? measure(pen, intro, { after: 2 }).height : 0
+  heading(pen, 'Where the stock goes', first + layout.height)
+  if (intro) {
+    paragraph(pen, intro, { after: 2 })
   }
-  paragraph(pen, note, { size: SIZE.small, color: pen.colors.tertiary, after: 2 })
+  drawTable(pen, table, columns, layout)
+  tableNotes(pen, notes)
 }
 
 /** Traces a shape's rings on the map as one path, each ring a closed part, ready to fill. */
@@ -602,12 +697,23 @@ function drawLocalMap(pen: Pen, box: Box, view: MapView, shapes: BarangayShapes,
   doc.rect(box.x, box.y, box.width, box.height, 'S')
 }
 
+/** The legend's title, wrapped to its column. */
+function legendTitle(pen: Pen): string[] {
+  font(pen, SIZE.small, 'bold', pen.colors.text)
+  return wrap(pen, 'Share of residents in flooded zones', MAP.column)
+}
+
+/** The legend's height in mm: its title, a row per class, then the outline and the pin. */
+function legendHeight(pen: Pen, content: ReportContent): number {
+  return legendTitle(pen).length * lineHeight(SIZE.small) + 1.5 + 5 * (content.map.legend.length + 2) + 1
+}
+
 /** The legend beside the map: the five classes from the darkest, the black outline and the pins. */
 function drawLegend(pen: Pen, x: number, top: number, content: ReportContent) {
   const { doc, colors } = pen
   let y = top
+  const title = legendTitle(pen)
   font(pen, SIZE.small, 'bold', colors.text)
-  const title = wrap(pen, 'Share of residents in flooded zones', MAP.column)
   write(pen, title, x, y)
   y += title.length * lineHeight(SIZE.small) + 1.5
   const row = (draw: () => void, label: string) => {
@@ -655,52 +761,51 @@ function drawLocator(pen: Pen, box: Box, shapes: BarangayShapes, psgc: string, l
   write(pen, ['Quezon City'], box.x, box.y - lineHeight(SIZE.tiny) - 0.5)
 }
 
-/** The barangay on the map. */
+/** The barangay on the map, as tall as the rest of the page allows within MAP's limits. */
 function drawMap(pen: Pen, content: ReportContent, shapes: BarangayShapes) {
-  font(pen, SIZE.tiny, 'normal', pen.colors.tertiary)
-  const caption = wrap(pen, content.map.caption, WIDTH)
-  heading(pen, 'The barangay on the map', MAP.height + 2 + caption.length * lineHeight(SIZE.tiny))
+  const left = CONTENT_BOTTOM - pen.y - HEADING_ROOM
+  const height = Math.min(MAP.most, left >= MAP.least ? left : MAP.most)
+  heading(pen, 'Map', height)
   const own = shapes.features.find((feature) => feature.properties.psgc === content.map.psgc)
   if (!own) {
     throw new Error(`qc_barangays.geojson has no barangay ${content.map.psgc}: rerun python -m src.app_data`)
   }
-  const box: Box = { x: MARGIN, y: pen.y, width: WIDTH - MAP.column - MAP.gap, height: MAP.height }
+  const box: Box = { x: MARGIN, y: pen.y, width: WIDTH - MAP.column - MAP.gap, height }
   const points = [...ringsOf(own.geometry).flat(), ...content.centers.pins.map((pin) => pin.at)]
   const view = fitView(boundsOf(points), box, MAP_PAD, MAP_MIN_KM)
   drawLocalMap(pen, box, view, shapes, content)
   const side = box.x + box.width + MAP.gap
   drawLegend(pen, side, pen.y, content)
-  const locator: Box = { x: side, y: pen.y + MAP.height - MAP.locator, width: MAP.column, height: MAP.locator }
-  drawLocator(pen, locator, shapes, content.map.psgc, view)
-  pen.y += MAP.height + 2
-  font(pen, SIZE.tiny, 'normal', pen.colors.tertiary)
-  write(pen, caption, MARGIN, pen.y)
-  pen.y += caption.length * lineHeight(SIZE.tiny) + 2
+  // The city's small map fills what the legend leaves, down to its least
+  const room = Math.min(LOCATOR.most, height - legendHeight(pen, content) - 6)
+  if (room >= LOCATOR.least) {
+    const locator: Box = { x: side, y: pen.y + height - room, width: MAP.column, height: room }
+    drawLocator(pen, locator, shapes, content.map.psgc, view)
+  }
+  pen.y += height
 }
 
-/** Quezon City's case forecast. */
-function drawCity(pen: Pen, content: ReportContent) {
-  const { colors } = pen
-  const { title, lines, badge } = content.city
-  const parts: BoxPart[] = lines.map((text, i) => ({
-    text,
-    size: SIZE.body,
-    style: i === 0 ? 'bold' : 'normal',
-    color: i === lines.length - 1 ? colors.secondary : colors.text,
-  }))
-  if (badge) {
-    parts.unshift({ text: badge.toUpperCase(), size: SIZE.tiny, style: 'bold', color: colors.warn })
-  }
-  const box = layoutBox(pen, parts)
-  heading(pen, title, box.height)
-  shadedBox(pen, parts, colors.raised, box)
+/** How many units each person gets: a row per unit, a column per flood. */
+function drawCounting(pen: Pen, content: ReportContent) {
+  const { table, notes } = content.counting
+  const floods = table.heads.length - 2
+  const [name, who] = [38, 40]
+  const columns: Column[] = [
+    { width: name, align: 'left', bold: true },
+    { width: who, align: 'left' },
+    ...Array.from({ length: floods }, (): Column => ({ width: (WIDTH - name - who) / floods, align: 'left' })),
+  ]
+  const layout = layoutTable(pen, table, columns)
+  heading(pen, 'Who gets what', layout.height)
+  drawTable(pen, table, columns, layout)
+  tableNotes(pen, notes)
 }
 
 /** How far a list's text is indented past its number or bullet, in mm. */
-const LIST_INDENT = 5.5
+const LIST_INDENT = 5
 
 /** A list under its heading, numbered or with bullets; the heading keeps its first item with it. */
-function drawList(pen: Pen, title: string, items: string[], numbered: boolean, size = SIZE.body) {
+function drawList(pen: Pen, title: string, items: string[], numbered: boolean, size = SIZE.table) {
   const itemLines = (text: string) => {
     font(pen, size, 'normal', pen.colors.text)
     return wrap(pen, text, WIDTH - LIST_INDENT)
@@ -713,27 +818,19 @@ function drawList(pen: Pen, title: string, items: string[], numbered: boolean, s
     write(pen, [numbered ? `${i + 1}.` : '•'], MARGIN, pen.y)
     font(pen, size, 'normal', pen.colors.text)
     write(pen, lines, MARGIN + LIST_INDENT, pen.y)
-    pen.y += lines.length * lineHeight(size) + 1.4
+    pen.y += lines.length * lineHeight(size) + 1.2
   })
 }
 
-/** When and from what the report was made, and the map's address as a link, at the end. */
-function drawMade(pen: Pen, content: ReportContent) {
-  const { doc, colors } = pen
-  pen.y += 2
-  paragraph(pen, content.made, { size: SIZE.small, color: colors.tertiary, after: 1 })
-  const intro = "To see this forecast on LEPTON's map: "
-  font(pen, SIZE.small, 'normal', colors.tertiary)
-  const lines = wrap(pen, intro + content.link, WIDTH)
-  ensure(pen, lines.length * lineHeight(SIZE.small))
-  font(pen, SIZE.small, 'normal', colors.accent)
-  write(pen, lines, MARGIN, pen.y)
-  doc.link(MARGIN, pen.y, WIDTH, lines.length * lineHeight(SIZE.small), { url: content.link })
-  pen.y += lines.length * lineHeight(SIZE.small)
+/** The sources and their licences in small type, at the end. */
+function drawSources(pen: Pen, content: ReportContent) {
+  const text = measure(pen, content.sources, { size: SIZE.small })
+  heading(pen, 'Sources', text.height)
+  paragraph(pen, content.sources, { size: SIZE.small, color: pen.colors.secondary, after: 0 })
 }
 
-/** The whole report as a PDF, from its content and the barangay shapes, in `colors`. */
-export function drawReport(content: ReportContent, shapes: BarangayShapes, colors: ReportColors): jsPDF {
+/** The whole report as a PDF, from its content and the barangay shapes, in `colors`, with `logo` (a PNG data URL). */
+export function drawReport(content: ReportContent, shapes: BarangayShapes, colors: ReportColors, logo: string): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   doc.setProperties({
     title: content.docTitle,
@@ -743,29 +840,37 @@ export function drawReport(content: ReportContent, shapes: BarangayShapes, color
     keywords: 'leptospirosis, prophylaxis, stock planning, barangay, Quezon City',
   })
   doc.setLanguage('en-US')
-  const pen: Pen = { doc, colors, name: content.name, y: CONTENT_TOP }
-  drawHeader(pen)
-  drawTitle(pen, content)
-  drawFlag(pen, content)
-  shadedBox(
-    pen,
-    [
-      { text: content.storm, size: 10, style: 'bold', color: colors.text },
-      { text: content.forecastLine, size: SIZE.body, style: 'normal', color: colors.text },
-      { text: content.cityLine, size: SIZE.body, style: 'normal', color: colors.secondary },
-    ],
-    colors.raised,
-  )
-  drawFigures(pen, content)
+  const { width, height } = doc.getImageProperties(logo)
+  const pen: Pen = {
+    doc,
+    colors,
+    logo: { data: logo, ratio: width / height },
+    name: content.name,
+    made: content.made,
+    y: CONTENT_TOP,
+  }
+  drawCover(pen, content)
+  // Page 2: what to stock and where
+  newPage(pen)
+  drawStatus(pen, content)
   drawStock(pen, content)
-  drawLeads(pen, content)
   drawCenters(pen, content)
   drawMap(pen, content, shapes)
-  drawCity(pen, content)
-  drawList(pen, 'How these figures were made', content.method, true)
-  drawList(pen, 'Limits', content.limits, false)
-  drawList(pen, 'Sources', content.sources, false, SIZE.small)
-  drawMade(pen, content)
+  // Then the details, from page 3 unless page 2 has already run over
+  if (doc.getNumberOfPages() === 2) {
+    newPage(pen)
+  } else {
+    pen.y += 6
+    ensure(pen, 40)
+  }
+  font(pen, SIZE.small, 'bold', colors.tertiary)
+  doc.setCharSpace(0.25)
+  write(pen, ['DETAILS'], MARGIN, pen.y)
+  doc.setCharSpace(0)
+  pen.y += lineHeight(SIZE.small) - 3
+  drawCounting(pen, content)
+  drawList(pen, 'About these numbers', content.about, false)
+  drawSources(pen, content)
   drawFooters(pen, content.label)
   return doc
 }
@@ -773,6 +878,6 @@ export function drawReport(content: ReportContent, shapes: BarangayShapes, color
 /** Makes one barangay's report for the forecast and date the map shows. */
 export function saveBarangayReport(input: ReportInput): string {
   const content = reportContent(input)
-  drawReport(content, input.shapes, pageColors()).save(content.fileName)
+  drawReport(content, input.shapes, pageColors(), wordmark).save(content.fileName)
   return content.fileName
 }
