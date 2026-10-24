@@ -36,7 +36,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/report/` | F15's barangay report, a PDF made in the browser: `reportContent.ts` (its words and tables, from the files), `reportPdf.ts` (draws them with jsPDF and saves the file), `reportMap.ts` (its maps' geometry) |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`), the hero's waterlines (`waterlines.ts`, F17) and the files it loads (`homeData.ts`) |
 | `src/motion/` | F17: the reveal on scroll (`reveal.ts`), the numbers that count up (`CountUp.tsx`) and the glide of in-page links (`smoothLinks.ts`) |
-| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos) |
+| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos). `logo/` holds PNGs of the logo for the paper and slides (the wordmark and its O, 1024 px, transparent, light theme colors); nothing imports them, so they are not in the build |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
 | `src/styles/motion.css` | F17: the durations and curves of every animation, and the reveal on scroll |
@@ -120,6 +120,7 @@ whenever C8, C9, B10 or A8 change, then commit the files.
 | `ph_islands.json` | F14: the coastline of every island of 1 km² or more (`config.PH_ISLANDS_MIN_KM2`): the 1,642 towns joined, the gaps between faeldon's province files closed (`PH_ISLANDS_GAP_M`), each island's outer coast only (the holes left are lakes, which the street map draws, or gaps in faeldon's maps), simplified to 250 m (`PH_ISLANDS_SIMPLIFY_M`). 0.5 MB, 0.15 MB sent compressed | Map |
 | `qc_barangays.geojson` | Quezon City's 142 barangays: `psgc`, `name` | Map, Home |
 | `noah_flood_5yr.pmtiles`, `noah_flood_25yr.pmtiles`, `noah_flood_100yr.pmtiles` | F14: NOAH's flood maps of every province NOAH has mapped, as vector tiles (`python -m src.noah_national`, not F2): layer `flood`, `var` 1 low (up to 0.5 m), 2 medium (0.5–1.5 m), 3 high (over 1.5 m), zooms 4 to 11, each map thinned as little as keeps it under GitHub's 100 MB a file (`config.NOAH_TILE_LIMITS`: the 5- and 25-year maps keep tippecanoe's default tiles; the 100-year map's densest tiles drop more of their smallest patches). Patches under 400 m² dropped. ODbL, as NOAH's maps are. 50–95 MB each; the browser fetches only the tiles in view (HTTP range requests). They replace F13's Metro Manila overlays, `noah_<T>yr.json` | Map's flood zones (F13, F14), read when first turned on |
+| `noah_barangays/<T>yr/<psgc>.json` | F13: one barangay's zones on one NOAH map (`python -m src.noah_barangays`, not F2), drawn instead of the tiles while its pop-up is open: A8's Metro Manila maps, patches under 400 m² dropped as for the tiles, simplified together to about 10 m (`config.APP_NOAH_BARANGAY_SIMPLIFY_M`, one cell of NOAH's grid) and cut along `qc_barangays.geojson`'s outlines; one row per `var`, points to 6 decimals (`APP_NOAH_BARANGAY_DECIMALS`). A file for every barangay, empty where it has no zones. 3.1–3.5 MB a map, about 25 kB a barangay (at most 0.4 MB) | Prophylaxis plan, read when a barangay opens with the zones on |
 | `storms.json` | Per storm and run (`observed`, `lead 1` to `lead 3`): `window`, `issued`, `rain_mm`, `position` against the return levels, `ei_pct`, `flagged`; per flood (`D1` is D = 1 at w = 0.5, `D7` is 7 days; the observed run has A11's D): `exposed` and the units. Also the five map `classes`, and (F15) `counting`, C6's units per person from `config.py`, which the barangay report explains | Prophylaxis plan |
 | `barangays/<storm>_<run>.json` | Per barangay: `exposed`, `share`, `class` (0 to 4: `--color-data-ramp-1` to `-5`), `flagged`, `units` per flood | Prophylaxis plan, Home |
 | `days/<year>.json` | F16: a prophylaxis plan for every day (`python -m src.app_days`, not F2), one file per year, fetched when the date first reaches that year. Each day in `storms.json`'s form (key `day_<date>`, `D` null) for the 3 days of rain from that date: its forecasts made 1 to 3 days before (ECMWF, Open-Meteo's Previous Runs archive, from February 2024; later in the week the newest forecast), or before the archive the rain that fell (IMERG). Also `needs[day][run][flood][facility_code]` for the runs that expose anyone; the others need nothing (`withDayNeeds` in `map/plan.ts`). Most days' rain is below R0: all zeros, no stock. 0.25–0.9 MB a year, 30–60 kB sent compressed | Prophylaxis plan |
@@ -333,7 +334,10 @@ is only the map, of the whole country, with no other tabs.
   map's own; on a phone it shows only the levels' names (the depths are read out) and leaves
   the credit to the map's corner. While a file loads the panel says so; if it fails, the panel
   says that with a Try again button, and the legend goes. A failed map is removed, so choosing
-  it later fetches it again.
+  it later fetches it again. While a barangay's pop-up is open in the prophylaxis plan (opened
+  from the list or by a click), only that barangay's zones are drawn, from its own small file
+  (`noah_barangays/`), and the national tiles are hidden, so MapLibre fetches and draws none of
+  them; the legend says "Only <barangay>'s zones". Closing the pop-up brings the whole map back.
 - **The 3D view (F13).** The panel's "3D view" switch, `?view=3d` in the address
   (`map/terrain.ts`). The ground rises with Mapzen's Terrain Tiles (heights doubled: Metro
   Manila is low), the street map gets the hill shading, and its buildings stand up from zoom 14.

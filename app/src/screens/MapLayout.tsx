@@ -25,7 +25,7 @@ import {
 } from '../map/layerParams.ts'
 import MapLayers from '../map/MapLayers.tsx'
 import MapSearch from '../map/MapSearch.tsx'
-import type { MapContext } from '../map/mapContext.ts'
+import type { MapContext, OpenBarangay } from '../map/mapContext.ts'
 import { withSimulation, type DataMode, type MapData } from '../map/mapData.ts'
 import MapTimeline from '../map/MapTimeline.tsx'
 import MapZoom from '../map/MapZoom.tsx'
@@ -87,6 +87,7 @@ export default function MapLayout() {
   const [infoOpen, setInfoOpen] = useState(false)
   const closeInfo = useCallback(() => setInfoOpen(false), [])
   const [found, setFound] = useState<{ psgc: string } | null>(null) // The town the search last found
+  const [openBarangay, setOpenBarangay] = useState<OpenBarangay | null>(null) // The plan's open pop-up
   const layersButton = useRef<HTMLButtonElement>(null)
   const controls = useRef<HTMLDivElement>(null)
   const topBar = useRef<HTMLDivElement>(null)
@@ -111,7 +112,9 @@ export default function MapLayout() {
   if (flood !== null && flood !== floodChoice) {
     setFloodChoice(flood) // The switch brings back the map last shown, however the address came to name it
   }
-  const { status: floodStatus, retry: retryFlood } = useFloodZones(map, flood)
+  // While a barangay's pop-up is open, only its flood zones are drawn: one small file instead of the national tiles
+  const floodBarangay = flood === null ? null : openBarangay
+  const { status: floodStatus, retry: retryFlood } = useFloodZones(map, flood, floodBarangay?.psgc ?? null)
   const floodShown = flood !== null && floodStatus !== 'failed'
   const weather = weatherOf(searchParams)
   const wx = useWeather(map, weather, date)
@@ -212,7 +215,7 @@ export default function MapLayout() {
     }
   }
 
-  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay }
+  const context: MapContext = { cities, forecast, date, week, map, legendSlot, overlay, setOpenBarangay }
   return (
     <div
       className="map-layout"
@@ -275,7 +278,7 @@ export default function MapLayout() {
               {/* The legends, one above the other: the weather's and the flood zones' over the map's own */}
               <div className="map-layout-legends">
                 {weather && (wx.status === 'loading' || wx.status === 'shown') && <WeatherLegend kind={weather} day={date} />}
-                {floodShown && <FloodLegend period={flood} />}
+                {floodShown && <FloodLegend period={flood} barangay={floodBarangay?.name ?? null} />}
                 {level < 3 && (
                   <OutbreakLegend
                     levels={forecast.levels}
@@ -339,6 +342,7 @@ export default function MapLayout() {
             flood={flood}
             floodChoice={floodChoice}
             floodStatus={floodStatus}
+            floodBarangay={floodBarangay?.name ?? null}
             onFlood={changeFlood}
             onFloodRetry={retryFlood}
             weather={weather}
