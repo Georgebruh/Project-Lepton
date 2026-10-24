@@ -284,8 +284,9 @@ python -m src.run_all --simulate      # the city forecast on made-up counts, wit
 - One check confirms what the repository ships: every package pinned in `requirements.txt` and
   installed at that version, nothing tracked under `data/` but the notes, and no tracked table
   with a person's columns (safeguard 11).
-- Two app-only steps are not in `run_all`: `python -m src.app_simulation` (the map's Simulation
-  mode) and `python -m src.noah_national` (NOAH's maps for the whole country). Both are in
+- Three app-only steps are not in `run_all`: `python -m src.app_simulation` (the map's Simulation
+  mode), `python -m src.app_days` (a prophylaxis plan for every day, run on the same day) and
+  `python -m src.noah_national` (NOAH's maps for the whole country). All three are in
   [`app/README.md`](app/README.md).
 - M3's Prophet fit can differ slightly from one computer to another, so a rerun elsewhere may not
   match M3's committed forecasts, or the scores built on them, to the last digit.
@@ -379,7 +380,7 @@ The modules in `src/`, by stage:
 | Flood computation and Layer 2 | `rescale`, `overlay`, `flood_exposure`, `shares`, `exposed`, `doses`, `allocation`, `observed_run`, `forecast_run` |
 | Layer 1 | `population`, `features`, `view` (what a model may see), `baselines` (M0, M1), `m3`, `m3_port` (M3), `m4`, `forecast_range`, `thresholds`, `backtest` |
 | Evaluation and figures | `scores`, `breach_scores`, `compare`, `score_tables`, `layer2_results`, `paper_figures`, `diagrams` |
-| App data | `app_data`, `app_simulation`, `noah_national` |
+| App data | `app_data`, `app_simulation`, `app_days`, `noah_national` |
 | Running and checking | `run_all`, `checks` |
 
 Functions carry docstrings that state their formulas in plain words.
