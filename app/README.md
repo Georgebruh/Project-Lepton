@@ -40,7 +40,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/styles/global.css` | Page-wide base styles |
 | `src/lib/maplibre.ts` | MapLibre, set up for Vite; map code imports it from here |
 | `public/data/` | F2's data files, fetched as `/data/<file>` |
-| `public/favicon.svg`, `public/robots.txt` | The browser tab's icon, the logo's mark, and the note for search engines (F12); served as they are |
+| `public/favicon.svg`, `public/robots.txt` | The browser tab's icon, the logo's O, and the note for search engines (F12); served as they are |
 | `vercel.json` | Sends every screen's address to the app on Vercel |
 | `vite.config.ts` | Vite's settings; a missing `/data/` file answers 404 here too, as on Vercel |
 
@@ -100,9 +100,10 @@ sample text and buttons that do nothing must not ship (check U7), so the built s
 Each component's CSS starts its classes with the component's name (`.button-primary` in
 `Button.css`). In Figma, the 1 px border of the Secondary button and the Selected tab adds to
 their size, so they are 2 px larger than the others (46 px tall, not 44); the CSS does the
-same. A row of tabs therefore lines them up at the top (`align-items: flex-start`). The logo's
-wordmark is Instrument Sans SemiBold, as in the Figma Logo; `index.html` loads only its six
-letters. Every other text is Figtree.
+same. A row of tabs therefore lines them up at the top (`align-items: flex-start`). The logo is
+concept G from the Figma page "Logo concepts": the wordmark in Instrument Sans SemiBold, as in
+the Figma Logo, with a drawn ripple (concept F) for its O; `index.html` loads only the five
+letters it sets. Every other text is Figtree.
 
 ## Data (F2)
 
@@ -669,7 +670,7 @@ change only what a failed check needs.
 | U7 Nothing fake | The build searched for "sample", "placeholder" and "AI" (only MapLibre's own code matches); every button has a handler, and every link goes to a route, an anchor on its page or a live site | Failed on `/kit`: Figma's sample text and 8 buttons that do nothing. Fixed: the kit is in `npm run dev` only |
 | U8 Credits | The footer and How it works' Sources | Failed: the footer credited only Home's photos, and Sources had neither the photos nor QCESD's counts. Fixed: the footer names every source of the data and fonts with its licence, and Sources lists the photos and QCESD |
 
-- **Also for the deploy:** a favicon, the logo's mark (`public/favicon.svg`: browsers asked for
+- **Also for the deploy:** a favicon, the logo's O (`public/favicon.svg`: browsers asked for
   `/favicon.ico`, which does not exist), and `public/robots.txt` (without it `/robots.txt`
   answers with the page).
 - **Still by hand**, by a teammate who did not build the screen: open the production link on two
