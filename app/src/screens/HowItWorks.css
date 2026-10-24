@@ -18,6 +18,25 @@
   color: var(--color-text-secondary);
 }
 
+/* Opening: the intro's parts rise in turn */
+@media (prefers-reduced-motion: no-preference) {
+  .how-it-works-intro > * {
+    animation: motion-rise var(--motion-enter) var(--motion-ease-out) both;
+  }
+
+  .how-it-works-intro > :nth-child(2) {
+    animation-delay: 100ms;
+  }
+
+  .how-it-works-intro > :nth-child(3) {
+    animation-delay: 220ms;
+  }
+
+  .how-it-works-intro > :nth-child(4) {
+    animation-delay: 340ms;
+  }
+}
+
 /* The tabs sit in one outlined box */
 .how-it-works-tabs {
   display: flex;
@@ -77,6 +96,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* In view, the steps come in from the left one after another, as the data flows */
+  --reveal-stagger: 200ms;
+  --reveal-shift: -16px 0;
 }
 
 .how-it-works-step {
@@ -154,6 +176,24 @@
   width: 10px;
   height: 10px;
   clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* As its step arrives, each arrow draws toward it, then its head shows */
+@media (prefers-reduced-motion: no-preference) {
+  .how-it-works-step[data-revealed]:nth-child(n + 2) .how-it-works-card::before {
+    transform-origin: left;
+    animation: how-it-works-arrow 400ms var(--motion-ease-out) var(--reveal-delay) both;
+  }
+
+  .how-it-works-step[data-revealed]:nth-child(n + 2) .how-it-works-card::after {
+    animation: motion-fade var(--motion-hover) linear calc(var(--reveal-delay) + 300ms) both;
+  }
+}
+
+@keyframes how-it-works-arrow {
+  from {
+    scale: 0 1;
+  }
 }
 
 /* The exposure ramp: five steps from nobody (R0) to the 100-year map */
@@ -264,6 +304,28 @@
   flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+/* The formula opens and closes smoothly, where the browser can animate a height to auto */
+@media (prefers-reduced-motion: no-preference) {
+  .how-it-works-formula {
+    interpolate-size: allow-keywords;
+  }
+
+  .how-it-works-formula::details-content {
+    height: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      height var(--motion-change) var(--motion-ease),
+      opacity var(--motion-change) linear,
+      content-visibility var(--motion-change) allow-discrete;
+  }
+
+  .how-it-works-formula[open]::details-content {
+    height: auto;
+    opacity: 1;
+  }
 }
 
 /* The equations scroll inside their box on a narrow screen, never the page */

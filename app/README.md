@@ -34,10 +34,12 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/compare/` | Compare models' parts (F9): the chart (`CompareChart.tsx`), its tooltip, keys and table view, the Controls panel and the scores; `periods.ts` holds the three periods and the x axis, `models.ts` each model's name, color and line, `chartGeometry.ts` the chart's sizes and paths, `compareData.ts` the tab's loader (F14: Compare models is a tab of the map's city panel) |
 | `src/map/` | The map's parts (F4): the map, its legend, zoom buttons, date picker and city panel; `routes.ts` names the three levels. F5's prophylaxis plan: the barangays on the map (`barangayLayers.ts`), its panel, legend and tooltip, and `plan.ts`, which reads its files. F11: `MapList.tsx`, the list that reaches every barangay from the keyboard. F14: `MapDataModes.tsx` (Simulation \| Real data, top right), `MapTimeline.tsx` (the week, bottom middle), `MapSearch.tsx` (the search beside the logo), `borders.ts` (which lines show at each zoom), `orbit.ts` (the plan's circling camera). F15: `BarangayPopup.tsx`, the pop-up a click on a barangay opens |
 | `src/report/` | F15's barangay report, a PDF made in the browser: `reportContent.ts` (its words and tables, from the files), `reportPdf.ts` (draws them with jsPDF and saves the file), `reportMap.ts` (its maps' geometry) |
-| `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`) and the files it loads (`homeData.ts`) |
-| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos and the hero's waterlines) |
+| `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`), the hero's waterlines (`waterlines.ts`, F17) and the files it loads (`homeData.ts`) |
+| `src/motion/` | F17: the reveal on scroll (`reveal.ts`), the numbers that count up (`CountUp.tsx`) and the glide of in-page links (`smoothLinks.ts`) |
+| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos) |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
+| `src/styles/motion.css` | F17: the durations and curves of every animation, and the reveal on scroll |
 | `src/lib/maplibre.ts` | MapLibre, set up for Vite; map code imports it from here |
 | `public/data/` | F2's data files, fetched as `/data/<file>` |
 | `public/favicon.svg`, `public/robots.txt` | The browser tab's icon, the logo's O, and the note for search engines (F12); served as they are |
@@ -647,6 +649,78 @@ the map on a phone; both use the existing components and tokens.
   routes, desktop and mobile; axe finds nothing with the lists open; the map flow done from the
   keyboard alone, with reduced motion on, at 1440 and 390 px, in a scripted browser. F11's Done
   when still asks one teammate to do that flow by hand.
+
+## Motion across the site (F17)
+
+Added on 24 October 2026 at the team's request: every screen but the map stood still. The map's
+own motion (F4, F5, F11, above) is unchanged; the rest of the site now moves with the same values.
+
+- **Values.** CSS variables, for any new motion. Four are the map's own, set from
+  `map/motion.ts` in `main.tsx` so the map and the rest of the site never drift apart:
+  `--motion-hover` 150 ms for a control under the pointer (`HOVER_MS`), `--motion-enter` 700 ms for
+  content arriving (`CAMERA_MS`), `--motion-crossfade` 150 ms (`CROSSFADE_MS`) and the ease-in-out
+  `--motion-ease` (`EASE_CSS`). The site's own are in `src/styles/motion.css`: `--motion-change`
+  300 ms for a value that changes in place (a switch's knob, a chart's bar, a chevron),
+  `--motion-stagger` 80 ms between things that arrive together, and `--motion-ease-out` (fast,
+  then slow) for what arrives.
+- **Reduced motion.** As on the map: anything that moves sits inside
+  `@media (prefers-reduced-motion: no-preference)`. With reduced motion, content appears with a
+  150 ms crossfade (`--motion-crossfade`) and nothing slides, grows or turns. A change of color or
+  opacity may stay outside the query.
+- **Nothing moves on its own for long.** Each animation plays once, as its content arrives, or
+  follows the reader (the pointer, the scroll). None loops, so no screen needs a pause button
+  (WCAG 2.2.2); the longest, the guide's ripple, ends within 5 s.
+- **Reveal on scroll** (`src/motion/reveal.ts`). Home, Leptospirosis and How it works call
+  `useReveal()` on their `<main>`. Inside it, an element marked `data-reveal` waits hidden, 24 px
+  low, until it first scrolls into view (above the screen's bottom 8%), then rises and fades in
+  over 700 ms. Items of one list that arrive together start 80 ms apart; `--reveal-stagger` widens
+  the gap and `--reveal-shift` changes where they come from (How it works' pipeline: 200 ms, from
+  the left). A child can start its own animation once its block shows, with the selector
+  `[data-revealed] .child` (Home's photos, preview and chart). Put `data-reveal` on a wrapper, not on
+  a button: a component's own `transition` replaces the reveal's. Outside a screen that calls
+  `useReveal()`, `data-reveal` does nothing and the element simply shows; on paper everything shows.
+- **Counting up** (`src/motion/CountUp.tsx`). Home's three stock figures and the preview's two
+  totals count up from 0 in 1.2 s the first time they scroll into view. Screen readers hear only
+  the final number, and the page shows it before and after the count, so a printout, or a script
+  reading the page, gets the files' numbers (check U1).
+- **Home.** The hero's photo settles (from 108% over 2.4 s) and, where the browser has
+  scroll-driven animations (not Firefox yet), falls behind the page as it scrolls. The headline
+  rises line by line and the three waterlines come up from below, the lowest first. They are drawn
+  in the page now (`home/waterlines.ts`, the same paths as the Figma export, which is gone), so each
+  can move. The photos settle into their frames. The preview fills as the plan does on the map,
+  with the map's timings (`LINES_MS`, `WAVE_MS`, `RISE_MS`): the outlines, a wave from the most
+  exposed barangay to the least, then the flagged outlines, while the stock card slides in. The
+  chart's weeks grow from the left as its lines draw across.
+- **Controls.** Every button, tab, switch, chip, link and map control answers the pointer:
+  Primary darkens, Secondary fills, a tab not selected takes a light tint, an arrow moves ahead (the
+  download icon, down), a pressed button sinks to 97%, a switch's knob slides, a panel header's
+  chevron turns, the header's links grow an underline and the logo's ripple turns a little. Hover
+  styles sit inside `@media (hover: hover)`, so a tap on a phone leaves nothing stuck.
+- **Pages.** Leptospirosis and How it works open with their first lines rising in turn, and their
+  blocks rise in as they scroll into view. How it works' pipeline comes in step by step from the
+  left, each arrow drawing toward its step, and "Show the formula" opens and closes smoothly where
+  the browser can animate a height to `auto` (elsewhere it opens at once, as before). A click on a
+  link to a place on the same page (the section tabs, the `[1]` links to the sources) glides there
+  (`src/motion/smoothLinks.ts`); every other scroll, such as a new screen opening at its top, stays
+  instant.
+- **The guide.** A step slides in from the right going on and from the left going back (`move`,
+  worked out in `Exposed.tsx`), and the progress bar's part fills, or empties going back. A chosen
+  answer settles in with a small press; step 2's result, what to do and the emergency box arrive in
+  turn; on step 3 the markers grow from their points after the map, the reader's square sends out
+  three ripples, and the health centers come in nearest first.
+- **The map.** A tab of the city panel fades in under the tabs, which stay; opening the city, the
+  fade is over while the panel is still off-screen, so the panel still slides in filled. Another
+  week slides the panel chart's bars and its chance bar to their new values, and a new level's badge
+  fades to its colors. Compare models draws a new period's weeks from the left, and a model turned
+  on fades in. The search grows out of its button; lists fade in.
+- **Checked** (24 October, on `npm run preview` in a scripted Edge, at 1440 × 900 and on a
+  390 × 844 phone): each animation midway and settled (Home's hero, reveals, wave, chart and
+  counts; How it works' pipeline, tab glide and formula; the guide forward and back, location
+  allowed; the map's week step, tab change, Compare's period and model switches); the numbers once
+  counted (789,689 exposed, 3,174,170 capsules, 254,430 courses, 37,386 tablets); no sideways scroll
+  on any route at 390 px; no console error. With reduced motion nothing moves on Home,
+  Leptospirosis, How it works or the guide. U4 again: opening Quezon City, the panel slides in
+  700 ms as before, its content faded in by 200 ms; with reduced motion, the 150 ms crossfade.
 
 ## Deploy and checks (F12)
 

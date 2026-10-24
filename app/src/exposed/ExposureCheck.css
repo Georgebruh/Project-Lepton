@@ -24,6 +24,7 @@
 /* "Choose an answer." beside a question left unanswered, and the line above See what to do */
 .exposure-check-left {
   color: var(--color-status-alert);
+  animation: motion-fade var(--motion-crossfade) linear;
 }
 
 .exposure-check-options {
@@ -45,11 +46,35 @@
   color: var(--color-text-secondary);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .exposure-check-option:hover {
+    border-color: var(--color-text-tertiary);
+    color: var(--color-text-primary);
+  }
 }
 
 .exposure-check-chosen {
   background: var(--color-bg-raised);
   color: var(--color-text-primary);
+}
+
+/* A chosen answer settles in with a small press */
+@media (prefers-reduced-motion: no-preference) {
+  .exposure-check-chosen {
+    animation: exposure-check-choose var(--motion-change) var(--motion-ease-out);
+  }
+}
+
+@keyframes exposure-check-choose {
+  from {
+    scale: 0.94;
+  }
 }
 
 /* The radio button itself is invisible inside the answer; the answer shows where the keyboard is */

@@ -15,6 +15,13 @@
   background: none;
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-zoom-button:hover {
+    background: var(--color-bg-canvas);
+  }
 }
 
 /* The box clips the buttons' edges, so the focus ring sits inside each button */

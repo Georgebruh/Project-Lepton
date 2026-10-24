@@ -11,6 +11,10 @@
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
 }
 
 /* Selected: raised and outlined. */
@@ -18,4 +22,12 @@
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-raised);
   color: var(--color-text-primary);
+}
+
+/* Under the pointer, a tab not selected darkens on a light tint */
+@media (hover: hover) {
+  .tab:not(.tab-selected):hover {
+    background: color-mix(in srgb, var(--color-bg-raised) 60%, transparent);
+    color: var(--color-text-primary);
+  }
 }

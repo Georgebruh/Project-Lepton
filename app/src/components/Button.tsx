@@ -34,7 +34,7 @@ export default function Button({
   const content = (
     <>
       {children}
-      {icon && <Icon name={icon} size={18} />}
+      {icon && <Icon name={icon} size={18} className={`button-icon button-icon-${icon}`} />}
     </>
   )
 

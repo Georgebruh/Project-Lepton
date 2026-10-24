@@ -11,11 +11,13 @@ type ExposureCheckProps = {
   /** Called by "See what to do" once every question has an answer. */
   onDone: () => void
   onBack: () => void
+  /** The step the reader came from, or null on opening the guide. */
+  from: number | null
   titleRef: Ref<HTMLHeadingElement>
 }
 
 /** Step 1 of the guide: five questions, each a row of answers to choose one from. */
-export default function ExposureCheck({ answers, onAnswer, onDone, onBack, titleRef }: ExposureCheckProps) {
+export default function ExposureCheck({ answers, onAnswer, onDone, onBack, from, titleRef }: ExposureCheckProps) {
   const id = useId()
   // Whether the reader tried to go on with questions unanswered: only then are they marked
   const [tried, setTried] = useState(false)
@@ -48,7 +50,7 @@ export default function ExposureCheck({ answers, onAnswer, onDone, onBack, title
   )
 
   return (
-    <GuideStep step={1} title="Exposure check" onBack={onBack} titleRef={titleRef} footer={footer}>
+    <GuideStep step={1} from={from} title="Exposure check" onBack={onBack} titleRef={titleRef} footer={footer}>
       <div className="exposure-check">
         <h2 className="heading-m">Tell us about your exposure</h2>
         <p className="exposure-check-intro body-m">Five quick questions. We don’t ask for your name.</p>

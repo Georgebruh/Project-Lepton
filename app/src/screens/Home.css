@@ -45,6 +45,12 @@
   pointer-events: none;
 }
 
+.home-hero-waterline {
+  fill: none;
+  stroke: white;
+  stroke-width: 1.25px;
+}
+
 .home-hero-content {
   position: relative;
   display: flex;
@@ -77,6 +83,95 @@
   border: 1px solid rgb(255 255 255 / 35%);
   background: rgb(13 31 31 / 55%);
   color: white;
+}
+
+@media (hover: hover) {
+  .home .home-hero-button:hover {
+    border-color: rgb(255 255 255 / 60%);
+    background: rgb(13 31 31 / 75%);
+    color: white;
+  }
+}
+
+/* Opening: the photo settles, the words rise in turn, and the water comes up, lowest line first */
+@media (prefers-reduced-motion: no-preference) {
+  .home-hero-photo {
+    animation: home-hero-settle 2400ms var(--motion-ease-out) both;
+  }
+
+  .home-hero-title span,
+  .home-hero-text,
+  .home-hero-button {
+    animation: motion-rise var(--motion-enter) var(--motion-ease-out) both;
+  }
+
+  .home-hero-title span:first-child {
+    animation-delay: 150ms;
+  }
+
+  .home-hero-title span:last-child {
+    animation-delay: 260ms;
+  }
+
+  .home-hero-text {
+    animation-delay: 400ms;
+  }
+
+  .home-hero-button {
+    animation-delay: 520ms;
+  }
+
+  .home-hero-waterline {
+    animation: home-hero-water 1800ms var(--motion-ease-out) both;
+  }
+
+  .home-hero-waterline:nth-child(3) {
+    animation-delay: 300ms;
+  }
+
+  .home-hero-waterline:nth-child(2) {
+    animation-delay: 450ms;
+  }
+
+  .home-hero-waterline:nth-child(1) {
+    animation-delay: 600ms;
+  }
+}
+
+/* As the hero leaves the top of the screen, the photo falls behind the page */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home-hero {
+      view-timeline: --home-hero block;
+    }
+
+    .home-hero-photo {
+      animation:
+        home-hero-settle 2400ms var(--motion-ease-out) both,
+        home-hero-drift linear both;
+      animation-timeline: auto, --home-hero;
+      animation-range: normal, exit 0% exit 100%;
+    }
+  }
+}
+
+@keyframes home-hero-settle {
+  from {
+    scale: 1.08;
+  }
+}
+
+@keyframes home-hero-drift {
+  to {
+    translate: 0 136px;
+  }
+}
+
+@keyframes home-hero-water {
+  from {
+    opacity: 0;
+    translate: 0 72px;
+  }
 }
 
 /* --- Banner for residents -------------------------------------------------- */
@@ -136,13 +231,30 @@
   margin: 0;
 }
 
+.home-photo-frame {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
 .home-photo-image {
   display: block;
   width: 100%;
   height: auto;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border-radius: var(--radius-lg);
+}
+
+/* Each photo settles into its frame as it comes into view */
+@media (prefers-reduced-motion: no-preference) {
+  .home-photos [data-revealed] .home-photo-image {
+    animation: home-photo-settle 1400ms var(--motion-ease-out) var(--reveal-delay) both;
+  }
+}
+
+@keyframes home-photo-settle {
+  from {
+    scale: 1.08;
+  }
 }
 
 .home-photo-caption {
@@ -274,6 +386,30 @@
   text-decoration: none;
 }
 
+/* Under the pointer the link darkens and its arrow moves ahead */
+@media (hover: hover) {
+  .home-built-more:hover {
+    color: color-mix(in srgb, var(--color-accent-primary) 80%, var(--color-text-primary));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home-built-more .icon,
+  .home-try-go .icon {
+    transition: translate var(--motion-change) var(--motion-ease-out);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .home-built-more:hover .icon {
+    translate: 4px 0;
+  }
+
+  .home-try-go:hover .icon {
+    translate: 6px 0;
+  }
+}
+
 /* --- Try LEPTON ---------------------------------------------------------- */
 
 .home-try {
@@ -312,6 +448,13 @@
   border-radius: var(--radius-md);
   background: var(--color-accent-primary);
   color: var(--color-text-on-accent);
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .home-try-go:hover {
+    background: color-mix(in srgb, var(--color-accent-primary) 85%, var(--color-text-primary));
+  }
 }
 
 /* --- Below 1024 px: one column ------------------------------------------- */

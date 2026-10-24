@@ -22,6 +22,7 @@
 }
 
 .site-header-link {
+  position: relative;
   color: var(--color-text-secondary);
   text-decoration: none;
   white-space: nowrap;
@@ -30,6 +31,50 @@
 /* The open page's link (NavLink marks it aria-current="page") */
 .site-header-link[aria-current='page'] {
   color: var(--color-text-primary);
+}
+
+/* Under the pointer a link darkens over a line that grows from its left */
+.site-header-link::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0;
+  transform-origin: left;
+  transition: opacity var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .site-header-link:hover {
+    color: var(--color-text-primary);
+  }
+
+  .site-header-link:hover::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-header-link::after {
+    scale: 0 1;
+    transition:
+      opacity var(--motion-hover) linear,
+      scale var(--motion-change) var(--motion-ease-out);
+  }
+
+  .site-header-link:hover::after {
+    scale: 1 1;
+  }
+}
+
+/* The logo's ripple turns a little under the pointer */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .site-header-home:hover .logo-o-ring {
+    rotate: 25.7deg;
+  }
 }
 
 /* Below 1024 px: the logo and Try LEPTON on the first row, the links wrapping on a second */

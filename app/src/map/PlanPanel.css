@@ -41,6 +41,13 @@
   color: var(--color-text-primary);
   text-decoration: none;
   white-space: nowrap;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .plan-panel-all:hover {
+    background: var(--color-bg-canvas);
+  }
 }
 
 .plan-panel-subtitle {
@@ -89,6 +96,16 @@
   color: var(--color-text-secondary);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .plan-panel-lead:not([aria-pressed='true']):hover {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+  }
 }
 
 .plan-panel-lead[aria-pressed='true'] {
@@ -210,4 +227,10 @@
 
 .plan-panel-storm {
   color: var(--color-text-primary);
+}
+
+@media (hover: hover) {
+  .plan-panel-storm:hover {
+    color: var(--color-accent-primary);
+  }
 }

@@ -1,6 +1,5 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router'
-import waterlines from '../assets/home/waterlines.svg'
 import Button from '../components/Button.tsx'
 import Footer from '../components/Footer.tsx'
 import Icon from '../components/Icon.tsx'
@@ -16,7 +15,10 @@ import {
 } from '../home/homeData.ts'
 import { HERO_PHOTO, STRIP_PHOTOS } from '../home/photos.ts'
 import PlanPreview from '../home/PlanPreview.tsx'
+import { WATERLINES } from '../home/waterlines.ts'
 import { formatCount } from '../map/forecast.ts'
+import CountUp from '../motion/CountUp.tsx'
+import { useReveal } from '../motion/reveal.ts'
 import './Home.css'
 
 /** The hero photo's drawn width for srcSet. */
@@ -64,11 +66,12 @@ const BUILT = [
 export default function Home() {
   const preview = useLoaded(loadPlanPreview)
   const forecast = useLoaded(loadCityForecast)
+  const reveal = useReveal<HTMLElement>()
   return (
     <>
       <title>LEPTON · Leptospirosis forecasts for the Philippines, starting with Quezon City</title>
       <SiteHeader />
-      <main className="home">
+      <main ref={reveal} className="home">
         <section className="home-hero" aria-labelledby="home-hero-title">
           <img
             className="home-hero-photo"
@@ -81,7 +84,11 @@ export default function Home() {
             fetchPriority="high"
           />
           <div className="home-hero-shade" />
-          <img className="home-hero-waterlines" src={waterlines} width={1440} height={680} alt="" />
+          <svg className="home-hero-waterlines" viewBox="0 0 1440 680" preserveAspectRatio="none" aria-hidden="true">
+            {WATERLINES.map(({ d, opacity }, i) => (
+              <path key={i} className="home-hero-waterline" d={d} strokeOpacity={opacity} />
+            ))}
+          </svg>
           <div className="home-hero-content">
             <h1 id="home-hero-title" className="home-hero-title display-xl">
               <span>See the risk</span> <span>before the water rises.</span>
@@ -98,7 +105,7 @@ export default function Home() {
         </section>
 
         <section className="home-banner" aria-labelledby="home-banner-title">
-          <div className="home-banner-text">
+          <div className="home-banner-text" data-reveal>
             <h2 id="home-banner-title" className="heading-m">
               Waded through floodwater?
             </h2>
@@ -106,7 +113,7 @@ export default function Home() {
               Find out what to do and where your nearest health center is.
             </p>
           </div>
-          <div className="home-banner-actions">
+          <div className="home-banner-actions" data-reveal>
             <Button variant="secondary" to="/leptospirosis">
               About leptospirosis
             </Button>
@@ -117,24 +124,27 @@ export default function Home() {
         </section>
 
         <section className="home-why" aria-label="Why it matters">
-          <p className="home-why-lead body-xl">
+          <p className="home-why-lead body-xl" data-reveal>
             Every typhoon season, residents wade through floodwater to get home, to work and to school. One to two
             weeks later, leptospirosis cases peak, after the medicine that could have prevented them was needed.
           </p>
           <ul className="home-photos">
             {STRIP_PHOTOS.map((photo) => (
-              <li key={photo.src}>
+              <li key={photo.src} data-reveal>
                 <figure className="home-photo">
-                  <img
-                    className="home-photo-image"
-                    src={photo.src}
-                    srcSet={photo.srcSet}
-                    sizes={STRIP_SIZES}
-                    width={photo.width}
-                    height={photo.height}
-                    alt={photo.alt}
-                    loading="lazy"
-                  />
+                  {/* Keeps the photo's corners while it settles into place */}
+                  <div className="home-photo-frame">
+                    <img
+                      className="home-photo-image"
+                      src={photo.src}
+                      srcSet={photo.srcSet}
+                      sizes={STRIP_SIZES}
+                      width={photo.width}
+                      height={photo.height}
+                      alt={photo.alt}
+                      loading="lazy"
+                    />
+                  </div>
                   <figcaption className="home-photo-caption body-s">{photo.caption}</figcaption>
                 </figure>
               </li>
@@ -143,7 +153,7 @@ export default function Home() {
         </section>
 
         <section className="home-map" aria-labelledby="home-map-title">
-          <h2 id="home-map-title" className="home-map-title heading-l">
+          <h2 id="home-map-title" className="home-map-title heading-l" data-reveal>
             Pick a day, and LEPTON shows which barangays the rain will flood and what each health center should
             stock.
           </h2>
@@ -151,7 +161,7 @@ export default function Home() {
         </section>
 
         <section className="home-get" aria-label="What you get">
-          <div className="home-get-column">
+          <div className="home-get-column" data-reveal>
             <p className="home-get-eyebrow label-eyebrow">One to three days ahead</p>
             <h2 className="home-get-title heading-l">A stock list for every health center</h2>
             <p className="home-get-text body-l">
@@ -161,7 +171,7 @@ export default function Home() {
             </p>
             <StockFigures preview={preview} />
           </div>
-          <div className="home-get-column home-get-cases">
+          <div className="home-get-column home-get-cases" data-reveal>
             <p className="home-get-eyebrow label-eyebrow">Next week</p>
             <h2 className="home-get-title heading-l">City cases, with a 90% range</h2>
             <p className="home-get-text body-l">
@@ -176,26 +186,26 @@ export default function Home() {
         </section>
 
         <section className="home-built" aria-labelledby="home-built-title">
-          <h2 id="home-built-title" className="home-built-title heading-l">
+          <h2 id="home-built-title" className="home-built-title heading-l" data-reveal>
             How it’s built
           </h2>
           <ul className="home-built-rows">
             {BUILT.map(({ name, text, tag }) => (
-              <li key={name} className="home-built-row">
+              <li key={name} className="home-built-row" data-reveal>
                 <h3 className="home-built-name heading-m">{name}</h3>
                 <p className="home-built-text body-l">{text}</p>
                 <p className="home-built-tag label-eyebrow">{tag}</p>
               </li>
             ))}
           </ul>
-          <Link to="/how-it-works" className="home-built-more label-ui">
+          <Link to="/how-it-works" className="home-built-more label-ui" data-reveal>
             Methods, limits and sources
             <Icon name="arrow-right" size={16} />
           </Link>
         </section>
 
         <section className="home-try" aria-labelledby="home-try-title">
-          <div className="home-try-line">
+          <div className="home-try-line" data-reveal>
             <div className="home-try-text">
               <h2 id="home-try-title" className="home-try-title display-xl">
                 Try LEPTON
@@ -241,7 +251,7 @@ function StockFigures({ preview }: StockFiguresProps) {
         {figures.map(({ name, value }) => (
           <div key={name} className="home-get-figure">
             <dt className="body-m">{name}</dt>
-            <dd className="data-l">{value === undefined ? '—' : formatCount(value)}</dd>
+            <dd className="data-l">{value === undefined ? '—' : <CountUp value={value} format={formatCount} />}</dd>
           </div>
         ))}
       </dl>

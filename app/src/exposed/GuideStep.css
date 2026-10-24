@@ -7,6 +7,8 @@
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
+  /* A step sliding in never widens the page (clip keeps the footer sticky) */
+  overflow-x: clip;
 }
 
 /* The top bar: Back, the step's name, "1 of 3", and the progress bar under them */
@@ -33,6 +35,13 @@
   background: none;
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .guide-step-back:hover {
+    background: var(--color-bg-raised);
+  }
 }
 
 .guide-step-back:focus-visible {
@@ -61,16 +70,41 @@
   gap: var(--space-1);
 }
 
-/* Each part of the progress bar: grey until its step is reached, then teal */
+/* Each part of the progress bar: grey until its step is reached, then teal from the left */
 .guide-step-part {
   flex: 1;
   height: 4px;
   border-radius: 1px;
-  background: var(--color-border-subtle);
+  background:
+    linear-gradient(var(--color-accent-primary), var(--color-accent-primary)) left / 0 100% no-repeat,
+    var(--color-border-subtle);
 }
 
 .guide-step-part-done {
-  background: var(--color-accent-primary);
+  background-size: 100% 100%;
+}
+
+/* The part just reached fills; going back, the part just left empties */
+@media (prefers-reduced-motion: no-preference) {
+  .guide-step-part-filling {
+    animation: guide-step-fill var(--motion-enter) var(--motion-ease) both;
+  }
+
+  .guide-step-part-emptying {
+    animation: guide-step-empty var(--motion-enter) var(--motion-ease) both;
+  }
+}
+
+@keyframes guide-step-fill {
+  from {
+    background-size: 0 100%;
+  }
+}
+
+@keyframes guide-step-empty {
+  from {
+    background-size: 100% 100%;
+  }
 }
 
 /* The step's content grows, so the footer sits at the bottom of a short step */
@@ -79,6 +113,40 @@
   display: flex;
   flex-direction: column;
   padding-bottom: var(--space-5);
+}
+
+/* A step arrives: it fades in; it also slides, from the right going on and from the left going back */
+.guide-step-body,
+.guide-step-footer {
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-step-body {
+    animation: motion-rise var(--motion-enter) var(--motion-ease-out) both;
+  }
+
+  .guide-step[data-move='forward'] .guide-step-body {
+    animation-name: guide-step-from-right;
+  }
+
+  .guide-step[data-move='back'] .guide-step-body {
+    animation-name: guide-step-from-left;
+  }
+}
+
+@keyframes guide-step-from-right {
+  from {
+    opacity: 0;
+    translate: 40px 0;
+  }
+}
+
+@keyframes guide-step-from-left {
+  from {
+    opacity: 0;
+    translate: -40px 0;
+  }
 }
 
 /* The footer stays at the bottom of the screen while a long step scrolls under it */

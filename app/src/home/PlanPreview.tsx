@@ -1,12 +1,21 @@
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import CenterRow, { CenterRowHeader } from '../components/CenterRow.tsx'
 import { formatCount, formatDayMonth, formatWeek } from '../map/forecast.ts'
+import { LINES_MS, RISE_MS, WAVE_MS } from '../map/motion.ts'
 import { centerName, leadWords } from '../map/plan.ts'
-import type { BarangayShapes } from '../map/planData.ts'
+import type { BarangayRun, BarangayShapes } from '../map/planData.ts'
 import { MAP_PATHS } from '../map/routes.ts'
+import CountUp from '../motion/CountUp.tsx'
 import { stormTitle, type Loaded, type PlanPreviewData } from './homeData.ts'
 import './PlanPreview.css'
+
+/** The map's wave (map/motion.ts), for the CSS. */
+const WAVE = {
+  '--plan-preview-lines': `${LINES_MS}ms`,
+  '--plan-preview-wave': `${WAVE_MS}ms`,
+  '--plan-preview-rise': `${RISE_MS}ms`,
+} as CSSProperties
 
 /** How many health centers the stock list shows. */
 const SHOWN_CENTERS = 5
@@ -40,6 +49,12 @@ function drawBarangays(shapes: BarangayShapes): { paths: Map<string, string>; wi
   return { paths, width: (east - west) * shrink * scale }
 }
 
+/** When each barangay fills in the wave: 0 for the largest share exposed, up to 1 for the smallest. */
+function waveTimes(barangays: Map<string, BarangayRun>): Map<string, number> {
+  const order = [...barangays.values()].sort((a, b) => b.share - a.share)
+  return new Map(order.map(({ psgc }, i) => [psgc, i / Math.max(1, order.length - 1)]))
+}
+
 type PlanPreviewProps = {
   /** The forecast to show, while it loads undefined, or "failed". */
   preview: Loaded<PlanPreviewData>
@@ -50,7 +65,7 @@ export default function PlanPreview({ preview }: PlanPreviewProps) {
   const data = preview === 'failed' ? undefined : preview
   return (
     <figure className="plan-preview">
-      <div className="plan-preview-frame">
+      <div className="plan-preview-frame" data-reveal>
         {data ? (
           <>
             <PreviewMap data={data} />
@@ -70,7 +85,7 @@ export default function PlanPreview({ preview }: PlanPreviewProps) {
         )}
       </div>
       {data && (
-        <figcaption className="plan-preview-caption body-s">
+        <figcaption className="plan-preview-caption body-s" data-reveal>
           The map, forecasting {stormTitle(data.storm)} {leadWords(data.run.lead_days ?? 1)}. Shades show the
           share of each barangay’s residents in flood zones; outlines mark the {data.run.flagged} flagged
           barangays. {BOUNDARIES_CREDIT}
@@ -86,12 +101,13 @@ type PartProps = { data: PlanPreviewData }
 function PreviewMap({ data }: PartProps) {
   const { paths, width } = useMemo(() => drawBarangays(data.shapes), [data.shapes])
   const { barangays, selected, run } = data
+  const wave = useMemo(() => waveTimes(barangays), [barangays])
   const flagged = [...barangays.values()].filter((barangay) => barangay.flagged)
   const label =
     `Map of Quezon City's ${barangays.size} barangays, shaded by the share of their residents in flood zones ` +
     `in the forecast of ${stormTitle(data.storm)} ${leadWords(run.lead_days ?? 1)}; ${run.flagged} are flagged.`
   return (
-    <div className="plan-preview-map">
+    <div className="plan-preview-map" style={WAVE}>
       <svg
         className="plan-preview-svg"
         viewBox={`0 0 ${width.toFixed(1)} ${MAP_HEIGHT}`}
@@ -101,7 +117,12 @@ function PreviewMap({ data }: PartProps) {
         aria-label={label}
       >
         {[...paths].map(([psgc, d]) => (
-          <path key={psgc} d={d} className={`plan-preview-barangay plan-preview-class-${barangays.get(psgc)?.class}`} />
+          <path
+            key={psgc}
+            d={d}
+            className={`plan-preview-barangay plan-preview-class-${barangays.get(psgc)?.class}`}
+            style={{ '--plan-preview-at': wave.get(psgc) ?? 0 } as CSSProperties}
+          />
         ))}
         {flagged.map(({ psgc }) => (
           <path key={psgc} d={paths.get(psgc)} className="plan-preview-flagged" />
@@ -148,11 +169,15 @@ function StockList({ data }: PartProps) {
       <div className="plan-preview-totals">
         <p className="plan-preview-total">
           <span className="plan-preview-total-label label-ui-s">Residents exposed</span>
-          <span className="data-l">{formatCount(flood.exposed)}</span>
+          <span className="data-l">
+            <CountUp value={flood.exposed} format={formatCount} />
+          </span>
         </p>
         <p className="plan-preview-total">
           <span className="plan-preview-total-label label-ui-s">Doxycycline 100 mg</span>
-          <span className="data-l">{formatCount(flood.doxy100)}</span>
+          <span className="data-l">
+            <CountUp value={flood.doxy100} format={formatCount} />
+          </span>
         </p>
       </div>
       <div className="plan-preview-centers" role="table" aria-label="What to send, by health center">

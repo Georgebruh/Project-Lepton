@@ -28,6 +28,13 @@
   color: var(--color-accent-primary);
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .nearest-centers-change:hover {
+    background: var(--color-accent-subtle);
+  }
 }
 
 .nearest-centers-change:focus-visible {
@@ -90,6 +97,14 @@
   background: var(--color-bg-surface);
 }
 
+/* The nearest first, the others after it */
+@media (prefers-reduced-motion: no-preference) {
+  .nearest-centers-row {
+    animation: motion-rise var(--motion-enter) var(--motion-ease-out) both;
+    animation-delay: calc(200ms + var(--nearest-centers-order) * var(--motion-stagger));
+  }
+}
+
 .nearest-centers-number {
   display: flex;
   align-items: center;
@@ -130,6 +145,25 @@
   border-radius: var(--radius-md);
   background: var(--color-accent-primary);
   color: var(--color-text-on-accent);
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .nearest-centers-directions:hover {
+    background: color-mix(in srgb, var(--color-accent-primary) 85%, var(--color-text-primary));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nearest-centers-directions .icon {
+    transition: translate var(--motion-change) var(--motion-ease-out);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .nearest-centers-directions:hover .icon {
+    translate: 3px 0;
+  }
 }
 
 .nearest-centers-directions:focus-visible {

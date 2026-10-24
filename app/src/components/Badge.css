@@ -7,6 +7,10 @@
   border-radius: var(--radius-xs);
   background: var(--color-bg-raised);
   white-space: nowrap;
+  /* A new level fades to its colors */
+  transition:
+    background-color var(--motion-change) linear,
+    color var(--motion-change) linear;
 }
 
 /* The dot: a 6 px square in the label's color */

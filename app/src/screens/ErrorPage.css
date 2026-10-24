@@ -11,3 +11,14 @@
 .error-page a {
   color: var(--color-accent-primary);
 }
+
+/* The title, then the line under it, rise in */
+@media (prefers-reduced-motion: no-preference) {
+  .error-page > * {
+    animation: motion-rise var(--motion-enter) var(--motion-ease-out) both;
+  }
+
+  .error-page > :nth-child(2) {
+    animation-delay: 100ms;
+  }
+}

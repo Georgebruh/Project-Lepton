@@ -362,58 +362,61 @@ export default function CompareChart({
                   {storm.label}
                 </text>
               ))}
-              {layers.observed &&
-                weeks.map(
-                  (week) =>
-                    // A week under way has no bar; a simulated week's bar is outlined, not filled
-                    week.y !== null && (
-                      <rect
-                        key={week.week_index}
-                        className={[
-                          'compare-chart-bar',
-                          week.week_index === active && 'compare-chart-bar-active',
-                          week.simulated && 'compare-chart-bar-simulated',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        x={x(week.week_index) - bar / 2}
-                        y={y(week.y)}
-                        width={bar}
-                        height={plotHeightPx - y(week.y)}
-                        rx={bar >= 4 ? 1 : 0}
-                      />
-                    ),
-                )}
-              <g clipPath={`url(#${clipId})`}>
-                {range && (
-                  <path
-                    className="compare-chart-range"
-                    style={{ fill: modelStyle(RANGE_MODEL).color }}
-                    d={areaPath(
-                      weeks.map((week) => point(week, week.forecasts[RANGE_MODEL].high)),
-                      weeks.map((week) => point(week, week.forecasts[RANGE_MODEL].low)),
-                    )}
-                  />
-                )}
-                {layers.threshold && (
-                  <path
-                    className="compare-chart-threshold"
-                    d={linePath(weeks.map((week) => point(week, week.threshold)))}
-                  />
-                )}
-                {/* Drawn in reverse, so the first toggle (M4) lies on top */}
-                {[...models].reverse().map((model) => {
-                  const style = modelStyle(model)
-                  return (
+              {/* The weeks' marks: drawn anew, from the left, for each period */}
+              <g key={periodName} className="compare-chart-data">
+                {layers.observed &&
+                  weeks.map(
+                    (week) =>
+                      // A week under way has no bar; a simulated week's bar is outlined, not filled
+                      week.y !== null && (
+                        <rect
+                          key={week.week_index}
+                          className={[
+                            'compare-chart-bar',
+                            week.week_index === active && 'compare-chart-bar-active',
+                            week.simulated && 'compare-chart-bar-simulated',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          x={x(week.week_index) - bar / 2}
+                          y={y(week.y)}
+                          width={bar}
+                          height={plotHeightPx - y(week.y)}
+                          rx={bar >= 4 ? 1 : 0}
+                        />
+                      ),
+                  )}
+                <g clipPath={`url(#${clipId})`}>
+                  {range && (
                     <path
-                      key={model}
-                      className="compare-chart-line"
-                      style={{ stroke: style.color, strokeWidth: style.width }}
-                      strokeDasharray={style.dash}
-                      d={linePath(weeks.map((week) => point(week, week.forecasts[model].mu)))}
+                      className="compare-chart-range"
+                      style={{ fill: modelStyle(RANGE_MODEL).color }}
+                      d={areaPath(
+                        weeks.map((week) => point(week, week.forecasts[RANGE_MODEL].high)),
+                        weeks.map((week) => point(week, week.forecasts[RANGE_MODEL].low)),
+                      )}
                     />
-                  )
-                })}
+                  )}
+                  {layers.threshold && (
+                    <path
+                      className="compare-chart-threshold"
+                      d={linePath(weeks.map((week) => point(week, week.threshold)))}
+                    />
+                  )}
+                  {/* Drawn in reverse, so the first toggle (M4) lies on top */}
+                  {[...models].reverse().map((model) => {
+                    const style = modelStyle(model)
+                    return (
+                      <path
+                        key={model}
+                        className="compare-chart-line"
+                        style={{ stroke: style.color, strokeWidth: style.width }}
+                        strokeDasharray={style.dash}
+                        d={linePath(weeks.map((week) => point(week, week.forecasts[model].mu)))}
+                      />
+                    )
+                  })}
+                </g>
               </g>
               <rect className="compare-chart-baseline" x={0} y={plotHeightPx} width={plotWidth} height={1} />
               {activeWeek && (

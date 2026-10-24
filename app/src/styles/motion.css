@@ -1,0 +1,64 @@
+/* The motion every screen shares; --motion-hover, -enter, -crossfade and -ease are map/motion.ts's (main.tsx). */
+:root {
+  /* A value that changes in place: a knob, a bar, a chevron */
+  --motion-change: 300ms;
+  /* The time between the starts of things that arrive together */
+  --motion-stagger: 80ms;
+  /* How far arriving content rises */
+  --motion-rise: 24px;
+  /* Fast, then slow, for what arrives */
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Arrives: rises into place as it fades in */
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+  }
+}
+
+/* Arrives: fades in where it is */
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Links fade to their hover color */
+a {
+  transition: color var(--motion-hover) linear;
+}
+
+/* A [data-reveal] element rises into view the first time it scrolls in (motion/reveal.ts) */
+[data-reveal] {
+  --reveal-delay: calc(var(--reveal-order, 0) * var(--reveal-stagger, var(--motion-stagger)));
+  transition:
+    opacity var(--motion-enter) var(--motion-ease-out) var(--reveal-delay),
+    translate var(--motion-enter) var(--motion-ease-out) var(--reveal-delay),
+    color var(--motion-hover) linear;
+}
+
+/* Until then it waits hidden, 24 px low or where --reveal-shift says */
+[data-reveal-root] [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  translate: var(--reveal-shift, 0 var(--motion-rise));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    transition: opacity var(--motion-crossfade) linear;
+  }
+
+  [data-reveal-root] [data-reveal]:not([data-revealed]) {
+    translate: none;
+  }
+}
+
+/* On paper everything shows */
+@media print {
+  [data-reveal-root] [data-reveal]:not([data-revealed]) {
+    opacity: 1;
+    translate: none;
+  }
+}

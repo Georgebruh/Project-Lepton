@@ -7,6 +7,15 @@
   background: var(--color-bg-surface);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-button:not(.map-button-open):hover {
+    background: var(--color-bg-canvas);
+  }
 }
 
 /* Its panel is open */

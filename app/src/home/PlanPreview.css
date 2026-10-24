@@ -74,6 +74,47 @@
   stroke-width: 1.61px;
 }
 
+/* In view, it fills as the map does: the lines, a wave from the most exposed, then the outlines */
+@media (prefers-reduced-motion: no-preference) {
+  [data-revealed] .plan-preview-barangay {
+    animation:
+      plan-preview-lines var(--plan-preview-lines) linear both,
+      plan-preview-fill var(--plan-preview-rise) linear both;
+    animation-delay:
+      0ms,
+      calc(var(--plan-preview-lines) + var(--plan-preview-at) * (var(--plan-preview-wave) - var(--plan-preview-rise)));
+  }
+
+  [data-revealed] .plan-preview-flagged,
+  [data-revealed] .plan-preview-selected {
+    animation: motion-fade var(--plan-preview-lines) linear both;
+    animation-delay: calc(var(--plan-preview-lines) + var(--plan-preview-wave));
+  }
+
+  [data-revealed] .plan-preview-stock {
+    animation: plan-preview-stock-in var(--motion-enter) var(--motion-ease-out) 200ms both;
+  }
+}
+
+@keyframes plan-preview-lines {
+  from {
+    stroke-opacity: 0;
+  }
+}
+
+@keyframes plan-preview-fill {
+  from {
+    fill-opacity: 0;
+  }
+}
+
+@keyframes plan-preview-stock-in {
+  from {
+    opacity: 0;
+    translate: var(--motion-rise) 0;
+  }
+}
+
 /* A class's color, on the map and in the legend: class 0 is ramp-1, the lightest */
 .plan-preview-class-0 {
   fill: var(--color-data-ramp-1);

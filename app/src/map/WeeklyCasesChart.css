@@ -42,6 +42,19 @@
   fill: var(--color-status-warn);
 }
 
+/* Another week, the bars slide along and grow or shrink to their new counts */
+@media (prefers-reduced-motion: no-preference) {
+  .weekly-cases-chart-bar,
+  .weekly-cases-chart-range,
+  .weekly-cases-chart-forecast,
+  .weekly-cases-chart-threshold {
+    transition:
+      x var(--motion-change) var(--motion-ease),
+      y var(--motion-change) var(--motion-ease),
+      height var(--motion-change) var(--motion-ease);
+  }
+}
+
 .weekly-cases-chart-caption {
   color: var(--color-text-tertiary);
 }

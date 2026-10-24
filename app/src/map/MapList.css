@@ -35,6 +35,13 @@
   list-style: none;
 }
 
+/* The open list fades in under its header */
+.map-list-note,
+.map-list-items,
+.map-list-instructions {
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
 /* The listbox takes the keyboard but the ring goes round the row reached (aria-activedescendant) */
 .map-list-items:focus-visible {
   outline: none;
@@ -49,6 +56,7 @@
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
 }
 
 .map-list-option[aria-selected='true'] {

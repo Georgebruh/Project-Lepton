@@ -11,6 +11,11 @@
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear,
+    color var(--motion-hover) linear,
+    scale var(--motion-hover) var(--motion-ease-out);
 }
 
 /* Primary: filled teal */
@@ -28,4 +33,42 @@
 /* Ghost: text only */
 .button-ghost {
   color: var(--color-text-secondary);
+}
+
+/* Under the pointer: Primary darkens, Secondary fills, Ghost darkens its text */
+@media (hover: hover) {
+  .button-primary:hover {
+    background: color-mix(in srgb, var(--color-accent-primary) 85%, var(--color-text-primary));
+  }
+
+  .button-secondary:hover {
+    border-color: var(--color-text-tertiary);
+    background: var(--color-bg-raised);
+  }
+
+  .button-ghost:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+/* Pressed, it sinks a little */
+@media (prefers-reduced-motion: no-preference) {
+  .button:active {
+    scale: 0.97;
+  }
+
+  .button-icon {
+    transition: translate var(--motion-change) var(--motion-ease-out);
+  }
+}
+
+/* Under the pointer, its icon moves the way it points */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .button:hover .button-icon-arrow-right {
+    translate: 3px 0;
+  }
+
+  .button:hover .button-icon-download {
+    translate: 0 2px;
+  }
 }
