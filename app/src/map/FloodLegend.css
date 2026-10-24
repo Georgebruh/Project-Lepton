@@ -53,6 +53,10 @@
   background: var(--color-map-hazard-high);
 }
 
+.flood-legend-only {
+  color: var(--color-text-primary);
+}
+
 .flood-legend-credit {
   color: var(--color-text-tertiary);
 }

@@ -19,7 +19,12 @@ export type MapContext = {
   overlay: HTMLElement | null
   /** Where a level puts its own list for the keyboard, in the map's top left corner (with createPortal). */
   listSlot: HTMLElement | null
+  /** Tells the layout which barangay's pop-up is open (null: none): NOAH's flood zones then show only inside it. */
+  setOpenBarangay: (barangay: OpenBarangay | null) => void
 }
+
+/** A barangay whose pop-up is open, by its PSGC and the name the legend writes. */
+export type OpenBarangay = { psgc: string; name: string }
 
 /** The map context, in the component of a map level (MapMetroManila, MapQuezonCity, MapProphylaxis). */
 export function useMapContext(): MapContext {

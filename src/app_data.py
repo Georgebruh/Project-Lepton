@@ -1,6 +1,7 @@
 """The data files the web app reads."""
 
 import json
+import time
 from datetime import timedelta
 
 import geopandas as gpd
@@ -31,6 +32,8 @@ INPUTS = {                                        # the files this step reads, a
 }
 DOWNLOAD_TIMEOUT_S = 60
 DOWNLOAD_ATTEMPTS = 3
+REPLACE_ATTEMPTS = 10                             # write_json's tries at putting a new file in place
+REPLACE_WAIT_S = 0.2
 
 
 def check_inputs():
@@ -558,7 +561,15 @@ def write_json(content, path):
     except Exception:
         part.unlink(missing_ok=True)   # never leave half a file where the app's files live
         raise
-    part.replace(path)
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            part.replace(path)
+            return
+        except PermissionError:   # Windows: a dev server watching app/public/ holds the file for a moment
+            if attempt == REPLACE_ATTEMPTS - 1:
+                part.unlink(missing_ok=True)
+                raise
+            time.sleep(REPLACE_WAIT_S)
 
 
 def remove_stale_runs(names):

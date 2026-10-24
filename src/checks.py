@@ -1492,6 +1492,39 @@ def f14_noah_tiles():
     return "; ".join(lines)
 
 
+def f13_noah_barangays():
+    """Each barangay's flood zones (app/public/data/noah_barangays/<T>yr/<psgc>.json) lie in that barangay."""
+    import geopandas as gpd
+
+    from src.noah_barangays import barangay_path
+
+    rerun = "rerun python -m src.noah_barangays"
+    need_file(config.APP_NOAH_BARANGAYS, "F13 (python -m src.noah_barangays)")
+    shapes = gpd.read_file(config.APP_DATA / "qc_barangays.geojson").to_crs(config.CRS_OVERLAY).set_index("psgc")
+    lines = []
+    for t in config.NOAH_RETURN_PERIODS:
+        on_disk = {path.stem for path in (config.APP_NOAH_BARANGAYS / f"{t}yr").glob("*.json")}
+        assert on_disk == set(shapes.index), f"{t}-year map: not one file per barangay of qc_barangays.geojson: {rerun}"
+        area = 0.0
+        for psgc, outline in shapes.geometry.items():
+            zones = gpd.read_file(barangay_path(t, psgc))
+            if zones.empty:
+                continue
+            assert zones["var"].is_unique and set(zones["var"]) <= set(config.NOAH_HAZARD_LEVELS), (
+                f"{t}-year {psgc}.json: hazard levels {list(zones['var'])}, expected one row each of 1-3: {rerun}")
+            assert zones.geom_type.isin(["Polygon", "MultiPolygon"]).all(), f"{t}-year {psgc}.json holds a non-polygon"
+            # The points are rounded to about 0.1 m (config.APP_NOAH_BARANGAY_DECIMALS), so the outline gets 1 m of room
+            zones = zones.to_crs(config.CRS_OVERLAY).make_valid()
+            outside = zones.difference(outline.buffer(1)).area.sum()
+            assert outside < 1, f"{t}-year {psgc}.json: {outside:,.0f} m2 of flood zones outside the barangay: {rerun}"
+            overlap = (zones.area.sum() - zones.union_all().area) / 1e6
+            assert overlap <= config.NOAH_OVERLAP_TOLERANCE_KM2, (
+                f"{t}-year {psgc}.json: its hazard levels overlap by {overlap * 1e6:,.0f} m2: {rerun}")
+            area += zones.area.sum()
+        lines.append(f"{t}-year {area / 1e6:.1f} km2")
+    return f"{len(shapes)} barangays, flood zones of " + ", ".join(lines)
+
+
 def f14_simulation():
     """The map's Simulation mode (app/public/data/city_simulation.json) follows the real weeks."""
     import json
@@ -1679,6 +1712,7 @@ CHECKS = {
     "F2 app data": f2_app_data,
     "F9 scores": f9_scores,
     "E6 score tables": e6_score_tables,
+    "F13 NOAH barangays": f13_noah_barangays,
     "F14 NOAH tiles": f14_noah_tiles,
     "F14 simulation": f14_simulation,
     "F16 daily plans": f16_daily_plans,
