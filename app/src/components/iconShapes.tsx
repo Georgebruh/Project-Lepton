@@ -129,20 +129,12 @@ export const ICON_SHAPES: Record<IconName, ReactNode> = {
       />
     </>
   ),
-  // icon/info, 3:36
+  // icon/info, 3:36: the usual "i" in a circle, the same circle as icon/help
   info: (
     <>
-      <path
-        d="M17.5 3.5H6.5C4.84315 3.5 3.5 4.84315 3.5 6.5V17.5C3.5 19.1569 4.84315 20.5 6.5 20.5H17.5C19.1569 20.5 20.5 19.1569 20.5 17.5V6.5C20.5 4.84315 19.1569 3.5 17.5 3.5Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-      <path
-        d="M12 11V17M12 7.5V8"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="square"
-      />
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="8" r="1.125" fill="currentColor" />
+      <path d="M12 11V16.75" stroke="currentColor" strokeWidth="1.75" />
     </>
   ),
   // icon/close, 3:39
