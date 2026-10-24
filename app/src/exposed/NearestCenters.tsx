@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
 import Icon from '../components/Icon.tsx'
@@ -70,11 +70,14 @@ type NearestCentersProps = {
   /** Starts the distances from a barangay, by its PSGC. */
   onPickBarangay: (psgc: string) => void
   onBack: () => void
+  /** The step the reader came from, or null on opening the guide. */
+  from: number | null
   titleRef: Ref<HTMLHeadingElement>
 }
 
 /** Step 3 of the guide: the three health centers nearest the reader by straight-line distance. */
-export default function NearestCenters({ origin, onUseLocation, onPickBarangay, onBack, titleRef }: NearestCentersProps) {
+export default function NearestCenters(props: NearestCentersProps) {
+  const { origin, onUseLocation, onPickBarangay, onBack, from, titleRef } = props
   const { data, failed, retry } = useGuideData()
   // The barangay search, opened by "Change" (or "Type your barangay" while the phone looks)
   const [changing, setChanging] = useState(false)
@@ -171,7 +174,11 @@ export default function NearestCenters({ origin, onUseLocation, onPickBarangay, 
           </div>
           <ol className="nearest-centers-list">
             {nearest.map((center, i) => (
-              <li key={center.facilityCode} className="nearest-centers-row">
+              <li
+                key={center.facilityCode}
+                className="nearest-centers-row"
+                style={{ '--nearest-centers-order': i } as CSSProperties}
+              >
                 <span className="nearest-centers-number label-ui-s" aria-hidden="true">
                   {i + 1}
                 </span>
@@ -212,7 +219,7 @@ export default function NearestCenters({ origin, onUseLocation, onPickBarangay, 
     </>
   )
   return (
-    <GuideStep step={3} title="Nearest health centers" onBack={onBack} titleRef={titleRef} footer={footer}>
+    <GuideStep step={3} from={from} title="Nearest health centers" onBack={onBack} titleRef={titleRef} footer={footer}>
       {body}
     </GuideStep>
   )

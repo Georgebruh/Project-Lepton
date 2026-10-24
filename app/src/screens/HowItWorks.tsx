@@ -18,6 +18,7 @@ import {
   type Reference,
 } from '../howItWorks/content.ts'
 import { FORMULAS } from '../howItWorks/formulas.tsx'
+import { useReveal } from '../motion/reveal.ts'
 import './HowItWorks.css'
 
 /** The five sections, in order: the tabs' labels and the ids they jump to. */
@@ -56,7 +57,7 @@ function useCurrentSection() {
 /** A section's numbered eyebrow ("01 · Pipeline") over its heading. */
 function SectionHead({ id, number, title }: { id: string; number: string; title: string }) {
   return (
-    <div className="how-it-works-section-head">
+    <div className="how-it-works-section-head" data-reveal>
       <p className="how-it-works-eyebrow label-eyebrow">{number}</p>
       <h2 id={`${id}-title`} className="heading-l">
         {title}
@@ -125,7 +126,7 @@ function Pipeline() {
   return (
     <section id="pipeline" className="how-it-works-section" aria-labelledby="pipeline-title">
       <SectionHead id="pipeline" number="01 · Pipeline" title="From rain to a stock list in four steps" />
-      <div className="how-it-works-pipeline-links">
+      <div className="how-it-works-pipeline-links" data-reveal>
         <p className="body-m">
           The numbers it makes are on the map, with the city’s forecast and each storm’s stock
           plan, and in Compare models, with every model’s weekly forecast and score.
@@ -141,7 +142,7 @@ function Pipeline() {
       </div>
       <ol className="how-it-works-diagram">
         {PIPELINE.map(({ step, cards }, i) => (
-          <li key={step} className="how-it-works-step">
+          <li key={step} className="how-it-works-step" data-reveal>
             <p className="how-it-works-eyebrow label-eyebrow">{step}</p>
             <ul className="how-it-works-step-cards">
               {cards.map((card) => (
@@ -188,7 +189,7 @@ function Models() {
   return (
     <section id="models" className="how-it-works-section" aria-labelledby="models-title">
       <SectionHead id="models" number="02 · Models" title="Our model against a published one and two baselines" />
-      <div className="how-it-works-table-wrap">
+      <div className="how-it-works-table-wrap" data-reveal>
         <table className="how-it-works-models">
           <thead>
             <tr className="label-eyebrow">
@@ -229,7 +230,7 @@ function Testing() {
       <SectionHead id="testing" number="03 · Testing" title="How we check it, before anyone relies on it" />
       <ul className="how-it-works-tests">
         {TESTS.map(({ label, title, text }) => (
-          <li key={title} className="how-it-works-test">
+          <li key={title} className="how-it-works-test" data-reveal>
             <p className="how-it-works-eyebrow-accent label-eyebrow">{label}</p>
             <h3 className="heading-m">{title}</h3>
             <p className="how-it-works-test-text body-m">{text}</p>
@@ -246,13 +247,13 @@ function Limits() {
       <SectionHead id="limits" number="04 · Limits" title="What LEPTON can’t do yet" />
       <ul className="how-it-works-limits">
         {LIMITS.map(({ title, text }) => (
-          <li key={title} className="how-it-works-limit">
+          <li key={title} className="how-it-works-limit" data-reveal>
             <h3 className="heading-s">{title}</h3>
             <p className="how-it-works-limit-text body-m">{text}</p>
           </li>
         ))}
       </ul>
-      <p className="how-it-works-future body-m">{FUTURE_WORK}</p>
+      <p className="how-it-works-future body-m" data-reveal>{FUTURE_WORK}</p>
     </section>
   )
 }
@@ -260,7 +261,7 @@ function Limits() {
 /** A list of references, each linking to its paper, data set or page. */
 function ReferenceList({ title, references }: { title: string; references: Reference[] }) {
   return (
-    <div className="how-it-works-references">
+    <div className="how-it-works-references" data-reveal>
       <h3 className="how-it-works-eyebrow label-eyebrow">{title}</h3>
       <ul>
         {references.map(({ text, url }) => (
@@ -293,11 +294,12 @@ function Sources() {
 /** How it works (route /how-it-works). */
 export default function HowItWorks() {
   const current = useCurrentSection()
+  const reveal = useReveal<HTMLElement>()
   return (
     <>
       <title>How it works · LEPTON</title>
       <SiteHeader />
-      <main>
+      <main ref={reveal}>
         <Intro current={current} />
         <Pipeline />
         <Models />

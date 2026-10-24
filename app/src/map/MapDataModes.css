@@ -34,6 +34,13 @@
   color: var(--color-text-on-accent);
 }
 
+@media (hover: hover) {
+  .map-data-modes-button:not([aria-pressed='true'], :disabled):hover {
+    background: var(--color-bg-canvas);
+    color: var(--color-text-primary);
+  }
+}
+
 .map-data-modes-button:disabled {
   color: var(--color-text-tertiary);
   cursor: not-allowed;

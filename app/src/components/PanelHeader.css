@@ -7,10 +7,29 @@
   height: 32px;
   padding: var(--space-2) var(--space-1);
   border: 0;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .panel-header:hover {
+    background: color-mix(in srgb, var(--color-bg-raised) 60%, transparent);
+  }
+}
+
+/* The chevron points right, and down while the section is open */
+.panel-header[aria-expanded='true'] .panel-header-chevron {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel-header-chevron {
+    transition: rotate var(--motion-change) var(--motion-ease);
+  }
 }
 
 .panel-header-title {

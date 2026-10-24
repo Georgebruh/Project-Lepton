@@ -49,6 +49,7 @@
   border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
   overflow: hidden;
+  animation: motion-fade var(--motion-crossfade) linear;
 }
 
 .barangay-picker-matches li + li {
@@ -64,6 +65,13 @@
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .barangay-picker-match:hover {
+    background: var(--color-accent-subtle);
+  }
 }
 
 .barangay-picker-match:focus-visible {

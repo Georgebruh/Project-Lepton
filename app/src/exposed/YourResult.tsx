@@ -12,11 +12,13 @@ type YourResultProps = {
   /** "Find the nearest health center": asks for the phone's location and opens step 3. */
   onFindCenters: () => void
   onBack: () => void
+  /** The step the reader came from, or null on opening the guide. */
+  from: number | null
   titleRef: Ref<HTMLHeadingElement>
 }
 
 /** Step 2 of the guide: the risk group and what it means. */
-export default function YourResult({ answers, onFindCenters, onBack, titleRef }: YourResultProps) {
+export default function YourResult({ answers, onFindCenters, onBack, from, titleRef }: YourResultProps) {
   const result = resultFor(answers)
   const badge = LEVEL_BADGES[result.level]
   const footer = (
@@ -31,7 +33,7 @@ export default function YourResult({ answers, onFindCenters, onBack, titleRef }:
   )
 
   return (
-    <GuideStep step={2} title="Your result" onBack={onBack} titleRef={titleRef} footer={footer}>
+    <GuideStep step={2} from={from} title="Your result" onBack={onBack} titleRef={titleRef} footer={footer}>
       <div className="your-result">
         <section className="your-result-card">
           <div className="your-result-badges">

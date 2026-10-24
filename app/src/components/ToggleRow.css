@@ -11,6 +11,13 @@
   background: none;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .toggle-row:hover {
+    background: color-mix(in srgb, var(--color-bg-raised) 60%, transparent);
+  }
 }
 
 /* The swatch: a 10 px square, the series color when on, grey when off */
@@ -20,6 +27,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-xs);
   background: var(--color-border-strong);
+  transition: background-color var(--motion-hover) linear;
 }
 
 .toggle-row-on .toggle-row-swatch {
@@ -35,6 +43,7 @@
   flex: 1;
   min-width: 0;
   color: var(--color-text-secondary);
+  transition: color var(--motion-hover) linear;
 }
 
 .toggle-row-on .toggle-row-label {
@@ -50,6 +59,9 @@
   border: 1px solid var(--color-border-strong);
   border-radius: 3px;
   background: var(--color-bg-raised);
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear;
 }
 
 .toggle-row-knob {
@@ -60,6 +72,7 @@
   height: 10px;
   border-radius: var(--radius-xs);
   background: var(--color-text-tertiary);
+  transition: background-color var(--motion-hover) linear;
 }
 
 .toggle-row-on .toggle-row-switch {
@@ -68,6 +81,15 @@
 }
 
 .toggle-row-on .toggle-row-knob {
-  left: 16px;
+  translate: 14px 0;
   background: var(--color-text-on-accent);
+}
+
+/* The knob slides across */
+@media (prefers-reduced-motion: no-preference) {
+  .toggle-row-knob {
+    transition:
+      background-color var(--motion-hover) linear,
+      translate var(--motion-hover) var(--motion-ease);
+  }
 }

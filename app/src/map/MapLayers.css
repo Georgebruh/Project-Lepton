@@ -43,6 +43,13 @@
   background: none;
   color: var(--color-text-secondary);
   cursor: pointer;
+  transition: color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-layers-close:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .map-layers-section {
@@ -76,6 +83,17 @@
   background: var(--color-bg-surface);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    border-color var(--motion-hover) linear,
+    box-shadow var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-layers-base:not(:has(:checked)):hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-bg-canvas);
+  }
 }
 
 /* The chosen one */
@@ -144,6 +162,15 @@
   color: var(--color-text-primary);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-layers-chip:not([aria-pressed='true']):hover {
+    background: var(--color-bg-canvas);
+  }
 }
 
 .map-layers-chip[aria-pressed='true'] {
@@ -198,6 +225,13 @@
 
 .map-layers-radio-input:checked {
   border: 5px solid var(--color-accent-primary);
+}
+
+/* The ring closes in on its middle as it is chosen */
+@media (prefers-reduced-motion: no-preference) {
+  .map-layers-radio-input {
+    transition: border var(--motion-hover) var(--motion-ease-out);
+  }
 }
 
 .map-layers-radio-input:focus-visible {

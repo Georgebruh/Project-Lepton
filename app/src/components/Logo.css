@@ -30,6 +30,15 @@
   stroke: var(--color-accent-primary);
   stroke-width: 2.6;
   stroke-linejoin: round;
+  /* A link around the logo may turn it about its middle (SiteHeader.css) */
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo-o-ring {
+    transition: rotate var(--motion-enter) var(--motion-ease);
+  }
 }
 
 .logo-o-dot {

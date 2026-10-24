@@ -41,6 +41,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-1);
+  animation: motion-fade var(--motion-crossfade) linear;
 }
 
 .controls-panel-year-label {
@@ -58,6 +59,13 @@
   border-radius: var(--radius-sm);
   background: var(--color-bg-canvas);
   color: var(--color-text-primary);
+  transition: border-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .controls-panel-year-field:hover {
+    border-color: var(--color-text-tertiary);
+  }
 }
 
 /* The browser's own list: invisible, over the whole field, so a click anywhere opens it */

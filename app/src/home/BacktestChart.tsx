@@ -1,4 +1,5 @@
 import { scaleLinear, scalePoint } from 'd3-scale'
+import type { CSSProperties } from 'react'
 import Badge from '../components/Badge.tsx'
 import { SIMULATED_LABEL, formatWeek, rangePercent } from '../map/forecast.ts'
 import type { CityForecast, ForecastWeek } from '../map/mapData.ts'
@@ -63,7 +64,7 @@ export default function BacktestChart({ forecast }: BacktestChartProps) {
         <rect className="backtest-chart-axis" x={0} y={BASE} width={WIDTH} height={1} />
         {/* city_forecast.json's weeks all have a count; only the map's Simulation mode adds weeks without one */}
         {weeks.map(
-          (week) =>
+          (week, i) =>
             week.y !== null && (
               <rect
                 key={week.week_index}
@@ -72,6 +73,8 @@ export default function BacktestChart({ forecast }: BacktestChartProps) {
                 y={y(week.y)}
                 width={BAR}
                 height={BASE - y(week.y)}
+                // Its place from left to right, 0 to 1, for when it grows (BacktestChart.css)
+                style={{ '--backtest-chart-at': i / Math.max(1, weeks.length - 1) } as CSSProperties}
               />
             ),
         )}

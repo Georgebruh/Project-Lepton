@@ -21,6 +21,12 @@ export default function Exposed() {
   const asked = Number(searchParams.get('step'))
   const step = answered && (asked === 2 || asked === 3) ? asked : 1
 
+  // The step the reader came from (null on opening the guide), for its slide
+  const [arrival, setArrival] = useState<{ step: number; from: number | null }>({ step, from: null })
+  if (arrival.step !== step) {
+    setArrival({ step, from: arrival.step })
+  }
+
   // A step past 1 without answers in memory: back to the questions, without a new history entry
   useEffect(() => {
     if (searchParams.has('step') && step === 1) {
@@ -82,12 +88,21 @@ export default function Exposed() {
         onAnswer={answer}
         onDone={() => setSearchParams({ step: '2' })}
         onBack={goBack}
+        from={arrival.from}
         titleRef={titleRef}
       />
     )
   }
   if (step === 2) {
-    return <YourResult answers={answers} onFindCenters={findCenters} onBack={goBack} titleRef={titleRef} />
+    return (
+      <YourResult
+        answers={answers}
+        onFindCenters={findCenters}
+        onBack={goBack}
+        from={arrival.from}
+        titleRef={titleRef}
+      />
+    )
   }
   return (
     <NearestCenters
@@ -95,6 +110,7 @@ export default function Exposed() {
       onUseLocation={locate}
       onPickBarangay={pickBarangay}
       onBack={goBack}
+      from={arrival.from}
       titleRef={titleRef}
     />
   )

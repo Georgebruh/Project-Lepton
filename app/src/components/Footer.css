@@ -30,6 +30,13 @@
   white-space: nowrap;
 }
 
+@media (hover: hover) {
+  .footer-link:hover,
+  .footer-credits a:hover {
+    color: var(--color-text-primary);
+  }
+}
+
 .footer-note,
 .footer-credits {
   color: var(--color-text-tertiary);

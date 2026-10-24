@@ -91,6 +91,16 @@
 .forecast-panel-chance-fill {
   height: 100%;
   border-radius: var(--radius-xs);
+  transition: background-color var(--motion-change) linear;
+}
+
+/* Another week, the bar slides to its new chance */
+@media (prefers-reduced-motion: no-preference) {
+  .forecast-panel-chance-fill {
+    transition:
+      background-color var(--motion-change) linear,
+      width var(--motion-change) var(--motion-ease);
+  }
 }
 
 .forecast-panel-chance-fill-low {

@@ -38,6 +38,7 @@
   background: none;
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
 }
 
 .map-timeline-step:hover:not(:disabled) {

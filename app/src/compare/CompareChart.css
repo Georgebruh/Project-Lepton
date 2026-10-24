@@ -89,6 +89,7 @@
 .compare-chart-bar {
   fill: var(--color-text-secondary);
   opacity: 0.38;
+  transition: opacity var(--motion-hover) linear;
 }
 
 .compare-chart-bar-active {
@@ -118,6 +119,29 @@
   fill: none;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+/* A model or a series turned on fades in; a new period's weeks draw in from the left */
+.compare-chart-line,
+.compare-chart-range,
+.compare-chart-threshold {
+  animation: motion-fade var(--motion-change) linear;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .compare-chart-data {
+    animation: compare-chart-draw var(--motion-enter) var(--motion-ease) both;
+  }
+}
+
+@keyframes compare-chart-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* The week under the pointer: a hairline, and each line's value as a dot ringed in the surface color */

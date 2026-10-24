@@ -14,6 +14,13 @@
   box-shadow: 0 6px 20px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-search-button:hover {
+    background: var(--color-bg-canvas);
+  }
 }
 
 /* Open: the field, 320 px wide where there is room, and its matches under it */
@@ -21,6 +28,20 @@
   position: relative;
   flex: 0 1 320px;
   min-width: 0;
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
+/* The field grows out of the 48 px button */
+@media (prefers-reduced-motion: no-preference) {
+  .map-search {
+    animation: map-search-open var(--motion-change) var(--motion-ease-out);
+  }
+}
+
+@keyframes map-search-open {
+  from {
+    flex-basis: 48px;
+  }
 }
 
 .map-search-field {
@@ -72,6 +93,16 @@
   background: none;
   color: var(--color-text-secondary);
   cursor: pointer;
+  transition:
+    background-color var(--motion-hover) linear,
+    color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .map-search-close:hover {
+    background: var(--color-bg-raised);
+    color: var(--color-text-primary);
+  }
 }
 
 /* The matches: a card under the field, over the map and the plan's list of barangays. */
@@ -108,6 +139,7 @@
   padding: var(--space-2) var(--space-3);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: background-color var(--motion-hover) linear;
 }
 
 .map-search-option + .map-search-option {

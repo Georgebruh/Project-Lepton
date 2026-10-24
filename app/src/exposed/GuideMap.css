@@ -43,6 +43,65 @@
   background: var(--color-accent-primary);
 }
 
+/* A ring spreads from it three times, as a ripple in water, then stops */
+.guide-map-you::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-map-you::after {
+    animation: guide-map-ripple 1400ms var(--motion-ease-out) 600ms 3;
+  }
+
+  /* The markers grow from their points after the map: the reader, then the nearest center first */
+  .guide-map-you,
+  .guide-map-center {
+    transform-origin: 0 0;
+    animation: guide-map-mark var(--motion-change) var(--motion-ease-out) 300ms both;
+  }
+
+  .guide-map-center:nth-last-child(1) {
+    animation-delay: 380ms;
+  }
+
+  .guide-map-center:nth-last-child(2) {
+    animation-delay: 460ms;
+  }
+
+  .guide-map-center:nth-last-child(3) {
+    animation-delay: 540ms;
+  }
+}
+
+.guide-map {
+  animation: motion-fade var(--motion-crossfade) linear;
+}
+
+@keyframes guide-map-ripple {
+  from {
+    opacity: 0.6;
+    scale: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: 3;
+  }
+}
+
+@keyframes guide-map-mark {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
 /* A health center: its number on a dark square, as in the list */
 .guide-map-center {
   position: absolute;

@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import Badge from '../components/Badge.tsx'
 import Button from '../components/Button.tsx'
 import SiteHeader from '../components/SiteHeader.tsx'
+import { useReveal } from '../motion/reveal.ts'
 import './Leptospirosis.css'
 
 /** The pages each fact on this page comes from, numbered in the order the page first cites them. */
@@ -164,7 +165,7 @@ function Cite({ sources }: { sources: readonly SourceId[] }) {
 function Section({ id, title, children }: { id: string; title: ReactNode; children: ReactNode }) {
   return (
     <section className="leptospirosis-section" aria-labelledby={id}>
-      <h2 id={id} className="leptospirosis-section-head heading-m">
+      <h2 id={id} className="leptospirosis-section-head heading-m" data-reveal>
         {title}
       </h2>
       {children}
@@ -224,7 +225,7 @@ function KeyFacts() {
   return (
     <ul className="leptospirosis-facts" aria-label="Key facts">
       {KEY_FACTS.map(({ value, text, sources }) => (
-        <li key={value} className="leptospirosis-fact">
+        <li key={value} className="leptospirosis-fact" data-reveal>
           <p className="data-xl">{value}</p>
           <p className="leptospirosis-fact-text">
             {text}
@@ -240,14 +241,14 @@ function Signs() {
   return (
     <Section id="leptospirosis-signs" title="Signs to watch for in the next 4 weeks">
       <div className="leptospirosis-signs">
-        <div className="leptospirosis-signs-card">
+        <div className="leptospirosis-signs-card" data-reveal>
           <h3 className="heading-m">
             Early signs: see a doctor
             <Cite sources={['doh-disease']} />
           </h3>
           <SignList signs={EARLY_SIGNS} />
         </div>
-        <div className="leptospirosis-signs-card is-alert">
+        <div className="leptospirosis-signs-card is-alert" data-reveal>
           <h3 className="leptospirosis-signs-alert-title heading-m">
             Go to a hospital now
             <Cite sources={['doh-disease', 'doh-2024-07-24', 'doh-dm-2023-0309']} />
@@ -276,7 +277,7 @@ function RiskLevels() {
     >
       <ul className="leptospirosis-risk">
         {RISK_LEVELS.map(({ tone, label, text }) => (
-          <li key={label} className="leptospirosis-risk-level">
+          <li key={label} className="leptospirosis-risk-level" data-reveal>
             <div className="leptospirosis-risk-badge">
               <Badge tone={tone}>{label}</Badge>
             </div>
@@ -287,7 +288,7 @@ function RiskLevels() {
           </li>
         ))}
       </ul>
-      <p className="leptospirosis-note">
+      <p className="leptospirosis-note" data-reveal>
         Whatever your level, a doctor decides if you need preventive medicine. Don’t take
         antibiotics without a consultation.
         <Cite sources={['doh-dm-2023-0309']} />
@@ -299,7 +300,7 @@ function RiskLevels() {
 function ExposedCta() {
   return (
     <section className="leptospirosis-cta" aria-labelledby="leptospirosis-cta-title">
-      <div className="leptospirosis-cta-line">
+      <div className="leptospirosis-cta-line" data-reveal>
         <div className="leptospirosis-cta-text">
           <h2 id="leptospirosis-cta-title" className="display-l">
             Been in floodwater recently?
@@ -335,17 +336,18 @@ function PageFooter() {
 
 /** Leptospirosis, for residents (route /leptospirosis). */
 export default function Leptospirosis() {
+  const reveal = useReveal<HTMLElement>()
   return (
     <>
       <title>Leptospirosis · LEPTON</title>
       <SiteHeader />
-      <main>
+      <main ref={reveal}>
         <Hero />
         <KeyFacts />
         <Section id="leptospirosis-ways" title="How you get it">
           <div className="leptospirosis-ways">
             {WAYS.map(({ title, text, sources }) => (
-              <div key={title} className="leptospirosis-way">
+              <div key={title} className="leptospirosis-way" data-reveal>
                 <h3 className="heading-s">{title}</h3>
                 <p className="leptospirosis-way-text body-l">
                   {text}
@@ -360,7 +362,7 @@ export default function Leptospirosis() {
         <Section id="leptospirosis-protect" title="Protect yourself">
           <ul className="leptospirosis-tips">
             {TIPS.map(({ title, text, sources }) => (
-              <li key={title} className="leptospirosis-tip">
+              <li key={title} className="leptospirosis-tip" data-reveal>
                 <h3 className="heading-s">{title}</h3>
                 <p className="leptospirosis-tip-text">
                   {text}

@@ -53,6 +53,12 @@
   color: var(--color-text-secondary);
 }
 
+@media (hover: hover) {
+  .city-map-methods-link:hover {
+    color: var(--color-text-primary);
+  }
+}
+
 /* MapLibre's canvas takes the keyboard (arrow keys pan, + and - zoom). */
 .city-map-canvas canvas:focus-visible {
   outline-offset: -2px;

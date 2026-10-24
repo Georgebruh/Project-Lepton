@@ -46,6 +46,38 @@
   stroke-linejoin: round;
 }
 
+/* In view, the weeks grow from the left, and the lines draw across with them */
+@media (prefers-reduced-motion: no-preference) {
+  [data-revealed] .backtest-chart-bar {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: backtest-chart-grow 500ms var(--motion-ease-out) both;
+    animation-delay: calc(var(--backtest-chart-at) * 900ms);
+  }
+
+  [data-revealed] .backtest-chart-range,
+  [data-revealed] .backtest-chart-forecast,
+  [data-revealed] .backtest-chart-threshold {
+    animation: backtest-chart-draw 1200ms var(--motion-ease) both;
+  }
+}
+
+@keyframes backtest-chart-grow {
+  from {
+    scale: 1 0;
+  }
+}
+
+@keyframes backtest-chart-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 /* The simulated badge sits on the chart's top left */
 .backtest-chart-badge {
   position: absolute;

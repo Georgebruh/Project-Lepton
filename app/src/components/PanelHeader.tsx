@@ -14,7 +14,8 @@ type PanelHeaderProps = {
 export default function PanelHeader({ title, expanded, onToggle }: PanelHeaderProps) {
   return (
     <button type="button" className="panel-header" aria-expanded={expanded} onClick={onToggle}>
-      <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} />
+      {/* Points down while open (PanelHeader.css) */}
+      <Icon name="chevron-right" size={16} className="panel-header-chevron" />
       <span className="panel-header-title heading-s">{title}</span>
     </button>
   )

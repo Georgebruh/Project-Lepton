@@ -74,6 +74,13 @@
   text-decoration: none;
 }
 
+/* The logo's ripple turns a little under the pointer, as in the site header */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .map-layout-logo:hover .logo-o-ring {
+    rotate: 25.7deg;
+  }
+}
+
 /* The top right corner: Simulation | Real data (map/MapDataModes.css) */
 .map-layout-modes {
   position: absolute;
@@ -244,6 +251,18 @@
   transition:
     transform var(--map-camera) var(--map-ease),
     visibility 0s;
+}
+
+/* Another tab of the panel: its content fades in under the tabs, which stay */
+.map-layout-panel > * > :not(.panel-modes) {
+  animation: motion-fade var(--map-crossfade) linear;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .map-layout-panel > * > :not(.panel-modes) {
+    --motion-rise: 8px;
+    animation: motion-rise var(--motion-change) var(--motion-ease-out);
+  }
 }
 
 /* Below 600 px (motion.ts's SHEET_BELOW). */

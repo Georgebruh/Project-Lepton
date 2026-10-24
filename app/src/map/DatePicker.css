@@ -11,6 +11,13 @@
   background: var(--color-bg-canvas);
   color: var(--color-text-primary);
   white-space: nowrap;
+  transition: border-color var(--motion-hover) linear;
+}
+
+@media (hover: hover) {
+  .date-picker:hover {
+    border-color: var(--color-text-tertiary);
+  }
 }
 
 /* The browser's date field: invisible, over the whole control, so a click anywhere opens it */
