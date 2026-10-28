@@ -36,7 +36,7 @@ adding a package (`npm install --save-exact <name>@<version>`).
 | `src/report/` | F15's barangay report, a PDF made in the browser: `reportContent.ts` (its words and tables, from the files), `reportPdf.ts` (draws them with jsPDF and saves the file), `reportMap.ts` (its maps' geometry) |
 | `src/home/` | Home's parts (F6): the plan's preview (`PlanPreview.tsx`), the city forecast's chart (`BacktestChart.tsx`), the photos and their credits (`photos.ts`), the hero's waterlines (`waterlines.ts`, F17) and the files it loads (`homeData.ts`) |
 | `src/motion/` | F17: the reveal on scroll (`reveal.ts`), the numbers that count up (`CountUp.tsx`) and the glide of in-page links (`smoothLinks.ts`) |
-| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos). `logo/` holds PNGs of the logo for the paper and slides (the wordmark and its O, 1024 px, transparent, light theme colors); nothing imports them, so they are not in the build |
+| `src/assets/` | Images the code imports; Vite gives each a hashed name under `/assets/` (F6: Home's photos). `logo/` holds the wordmark as PNGs, 1024 px wide on a transparent background, also for the paper and slides: `wordmark-1024.png` in the light theme's colors (F15's PDF report draws it) and `wordmark-dark-1024.png` in monsoon's, which the repository's README shows in GitHub's dark mode |
 | `src/styles/tokens.css` | Every color, corner radius, spacing step and text style, from Figma |
 | `src/styles/global.css` | Page-wide base styles |
 | `src/styles/motion.css` | F17: the durations and curves of every animation, and the reveal on scroll |
@@ -817,18 +817,23 @@ change only what a failed check needs.
 
 ## Deploy (Vercel)
 
-The app is hosted on Vercel's free plan, built from this repository with `app/` as the root
-directory. One-time setup, by the owner of the GitHub repository:
+The app is live at https://project-lepton.vercel.app, on Vercel's free plan (project
+`project-lepton`, on one person's account, so only they can deploy it). It was first deployed on
+October 29 with the Vercel CLI, run in `app/`. Vercel detects Vite: build command
+`npm run build`, output directory `dist`.
 
-1. Sign in at vercel.com with GitHub.
-2. Add New, then Project, then import `Project-Lepton`.
-3. Set Root Directory to `app`. Vercel detects Vite: build command `npm run build`, output
-   directory `dist`. Deploy.
-4. Put the production link at the top of the repository's README (F12, for E10) and share it
-   with the team.
+GitHub is not connected yet, so a push to `main` does not change the site. Until it is, redeploy
+from `app/` with `npx vercel@65.5.0 deploy --prod`. The CLI uploads `app/` as it is, without
+reading `.gitignore`, so delete `dist/` first or its 240 MB go up twice. To deploy every push to
+`main` and give every pull request its own preview link, the project's owner:
 
-After that, every push to `main` updates the production link, and every pull request gets its
-own preview link. `vercel.json` sends every address except `/data/` and `/assets/` files to
+1. Connects GitHub at vercel.com, under Account Settings, then Authentication.
+2. In the project's Settings, then Git, connects `Georgebruh/Project-Lepton`.
+3. Sets Root Directory (Settings, then Build and Deployment) to `app`. It is `.` now because
+   the CLI uploaded `app/` on its own; left as it is, a push finds no `package.json` to build.
+4. Updates this section.
+
+`vercel.json` sends every address except `/data/` and `/assets/` files to
 `index.html`, so a link such as `/map/quezon-city` opens directly, while a data file that does
 not exist answers 404, not with the page. `vite.config.ts` makes `npm run dev` and
 `npm run preview` answer the same way, so `if (!res.ok)` after `fetch` is the test for a
