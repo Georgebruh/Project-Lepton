@@ -1,4 +1,9 @@
-# Project LEPTON
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="app/src/assets/logo/wordmark-dark-1024.png">
+    <img src="app/src/assets/logo/wordmark-1024.png" alt="Project LEPTON" width="400">
+  </picture>
+</h1>
 
 **Leptospirosis Exposure Prediction & Targeting Operational Network**
 
@@ -15,7 +20,7 @@ the code, in [`paper/`](paper/), sets out the method, the tests and the results 
 > its app is a stock-planning figure for a health office. DOH Department Memorandum 2023-0309
 > requires a physician's consultation before anyone takes prophylaxis.
 
-<!-- The app's production link goes here once Vercel is set up (app/README.md, "Deploy (Vercel)"). -->
+**Open the app:** [project-lepton.vercel.app](https://project-lepton.vercel.app)
 
 **Contents:** [Why](#why) · [What LEPTON does](#what-lepton-does) ·
 [Why Quezon City first](#why-quezon-city-first) · [Results](#results) ·
