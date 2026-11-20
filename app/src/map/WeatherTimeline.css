@@ -107,21 +107,6 @@
   flex-shrink: 0;
 }
 
-.weather-timeline-live-short {
-  display: none;
-}
-
-/* A narrow map (a phone, or a laptop with the city panel open): the badge says only "Live" */
-@media (max-width: 1100px) {
-  .weather-timeline-live-long {
-    display: none;
-  }
-
-  .weather-timeline-live-short {
-    display: inline;
-  }
-}
-
 /* The phone width: the slider steps through the frames, so the step buttons and the frame count go */
 @media (max-width: 599px) {
   .weather-timeline-steps,
