@@ -5,7 +5,7 @@ import { ageOf, phtTime, type Frame } from './weather.ts'
 import './WeatherTimeline.css'
 
 type WeatherTimelineProps = {
-  /** What the frames show, for screen readers: "Radar · live". */
+  /** What the frames show, for screen readers: "Live radar". */
   label: string
   /** The frames, oldest first. */
   frames: Frame[]
@@ -65,12 +65,11 @@ export default function WeatherTimeline({ label, frames, index, now, playing, on
       <p className="weather-timeline-when">
         <span className="label-ui">{phtTime(time)}</span>
         <span className="weather-timeline-age body-s">
-          Frame {index + 1} of {frames.length} · {ageOf(time, now)}
+          Frame {index + 1} of {frames.length}, {ageOf(time, now)}
         </span>
       </p>
       <Badge tone="accent" className="weather-timeline-live">
-        <span className="weather-timeline-live-long">Live: now, not the map's date</span>
-        <span className="weather-timeline-live-short">Live</span>
+        Live
       </Badge>
     </div>
   )

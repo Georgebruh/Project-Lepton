@@ -199,7 +199,7 @@
   cursor: pointer;
 }
 
-/* Weather: a 16 px round button and a label with a caption, 6 px above and below */
+/* Weather: a 16 px round button and a label, 6 px above and below */
 .map-layers-radio {
   display: flex;
   align-items: flex-start;
@@ -237,15 +237,6 @@
 .map-layers-radio-input:focus-visible {
   outline: 2px solid var(--color-accent-secondary);
   outline-offset: 2px;
-}
-
-.map-layers-radio-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.map-layers-radio-caption {
-  color: var(--color-text-secondary);
 }
 
 .map-layers-credits {

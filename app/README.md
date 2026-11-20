@@ -357,7 +357,7 @@ is only the map, of the whole country, with no other tabs.
   with one headers-only request for its world tile. The live layers play 500 ms a frame, pausing on
   the newest, once every frame is in (not with reduced motion), and are fetched again every 10
   minutes; `map/WeatherTimeline.tsx` plays, pauses and steps them, with times in Philippine time
-  and a badge saying they are now, not the map's date. `map/WeatherLegend.tsx` draws each layer's
+  and a "Live" badge. `map/WeatherLegend.tsx` draws each layer's
   colors as its provider does (GIBS's colormaps, RainViewer's Universal Blue), so they are not
   tokens. A failed source says so in the panel, with Try again; a date NASA has no picture of
   says that.

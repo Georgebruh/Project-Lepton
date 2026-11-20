@@ -146,7 +146,7 @@ export default function MapLayers({
           ))}
         </div>
       </fieldset>
-      <ToggleRow label="3D view: tilt, terrain, buildings" on={view3d} onChange={on3D} />
+      <ToggleRow label="3D view" on={view3d} onChange={on3D} />
       <fieldset className="map-layers-section">
         <legend className="map-layers-title label-ui-s">Flood hazard</legend>
         <div className="map-layers-flood">
@@ -188,7 +188,7 @@ export default function MapLayers({
         </div>
       </fieldset>
       <fieldset className="map-layers-section">
-        <legend className="map-layers-title label-ui-s">Weather · one at a time</legend>
+        <legend className="map-layers-title label-ui-s">Weather</legend>
         {[null, ...WEATHER].map((option) => (
           <label key={option ?? 'off'} className="map-layers-radio">
             <input
@@ -199,10 +199,7 @@ export default function MapLayers({
               checked={option === weather}
               onChange={() => onWeather(option)}
             />
-            <span className="map-layers-radio-text">
-              <span className="body-m">{option ? WEATHER_NAMES[option].label : 'Off'}</span>
-              {option && <span className="map-layers-radio-caption body-s">{WEATHER_NAMES[option].caption}</span>}
-            </span>
+            <span className="body-m">{option ? WEATHER_NAMES[option].label : 'Off'}</span>
           </label>
         ))}
         {weather && weatherStatus === 'loading' && (

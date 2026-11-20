@@ -20,17 +20,13 @@ export type Frame = { time: number; tiles: string }
 /** How a layer is doing: none chosen, loading, shown, no picture for the map's date, or failed. */
 export type WeatherStatus = 'off' | 'loading' | 'shown' | 'missing' | 'failed'
 
-/** Each layer's name and caption in the Layers panel, and what the panel calls its picture. */
-export const WEATHER_NAMES: Record<Weather, { label: string; caption: string; picture: string }> = {
-  clouds: { label: 'Clouds · live', caption: 'Himawari-9 satellite, every 10 minutes', picture: 'the clouds' },
-  radar: { label: 'Radar · live', caption: 'RainViewer, the past 2 hours', picture: 'the radar' },
-  rain: { label: 'Rain · live', caption: 'NASA IMERG, every 30 minutes', picture: 'the rain' },
-  'rain-day': { label: "Rain on the map's date", caption: 'NASA IMERG, one day', picture: "the day's rain" },
-  'photo-day': {
-    label: "Satellite photo on the map's date",
-    caption: 'NASA VIIRS, one picture a day',
-    picture: "the day's satellite photo",
-  },
+/** Each layer's name in the Layers panel (its legend and the credits line name the source), and its picture. */
+export const WEATHER_NAMES: Record<Weather, { label: string; picture: string }> = {
+  clouds: { label: 'Live clouds', picture: 'the clouds' },
+  radar: { label: 'Live radar', picture: 'the radar' },
+  rain: { label: 'Live rain', picture: 'the rain' },
+  'rain-day': { label: "Rain on the map's date", picture: "the day's rain" },
+  'photo-day': { label: "Satellite photo on the map's date", picture: "the day's satellite photo" },
 }
 
 /** The sources' names, for the Layers panel's credits line (the map's own credits link them). */
