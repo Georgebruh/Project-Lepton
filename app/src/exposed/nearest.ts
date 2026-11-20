@@ -100,9 +100,14 @@ export function formatKm(km: number): string {
   return km < 9.95 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`
 }
 
-/** A link that opens Google Maps. */
-export function directionsUrl([lon, lat]: LonLat): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+/** A point as Google Maps reads it: "latitude,longitude", to 6 decimals (about 0.1 m). */
+function mapsPoint([lon, lat]: LonLat): string {
+  return `${lat.toFixed(6)},${lon.toFixed(6)}`
+}
+
+/** A Google Maps directions link from where the list starts, so Maps doesn't guess the start itself. */
+export function directionsUrl(to: LonLat, from: LonLat): string {
+  return `https://www.google.com/maps/dir/?api=1&origin=${mapsPoint(from)}&destination=${mapsPoint(to)}`
 }
 
 /** Short forms residents type, and the word in the barangay's name they stand for. */

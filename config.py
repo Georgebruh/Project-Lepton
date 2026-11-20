@@ -477,6 +477,22 @@ D7_RUNS_TOLERANCE = 0.01                   # the main run and the observed run m
 D8_MAP_STORMS = ("carina_2024", "kristine_2024")
 D8_RELIABILITY_YEARS = PROB_SCORE_YEARS    # figure 3 scores the breach probabilities on the window (2022-2026)
 
+# Explainer figures: how M4 works and what the plan is, for teaching and slides, not results.
+# Drawn by src/explain_m4.py and src/explain_plan.py from the files above.
+EXPLAIN_DIR = RESULTS / "explain"
+PLAN_FILE = ROOT / "lepton-plan.md"
+EXPLAIN_BUSY_WEEK = (2026, 35)             # a flood-season target week (year, week) for the forecast anatomy
+EXPLAIN_QUIET_WEEK = (2025, 10)            # a dry-season target week beside it
+EXPLAIN_THRESHOLD_YEAR = 2026              # the year whose weekly thresholds the threshold figure builds
+EXPLAIN_PATH_STEP = 4                      # coefficient paths: refit M4 at every 4th forecast day of the backtest
+EXPLAIN_FLOOD_SEASON = (24, 44)            # weeks of year drawn in the flood-test panels (mid-June to October)
+EXPLAIN_FLOOD_YEARS = (2024, 2025, 2026)   # the flood-test panels: the years of Layer 2's storms
+EXPLAIN_EI_STEP = 10                       # the effects figure states EI2's effect per 10 percentage points
+EXPLAIN_COVERAGE_WINDOW = 52               # weeks in the rolling share of counts inside M4's 90% range
+EXPLAIN_NB_BINS = 10                       # bins of fitted mean in the "why negative binomial" check
+PLAN_SPRINT_TASKS = ("A1-A15", "B1", "B3", "B7", "B8", "C1-C4", "E1-E4")   # the plan's 27 tasks due Fri, Oct 16
+PLAN_START = date(2026, 10, 15)            # Thu, Oct 15: the 13-day plan's sprint starts
+
 # App data: the files the web app (app/) reads. Stock planning, not prescriptions.
 APP_DATA = ROOT / "app" / "public" / "data"    # served to the app as /data/<file>; committed, so Vercel ships it
 APP_BARANGAY_RUNS = APP_DATA / "barangays"     # one file per storm and run
