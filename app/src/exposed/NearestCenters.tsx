@@ -52,7 +52,9 @@ function distanceNote(start: Start): string {
   if (!start.here) {
     return `Distances are in a straight line from the middle of ${start.barangay?.name}.`
   }
-  const notes = ['Distances are in a straight line from where you are. LEPTON doesn’t send or keep your location.']
+  const notes = [
+    'Distances are in a straight line from where you are. LEPTON doesn’t keep your location: it goes to Google Maps only when you open directions.',
+  ]
   if (start.accuracyM > ROUGH_LOCATION_M) {
     notes.push(`Your phone placed you to within about ${formatKm(start.accuracyM / 1000)}, so the order may differ.`)
   }
@@ -129,8 +131,8 @@ export default function NearestCenters(props: NearestCentersProps) {
       <>
         <LocationRow text="Finding your location…" action="Type your barangay" onAction={() => setChanging(true)} />
         <p className="nearest-centers-status body-m">
-          If your phone asks, allow LEPTON to use your location. It stays on this phone: LEPTON doesn’t send or keep
-          it.
+          If your phone asks, allow LEPTON to use your location. LEPTON doesn’t keep it: it leaves this phone only
+          when you open directions in Google Maps.
         </p>
       </>
     )
@@ -190,7 +192,7 @@ export default function NearestCenters(props: NearestCentersProps) {
                 </div>
                 <a
                   className="nearest-centers-directions"
-                  href={directionsUrl([center.lon, center.lat])}
+                  href={directionsUrl([center.lon, center.lat], start.point)}
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`Open ${center.name} in Google Maps`}
@@ -206,7 +208,7 @@ export default function NearestCenters(props: NearestCentersProps) {
       </>
     )
     button = (
-      <Button href={directionsUrl(centerPoints[0])} className="guide-step-button">
+      <Button href={directionsUrl(centerPoints[0], start.point)} className="guide-step-button">
         Get directions to {nearest[0].name}
       </Button>
     )
